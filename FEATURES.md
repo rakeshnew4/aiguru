@@ -20,6 +20,7 @@ AI Guru has been significantly upgraded with modern UI, voice capabilities, and 
 
 ---
 
+
 ## 🚀 Quick Start
 
 ### Prerequisites
