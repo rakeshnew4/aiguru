@@ -153,13 +153,12 @@
         android:visibility="gone"
         android:gravity="center_vertical">
 
-        <com.airbnb.lottie.LottieAnimationView
-            android:id="@+id/loadingAnimation"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            app:lottie_rawRes="@raw/typing_animation"
-            app:lottie_autoPlay="true"
-            app:lottie_loop="true"/>
+        <ProgressBar
+            android:id="@+id/loadingSpinner"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:indeterminateTint="#1565C0"
+            style="@style/Widget.AppCompat.ProgressBar" />
 
         <TextView
             android:layout_width="wrap_content"

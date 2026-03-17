@@ -1,13 +1,17 @@
 package com.example.aiguru
 
 import android.app.AlertDialog
+import android.content.ContentValues
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.*
@@ -20,10 +24,17 @@ class ChapterActivity : AppCompatActivity() {
     private lateinit var adapter: ArrayAdapter<String>
     private lateinit var subjectName: String
     private lateinit var chapterName: String
+    private var cameraImageUri: Uri? = null
+    private val CAMERA_PERMISSION_CODE = 201
 
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
             uri?.let { savePage(it.toString()) }
+        }
+
+    private val cameraLauncher =
+        registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+            if (success && cameraImageUri != null) savePage(cameraImageUri.toString())
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,7 +56,7 @@ class ChapterActivity : AppCompatActivity() {
         loadPages()
 
         findViewById<Button>(R.id.uploadImageButton).setOnClickListener {
-            pickImage()
+            showImageSourceDialog()
         }
 
         findViewById<Button>(R.id.askAIButton).setOnClickListener {
@@ -74,6 +85,44 @@ class ChapterActivity : AppCompatActivity() {
                 .setNegativeButton("Cancel", null)
                 .show()
             true
+        }
+    }
+
+    private fun showImageSourceDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Add Textbook Page")
+            .setItems(arrayOf("📷  Take Photo", "🖼️  Choose from Gallery")) { _, which ->
+                when (which) {
+                    0 -> openCamera()
+                    1 -> pickImageLauncher.launch("image/*")
+                }
+            }
+            .show()
+    }
+
+    private fun openCamera() {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
+            != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                this, arrayOf(android.Manifest.permission.CAMERA), CAMERA_PERMISSION_CODE
+            )
+            return
+        }
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.TITLE, "AI_Guru_Page_${System.currentTimeMillis()}")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+        }
+        cameraImageUri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+        cameraImageUri?.let { cameraLauncher.launch(it) }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == CAMERA_PERMISSION_CODE &&
+            grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+            openCamera()
         }
     }
 

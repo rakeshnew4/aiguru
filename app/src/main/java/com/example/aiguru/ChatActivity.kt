@@ -1,9 +1,12 @@
 package com.example.aiguru
 import com.example.aiguru.BuildConfig
+import android.app.AlertDialog
+import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
 import android.view.View
 import android.widget.EditText
 import android.widget.ImageView
@@ -39,7 +42,7 @@ import org.json.JSONObject
 import java.io.IOException
 import java.util.UUID
 
-class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback, TTSCallback {
+class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
     private lateinit var messagesRecyclerView: RecyclerView
     private lateinit var messageAdapter: MessageAdapter
@@ -71,16 +74,17 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback, TTSCallback 
     private lateinit var mediaManager: MediaManager
 
     private var selectedImageUri: Uri? = null
+    private var cameraImageUri: Uri? = null
     private var isListening = false
 
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-            if (uri != null) {
-                selectedImageUri = uri
-                imagePreviewStrip.visibility = View.VISIBLE
-                Glide.with(this).load(uri).centerCrop().into(imagePreviewThumbnail)
-                imagePreviewLabel.text = mediaManager.getFileInfo(uri)
-            }
+            if (uri != null) showImagePreview(uri)
+        }
+
+    private val cameraLauncher =
+        registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+            if (success && cameraImageUri != null) showImagePreview(cameraImageUri!!)
         }
 
     private val pickPdfLauncher =
@@ -128,7 +132,13 @@ Your goals:
         messagesRecyclerView = findViewById(R.id.messagesRecyclerView)
         messageAdapter = MessageAdapter(
             context = this,
-            onVoiceClick = { ttsManager.speak(it.content, this) },
+            onVoiceClick = { msg ->
+                ttsManager.speak(msg.content, object : com.example.aiguru.utils.TTSCallback {
+                    override fun onStart() {}
+                    override fun onComplete() {}
+                    override fun onError(error: String) {}
+                })
+            },
             onImageClick = { }
         )
         messagesRecyclerView.layoutManager = LinearLayoutManager(this).apply {
@@ -173,7 +183,7 @@ Your goals:
             }
         }
 
-        imageButton.setOnClickListener { openImagePicker() }
+        imageButton.setOnClickListener { showImageSourceDialog() }
         pdfButton.setOnClickListener { openPdfPicker() }
 
         removeImageButton.setOnClickListener {
@@ -227,7 +237,40 @@ Your goals:
         voiceManager.startListening(this)
     }
 
-    private fun openImagePicker() = pickImageLauncher.launch("image/*")
+    private fun showImagePreview(uri: Uri) {
+        selectedImageUri = uri
+        imagePreviewStrip.visibility = View.VISIBLE
+        Glide.with(this).load(uri).centerCrop().into(imagePreviewThumbnail)
+        imagePreviewLabel.text = mediaManager.getFileInfo(uri)
+    }
+
+    private fun showImageSourceDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Add Image")
+            .setItems(arrayOf("📷  Take Photo", "🖼️  Choose from Gallery")) { _, which ->
+                when (which) {
+                    0 -> openCamera()
+                    1 -> pickImageLauncher.launch("image/*")
+                }
+            }
+            .show()
+    }
+
+    private fun openCamera() {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
+            != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                this, arrayOf(android.Manifest.permission.CAMERA), PERMISSION_REQUEST_CODE
+            )
+            return
+        }
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.TITLE, "AI_Guru_${System.currentTimeMillis()}")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+        }
+        cameraImageUri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+        cameraImageUri?.let { cameraLauncher.launch(it) }
+    }
 
     private fun openPdfPicker() = pickPdfLauncher.launch("application/pdf")
 
@@ -496,10 +539,6 @@ Make questions test key concepts, definitions, or important facts."""
         }
     }
 
-    // TTSCallback
-    override fun onStart() { super.onStart() }
-    override fun onComplete() {}
-
     override fun onRequestPermissionsResult(
         requestCode: Int, permissions: Array<out String>, grantResults: IntArray
     ) {
@@ -507,7 +546,10 @@ Make questions test key concepts, definitions, or important facts."""
         if (requestCode == PERMISSION_REQUEST_CODE &&
             grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED
         ) {
-            startVoiceInput()
+            // Re-try whichever permission was just granted
+            val perm = permissions.firstOrNull()
+            if (perm == android.Manifest.permission.RECORD_AUDIO) startVoiceInput()
+            else if (perm == android.Manifest.permission.CAMERA) openCamera()
         }
     }
 

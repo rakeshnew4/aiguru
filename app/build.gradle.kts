@@ -1,8 +1,16 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("com.google.gms.google-services")
 }
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) load(file.inputStream())
+}
+
 android {
     namespace = "com.example.aiguru"
     compileSdk = 36
@@ -16,7 +24,7 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "GROQ_API_KEY", "\"GROQ_API_KEY_IN_LOCAL_PROPERTIES\"")
+        buildConfigField("String", "GROQ_API_KEY", "\"${localProperties["GROQ_API_KEY"]}\"")
     }
 
     buildTypes {
@@ -62,9 +70,6 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-    
-    // Animation
-    implementation("com.airbnb.android:lottie:6.1.0")
     
     // DataStore for preferences
     implementation("androidx.datastore:datastore-preferences:1.0.0")
