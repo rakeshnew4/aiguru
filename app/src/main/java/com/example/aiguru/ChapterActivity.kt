@@ -89,7 +89,7 @@ class ChapterActivity : AppCompatActivity() {
     }
 
     private fun savePage(imagePath: String) {
-        val userId = auth.currentUser?.uid ?: return
+        val userId = "testuser123" // Using hardcoded user ID for no-login mode
         val timestamp = SimpleDateFormat("dd MMM yyyy HH:mm", Locale.getDefault()).format(Date())
         val page = hashMapOf(
             "path" to imagePath,
@@ -108,7 +108,7 @@ class ChapterActivity : AppCompatActivity() {
     }
 
     private fun loadPages() {
-        val userId = auth.currentUser?.uid ?: return
+        val userId = "testuser123" // Using hardcoded user ID for no-login mode
         db.collection("users").document(userId)
             .collection("subjects").document(subjectName)
             .collection("chapters").document(chapterName)
@@ -125,7 +125,7 @@ class ChapterActivity : AppCompatActivity() {
     }
 
     private fun deletePage(position: Int) {
-        val userId = auth.currentUser?.uid ?: return
+        val userId = "testuser123" // Using hardcoded user ID for no-login mode
         db.collection("users").document(userId)
             .collection("subjects").document(subjectName)
             .collection("chapters").document(chapterName)

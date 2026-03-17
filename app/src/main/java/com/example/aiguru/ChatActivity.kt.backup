@@ -231,7 +231,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback, TTSCallback 
     }
 
     private fun loadChatHistory() {
-        val userId = "testuser123" // Using hardcoded user ID for no-login mode
+        val userId = auth.currentUser?.uid ?: return
         
         lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -386,7 +386,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback, TTSCallback 
     }
 
     private fun saveMessageToFirestore(message: Message) {
-        val userId = "testuser123" // Using hardcoded user ID for no-login mode
+        val userId = auth.currentUser?.uid ?: return
         val messageData = hashMapOf(
             "content" to message.content,
             "isUser" to message.isUser,
@@ -408,58 +408,11 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback, TTSCallback 
         }
     }
 
-    private fun playVoiceMessage(message: Message) {
-        if (message.content.isNotEmpty()) {
-            ttsManager.speak(message.content, this)
-        }
+    private fun playVoice(message: Message) {
+        Toast.makeText(this, "Voice playback coming soon!", Toast.LENGTH_SHORT).show()
     }
 
     private fun viewImage(message: Message) {
-        Toast.makeText(this, "Image preview: ${message.content}", Toast.LENGTH_SHORT).show()
-    }
-
-    // VoiceRecognitionCallback implementations
-    override fun onResults(text: String) {
-        runOnUiThread {
-            isListening = false
-            voiceButton.text = "🎤"
-            messageInput.setText(text)
-        }
-    }
-
-    override fun onError(error: String) {
-        runOnUiThread {
-            isListening = false
-            voiceButton.text = "🎤"
-            Toast.makeText(this, "Voice error: $error", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    override fun onPartialResults(text: String) {
-        runOnUiThread {
-            messageInput.setText(text)
-        }
-    }
-
-    override fun onListeningStarted() {}
-    override fun onListeningFinished() {}
-
-    // TTSCallback implementations
-    override fun onStart() {
-        Toast.makeText(this, "Playing response", Toast.LENGTH_SHORT).show()
-    }
-
-    override fun onComplete() {
-        Toast.makeText(this, "Playback complete", Toast.LENGTH_SHORT).show()
-    }
-
-    override fun onError(error: String) {
-        Toast.makeText(this, "TTS Error: $error", Toast.LENGTH_SHORT).show()
-    }
-
-    override fun onDestroy() {
-        voiceManager.destroy()
-        ttsManager.destroy()
-        super.onDestroy()
+        Toast.makeText(this, "Image viewer coming soon!", Toast.LENGTH_SHORT).show()
     }
 }
