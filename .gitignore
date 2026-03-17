@@ -1,0 +1,57 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# API Keys and sensitive files
+app/google-services.json
+google-services.json
+*.keystore
+*.jks
+*.p12
+*.pem
+.env
+secrets.properties
+
+# Gradle
+gradle/wrapper/gradle-wrapper.jar
+
+# Build artifacts
+*.apk
+*.aar
+*.ap_
+*.dex
+
+# IDE
+.vscode/
+*.swp
+*.swo
+*~
+.idea/
+*.iws
+*.ipr
+
+# OS specific
+Thumbs.db
+
+# Test coverage
+coverage/
+.coverage
+
+# Kotlin
+*.kotlin_module
+
+# Environment variables
+.env
+.env.local
