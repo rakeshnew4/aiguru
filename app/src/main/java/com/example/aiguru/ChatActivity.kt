@@ -1,5 +1,7 @@
 package com.example.aiguru
 
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -11,16 +13,22 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbarwidget.MaterialToolbar
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.card.MaterialCardView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.example.aiguru.adapters.MessageAdapter
 import com.example.aiguru.models.Message
+import com.example.aiguru.utils.MediaManager
+import com.example.aiguru.utils.VoiceManager
+import com.example.aiguru.utils.VoiceRecognitionCallback
+import com.example.aiguru.utils.TextToSpeechManager
+import com.example.aiguru.utils.TTSCallback
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import okhttp3.*
@@ -32,7 +40,7 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.util.UUID
 
-class ChatActivity : AppCompatActivity() {
+class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback, TTSCallback {
 
     private lateinit var messagesRecyclerView: RecyclerView
     private lateinit var messageAdapter: MessageAdapter
@@ -40,6 +48,9 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var sendButton: MaterialButton
     private lateinit var toolbar: MaterialToolbar
     private lateinit var loadingLayout: LinearLayout
+    private lateinit var voiceButton: MaterialButton
+    private lateinit var imageButton: MaterialButton
+    private lateinit var pdfButton: MaterialButton
 
     private val client = OkHttpClient()
     private val API_KEY = BuildConfig.GROQ_API_KEY
@@ -50,8 +61,19 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var subjectName: String
     private lateinit var chapterName: String
     
+    private lateinit var voiceManager: VoiceManager
+    private lateinit var ttsManager: TextToSpeechManager
+    private lateinit var mediaManager: MediaManager
+    
     private var imagePath: String? = null
     private var imageBase64: String? = null
+    private var isListening = false
+
+    companion object {
+        private const val PERMISSION_REQUEST_CODE = 100
+        private const val PICK_IMAGE_REQUEST = 101
+        private const val PICK_PDF_REQUEST = 102
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,6 +85,11 @@ class ChatActivity : AppCompatActivity() {
         subjectName = intent.getStringExtra("subjectName") ?: "Unknown"
         chapterName = intent.getStringExtra("chapterName") ?: "Unknown Chapter"
         imagePath = intent.getStringExtra("imagePath")
+
+        // Initialize managers
+        voiceManager = VoiceManager(this)
+        ttsManager = TextToSpeechManager(this)
+        mediaManager = MediaManager(this)
 
         initializeUI()
         imagePath?.let { loadImageAsBase64(it) }
@@ -78,7 +105,7 @@ class ChatActivity : AppCompatActivity() {
         messagesRecyclerView = findViewById(R.id.messagesRecyclerView)
         messageAdapter = MessageAdapter(
             context = this,
-            onVoiceClick = { message -> playVoice(message) },
+            onVoiceClick = { message -> playVoiceMessage(message) },
             onImageClick = { message -> viewImage(message) }
         )
         messagesRecyclerView.apply {
@@ -91,6 +118,9 @@ class ChatActivity : AppCompatActivity() {
         messageInput = findViewById(R.id.messageInput)
         sendButton = findViewById(R.id.sendButton)
         loadingLayout = findViewById(R.id.loadingLayout)
+        voiceButton = findViewById(R.id.voiceButton)
+        imageButton = findViewById(R.id.imageButton)
+        pdfButton = findViewById(R.id.pdfButton)
 
         setupQuickActionButtons()
         setupMediaButtons()
@@ -128,16 +158,64 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun setupMediaButtons() {
-        findViewById<MaterialButton>(R.id.voiceButton).setOnClickListener {
-            Toast.makeText(this, "Voice input coming soon!", Toast.LENGTH_SHORT).show()
+        voiceButton.setOnClickListener {
+            if (isListening) {
+                voiceManager.stopListening()
+                isListening = false
+                voiceButton.text = "🎤"
+            } else {
+                checkPermissionAndStartListening()
+            }
         }
-        findViewById<MaterialButton>(R.id.imageButton).setOnClickListener {
-            Toast.makeText(this, "Image upload coming soon!", Toast.LENGTH_SHORT).show()
+
+        imageButton.setOnClickListener {
+            openImagePicker()
         }
-        findViewById<MaterialButton>(R.id.pdfButton).setOnClickListener {
-            Toast.makeText(this, "PDF upload coming soon!", Toast.LENGTH_SHORT).show()
+
+        pdfButton.setOnClickListener {
+            openPdfPicker()
         }
     }
+
+    private fun checkPermissionAndStartListening() {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.RECORD_AUDIO
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(android.Manifest.permission.RECORD_AUDIO),
+                PERMISSION_REQUEST_CODE
+            )
+        } else {
+            startVoiceInput()
+        }
+    }
+
+    private fun startVoiceInput() {
+        isListening = true
+        voiceButton.text = "⏹️ Stop"
+        Toast.makeText(this, "Listening...", Toast.LENGTH_SHORT).show()
+        voiceManager.startListening(this)
+    }
+
+    private fun openImagePicker() {
+        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+            type = "image/*"
+        }
+        startActivityForResult(
+            Intent.createChooser(intent, "Select an image"),
+            PICK_IMAGE_REQUEST
+        )
+    }
+
+    private fun openPdfPicker() {
+        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+            type = "application/pdf"
+        }
+        startActivityForResult(
+            Intent.createChooser(intent, "Select a PDF"),\n            PICK_PDF_REQUEST\n        )\n    }\n\n    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {\n        super.onActivityResult(requestCode, resultCode, data)\n        if (resultCode == RESULT_OK && data != null) {\n            when (requestCode) {\n                PICK_IMAGE_REQUEST -> handleImageSelected(data.data)\n                PICK_PDF_REQUEST -> handlePdfSelected(data.data)\n            }\n        }\n    }\n\n    private fun handleImageSelected(uri: Uri?) {\n        if (uri != null && mediaManager.isValidImage(uri)) {\n            val base64 = mediaManager.uriToBase64(uri)\n            val fileName = mediaManager.getFileNameFromUri(uri) ?: \"Image\"\n            if (base64 != null) {\n                val imageMessage = Message(\n                    id = UUID.randomUUID().toString(),\n                    content = \"📸 $fileName\",\n                    isUser = true,\n                    imageBase64 = base64,\n                    messageType = Message.MessageType.IMAGE\n                )\n                messageAdapter.addMessage(imageMessage)\n                messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)\n                Toast.makeText(this, \"Image added to message\", Toast.LENGTH_SHORT).show()\n            }\n        } else {\n            Toast.makeText(this, \"Invalid image file\", Toast.LENGTH_SHORT).show()\n        }\n    }\n\n    private fun handlePdfSelected(uri: Uri?) {\n        if (uri != null && mediaManager.isValidPdf(uri)) {\n            val fileName = mediaManager.getFileNameFromUri(uri) ?: \"Document\"\n            val fileInfo = mediaManager.getFileInfo(uri)\n            val pdfMessage = Message(\n                id = UUID.randomUUID().toString(),\n                content = fileInfo,\n                isUser = true,\n                pdfUrl = uri.toString(),\n                messageType = Message.MessageType.PDF\n            )\n            messageAdapter.addMessage(pdfMessage)\n            messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)\n            Toast.makeText(this, \"PDF file selected\", Toast.LENGTH_SHORT).show()\n        } else {\n            Toast.makeText(this, \"Invalid PDF file\", Toast.LENGTH_SHORT).show()\n        }\n    }\n\n    override fun onRequestPermissionsResult(\n        requestCode: Int,\n        permissions: Array<out String>,\n        grantResults: IntArray\n    ) {\n        super.onRequestPermissionsResult(requestCode, permissions, grantResults)\n        if (requestCode == PERMISSION_REQUEST_CODE) {\n            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {\n                startVoiceInput()\n            } else {\n                Toast.makeText(this, \"Permission denied\", Toast.LENGTH_SHORT).show()\n            }\n        }\n    }\n\n    private fun loadImageAsBase64(path: String) {\n        try {\n            val uri = Uri.parse(path)\n            val inputStream = contentResolver.openInputStream(uri)\n            val bitmap = BitmapFactory.decodeStream(inputStream)\n            val outputStream = ByteArrayOutputStream()\n            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)\n            imageBase64 = android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.NO_WRAP)\n        } catch (e: Exception) {\n            imageBase64 = null\n        }\n    }\n\n    private fun loadChatHistory() {\n        val userId = auth.currentUser?.uid ?: return\n        \n        lifecycleScope.launch(Dispatchers.IO) {\n            try {\n                db.collection(\"users\").document(userId)\n                    .collection(\"chats\")\n                    .document(\"${subjectName}_${chapterName}\")\n                    .collection(\"messages\")\n                    .orderBy(\"timestamp\")\n                    .limit(50)\n                    .get()\n                    .addOnSuccess { snapshot ->\n                        val messages = snapshot.documents.mapNotNull { doc ->\n                            try {\n                                Message(\n                                    id = doc.id,\n                                    content = doc.getString(\"content\") ?: \"\",\n                                    isUser = doc.getBoolean(\"isUser\") ?: true,\n                                    timestamp = doc.getLong(\"timestamp\") ?: System.currentTimeMillis(),\n                                    imageUrl = doc.getString(\"imageUrl\"),\n                                    messageType = Message.MessageType.valueOf(\n                                        doc.getString(\"messageType\") ?: \"TEXT\"\n                                    )\n                                )\n                            } catch (e: Exception) {\n                                null\n                            }\n                        }\n                        if (messages.isNotEmpty()) {\n                            runOnUiThread {\n                                messageAdapter.addMessages(messages)\n                                messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)\n                            }\n                        }\n                    }\n            } catch (e: Exception) {\n                e.printStackTrace()\n            }\n        }\n    }\n\n    private fun addWelcomeMessage() {\n        val welcomeMessage = Message(\n            id = UUID.randomUUID().toString(),\n            content = \"👋 Hi! I'm AI Guru. I'm here to help you master $chapterName. \" +\n                    \"Use the quick buttons above, voice input, or ask me anything!\",\n            isUser = false,\n            messageType = Message.MessageType.TEXT\n        )\n        messageAdapter.addMessage(welcomeMessage)\n    }\n\n    private fun sendMessage(userText: String) {\n        val userMessage = Message(\n            id = UUID.randomUUID().toString(),\n            content = userText,\n            isUser = true,\n            messageType = Message.MessageType.TEXT\n        )\n        messageAdapter.addMessage(userMessage)\n        messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)\n\n        showLoading(true)\n\n        lifecycleScope.launch(Dispatchers.IO) {\n            try {\n                val context = \"You are AI Guru, a helpful education tutor for students. \" +\n                        \"Subject: $subjectName, Chapter: $chapterName. \" +\n                        \"Answer in simple, clear language suitable for students. \" +\n                        \"If asked to summarize or explain, be thorough but easy to understand.\"\n\n                val json = JSONObject().apply {\n                    put(\"model\", \"llama-3.3-70b-versatile\")\n                    put(\"messages\", JSONArray().apply {\n                        put(JSONObject().apply {\n                            put(\"role\", \"system\")\n                            put(\"content\", context)\n                        })\n                        put(JSONObject().apply {\n                            put(\"role\", \"user\")\n                            put(\"content\", userText)\n                        })\n                    })\n                }\n\n                val requestBody = json.toString().toRequestBody(\"application/json\".toMediaType())\n                val request = Request.Builder()\n                    .url(API_URL)\n                    .addHeader(\"Authorization\", \"Bearer $API_KEY\")\n                    .addHeader(\"Content-Type\", \"application/json\")\n                    .post(requestBody)\n                    .build()\n\n                client.newCall(request).enqueue(object : Callback {\n                    override fun onFailure(call: Call, e: IOException) {\n                        runOnUiThread {\n                            showLoading(false)\n                            val errorMessage = Message(\n                                id = UUID.randomUUID().toString(),\n                                content = \"Error: Unable to get response. Please check your internet.\",\n                                isUser = false,\n                                messageType = Message.MessageType.TEXT\n                            )\n                            messageAdapter.addMessage(errorMessage)\n                            messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)\n                        }\n                    }\n\n                    override fun onResponse(call: Call, response: Response) {\n                        runOnUiThread {\n                            showLoading(false)\n                        }\n                        val responseBody = response.body?.string()\n                        try {\n                            val jsonResponse = JSONObject(responseBody ?: \"\")\n                            val aiText = jsonResponse\n                                .getJSONArray(\"choices\")\n                                .getJSONObject(0)\n                                .getJSONObject(\"message\")\n                                .getString(\"content\")\n\n                            val aiMessage = Message(\n                                id = UUID.randomUUID().toString(),\n                                content = aiText,\n                                isUser = false,\n                                messageType = Message.MessageType.TEXT\n                            )\n\n                            runOnUiThread {\n                                messageAdapter.addMessage(aiMessage)\n                                messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)\n                                saveMessageToFirestore(userMessage)\n                                saveMessageToFirestore(aiMessage)\n                            }\n                        } catch (e: Exception) {\n                            runOnUiThread {\n                                Toast.makeText(\n                                    this@ChatActivity,\n                                    \"Error parsing response\",\n                                    Toast.LENGTH_SHORT\n                                ).show()\n                            }\n                        }\n                    }\n                })\n            } catch (e: Exception) {\n                runOnUiThread {\n                    showLoading(false)\n                    Toast.makeText(this, \"Error: ${e.message}\", Toast.LENGTH_SHORT).show()\n                }\n            }\n        }\n    }\n\n    private fun saveMessageToFirestore(message: Message) {\n        val userId = auth.currentUser?.uid ?: return\n        val messageData = hashMapOf(\n            \"content\" to message.content,\n            \"isUser\" to message.isUser,\n            \"timestamp\" to message.timestamp,\n            \"messageType\" to message.messageType.name\n        )\n\n        db.collection(\"users\").document(userId)\n            .collection(\"chats\")\n            .document(\"${subjectName}_${chapterName}\")\n            .collection(\"messages\")\n            .document(message.id)\n            .set(messageData)\n    }\n\n    private fun showLoading(show: Boolean) {\n        runOnUiThread {\n            loadingLayout.visibility = if (show) View.VISIBLE else View.GONE\n        }\n    }\n\n    private fun playVoiceMessage(message: Message) {\n        if (message.content.isNotEmpty()) {\n            ttsManager.speak(message.content, this)\n        }\n    }\n\n    private fun viewImage(message: Message) {\n        Toast.makeText(this, \"Image preview: ${message.content}\", Toast.LENGTH_SHORT).show()\n    }\n\n    // VoiceRecognitionCallback implementations\n    override fun onResults(text: String) {\n        runOnUiThread {\n            isListening = false\n            voiceButton.text = \"🎤\"\n            messageInput.text = text\n        }\n    }\n\n    override fun onError(error: String) {\n        runOnUiThread {\n            isListening = false\n            voiceButton.text = \"🎤\"\n            Toast.makeText(this, \"Voice error: $error\", Toast.LENGTH_SHORT).show()\n        }\n    }\n\n    override fun onPartialResults(text: String) {\n        runOnUiThread {\n            messageInput.text = text\n        }\n    }\n\n    override fun onListeningStarted() {}\n    override fun onListeningFinished() {}\n\n    // TTSCallback implementations\n    override fun onStart() {\n        Toast.makeText(this, \"Playing response\", Toast.LENGTH_SHORT).show()\n    }\n\n    override fun onComplete() {\n        Toast.makeText(this, \"Playback complete\", Toast.LENGTH_SHORT).show()\n    }\n\n    override fun onError(error: String) {\n        Toast.makeText(this, \"TTS Error: $error\", Toast.LENGTH_SHORT).show()\n    }\n\n    override fun onDestroy() {\n        voiceManager.destroy()\n        ttsManager.destroy()\n        super.onDestroy()\n    }\n}
 
     private fun loadImageAsBase64(path: String) {
         try {
