@@ -72,6 +72,8 @@ class VoiceManager(private val context: Context) {
             Log.d(TAG, "Ready for speech")
         }
 
+        override fun onEvent(eventType: Int, params: Bundle?) {}
+
         override fun onBeginningOfSpeech() {
             Log.d(TAG, "Beginning of speech")
         }
@@ -98,4 +100,29 @@ class VoiceManager(private val context: Context) {
                 else -> "Unknown error"
             }
             Log.e(TAG, "Recognition error: $errorMessage")
-            callback?.onError(errorMessage)\n        }\n\n        override fun onResults(results: Bundle?) {\n            results?.let {\n                val matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)\n                if (matches != null && matches.isNotEmpty()) {\n                    val recognizedText = matches[0]\n                    Log.d(TAG, \"Recognized: $recognizedText\")\n                    callback?.onResults(recognizedText)\n                }\n            }\n        }\n\n        override fun onPartialResults(partialResults: Bundle?) {\n            partialResults?.let {\n                val matches = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)\n                if (matches != null && matches.isNotEmpty()) {\n                    val partialText = matches[0]\n                    Log.d(TAG, \"Partial result: $partialText\")\n                    callback?.onPartialResults(partialText)\n                }\n            }\n        }\n    }\n}\n
+            callback?.onError(errorMessage)
+        }
+
+        override fun onResults(results: Bundle?) {
+            results?.let {
+                val matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                if (matches != null && matches.isNotEmpty()) {
+                    val recognizedText = matches[0]
+                    Log.d(TAG, "Recognized: $recognizedText")
+                    callback?.onResults(recognizedText)
+                }
+            }
+        }
+
+        override fun onPartialResults(partialResults: Bundle?) {
+            partialResults?.let {
+                val matches = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                if (matches != null && matches.isNotEmpty()) {
+                    val partialText = matches[0]
+                    Log.d(TAG, "Partial result: $partialText")
+                    callback?.onPartialResults(partialText)
+                }
+            }
+        }
+    }
+}

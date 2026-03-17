@@ -1,5 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.AIGuru" parent="android:Theme.Material.Light.NoActionBar" />
+    <style name="Theme.AIGuru" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryDark">@color/primary_dark</item>
+        <item name="colorAccent">@color/accent_amber</item>
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:statusBarColor">@color/primary_dark</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.AIGuru.MaterialAlertDialog</item>
+    </style>
+
+    <style name="ThemeOverlay.AIGuru.MaterialAlertDialog"
+        parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <item name="buttonBarPositiveButtonStyle">@style/Widget.AIGuru.Button</item>
+    </style>
+
+    <style name="Widget.AIGuru.Button" parent="Widget.MaterialComponents.Button">
+        <item name="backgroundTint">@color/primary</item>
+    </style>
+
 </resources>

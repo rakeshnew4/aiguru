@@ -3,17 +3,22 @@ package com.example.aiguru
 import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
-import android.widget.*
+import android.widget.EditText
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import com.google.firebase.auth.FirebaseAuth
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.example.aiguru.adapters.SubjectAdapter
+import com.google.android.material.button.MaterialButton
 import com.google.firebase.firestore.FirebaseFirestore
+import java.util.Calendar
 
 class HomeActivity : AppCompatActivity() {
 
     private lateinit var db: FirebaseFirestore
-    private lateinit var subjectsGrid: GridView
+    private lateinit var subjectsRecyclerView: RecyclerView
     private val subjectsList = mutableListOf<String>()
-    private lateinit var adapter: ArrayAdapter<String>
+    private lateinit var subjectAdapter: SubjectAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -21,40 +26,39 @@ class HomeActivity : AppCompatActivity() {
 
         db = FirebaseFirestore.getInstance()
 
-        subjectsGrid = findViewById(R.id.subjectsGrid)
-        val userNameText = findViewById<TextView>(R.id.userNameText)
-        val addSubjectButton = findViewById<Button>(R.id.addSubjectButton)
-
-        userNameText.text = "Student"
-
-        adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, subjectsList)
-        subjectsGrid.adapter = adapter
-
+        setupGreeting()
+        setupRecyclerView()
         loadSubjects()
 
-        addSubjectButton.setOnClickListener {
+        findViewById<MaterialButton>(R.id.addSubjectButton).setOnClickListener {
             showAddSubjectDialog()
         }
+    }
 
-        subjectsGrid.setOnItemClickListener { _, _, position, _ ->
-            val subject = subjectsList[position]
-            val intent = Intent(this, SubjectActivity::class.java)
-            intent.putExtra("subjectName", subject)
-            startActivity(intent)
+    private fun setupGreeting() {
+        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        val greeting = when {
+            hour < 12 -> "Good morning! ☀️"
+            hour < 17 -> "Good afternoon! 👋"
+            else -> "Good evening! 🌙"
         }
+        findViewById<TextView>(R.id.greetingText).text = greeting
+    }
 
-        subjectsGrid.setOnItemLongClickListener { _, _, position, _ ->
-            val subject = subjectsList[position]
-            AlertDialog.Builder(this)
-                .setTitle("Delete Subject")
-                .setMessage("Delete $subject?")
-                .setPositiveButton("Delete") { _, _ ->
-                    deleteSubject(subject)
-                }
-                .setNegativeButton("Cancel", null)
-                .show()
-            true
-        }
+    private fun setupRecyclerView() {
+        subjectsRecyclerView = findViewById(R.id.subjectsRecyclerView)
+        subjectAdapter = SubjectAdapter(
+            subjects = subjectsList,
+            onItemClick = { subject ->
+                startActivity(
+                    Intent(this, SubjectActivity::class.java)
+                        .putExtra("subjectName", subject)
+                )
+            },
+            onItemLongClick = { subject -> showDeleteSubjectDialog(subject) }
+        )
+        subjectsRecyclerView.layoutManager = GridLayoutManager(this, 2)
+        subjectsRecyclerView.adapter = subjectAdapter
     }
 
     private fun loadSubjects() {
@@ -66,15 +70,24 @@ class HomeActivity : AppCompatActivity() {
                 for (doc in documents) {
                     subjectsList.add(doc.getString("name") ?: "")
                 }
-                adapter.notifyDataSetChanged()
+                subjectAdapter.notifyDataSetChanged()
+                updateSubjectCount()
             }
     }
 
+    private fun updateSubjectCount() {
+        val count = subjectsList.size
+        val text = if (count == 1) "1 subject" else "$count subjects"
+        findViewById<TextView?>(R.id.subjectCountText)?.text = text
+    }
+
     private fun showAddSubjectDialog() {
-        val input = EditText(this)
-        input.hint = "e.g. Science, Maths, History"
+        val input = EditText(this).apply {
+            hint = "e.g. Science, Maths, History"
+            setPadding(40, 24, 40, 24)
+        }
         AlertDialog.Builder(this)
-            .setTitle("Add Subject")
+            .setTitle("📚 Add Subject")
             .setView(input)
             .setPositiveButton("Add") { _, _ ->
                 val name = input.text.toString().trim()
@@ -84,14 +97,23 @@ class HomeActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun showDeleteSubjectDialog(name: String) {
+        AlertDialog.Builder(this)
+            .setTitle("Delete Subject")
+            .setMessage("Delete \"$name\" and all its chapters?")
+            .setPositiveButton("Delete") { _, _ -> deleteSubject(name) }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     private fun addSubject(name: String) {
-        val subject = hashMapOf("name" to name)
         db.collection("users").document("testuser123")
             .collection("subjects").document(name)
-            .set(subject)
+            .set(hashMapOf("name" to name))
             .addOnSuccessListener {
                 subjectsList.add(name)
-                adapter.notifyDataSetChanged()
+                subjectAdapter.notifyItemInserted(subjectsList.size - 1)
+                updateSubjectCount()
             }
     }
 
@@ -100,8 +122,12 @@ class HomeActivity : AppCompatActivity() {
             .collection("subjects").document(name)
             .delete()
             .addOnSuccessListener {
-                subjectsList.remove(name)
-                adapter.notifyDataSetChanged()
+                val idx = subjectsList.indexOf(name)
+                if (idx >= 0) {
+                    subjectsList.removeAt(idx)
+                    subjectAdapter.notifyItemRemoved(idx)
+                    updateSubjectCount()
+                }
             }
     }
 }

@@ -6,28 +6,30 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
 import android.widget.*
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.*
 
 class ChapterActivity : AppCompatActivity() {
 
-    private lateinit var auth: FirebaseAuth
     private lateinit var db: FirebaseFirestore
     private lateinit var pagesList: ListView
     private val pagesListData = mutableListOf<String>()
     private lateinit var adapter: ArrayAdapter<String>
     private lateinit var subjectName: String
     private lateinit var chapterName: String
-    private val PICK_IMAGE_REQUEST = 1
+
+    private val pickImageLauncher =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+            uri?.let { savePage(it.toString()) }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chapter)
 
-        auth = FirebaseAuth.getInstance()
         db = FirebaseFirestore.getInstance()
 
         subjectName = intent.getStringExtra("subjectName") ?: "Subject"
@@ -76,16 +78,7 @@ class ChapterActivity : AppCompatActivity() {
     }
 
     private fun pickImage() {
-        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-        startActivityForResult(intent, PICK_IMAGE_REQUEST)
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK) {
-            val imageUri = data?.data
-            imageUri?.let { savePage(it.toString()) }
-        }
+        pickImageLauncher.launch("image/*")
     }
 
     private fun savePage(imagePath: String) {

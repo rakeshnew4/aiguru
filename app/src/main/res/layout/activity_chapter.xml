@@ -1,74 +1,139 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#F0F4F8"
+    android:background="#EEF2FF"
     tools:context=".ChapterActivity">
 
+    <!-- Header -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="70dp"
-        android:background="#1A73E8"
+        android:layout_height="wrap_content"
+        android:background="#1565C0"
         android:gravity="center_vertical"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp">
+        android:paddingStart="4dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="16dp">
 
         <ImageButton
             android:id="@+id/backButton"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:src="@android:drawable/ic_media_previous"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_arrow_back"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:tint="#FFFFFF" />
+            android:contentDescription="Back"
+            app:tint="@null" />
 
-        <TextView
-            android:id="@+id/chapterTitle"
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Chapter"
-            android:textColor="#FFFFFF"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:paddingStart="12dp"/>
+            android:orientation="vertical"
+            android:paddingStart="8dp">
+
+            <TextView
+                android:id="@+id/chapterTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Chapter"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Upload pages &amp; study with AI"
+                android:textColor="#B3C5FF"
+                android:textSize="13sp" />
+
+        </LinearLayout>
+
     </LinearLayout>
 
+    <!-- Info hint card -->
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="12dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="2dp"
+        app:cardBackgroundColor="#E8EAF6">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="14dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📷"
+                android:textSize="22sp"
+                android:layout_marginEnd="12dp" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Upload images of your textbook pages, then let AI Guru explain anything!"
+                android:textSize="13sp"
+                android:textColor="#3949AB" />
+
+        </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Pages list -->
     <ListView
         android:id="@+id/pagesList"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:paddingStart="16dp"
-        android:paddingEnd="16dp"/>
+        android:paddingEnd="16dp"
+        android:paddingTop="8dp"
+        android:clipToPadding="false" />
 
+    <!-- Action Buttons -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:padding="16dp">
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/uploadImageButton"
             android:layout_width="0dp"
             android:layout_height="56dp"
             android:layout_weight="1"
-            android:text="📷 Upload Image"
+            android:text="📷  Upload"
             android:textSize="14sp"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#1A73E8"
-            android:layout_marginEnd="8dp"/>
+            android:textColor="#1565C0"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            app:strokeColor="#1565C0"
+            app:cornerRadius="12dp"
+            android:layout_marginEnd="8dp" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/askAIButton"
             android:layout_width="0dp"
             android:layout_height="56dp"
             android:layout_weight="1"
-            android:text="🤖 Ask AI"
+            android:text="🤖  Ask AI"
             android:textSize="14sp"
             android:textColor="#FFFFFF"
-            android:backgroundTint="#34A853"/>
+            app:backgroundTint="#FF8F00"
+            app:cornerRadius="12dp"
+            android:layout_marginStart="8dp" />
 
     </LinearLayout>
 

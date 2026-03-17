@@ -16,7 +16,8 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
- }
+        buildConfigField("String", "GROQ_API_KEY", "\"GROQ_API_KEY_IN_LOCAL_PROPERTIES\"")
+    }
 
     buildTypes {
         release {

@@ -5,68 +5,88 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#F8F9FA"
+    android:background="#EEF2FF"
     tools:context=".ChatActivity">
 
     <!-- Header with Title and Options -->
-    <com.google.android.material.appbarwidget.MaterialToolbar
+    <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/design_default_color_primary"
+        android:background="#1565C0"
         app:title="AI Guru Chat"
         app:titleTextColor="@android:color/white"
-        app:navigationIcon="@android:drawable/ic_media_previous"
-        style="@style/Widget.MaterialComponents.AppBarLayoutPrimary" />
+        app:subtitleTextColor="#B3C5FF"
+        app:navigationIcon="@drawable/ic_arrow_back" />
 
     <!-- Quick Action Buttons (Horizontal ScrollView) -->
     <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@android:color/white"
+        android:elevation="2dp"
         android:scrollbars="none">
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:padding="8dp">
+            android:padding="8dp"
+            android:gravity="center_vertical">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/summarizeButton"
                 android:layout_width="wrap_content"
-                android:layout_height="40dp"
+                android:layout_height="36dp"
                 android:text="📄 Summarize"
                 android:textSize="12sp"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_marginEnd="8dp"/>
+                app:strokeColor="#1565C0"
+                app:cornerRadius="18dp"
+                android:layout_marginEnd="6dp"/>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/explainButton"
                 android:layout_width="wrap_content"
-                android:layout_height="40dp"
+                android:layout_height="36dp"
                 android:text="💡 Explain"
                 android:textSize="12sp"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_marginEnd="8dp"/>
+                app:strokeColor="#6A1B9A"
+                app:cornerRadius="18dp"
+                android:layout_marginEnd="6dp"/>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/quizButton"
                 android:layout_width="wrap_content"
-                android:layout_height="40dp"
-                android:text="❓ Quiz"
+                android:layout_height="36dp"
+                android:text="❓ Quiz Me"
                 android:textSize="12sp"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_marginEnd="8dp"/>
+                app:strokeColor="#00695C"
+                app:cornerRadius="18dp"
+                android:layout_marginEnd="6dp"/>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/notesButton"
                 android:layout_width="wrap_content"
-                android:layout_height="40dp"
+                android:layout_height="36dp"
                 android:text="📝 Notes"
                 android:textSize="12sp"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_marginEnd="8dp"/>
+                app:strokeColor="#BF360C"
+                app:cornerRadius="18dp"
+                android:layout_marginEnd="6dp"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/flashcardsButton"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="🃏 Flashcards"
+                android:textSize="12sp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                app:strokeColor="#FF8F00"
+                app:cornerRadius="18dp"/>
 
         </LinearLayout>
     </HorizontalScrollView>
@@ -77,10 +97,50 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:padding="8dp"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="4dp"
+        android:clipToPadding="false"
         tools:listitem="@android:layout/simple_list_item_1"/>
+
+    <!-- Image Preview Strip (shown when image selected) -->
+    <LinearLayout
+        android:id="@+id/imagePreviewStrip"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#FFF8E1"
+        android:padding="8dp"
+        android:gravity="center_vertical"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/imagePreviewThumbnail"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:scaleType="centerCrop"
+            android:layout_marginEnd="10dp"
+            android:contentDescription="Image preview" />
+
+        <TextView
+            android:id="@+id/imagePreviewLabel"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="Image selected – ask AI about it!"
+            android:textSize="13sp"
+            android:textColor="#E65100" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/removeImageButton"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="0dp"
+            android:text="✕"
+            android:textSize="16sp"
+            android:textColor="#E65100"
+            style="@style/Widget.MaterialComponents.Button.TextButton" />
+
+    </LinearLayout>
 
     <!-- Loading Indicator -->
     <LinearLayout
@@ -91,12 +151,12 @@
         android:orientation="horizontal"
         android:padding="12dp"
         android:visibility="gone"
-        android:gravity="center">
+        android:gravity="center_vertical">
 
         <com.airbnb.lottie.LottieAnimationView
             android:id="@+id/loadingAnimation"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
             app:lottie_rawRes="@raw/typing_animation"
             app:lottie_autoPlay="true"
             app:lottie_loop="true"/>
@@ -104,20 +164,23 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="AI Guru is thinking..."
-            android:paddingStart="12dp"
+            android:text="AI Guru is thinking…"
+            android:paddingStart="10dp"
             android:textSize="14sp"
-            android:textColor="@color/design_default_color_primary"/>
+            android:textStyle="italic"
+            android:textColor="#1565C0"/>
 
     </LinearLayout>
 
-    <!-- Input Area with Media Buttons -->
+    <!-- Input Area -->
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="8dp"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="4dp">
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="8dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="6dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -126,80 +189,94 @@
             android:background="@android:color/white"
             android:padding="8dp">
 
-            <!-- Input Controls Row 1: File buttons -->
+            <!-- Media buttons row -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:padding="4dp">
+                android:paddingBottom="2dp"
+                android:gravity="center_vertical">
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/voiceButton"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
                     android:padding="0dp"
                     android:text="🎤"
                     android:textSize="20sp"
                     style="@style/Widget.MaterialComponents.Button.TextButton"
-                    android:layout_marginEnd="4dp"/>
+                    android:layout_marginEnd="2dp"/>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/imageButton"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
                     android:padding="0dp"
                     android:text="🖼️"
                     android:textSize="20sp"
                     style="@style/Widget.MaterialComponents.Button.TextButton"
-                    android:layout_marginEnd="4dp"/>
+                    android:layout_marginEnd="2dp"/>
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/pdfButton"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
                     android:padding="0dp"
                     android:text="📄"
                     android:textSize="20sp"
-                    style="@style/Widget.MaterialComponents.Button.TextButton"
-                    android:layout_marginEnd="4dp"/>
+                    style="@style/Widget.MaterialComponents.Button.TextButton"/>
 
                 <View
                     android:layout_width="0dp"
                     android:layout_height="1dp"
-                    android:layout_weight="1"/>
+                    android:layout_weight="1" />
+
+                <TextView
+                    android:id="@+id/listeningIndicator"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🔴 Listening…"
+                    android:textSize="12sp"
+                    android:textColor="#E53935"
+                    android:visibility="gone" />
 
             </LinearLayout>
 
-            <!-- Input Controls Row 2: Text input -->
+            <!-- Text input + send -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:padding="4dp">
+                android:gravity="center_vertical">
 
-                <com.google.android.material.textfield.TextInputEditText
+                <EditText
                     android:id="@+id/messageInput"
                     android:layout_width="0dp"
-                    android:layout_height="40dp"
+                    android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:hint="Ask anything…"
+                    android:minLines="1"
+                    android:maxLines="4"
                     android:background="@drawable/rounded_edittext_bg"
-                    android:hint="Ask anything..."
-                    android:padding="12dp"
-                    android:textSize="14sp"
-                    android:maxLines="1"/>
+                    android:padding="10dp"
+                    android:textSize="15sp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/sendButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="40dp"
-                    android:text="Send"
-                    android:textSize="12sp"
-                    android:layout_marginStart="8dp"
-                    style="@style/Widget.MaterialComponents.Button"/>
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:padding="0dp"
+                    android:text="➤"
+                    android:textSize="20sp"
+                    android:textColor="#FFFFFF"
+                    android:layout_marginStart="6dp"
+                    app:backgroundTint="#1565C0"
+                    app:cornerRadius="24dp"/>
 
             </LinearLayout>
+
         </LinearLayout>
+
     </com.google.android.material.card.MaterialCardView>
 
 </LinearLayout>
