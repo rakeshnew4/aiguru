@@ -42,9 +42,36 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore:24.10.3")
     implementation("com.google.android.gms:play-services-auth:21.0.0")
     implementation("com.github.bumptech.glide:glide:4.16.0")
+    
+    // RecyclerView & Material Design 3
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("com.google.android.material:material:1.11.0")
+    
+    // Voice & Audio
+    implementation("androidx.camera:camera-core:1.3.0")
+    
+    // Image handling
+    implementation("com.squareup.picasso:picasso:2.8")
+    
+    // Lifecycle & ViewModel
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+    
+    // Coroutines
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    
+    // Animation
+    implementation("com.airbnb.android:lottie:6.1.0")
+    
+    // DataStore for preferences
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    
+    // PDF handling
+    implementation("com.itextpdf:itextpdf:5.5.13.3")
+    
     implementation(libs.androidx.core.ktx)
     implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.google.android.material:material:1.11.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
