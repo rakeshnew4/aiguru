@@ -4,6 +4,7 @@ import android.app.AlertDialog
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
@@ -44,7 +45,10 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
+import java.util.Locale
 import java.util.UUID
+import android.view.Menu
+import android.view.MenuItem
 
 class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
@@ -59,6 +63,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private lateinit var pdfButton: MaterialButton
     private lateinit var saveNotesButton: MaterialButton
     private lateinit var viewNotesButton: MaterialButton
+    private lateinit var formulaButton: MaterialButton
+    private lateinit var practiceButton: MaterialButton
     private lateinit var imagePreviewStrip: LinearLayout
     private lateinit var imagePreviewThumbnail: ImageView
     private lateinit var imagePreviewLabel: TextView
@@ -82,6 +88,20 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private var selectedImageUri: Uri? = null
     private var cameraImageUri: Uri? = null
     private var isListening = false
+
+    // Language for voice recognition, TTS, and LLM responses
+    private var currentLang = "en-US"
+    private var currentLangName = "English"
+    private val LANGUAGES = linkedMapOf(
+        "English"              to "en-US",
+        "हिंदी (Hindi)"       to "hi-IN",
+        "বাংলা (Bengali)"     to "bn-IN",
+        "తెలుగు (Telugu)"     to "te-IN",
+        "தமிழ் (Tamil)"       to "ta-IN",
+        "मराठी (Marathi)"     to "mr-IN",
+        "ಕನ್ನಡ (Kannada)"    to "kn-IN",
+        "ગુજરાતી (Gujarati)" to "gu-IN"
+    )
 
     // Pre-loaded PDF page (base64 encoded) passed from ChapterActivity
     private var pdfPageBase64: String? = null
@@ -107,13 +127,21 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private val systemPrompt = """You are AI Guru, a friendly and encouraging educational tutor for school and college students.
 Your goals:
 - Explain concepts clearly with simple language and real-world examples
-- Break down complex topics into easy-to-understand steps  
+- Break down complex topics into easy-to-understand steps
 - Be patient, supportive, and always encouraging
-- Use bullet points, numbered lists, and structure your answers clearly
+- Use bullet points, numbered lists, and structure answers clearly
 - When asked for quizzes, format clearly with Q: and A: on separate lines
-- When asked for notes, use headings (with ##) and well-organized sections
+- When asked for notes, use headings (with ## or ###) and well-organized sections
 - Always relate new concepts to things the student already knows
-- Keep responses focused and appropriately detailed for the topic"""
+- Keep responses focused and appropriately detailed for the topic
+
+Math & Science formatting rules:
+- Write superscripts as ^{expr}: e.g. x^{2}, a^{n+1}, E=mc^{2}
+- Write subscripts as _{n} for chemistry/physics: e.g. H_{2}O, CO_{2}, Fe_{2}O_{3}
+- Wrap standalone math expressions in $$..$$
+- For fractions write them as (numerator)/(denominator) and also explain in words
+- Always show units in physics: m/s, kg, N, J, W, etc.
+- Use step-by-step working for all calculations"""
 
     companion object {
         private const val PERMISSION_REQUEST_CODE = 100
@@ -157,17 +185,20 @@ Your goals:
         toolbar.title = chapterName
         toolbar.subtitle = subjectName
         toolbar.setNavigationOnClickListener { finish() }
+        setSupportActionBar(toolbar)
 
         messagesRecyclerView = findViewById(R.id.messagesRecyclerView)
         messageAdapter = MessageAdapter(
             context = this,
             onVoiceClick = { msg ->
+                ttsManager.setLocale(Locale.forLanguageTag(currentLang))
                 ttsManager.speak(msg.content, object : com.example.aiguru.utils.TTSCallback {
                     override fun onStart() {}
                     override fun onComplete() {}
                     override fun onError(error: String) {}
                 })
             },
+            onStopClick = { ttsManager.stop() },
             onImageClick = { }
         )
         messagesRecyclerView.layoutManager = LinearLayoutManager(this).apply {
@@ -183,6 +214,8 @@ Your goals:
         pdfButton = findViewById(R.id.pdfButton)
         saveNotesButton = findViewById(R.id.saveNotesButton)
         viewNotesButton = findViewById(R.id.viewNotesButton)
+        formulaButton = findViewById(R.id.formulaButton)
+        practiceButton = findViewById(R.id.practiceButton)
         imagePreviewStrip = findViewById(R.id.imagePreviewStrip)
         imagePreviewThumbnail = findViewById(R.id.imagePreviewThumbnail)
         imagePreviewLabel = findViewById(R.id.imagePreviewLabel)
@@ -219,6 +252,23 @@ Your goals:
 
         saveNotesButton.setOnClickListener { saveLastAIMessageAsNotes() }
         viewNotesButton.setOnClickListener { viewSavedNotes() }
+
+        formulaButton.setOnClickListener {
+            sendMessage(
+                "Generate a complete formula sheet for \"$chapterName\" ($subjectName)." +
+                " List every important formula, equation, and rule used in this topic." +
+                " For each formula write:\n• The formula itself (use ^{} for superscripts, _{} for subscripts)" +
+                "\n• What each symbol means\n• When/how it is used\n• A quick example."
+            )
+        }
+
+        practiceButton.setOnClickListener {
+            sendMessage(
+                "Create 5 practice problems for \"$chapterName\" ($subjectName) at different difficulty levels." +
+                " Label them Easy / Medium / Hard." +
+                " Show the full step-by-step solution for each, with working and final answer."
+            )
+        }
 
         removeImageButton.setOnClickListener {
             selectedImageUri = null
@@ -268,8 +318,16 @@ Your goals:
     private fun startVoiceInput() {
         isListening = true
         voiceButton.text = "⏹️"
+        voiceButton.backgroundTintList = ColorStateList.valueOf(android.graphics.Color.parseColor("#E53935"))
         listeningIndicator.visibility = View.VISIBLE
-        voiceManager.startListening(this)
+        voiceManager.startListening(this, currentLang)
+    }
+
+    private fun resetVoiceButton() {
+        isListening = false
+        voiceButton.text = "🎤"
+        voiceButton.backgroundTintList = ColorStateList.valueOf(android.graphics.Color.parseColor("#E3F2FD"))
+        listeningIndicator.visibility = View.GONE
     }
 
     private fun showImagePreview(uri: Uri) {
@@ -431,7 +489,7 @@ Your goals:
         val json = JSONObject().apply {
             put("model", MODEL_TEXT)
             put("messages", JSONArray().apply {
-                put(JSONObject().put("role", "system").put("content", systemPrompt))
+                put(JSONObject().put("role", "system").put("content", systemPrompt + getLanguageInstruction()))
                 put(JSONObject().put("role", "user").put("content",
                     "Subject: $subjectName | Chapter: $chapterName\n\n$userText"))
             })
@@ -455,7 +513,7 @@ Your goals:
         val json = JSONObject().apply {
             put("model", MODEL_VISION)
             put("messages", JSONArray().apply {
-                put(JSONObject().put("role", "system").put("content", systemPrompt))
+                put(JSONObject().put("role", "system").put("content", systemPrompt + getLanguageInstruction()))
                 put(JSONObject().put("role", "user").put("content", contentArray))
             })
             put("temperature", 0.7)
@@ -644,9 +702,7 @@ Make questions test key concepts, definitions, or important facts."""
     // VoiceRecognitionCallback
     override fun onResults(text: String) {
         runOnUiThread {
-            isListening = false
-            voiceButton.text = "🎤"
-            listeningIndicator.visibility = View.GONE
+            resetVoiceButton()
             messageInput.setText(text)
             messageInput.setSelection(text.length)
         }
@@ -660,21 +716,13 @@ Make questions test key concepts, definitions, or important facts."""
     }
 
     override fun onError(error: String) {
-        runOnUiThread {
-            isListening = false
-            voiceButton.text = "🎤"
-            listeningIndicator.visibility = View.GONE
-        }
+        runOnUiThread { resetVoiceButton() }
     }
 
     override fun onListeningStarted() {}
 
     override fun onListeningFinished() {
-        runOnUiThread {
-            isListening = false
-            voiceButton.text = "🎤"
-            listeningIndicator.visibility = View.GONE
-        }
+        runOnUiThread { resetVoiceButton() }
     }
 
     override fun onRequestPermissionsResult(
@@ -689,6 +737,48 @@ Make questions test key concepts, definitions, or important facts."""
             if (perm == android.Manifest.permission.RECORD_AUDIO) startVoiceInput()
             else if (perm == android.Manifest.permission.CAMERA) openCamera()
         }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_chat, menu)
+        menu.findItem(R.id.action_language)?.title = "🌐 $currentLangName"
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == R.id.action_language) {
+            showLanguagePicker()
+            return true
+        }
+        return super.onOptionsItemSelected(item)
+    }
+
+    private fun showLanguagePicker() {
+        val names = LANGUAGES.keys.toTypedArray()
+        val currentIdx = names.indexOf(currentLangName).coerceAtLeast(0)
+        AlertDialog.Builder(this)
+            .setTitle("🌐 Select Response Language")
+            .setSingleChoiceItems(names, currentIdx) { dialog, which ->
+                currentLangName = names[which]
+                currentLang = LANGUAGES[currentLangName] ?: "en-US"
+                invalidateOptionsMenu()
+                ttsManager.setLocale(Locale.forLanguageTag(currentLang))
+                dialog.dismiss()
+                Toast.makeText(this, "Language: $currentLangName", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun getLanguageInstruction(): String = when (currentLang) {
+        "hi-IN" -> "\n\nIMPORTANT: Respond in simple Hindi (हिंदी). Use Devanagari script. Technical/scientific terms may remain in English."
+        "bn-IN" -> "\n\nIMPORTANT: Respond in Bengali (বাংলা). Technical terms may remain in English."
+        "te-IN" -> "\n\nIMPORTANT: Respond in Telugu (తెలుగు). Technical terms may remain in English."
+        "ta-IN" -> "\n\nIMPORTANT: Respond in Tamil (தமிழ்). Technical terms may remain in English."
+        "mr-IN" -> "\n\nIMPORTANT: Respond in Marathi (मराठी). Technical terms may remain in English."
+        "kn-IN" -> "\n\nIMPORTANT: Respond in Kannada (ಕನ್ನಡ). Technical terms may remain in English."
+        "gu-IN" -> "\n\nIMPORTANT: Respond in Gujarati (ગુજરાતી). Technical terms may remain in English."
+        else -> ""
     }
 
     override fun onDestroy() {

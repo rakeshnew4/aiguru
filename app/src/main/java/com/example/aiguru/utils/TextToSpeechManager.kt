@@ -84,6 +84,21 @@ class TextToSpeechManager(private val context: Context) : TextToSpeech.OnInitLis
         }
     }
 
+    fun setLocale(locale: Locale) {
+        if (!isReady) return
+        try {
+            val result = tts?.setLanguage(locale)
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Log.w(TAG, "TTS language not available: ${locale.language}, falling back to US English")
+                tts?.setLanguage(Locale.US)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting locale", e)
+        }
+    }
+
+    fun isSpeaking(): Boolean = tts?.isSpeaking ?: false
+
     fun destroy() {
         try {
             tts?.stop()

@@ -24,4 +24,21 @@
     <color name="success_green">#2E7D32</color>
     <color name="warning_amber">#F57F17</color>
     <color name="chip_label">#B3C5FF</color>
+
+    <!-- Chat UI Modern Theme -->
+    <color name="mic_active">#E53935</color>
+    <color name="mic_idle">#E3F2FD</color>
+    <color name="mic_idle_icon">#1565C0</color>
+    <color name="formula_purple">#7B1FA2</color>
+    <color name="practice_pink">#880E4F</color>
+    <color name="send_gradient_start">#1565C0</color>
+    <color name="send_gradient_end">#303F9F</color>
+    <color name="chat_bg">#F0F4FF</color>
+    <color name="ai_avatar_bg">#E8EAF6</color>
+    <color name="heading_h1">#1A237E</color>
+    <color name="heading_h2">#283593</color>
+    <color name="heading_h3">#1565C0</color>
+    <color name="superscript_math">#6A1B9A</color>
+    <color name="subscript_chem">#00695C</color>
+    <color name="code_bg">#F1F3F4</color>
 </resources>
