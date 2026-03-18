@@ -33,6 +33,9 @@ class HomeActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.addSubjectButton).setOnClickListener {
             showAddSubjectDialog()
         }
+        findViewById<MaterialButton>(R.id.libraryButton).setOnClickListener {
+            startActivity(Intent(this, LibraryActivity::class.java))
+        }
     }
 
     private fun setupGreeting() {

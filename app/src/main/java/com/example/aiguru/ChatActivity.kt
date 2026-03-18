@@ -4,9 +4,11 @@ import android.app.AlertDialog
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
+import android.util.Base64
 import android.view.View
 import android.widget.EditText
 import android.widget.ImageView
@@ -24,6 +26,8 @@ import com.bumptech.glide.Glide
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.firestore.FirebaseFirestore
+import java.io.ByteArrayOutputStream
+import java.io.File
 import com.example.aiguru.adapters.MessageAdapter
 import com.example.aiguru.models.Flashcard
 import com.example.aiguru.models.Message
@@ -77,6 +81,9 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private var cameraImageUri: Uri? = null
     private var isListening = false
 
+    // Pre-loaded PDF page (base64 encoded) passed from ChapterActivity
+    private var pdfPageBase64: String? = null
+
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
             if (uri != null) showImagePreview(uri)
@@ -121,6 +128,13 @@ Your goals:
 
         initializeUI()
         loadChatHistory()
+
+        // Load PDF page passed from ChapterActivity (if any)
+        val pdfPageFilePath = intent.getStringExtra("pdfPageFilePath")
+        val pdfPageNumber = intent.getIntExtra("pdfPageNumber", 1)
+        if (pdfPageFilePath != null) {
+            preloadPdfPage(File(pdfPageFilePath), pdfPageNumber)
+        }
     }
 
     private fun initializeUI() {
@@ -188,6 +202,7 @@ Your goals:
 
         removeImageButton.setOnClickListener {
             selectedImageUri = null
+            pdfPageBase64 = null
             imagePreviewStrip.visibility = View.GONE
         }
     }
@@ -242,6 +257,23 @@ Your goals:
         imagePreviewStrip.visibility = View.VISIBLE
         Glide.with(this).load(uri).centerCrop().into(imagePreviewThumbnail)
         imagePreviewLabel.text = mediaManager.getFileInfo(uri)
+    }
+
+    /**
+     * Loads a rendered PDF page file as Base64 and shows it in the image preview strip
+     * so the user can immediately ask questions about that page.
+     */
+    private fun preloadPdfPage(pageFile: File, pageNumber: Int) {
+        if (!pageFile.exists()) return
+        val bmp = BitmapFactory.decodeFile(pageFile.absolutePath) ?: return
+        val baos = ByteArrayOutputStream()
+        bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, baos)
+        bmp.recycle()
+        pdfPageBase64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
+
+        imagePreviewStrip.visibility = View.VISIBLE
+        Glide.with(this).load(pageFile).centerCrop().into(imagePreviewThumbnail)
+        imagePreviewLabel.text = "Page $pageNumber"
     }
 
     private fun showImageSourceDialog() {
@@ -335,13 +367,18 @@ Your goals:
         messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
         showLoading(true)
 
+        val capturedPdfBase64 = pdfPageBase64
+        pdfPageBase64 = null  // consume so it isn't re-used on next message
+
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val responseText = if (imageUri != null) {
-                    val base64 = mediaManager.uriToBase64(imageUri)
-                    if (base64 != null) callGroqAPIWithImage(userText, base64) else callGroqAPI(userText)
-                } else {
-                    callGroqAPI(userText)
+                val responseText = when {
+                    imageUri != null -> {
+                        val base64 = mediaManager.uriToBase64(imageUri)
+                        if (base64 != null) callGroqAPIWithImage(userText, base64) else callGroqAPI(userText)
+                    }
+                    capturedPdfBase64 != null -> callGroqAPIWithImage(userText, capturedPdfBase64)
+                    else -> callGroqAPI(userText)
                 }
 
                 saveMessageToFirestore(userMessage.copy(imageUrl = null))
