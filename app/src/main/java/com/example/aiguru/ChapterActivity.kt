@@ -34,6 +34,12 @@ class ChapterActivity : AppCompatActivity() {
     private var cameraImageUri: Uri? = null
     private val CAMERA_PERMISSION_CODE = 201
 
+    // PDF chapter state
+    private var isPdfChapter = false
+    private var pdfAssetPath = ""
+    private var pdfId = ""
+    private lateinit var pdfPageManager: PdfPageManager
+
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
             uri?.let { savePage(it.toString()) }
@@ -49,6 +55,7 @@ class ChapterActivity : AppCompatActivity() {
         setContentView(R.layout.activity_chapter)
 
         db = FirebaseFirestore.getInstance()
+        pdfPageManager = PdfPageManager(this)
 
         subjectName = intent.getStringExtra("subjectName") ?: "Subject"
         chapterName = intent.getStringExtra("chapterName") ?: "Chapter"
@@ -60,40 +67,153 @@ class ChapterActivity : AppCompatActivity() {
         adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, pagesListData)
         pagesList.adapter = adapter
 
-        loadPages()
+        // Long-click delete (image chapters only)
+        pagesList.setOnItemLongClickListener { _, _, position, _ ->
+            if (!isPdfChapter) {
+                AlertDialog.Builder(this)
+                    .setTitle("Delete Page")
+                    .setMessage("Delete this page?")
+                    .setPositiveButton("Delete") { _, _ -> deletePage(position) }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            }
+            true
+        }
 
+        // Check Firestore to determine if this chapter is a PDF chapter
+        loadChapterType()
+    }
+
+    // ─── Chapter type detection ───────────────────────────────────────────────
+
+    private fun loadChapterType() {
+        db.collection("users").document("testuser123")
+            .collection("subjects").document(subjectName)
+            .collection("chapters").document(chapterName)
+            .get()
+            .addOnSuccessListener { doc ->
+                isPdfChapter = doc.getBoolean("isPdf") ?: false
+                if (isPdfChapter) {
+                    pdfAssetPath = doc.getString("pdfAssetPath") ?: ""
+                    pdfId = doc.getString("pdfId") ?: ""
+                    setupPdfChapter()
+                } else {
+                    setupImageChapter()
+                }
+            }
+            .addOnFailureListener { setupImageChapter() }
+    }
+
+    // ─── PDF chapter ──────────────────────────────────────────────────────────
+
+    private fun setupPdfChapter() {
+        // Hide upload button — not applicable for PDF chapters
+        findViewById<Button>(R.id.uploadImageButton).visibility = View.GONE
+
+        // Update Ask AI button label
+        findViewById<Button>(R.id.askAIButton).apply {
+            text = "💬 Ask AI about this Chapter"
+            setOnClickListener {
+                startActivity(
+                    Intent(this@ChapterActivity, ChatActivity::class.java)
+                        .putExtra("subjectName", subjectName)
+                        .putExtra("chapterName", chapterName)
+                )
+            }
+        }
+
+        pagesListData.clear()
+        pagesListData.add("⏳ Loading PDF pages…")
+        adapter.notifyDataSetChanged()
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val count = pdfPageManager.getPageCount(pdfId, pdfAssetPath)
+
+                // Persist page count back to Firestore if it was 0
+                db.collection("users").document("testuser123")
+                    .collection("subjects").document(subjectName)
+                    .collection("chapters").document(chapterName)
+                    .update("pageCount", count)
+
+                withContext(Dispatchers.Main) {
+                    pagesListData.clear()
+                    for (i in 1..count) {
+                        pagesListData.add("📄  Page $i")
+                    }
+                    adapter.notifyDataSetChanged()
+
+                    // Tapping a page renders it and opens ChatActivity with that page pre-attached
+                    pagesList.setOnItemClickListener { _, _, position, _ ->
+                        openPdfPageInChat(position)
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    pagesListData.clear()
+                    pagesListData.add("⚠️ Failed to load PDF: ${e.message}")
+                    adapter.notifyDataSetChanged()
+                }
+            }
+        }
+    }
+
+    private fun openPdfPageInChat(pageIndex: Int) {
+        val pageNum = pageIndex + 1
+        Toast.makeText(this, "Rendering page $pageNum…", Toast.LENGTH_SHORT).show()
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val pageFile = pdfPageManager.getPage(pdfId, pdfAssetPath, pageIndex)
+                withContext(Dispatchers.Main) {
+                    startActivity(
+                        Intent(this@ChapterActivity, ChatActivity::class.java)
+                            .putExtra("subjectName", subjectName)
+                            .putExtra("chapterName", chapterName)
+                            .putExtra("pdfPageFilePath", pageFile.absolutePath)
+                            .putExtra("pdfPageNumber", pageNum)
+                    )
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        this@ChapterActivity,
+                        "Render failed: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+
+    // ─── Image chapter (existing behaviour) ───────────────────────────────────
+
+    private fun setupImageChapter() {
         findViewById<Button>(R.id.uploadImageButton).setOnClickListener {
             showImageSourceDialog()
         }
 
         findViewById<Button>(R.id.askAIButton).setOnClickListener {
-            val intent = Intent(this, ChatActivity::class.java)
-            intent.putExtra("subjectName", subjectName)
-            intent.putExtra("chapterName", chapterName)
-            startActivity(intent)
+            startActivity(
+                Intent(this, ChatActivity::class.java)
+                    .putExtra("subjectName", subjectName)
+                    .putExtra("chapterName", chapterName)
+            )
         }
 
         pagesList.setOnItemClickListener { _, _, position, _ ->
-            val imagePath = pagesListData[position]
-            val intent = Intent(this, ChatActivity::class.java)
-            intent.putExtra("subjectName", subjectName)
-            intent.putExtra("chapterName", chapterName)
-            intent.putExtra("imagePath", imagePath)
-            startActivity(intent)
+            startActivity(
+                Intent(this, ChatActivity::class.java)
+                    .putExtra("subjectName", subjectName)
+                    .putExtra("chapterName", chapterName)
+                    .putExtra("imagePath", pagesListData[position])
+            )
         }
 
-        pagesList.setOnItemLongClickListener { _, _, position, _ ->
-            AlertDialog.Builder(this)
-                .setTitle("Delete Page")
-                .setMessage("Delete this page?")
-                .setPositiveButton("Delete") { _, _ ->
-                    deletePage(position)
-                }
-                .setNegativeButton("Cancel", null)
-                .show()
-            true
-        }
+        loadPages()
     }
+
+    // ─── Image helpers ────────────────────────────────────────────────────────
 
     private fun showImageSourceDialog() {
         AlertDialog.Builder(this)
@@ -133,22 +253,13 @@ class ChapterActivity : AppCompatActivity() {
         }
     }
 
-    private fun pickImage() {
-        pickImageLauncher.launch("image/*")
-    }
-
     private fun savePage(imagePath: String) {
-        val userId = "testuser123" // Using hardcoded user ID for no-login mode
         val timestamp = SimpleDateFormat("dd MMM yyyy HH:mm", Locale.getDefault()).format(Date())
-        val page = hashMapOf(
-            "path" to imagePath,
-            "timestamp" to timestamp
-        )
-        db.collection("users").document(userId)
+        db.collection("users").document("testuser123")
             .collection("subjects").document(subjectName)
             .collection("chapters").document(chapterName)
             .collection("pages")
-            .add(page)
+            .add(hashMapOf("path" to imagePath, "timestamp" to timestamp))
             .addOnSuccessListener {
                 pagesListData.add("Page uploaded - $timestamp")
                 adapter.notifyDataSetChanged()
@@ -157,8 +268,7 @@ class ChapterActivity : AppCompatActivity() {
     }
 
     private fun loadPages() {
-        val userId = "testuser123" // Using hardcoded user ID for no-login mode
-        db.collection("users").document(userId)
+        db.collection("users").document("testuser123")
             .collection("subjects").document(subjectName)
             .collection("chapters").document(chapterName)
             .collection("pages")
@@ -166,16 +276,14 @@ class ChapterActivity : AppCompatActivity() {
             .addOnSuccessListener { documents ->
                 pagesListData.clear()
                 for (doc in documents) {
-                    val timestamp = doc.getString("timestamp") ?: ""
-                    pagesListData.add("Page - $timestamp")
+                    pagesListData.add("Page - ${doc.getString("timestamp") ?: ""}")
                 }
                 adapter.notifyDataSetChanged()
             }
     }
 
     private fun deletePage(position: Int) {
-        val userId = "testuser123" // Using hardcoded user ID for no-login mode
-        db.collection("users").document(userId)
+        db.collection("users").document("testuser123")
             .collection("subjects").document(subjectName)
             .collection("chapters").document(chapterName)
             .collection("pages")
