@@ -35,6 +35,7 @@
             android:windowSoftInputMode="adjustResize"/>
         <activity android:name=".RevisionActivity" android:exported="false"/>
         <activity android:name=".LibraryActivity" android:exported="false"/>
+        <activity android:name=".PageViewerActivity" android:exported="false"/>
 
         <provider
             android:name="androidx.core.content.FileProvider"

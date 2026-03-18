@@ -14,7 +14,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.example.aiguru.adapters.PageListAdapter
 import com.example.aiguru.utils.PdfPageManager
+import com.google.android.material.button.MaterialButton
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -22,13 +26,12 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 
-
 class ChapterActivity : AppCompatActivity() {
 
     private lateinit var db: FirebaseFirestore
-    private lateinit var pagesList: ListView
+    private lateinit var pagesRecyclerView: RecyclerView
     private val pagesListData = mutableListOf<String>()
-    private lateinit var adapter: ArrayAdapter<String>
+    private lateinit var pageListAdapter: PageListAdapter
     private lateinit var subjectName: String
     private lateinit var chapterName: String
     private var cameraImageUri: Uri? = null
@@ -38,6 +41,7 @@ class ChapterActivity : AppCompatActivity() {
     private var isPdfChapter = false
     private var pdfAssetPath = ""
     private var pdfId = ""
+    private var pdfPageCount = 0
     private lateinit var pdfPageManager: PdfPageManager
 
     private val pickImageLauncher =
@@ -63,25 +67,77 @@ class ChapterActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.chapterTitle).text = chapterName
         findViewById<ImageButton>(R.id.backButton).setOnClickListener { finish() }
 
-        pagesList = findViewById(R.id.pagesList)
-        adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, pagesListData)
-        pagesList.adapter = adapter
-
-        // Long-click delete (image chapters only)
-        pagesList.setOnItemLongClickListener { _, _, position, _ ->
-            if (!isPdfChapter) {
-                AlertDialog.Builder(this)
-                    .setTitle("Delete Page")
-                    .setMessage("Delete this page?")
-                    .setPositiveButton("Delete") { _, _ -> deletePage(position) }
-                    .setNegativeButton("Cancel", null)
-                    .show()
-            }
-            true
+        // Notes button — always visible in header
+        findViewById<MaterialButton>(R.id.notesButton).setOnClickListener {
+            showNotesOptions()
         }
 
-        // Check Firestore to determine if this chapter is a PDF chapter
+        // Set up RecyclerView with PageListAdapter
+        pagesRecyclerView = findViewById(R.id.pagesList)
+        pageListAdapter = PageListAdapter(
+            pages = pagesListData,
+            onView = { position -> onViewPage(position) },
+            onAsk  = { position -> onAskPage(position) }
+        )
+        pagesRecyclerView.layoutManager = LinearLayoutManager(this)
+        pagesRecyclerView.adapter = pageListAdapter
+
         loadChapterType()
+    }
+
+    // ─── Notes generation ─────────────────────────────────────────────────────
+
+    private fun showNotesOptions() {
+        AlertDialog.Builder(this)
+            .setTitle("📝 Chapter Notes")
+            .setItems(arrayOf(
+                "Generate notes for this chapter",
+                "View saved notes"
+            )) { _, which ->
+                when (which) {
+                    0 -> generateNotes()
+                    1 -> viewSavedNotes()
+                }
+            }
+            .show()
+    }
+
+    private fun generateNotes() {
+        startActivity(
+            Intent(this, ChatActivity::class.java)
+                .putExtra("subjectName", subjectName)
+                .putExtra("chapterName", chapterName)
+                .putExtra("autoPrompt",
+                    "Create comprehensive study notes for \"$chapterName\" with:\n" +
+                    "• Key concepts and definitions\n" +
+                    "• Important facts to remember\n" +
+                    "• Summary of main points\n" +
+                    "• Any formulas or rules to know\n\n" +
+                    "Format clearly with ## headings and bullet points."
+                )
+        )
+    }
+
+    private fun viewSavedNotes() {
+        db.collection("users").document("testuser123")
+            .collection("chats").document("${subjectName}_${chapterName}")
+            .collection("notes").document("saved")
+            .get()
+            .addOnSuccessListener { doc ->
+                val notes = doc.getString("content")
+                if (notes.isNullOrBlank()) {
+                    Toast.makeText(this, "No saved notes yet — generate some first!", Toast.LENGTH_SHORT).show()
+                } else {
+                    AlertDialog.Builder(this)
+                        .setTitle("📝 Notes: $chapterName")
+                        .setMessage(notes)
+                        .setPositiveButton("OK", null)
+                        .show()
+                }
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "No saved notes yet.", Toast.LENGTH_SHORT).show()
+            }
     }
 
     // ─── Chapter type detection ───────────────────────────────────────────────
@@ -107,10 +163,7 @@ class ChapterActivity : AppCompatActivity() {
     // ─── PDF chapter ──────────────────────────────────────────────────────────
 
     private fun setupPdfChapter() {
-        // Hide upload button — not applicable for PDF chapters
         findViewById<Button>(R.id.uploadImageButton).visibility = View.GONE
-
-        // Update Ask AI button label
         findViewById<Button>(R.id.askAIButton).apply {
             text = "💬 Ask AI about this Chapter"
             setOnClickListener {
@@ -124,13 +177,13 @@ class ChapterActivity : AppCompatActivity() {
 
         pagesListData.clear()
         pagesListData.add("⏳ Loading PDF pages…")
-        adapter.notifyDataSetChanged()
+        pageListAdapter.notifyDataSetChanged()
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val count = pdfPageManager.getPageCount(pdfId, pdfAssetPath)
+                pdfPageCount = count
 
-                // Persist page count back to Firestore if it was 0
                 db.collection("users").document("testuser123")
                     .collection("subjects").document(subjectName)
                     .collection("chapters").document(chapterName)
@@ -138,61 +191,69 @@ class ChapterActivity : AppCompatActivity() {
 
                 withContext(Dispatchers.Main) {
                     pagesListData.clear()
-                    for (i in 1..count) {
-                        pagesListData.add("📄  Page $i")
-                    }
-                    adapter.notifyDataSetChanged()
-
-                    // Tapping a page renders it and opens ChatActivity with that page pre-attached
-                    pagesList.setOnItemClickListener { _, _, position, _ ->
-                        openPdfPageInChat(position)
-                    }
+                    for (i in 1..count) pagesListData.add("📄  Page $i")
+                    pageListAdapter.notifyDataSetChanged()
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     pagesListData.clear()
                     pagesListData.add("⚠️ Failed to load PDF: ${e.message}")
-                    adapter.notifyDataSetChanged()
+                    pageListAdapter.notifyDataSetChanged()
                 }
             }
         }
     }
 
-    private fun openPdfPageInChat(pageIndex: Int) {
-        val pageNum = pageIndex + 1
-        Toast.makeText(this, "Rendering page $pageNum…", Toast.LENGTH_SHORT).show()
-
+    private fun onViewPage(position: Int) {
+        // Pre-render this page (and let PageViewerActivity handle rest)
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val pageFile = pdfPageManager.getPage(pdfId, pdfAssetPath, pageIndex)
+                pdfPageManager.getPage(pdfId, pdfAssetPath, position)
+                withContext(Dispatchers.Main) {
+                    startActivity(
+                        Intent(this@ChapterActivity, PageViewerActivity::class.java)
+                            .putExtra("subjectName", subjectName)
+                            .putExtra("chapterName", chapterName)
+                            .putExtra("pdfId", pdfId)
+                            .putExtra("pdfAssetPath", pdfAssetPath)
+                            .putExtra("pageCount", pdfPageCount)
+                            .putExtra("startPage", position)
+                    )
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@ChapterActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun onAskPage(position: Int) {
+        Toast.makeText(this, "Rendering page ${position + 1}…", Toast.LENGTH_SHORT).show()
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val pageFile = pdfPageManager.getPage(pdfId, pdfAssetPath, position)
                 withContext(Dispatchers.Main) {
                     startActivity(
                         Intent(this@ChapterActivity, ChatActivity::class.java)
                             .putExtra("subjectName", subjectName)
                             .putExtra("chapterName", chapterName)
                             .putExtra("pdfPageFilePath", pageFile.absolutePath)
-                            .putExtra("pdfPageNumber", pageNum)
+                            .putExtra("pdfPageNumber", position + 1)
                     )
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(
-                        this@ChapterActivity,
-                        "Render failed: ${e.message}",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    Toast.makeText(this@ChapterActivity, "Render failed: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }
     }
 
-    // ─── Image chapter (existing behaviour) ───────────────────────────────────
+    // ─── Image chapter (plain photo uploads) ──────────────────────────────────
 
     private fun setupImageChapter() {
-        findViewById<Button>(R.id.uploadImageButton).setOnClickListener {
-            showImageSourceDialog()
-        }
-
+        findViewById<Button>(R.id.uploadImageButton).setOnClickListener { showImageSourceDialog() }
         findViewById<Button>(R.id.askAIButton).setOnClickListener {
             startActivity(
                 Intent(this, ChatActivity::class.java)
@@ -200,20 +261,10 @@ class ChapterActivity : AppCompatActivity() {
                     .putExtra("chapterName", chapterName)
             )
         }
-
-        pagesList.setOnItemClickListener { _, _, position, _ ->
-            startActivity(
-                Intent(this, ChatActivity::class.java)
-                    .putExtra("subjectName", subjectName)
-                    .putExtra("chapterName", chapterName)
-                    .putExtra("imagePath", pagesListData[position])
-            )
-        }
-
-        loadPages()
+        // For image chapters the View button opens the image in ChatActivity;
+        // Ask does the same — both open ChatActivity with the image path
+        loadImagePages()
     }
-
-    // ─── Image helpers ────────────────────────────────────────────────────────
 
     private fun showImageSourceDialog() {
         AlertDialog.Builder(this)
@@ -223,8 +274,7 @@ class ChapterActivity : AppCompatActivity() {
                     0 -> openCamera()
                     1 -> pickImageLauncher.launch("image/*")
                 }
-            }
-            .show()
+            }.show()
     }
 
     private fun openCamera() {
@@ -232,8 +282,7 @@ class ChapterActivity : AppCompatActivity() {
             != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(
                 this, arrayOf(android.Manifest.permission.CAMERA), CAMERA_PERMISSION_CODE
-            )
-            return
+            ); return
         }
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.TITLE, "AI_Guru_Page_${System.currentTimeMillis()}")
@@ -243,14 +292,10 @@ class ChapterActivity : AppCompatActivity() {
         cameraImageUri?.let { cameraLauncher.launch(it) }
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
-    ) {
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == CAMERA_PERMISSION_CODE &&
-            grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+        if (requestCode == CAMERA_PERMISSION_CODE && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
             openCamera()
-        }
     }
 
     private fun savePage(imagePath: String) {
@@ -262,12 +307,34 @@ class ChapterActivity : AppCompatActivity() {
             .add(hashMapOf("path" to imagePath, "timestamp" to timestamp))
             .addOnSuccessListener {
                 pagesListData.add("Page uploaded - $timestamp")
-                adapter.notifyDataSetChanged()
+                pageListAdapter.notifyItemInserted(pagesListData.size - 1)
                 Toast.makeText(this, "Page saved!", Toast.LENGTH_SHORT).show()
             }
     }
 
-    private fun loadPages() {
+    private fun loadImagePages() {
+        // Rebuild the PageListAdapter callbacks for image chapter
+        pageListAdapter = PageListAdapter(
+            pages = pagesListData,
+            onView = { position ->
+                startActivity(
+                    Intent(this, ChatActivity::class.java)
+                        .putExtra("subjectName", subjectName)
+                        .putExtra("chapterName", chapterName)
+                        .putExtra("imagePath", pagesListData[position])
+                )
+            },
+            onAsk = { position ->
+                startActivity(
+                    Intent(this, ChatActivity::class.java)
+                        .putExtra("subjectName", subjectName)
+                        .putExtra("chapterName", chapterName)
+                        .putExtra("imagePath", pagesListData[position])
+                )
+            }
+        )
+        pagesRecyclerView.adapter = pageListAdapter
+
         db.collection("users").document("testuser123")
             .collection("subjects").document(subjectName)
             .collection("chapters").document(chapterName)
@@ -275,25 +342,8 @@ class ChapterActivity : AppCompatActivity() {
             .get()
             .addOnSuccessListener { documents ->
                 pagesListData.clear()
-                for (doc in documents) {
-                    pagesListData.add("Page - ${doc.getString("timestamp") ?: ""}")
-                }
-                adapter.notifyDataSetChanged()
-            }
-    }
-
-    private fun deletePage(position: Int) {
-        db.collection("users").document("testuser123")
-            .collection("subjects").document(subjectName)
-            .collection("chapters").document(chapterName)
-            .collection("pages")
-            .get()
-            .addOnSuccessListener { documents ->
-                documents.documents[position].reference.delete()
-                    .addOnSuccessListener {
-                        pagesListData.removeAt(position)
-                        adapter.notifyDataSetChanged()
-                    }
+                for (doc in documents) pagesListData.add("Page - ${doc.getString("timestamp") ?: ""}")
+                pageListAdapter.notifyDataSetChanged()
             }
     }
 }

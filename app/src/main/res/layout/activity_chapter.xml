@@ -53,6 +53,17 @@
 
         </LinearLayout>
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/notesButton"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="38dp"
+            android:text="📝 Notes"
+            android:textSize="12sp"
+            android:textColor="#FFFFFF"
+            app:strokeColor="#FFFFFF"
+            app:cornerRadius="8dp" />
+
     </LinearLayout>
 
     <!-- Info hint card -->
@@ -93,14 +104,12 @@
     </com.google.android.material.card.MaterialCardView>
 
     <!-- Pages list -->
-    <ListView
+    <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/pagesList"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingTop="8dp"
+        android:paddingTop="4dp"
         android:clipToPadding="false" />
 
     <!-- Action Buttons -->

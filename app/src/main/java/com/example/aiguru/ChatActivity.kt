@@ -129,6 +129,13 @@ Your goals:
         initializeUI()
         loadChatHistory()
 
+        // Auto-prompt (e.g. from Notes button in ChapterActivity)
+        val autoPrompt = intent.getStringExtra("autoPrompt")
+        if (autoPrompt != null) {
+            // Post it after the welcome message is added
+            messagesRecyclerView.post { sendMessage(autoPrompt) }
+        }
+
         // Load PDF page passed from ChapterActivity (if any)
         val pdfPageFilePath = intent.getStringExtra("pdfPageFilePath")
         val pdfPageNumber = intent.getIntExtra("pdfPageNumber", 1)

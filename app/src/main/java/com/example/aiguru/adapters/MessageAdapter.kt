@@ -145,24 +145,37 @@ class MessageAdapter(
         }
 
         /**
-         * Renders basic Markdown:
-         *  - Lines starting with ##/# → bold, slightly larger
-         *  - Lines starting with - or * (followed by space) → bullet •
-         *  - **text** → bold span
+         * Renders Markdown subset:
+         *  ###/##/# headings → bold + emoji prefix + larger text
+         *  - / * bullet lines → "  •  "
+         *  1. / 2. numbered lists → kept as-is (already readable)
+         *  --- → "─────────────────"
+         *  **text** → bold span
+         *  `code` → monospace span
          */
         private fun parseMarkdown(text: String): SpannableStringBuilder {
             val ssb = SpannableStringBuilder()
             val lines = text.lines()
             for ((idx, rawLine) in lines.withIndex()) {
                 val trimmed = rawLine.trim()
-                val isHeading = trimmed.startsWith("## ") || trimmed.startsWith("# ")
+
+                val isHeading = trimmed.startsWith("### ") || trimmed.startsWith("## ") || trimmed.startsWith("# ")
+                val headingSize = when {
+                    trimmed.startsWith("### ") -> 1.05f
+                    trimmed.startsWith("## ")  -> 1.1f
+                    trimmed.startsWith("# ")   -> 1.15f
+                    else -> 1f
+                }
+
                 val processedText = when {
-                    trimmed.startsWith("## ") -> "📌 " + trimmed.removePrefix("## ")
-                    trimmed.startsWith("# ")  -> trimmed.removePrefix("# ")
-                    trimmed.startsWith("- ")  -> "  •  " + trimmed.removePrefix("- ")
+                    trimmed.startsWith("### ") -> "  📌 " + trimmed.removePrefix("### ")
+                    trimmed.startsWith("## ")  -> "📌 " + trimmed.removePrefix("## ")
+                    trimmed.startsWith("# ")   -> "📌 " + trimmed.removePrefix("# ")
+                    trimmed.startsWith("- ")   -> "  •  " + trimmed.removePrefix("- ")
                     trimmed.startsWith("* ") && !trimmed.startsWith("**") ->
                         "  •  " + trimmed.removePrefix("* ")
-                    trimmed.startsWith("• ")  -> "  " + trimmed
+                    trimmed.startsWith("• ")   -> "  " + trimmed
+                    trimmed == "---" || trimmed == "___" -> "─────────────────────"
                     else -> rawLine
                 }
 
@@ -170,23 +183,32 @@ class MessageAdapter(
                 val result = SpannableStringBuilder()
                 var lastEnd = 0
                 val boldRegex = Regex("""\*\*(.+?)\*\*""")
-                for (match in boldRegex.findAll(processedText)) {
-                    result.append(processedText.substring(lastEnd, match.range.first))
-                    val start = result.length
-                    result.append(match.groupValues[1])
-                    result.setSpan(
-                        StyleSpan(Typeface.BOLD),
-                        start, result.length,
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
-                    )
-                    lastEnd = match.range.last + 1
+                val codeRegex = Regex("""`([^`]+)`""")
+
+                // Merge both match ranges so we process in order
+                data class Span(val start: Int, val end: Int, val inner: String, val type: String)
+                val spans = mutableListOf<Span>()
+                boldRegex.findAll(processedText).forEach { spans.add(Span(it.range.first, it.range.last + 1, it.groupValues[1], "bold")) }
+                codeRegex.findAll(processedText).forEach { spans.add(Span(it.range.first, it.range.last + 1, it.groupValues[1], "code")) }
+                spans.sortBy { it.start }
+
+                for (span in spans) {
+                    if (span.start < lastEnd) continue  // overlapping — skip
+                    result.append(processedText.substring(lastEnd, span.start))
+                    val sStart = result.length
+                    result.append(span.inner)
+                    when (span.type) {
+                        "bold" -> result.setSpan(StyleSpan(Typeface.BOLD), sStart, result.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                        "code" -> result.setSpan(android.text.style.TypefaceSpan("monospace"), sStart, result.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    }
+                    lastEnd = span.end
                 }
                 result.append(processedText.substring(lastEnd))
 
-                // Heading → bold + slightly bigger
+                // Heading → bold + larger
                 if (isHeading) {
                     result.setSpan(StyleSpan(Typeface.BOLD), 0, result.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    result.setSpan(RelativeSizeSpan(1.1f), 0, result.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    result.setSpan(RelativeSizeSpan(headingSize), 0, result.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                 }
 
                 ssb.append(result)
