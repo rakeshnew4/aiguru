@@ -2,7 +2,6 @@ package com.example.aiguru
 
 import android.app.AlertDialog
 import android.os.Bundle
-import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
@@ -22,23 +21,33 @@ class LibraryActivity : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var emptyText: TextView
 
-    /** Flat list of items — either a HEADER (grade/subject) or a BOOK. */
-    private val items = mutableListOf<LibraryItem>()
-    private lateinit var groupedAdapter: GroupedLibraryAdapter
+    // Full tree: grade → subject → books
+    private val tree = linkedMapOf<String, LinkedHashMap<String, MutableList<LibraryBook>>>()
+
+    // Expanded state sets
+    private val expandedGrades   = mutableSetOf<String>()
+    private val expandedSubjects = mutableSetOf<String>() // key = "grade::subject"
+
+    // Flat visible list rebuilt on every expand/collapse
+    private val visibleItems = mutableListOf<LibraryItem>()
+    private lateinit var adapter: LibraryTreeAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_library)
 
         db = FirebaseFirestore.getInstance()
-
         findViewById<ImageButton>(R.id.backButton).setOnClickListener { finish() }
 
         emptyText = findViewById(R.id.emptyText)
         recyclerView = findViewById(R.id.libraryRecyclerView)
-        groupedAdapter = GroupedLibraryAdapter(items) { book -> showAddToSubjectDialog(book) }
+        adapter = LibraryTreeAdapter(visibleItems,
+            onGradeClick    = { grade   -> toggleGrade(grade) },
+            onSubjectClick  = { grade, subject -> toggleSubject(grade, subject) },
+            onAddClick      = { book    -> showAddToSubjectDialog(book) }
+        )
         recyclerView.layoutManager = LinearLayoutManager(this)
-        recyclerView.adapter = groupedAdapter
+        recyclerView.adapter = adapter
 
         scanLibraryAssets()
     }
@@ -46,39 +55,58 @@ class LibraryActivity : AppCompatActivity() {
     // ─── Asset scanning ───────────────────────────────────────────────────────
 
     private fun scanLibraryAssets() {
-        items.clear()
-        // Map: grade → subject → listOf(books)
-        val tree = linkedMapOf<String, LinkedHashMap<String, MutableList<LibraryBook>>>()
+        tree.clear()
         try {
-            val grades = assets.list("library") ?: emptyArray()
-            for (grade in grades.sorted()) {
-                val subjects = assets.list("library/$grade") ?: continue
-                for (subject in subjects.sorted()) {
-                    val files = assets.list("library/$grade/$subject") ?: continue
-                    for (file in files.filter { it.endsWith(".pdf", ignoreCase = true) }) {
+            for (grade in (assets.list("library") ?: emptyArray()).sorted()) {
+                for (subject in (assets.list("library/$grade") ?: emptyArray()).sorted()) {
+                    for (file in (assets.list("library/$grade/$subject") ?: emptyArray())
+                            .filter { it.endsWith(".pdf", ignoreCase = true) }) {
                         val title = file.removeSuffix(".pdf")
                         val pdfId = "${grade}_${subject}_$title".replace(" ", "_")
-                        val book = LibraryBook(title, grade, subject, "library/$grade/$subject/$file", pdfId)
                         tree.getOrPut(grade) { linkedMapOf() }
                             .getOrPut(subject) { mutableListOf() }
-                            .add(book)
+                            .add(LibraryBook(title, grade, subject, "library/$grade/$subject/$file", pdfId))
                     }
                 }
             }
         } catch (_: Exception) { }
 
-        // Flatten tree into items with GRADE headers, SUBJECT sub-headers, then books
+        rebuildVisibleItems()
+    }
+
+    // ─── Expand / collapse ────────────────────────────────────────────────────
+
+    private fun toggleGrade(grade: String) {
+        if (grade in expandedGrades) expandedGrades.remove(grade) else expandedGrades.add(grade)
+        rebuildVisibleItems()
+    }
+
+    private fun toggleSubject(grade: String, subject: String) {
+        val key = "$grade::$subject"
+        if (key in expandedSubjects) expandedSubjects.remove(key) else expandedSubjects.add(key)
+        rebuildVisibleItems()
+    }
+
+    private fun rebuildVisibleItems() {
+        visibleItems.clear()
         for ((grade, subjectMap) in tree) {
-            items.add(LibraryItem.GradeHeader(grade))
-            for ((subject, books) in subjectMap) {
-                items.add(LibraryItem.SubjectHeader(subject))
-                books.forEach { items.add(LibraryItem.Book(it)) }
+            val gradeExpanded = grade in expandedGrades
+            visibleItems.add(LibraryItem.GradeHeader(grade, gradeExpanded))
+            if (gradeExpanded) {
+                for ((subject, books) in subjectMap) {
+                    val key = "$grade::$subject"
+                    val subjectExpanded = key in expandedSubjects
+                    visibleItems.add(LibraryItem.SubjectHeader(grade, subject, subjectExpanded))
+                    if (subjectExpanded) {
+                        books.forEach { visibleItems.add(LibraryItem.Book(it)) }
+                    }
+                }
             }
         }
-
-        groupedAdapter.notifyDataSetChanged()
-        recyclerView.visibility = if (items.isEmpty()) View.GONE else View.VISIBLE
-        emptyText.visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
+        adapter.notifyDataSetChanged()
+        val isEmpty = tree.isEmpty()
+        recyclerView.visibility = if (isEmpty) View.GONE  else View.VISIBLE
+        emptyText.visibility    = if (isEmpty) View.VISIBLE else View.GONE
     }
 
     // ─── Add to Subject dialog ────────────────────────────────────────────────
@@ -108,12 +136,12 @@ class LibraryActivity : AppCompatActivity() {
             .collection("subjects").document(subjectName)
             .collection("chapters").document(book.title)
             .set(hashMapOf(
-                "name" to book.title,
-                "order" to System.currentTimeMillis(),
-                "isPdf" to true,
+                "name"         to book.title,
+                "order"        to System.currentTimeMillis(),
+                "isPdf"        to true,
                 "pdfAssetPath" to book.assetPath,
-                "pdfId" to book.pdfId,
-                "pageCount" to 0
+                "pdfId"        to book.pdfId,
+                "pageCount"    to 0
             ))
             .addOnSuccessListener {
                 Toast.makeText(this, "\"${book.title}\" added to $subjectName ✓", Toast.LENGTH_SHORT).show()
@@ -126,16 +154,18 @@ class LibraryActivity : AppCompatActivity() {
     // ─── Data types ───────────────────────────────────────────────────────────
 
     sealed class LibraryItem {
-        data class GradeHeader(val grade: String) : LibraryItem()
-        data class SubjectHeader(val subject: String) : LibraryItem()
-        data class Book(val book: LibraryBook) : LibraryItem()
+        data class GradeHeader  (val grade: String, val expanded: Boolean) : LibraryItem()
+        data class SubjectHeader(val grade: String, val subject: String, val expanded: Boolean) : LibraryItem()
+        data class Book         (val book: LibraryBook) : LibraryItem()
     }
 
-    // ─── Grouped adapter (inline — no extra file needed) ─────────────────────
+    // ─── Tree adapter ─────────────────────────────────────────────────────────
 
-    inner class GroupedLibraryAdapter(
+    inner class LibraryTreeAdapter(
         private val data: List<LibraryItem>,
-        private val onAddClick: (LibraryBook) -> Unit
+        private val onGradeClick:   (String) -> Unit,
+        private val onSubjectClick: (String, String) -> Unit,
+        private val onAddClick:     (LibraryBook) -> Unit
     ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
         private val TYPE_GRADE   = 0
@@ -143,65 +173,91 @@ class LibraryActivity : AppCompatActivity() {
         private val TYPE_BOOK    = 2
         private val dp get() = resources.displayMetrics.density
 
-        override fun getItemViewType(position: Int) = when (data[position]) {
+        override fun getItemViewType(p: Int) = when (data[p]) {
             is LibraryItem.GradeHeader   -> TYPE_GRADE
             is LibraryItem.SubjectHeader -> TYPE_SUBJECT
             is LibraryItem.Book          -> TYPE_BOOK
         }
 
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-            return when (viewType) {
-                TYPE_GRADE -> {
-                    val tv = TextView(this@LibraryActivity).apply {
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder =
+            when (viewType) {
+                TYPE_GRADE -> object : RecyclerView.ViewHolder(
+                    LinearLayout(this@LibraryActivity).apply {
+                        orientation = LinearLayout.HORIZONTAL
                         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                        setPadding((16*dp).toInt(), (14*dp).toInt(), (16*dp).toInt(), (6*dp).toInt())
-                        textSize = 18f
-                        setTypeface(null, android.graphics.Typeface.BOLD)
-                        setTextColor(0xFF1A237E.toInt())
-                        setBackgroundColor(0xFFEEF2FF.toInt())
+                        setPadding((16*dp).toInt(), (14*dp).toInt(), (16*dp).toInt(), (14*dp).toInt())
+                        setBackgroundColor(0xFF1A237E.toInt())
                     }
-                    object : RecyclerView.ViewHolder(tv) {}
-                }
-                TYPE_SUBJECT -> {
-                    val tv = TextView(this@LibraryActivity).apply {
+                ) {}
+                TYPE_SUBJECT -> object : RecyclerView.ViewHolder(
+                    LinearLayout(this@LibraryActivity).apply {
+                        orientation = LinearLayout.HORIZONTAL
                         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                        setPadding((24*dp).toInt(), (8*dp).toInt(), (16*dp).toInt(), (4*dp).toInt())
-                        textSize = 14f
-                        setTextColor(0xFF546E7A.toInt())
-                        setBackgroundColor(0xFFF5F5F5.toInt())
+                        setPadding((28*dp).toInt(), (12*dp).toInt(), (16*dp).toInt(), (12*dp).toInt())
+                        setBackgroundColor(0xFF3949AB.toInt())
                     }
-                    object : RecyclerView.ViewHolder(tv) {}
-                }
-                else -> BookViewHolder(parent)
+                ) {}
+                else -> BookVH(parent)
             }
-        }
 
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
             when (val item = data[position]) {
                 is LibraryItem.GradeHeader -> {
+                    val row = holder.itemView as LinearLayout
+                    row.removeAllViews()
+                    val arrow = if (item.expanded) "▼" else "▶"
                     val label = item.grade.replaceFirstChar { it.uppercaseChar() }
-                        .replace("class", " Class").replace("grade", " Grade")
-                    (holder.itemView as TextView).text = "🎓 $label"
+                        .replace("class", " Class", true).replace("grade", " Grade", true).trim()
+                    row.addView(TextView(this@LibraryActivity).apply {
+                        text = "$arrow 🎓 $label"
+                        textSize = 16f
+                        setTypeface(null, android.graphics.Typeface.BOLD)
+                        setTextColor(0xFFFFFFFF.toInt())
+                        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    })
+                    val count = tree[item.grade]?.size ?: 0
+                    row.addView(TextView(this@LibraryActivity).apply {
+                        text = "$count subject${if (count != 1) "s" else ""}"
+                        textSize = 12f
+                        setTextColor(0xFFB3C5FF.toInt())
+                    })
+                    row.setOnClickListener { onGradeClick(item.grade) }
                 }
                 is LibraryItem.SubjectHeader -> {
+                    val row = holder.itemView as LinearLayout
+                    row.removeAllViews()
+                    val arrow = if (item.expanded) "▼" else "▶"
                     val label = item.subject.replaceFirstChar { it.uppercaseChar() }
-                    (holder.itemView as TextView).text = "   📚 $label"
+                    row.addView(TextView(this@LibraryActivity).apply {
+                        text = "  $arrow 📚 $label"
+                        textSize = 14f
+                        setTypeface(null, android.graphics.Typeface.BOLD)
+                        setTextColor(0xFFFFFFFF.toInt())
+                        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    })
+                    val count = tree[item.grade]?.get(item.subject)?.size ?: 0
+                    row.addView(TextView(this@LibraryActivity).apply {
+                        text = "$count chapter${if (count != 1) "s" else ""}"
+                        textSize = 12f
+                        setTextColor(0xFFCFD8DC.toInt())
+                    })
+                    row.setOnClickListener { onSubjectClick(item.grade, item.subject) }
                 }
-                is LibraryItem.Book -> (holder as BookViewHolder).bind(item.book)
+                is LibraryItem.Book -> (holder as BookVH).bind(item.book)
             }
         }
 
         override fun getItemCount() = data.size
 
-        inner class BookViewHolder(parent: ViewGroup) : RecyclerView.ViewHolder(
+        inner class BookVH(parent: ViewGroup) : RecyclerView.ViewHolder(
             LinearLayout(this@LibraryActivity).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = android.view.Gravity.CENTER_VERTICAL
-                setPadding((32*parent.resources.displayMetrics.density).toInt(),
+                setPadding((40*parent.resources.displayMetrics.density).toInt(),
                            (10*parent.resources.displayMetrics.density).toInt(),
                            (12*parent.resources.displayMetrics.density).toInt(),
                            (10*parent.resources.displayMetrics.density).toInt())
-                setBackgroundColor(0xFFFFFFFF.toInt())
+                setBackgroundColor(0xFFF5F5F5.toInt())
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             }
         ) {
@@ -209,36 +265,27 @@ class LibraryActivity : AppCompatActivity() {
 
             fun bind(book: LibraryBook) {
                 root.removeAllViews()
-                val dp = resources.displayMetrics.density
-
-                val icon = TextView(this@LibraryActivity).apply {
-                    text = "📄"
-                    textSize = 22f
-                    setPadding(0, 0, (12*dp).toInt(), 0)
-                }
-                root.addView(icon)
-
-                val titleView = TextView(this@LibraryActivity).apply {
+                root.addView(TextView(this@LibraryActivity).apply {
+                    text = "📄"; textSize = 20f
+                    setPadding(0, 0, (10*dp).toInt(), 0)
+                })
+                root.addView(TextView(this@LibraryActivity).apply {
                     text = book.title.replace("_", " ").replace("-", " ")
                         .split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.uppercaseChar() } }
                     textSize = 14f
-                    setTextColor(0xFF1A237E.toInt())
+                    setTextColor(0xFF212121.toInt())
                     layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-                }
-                root.addView(titleView)
-
-                val addBtn = MaterialButton(this@LibraryActivity).apply {
+                })
+                root.addView(MaterialButton(this@LibraryActivity).apply {
                     text = "+ Add"
                     textSize = 12f
-                    setPadding((10*dp).toInt(), 0, (10*dp).toInt(), 0)
                     layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        (36*dp).toInt()
+                        LinearLayout.LayoutParams.WRAP_CONTENT, (36*dp).toInt()
                     )
                     setOnClickListener { onAddClick(book) }
-                }
-                root.addView(addBtn)
+                })
             }
         }
     }
 }
+

@@ -88,25 +88,33 @@ class ChapterActivity : AppCompatActivity() {
     // ─── Notes generation ─────────────────────────────────────────────────────
 
     private fun showNotesOptions() {
+        val options = mutableListOf(
+            "📖 Generate Chapter Notes",
+            "✏️ Generate Exercise Notes",
+            "📋 View Saved Notes"
+        )
+        if (isPdfChapter && pdfPageCount > 0) {
+            options.add(1, "📄 Generate Page-wise Notes")
+        }
         AlertDialog.Builder(this)
-            .setTitle("📝 Chapter Notes")
-            .setItems(arrayOf(
-                "Generate notes for this chapter",
-                "View saved notes"
-            )) { _, which ->
-                when (which) {
-                    0 -> generateNotes()
-                    1 -> viewSavedNotes()
+            .setTitle("📝 Notes for $chapterName")
+            .setItems(options.toTypedArray()) { _, which ->
+                when (options[which]) {
+                    "📖 Generate Chapter Notes"  -> generateChapterNotes()
+                    "📄 Generate Page-wise Notes" -> showPageWiseNotesPicker()
+                    "✏️ Generate Exercise Notes"  -> generateExerciseNotes()
+                    "📋 View Saved Notes"          -> viewSavedNotes()
                 }
             }
             .show()
     }
 
-    private fun generateNotes() {
+    private fun generateChapterNotes() {
         startActivity(
             Intent(this, ChatActivity::class.java)
                 .putExtra("subjectName", subjectName)
                 .putExtra("chapterName", chapterName)
+                .putExtra("saveNotesType", "chapter")
                 .putExtra("autoPrompt",
                     "Create comprehensive study notes for \"$chapterName\" with:\n" +
                     "• Key concepts and definitions\n" +
@@ -118,25 +126,88 @@ class ChapterActivity : AppCompatActivity() {
         )
     }
 
+    private fun showPageWiseNotesPicker() {
+        val pageOptions = (1..pdfPageCount).map { "Page $it" }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Select Page for Notes")
+            .setItems(pageOptions) { _, idx -> generateNotesForPage(idx + 1) }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun generateNotesForPage(pageNum: Int) {
+        startActivity(
+            Intent(this, ChatActivity::class.java)
+                .putExtra("subjectName", subjectName)
+                .putExtra("chapterName", chapterName)
+                .putExtra("saveNotesType", "page_$pageNum")
+                .putExtra("autoPrompt",
+                    "Create detailed study notes for Page $pageNum of \"$chapterName\":\n" +
+                    "• Key concepts and definitions on this page\n" +
+                    "• Any formulas, rules, or special points\n" +
+                    "• Summary of content on this page\n\n" +
+                    "Use ## Page $pageNum Notes as the heading and format with bullet points."
+                )
+        )
+    }
+
+    private fun generateExerciseNotes() {
+        startActivity(
+            Intent(this, ChatActivity::class.java)
+                .putExtra("subjectName", subjectName)
+                .putExtra("chapterName", chapterName)
+                .putExtra("saveNotesType", "exercises")
+                .putExtra("autoPrompt",
+                    "For the exercises in \"$chapterName\":\n" +
+                    "• List the types of exercises/problems in this chapter\n" +
+                    "• Provide step-by-step problem-solving strategies\n" +
+                    "• Show worked examples for typical questions\n" +
+                    "• Highlight common mistakes to avoid\n\n" +
+                    "Use ## Exercise Notes as the heading."
+                )
+        )
+    }
+
     private fun viewSavedNotes() {
         db.collection("users").document("testuser123")
-            .collection("chats").document("${subjectName}_${chapterName}")
-            .collection("notes").document("saved")
+            .collection("subjects").document(subjectName)
+            .collection("chapters").document(chapterName)
+            .collection("notes")
             .get()
-            .addOnSuccessListener { doc ->
-                val notes = doc.getString("content")
-                if (notes.isNullOrBlank()) {
-                    Toast.makeText(this, "No saved notes yet — generate some first!", Toast.LENGTH_SHORT).show()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.isEmpty) {
+                    Toast.makeText(this, "No saved notes yet — generate some from the chat!", Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
+                }
+                val docs = snapshot.documents.sortedBy { doc ->
+                    when (doc.id) { "chapter" -> "0"; "exercises" -> "z"; else -> doc.id }
+                }
+                val sb = StringBuilder()
+                docs.forEach { doc ->
+                    val type = doc.getString("type") ?: doc.id
+                    val content = doc.getString("content") ?: return@forEach
+                    if (content.isBlank()) return@forEach
+                    val heading = when {
+                        type == "chapter"         -> "📖 Chapter Notes"
+                        type.startsWith("page_") -> "📄 Page ${type.removePrefix("page_")} Notes"
+                        type == "exercises"       -> "✏️ Exercise Notes"
+                        else -> "📋 $type"
+                    }
+                    sb.append("$heading\n\n$content\n\n──────────────\n\n")
+                }
+                val text = sb.toString().trim()
+                if (text.isEmpty()) {
+                    Toast.makeText(this, "No notes content found.", Toast.LENGTH_SHORT).show()
                 } else {
                     AlertDialog.Builder(this)
-                        .setTitle("📝 Notes: $chapterName")
-                        .setMessage(notes)
+                        .setTitle("📋 Notes: $chapterName")
+                        .setMessage(text)
                         .setPositiveButton("OK", null)
                         .show()
                 }
             }
             .addOnFailureListener {
-                Toast.makeText(this, "No saved notes yet.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Couldn't load notes. Try again.", Toast.LENGTH_SHORT).show()
             }
     }
 

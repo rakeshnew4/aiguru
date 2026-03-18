@@ -57,6 +57,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private lateinit var voiceButton: MaterialButton
     private lateinit var imageButton: MaterialButton
     private lateinit var pdfButton: MaterialButton
+    private lateinit var saveNotesButton: MaterialButton
+    private lateinit var viewNotesButton: MaterialButton
     private lateinit var imagePreviewStrip: LinearLayout
     private lateinit var imagePreviewThumbnail: ImageView
     private lateinit var imagePreviewLabel: TextView
@@ -83,6 +85,9 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
     // Pre-loaded PDF page (base64 encoded) passed from ChapterActivity
     private var pdfPageBase64: String? = null
+
+    // When set, the AI response from the next auto-send is also saved as notes
+    private var saveNotesType: String? = null
 
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -129,11 +134,14 @@ Your goals:
         initializeUI()
         loadChatHistory()
 
+        // Notes type to auto-save when notes are generated (e.g. "chapter", "page_1", "exercises")
+        saveNotesType = intent.getStringExtra("saveNotesType")
+
         // Auto-prompt (e.g. from Notes button in ChapterActivity)
         val autoPrompt = intent.getStringExtra("autoPrompt")
         if (autoPrompt != null) {
-            // Post it after the welcome message is added
-            messagesRecyclerView.post { sendMessage(autoPrompt) }
+            // Post it after the welcome message is added; if saveNotesType set, auto-save the response
+            messagesRecyclerView.post { sendMessage(autoPrompt, autoSaveNotes = saveNotesType != null) }
         }
 
         // Load PDF page passed from ChapterActivity (if any)
@@ -173,6 +181,8 @@ Your goals:
         voiceButton = findViewById(R.id.voiceButton)
         imageButton = findViewById(R.id.imageButton)
         pdfButton = findViewById(R.id.pdfButton)
+        saveNotesButton = findViewById(R.id.saveNotesButton)
+        viewNotesButton = findViewById(R.id.viewNotesButton)
         imagePreviewStrip = findViewById(R.id.imagePreviewStrip)
         imagePreviewThumbnail = findViewById(R.id.imagePreviewThumbnail)
         imagePreviewLabel = findViewById(R.id.imagePreviewLabel)
@@ -206,6 +216,9 @@ Your goals:
 
         imageButton.setOnClickListener { showImageSourceDialog() }
         pdfButton.setOnClickListener { openPdfPicker() }
+
+        saveNotesButton.setOnClickListener { saveLastAIMessageAsNotes() }
+        viewNotesButton.setOnClickListener { viewSavedNotes() }
 
         removeImageButton.setOnClickListener {
             selectedImageUri = null
@@ -358,7 +371,7 @@ Your goals:
         )
     }
 
-    private fun sendMessage(userText: String) {
+    private fun sendMessage(userText: String, autoSaveNotes: Boolean = false) {
         val imageUri = selectedImageUri
         selectedImageUri = null
         imagePreviewStrip.visibility = View.GONE
@@ -397,6 +410,10 @@ Your goals:
                         messageAdapter.addMessage(aiMessage)
                         saveMessageToFirestore(aiMessage)
                         messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
+                        // Auto-save as notes if triggered from ChapterActivity notes flow
+                        if (autoSaveNotes && saveNotesType != null) {
+                            persistNotesToFirestore(responseText, saveNotesType!!)
+                        }
                     } else {
                         showError("Couldn't get a response. Check your connection and try again.")
                     }
@@ -523,6 +540,83 @@ Make questions test key concepts, definitions, or important facts."""
             }
         }
         return cards
+    }
+
+    // ─── Notes: save & view ─────────────────────────────────────────────────
+
+    private fun saveLastAIMessageAsNotes() {
+        val lastAi = messageAdapter.getLastAIMessage()
+        if (lastAi == null) {
+            Toast.makeText(this, "Generate notes first, then tap 💾 Save Notes.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val type = saveNotesType ?: "chapter"
+        persistNotesToFirestore(lastAi.content, type)
+    }
+
+    private fun persistNotesToFirestore(content: String, type: String) {
+        db.collection("users").document("testuser123")
+            .collection("subjects").document(subjectName)
+            .collection("chapters").document(chapterName)
+            .collection("notes").document(type)
+            .set(hashMapOf(
+                "content"   to content,
+                "type"      to type,
+                "updatedAt" to System.currentTimeMillis()
+            ))
+            .addOnSuccessListener {
+                runOnUiThread {
+                    Toast.makeText(this, "✅ Notes saved!", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .addOnFailureListener {
+                runOnUiThread {
+                    Toast.makeText(this, "Failed to save notes.", Toast.LENGTH_SHORT).show()
+                }
+            }
+    }
+
+    private fun viewSavedNotes() {
+        db.collection("users").document("testuser123")
+            .collection("subjects").document(subjectName)
+            .collection("chapters").document(chapterName)
+            .collection("notes")
+            .get()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.isEmpty) {
+                    Toast.makeText(this, "No saved notes yet — generate and save notes first!", Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
+                }
+                val docs = snapshot.documents.sortedBy { doc ->
+                    when (doc.id) { "chapter" -> "0"; "exercises" -> "z"; else -> doc.id }
+                }
+                val sb = StringBuilder()
+                docs.forEach { doc ->
+                    val type = doc.getString("type") ?: doc.id
+                    val content = doc.getString("content") ?: return@forEach
+                    if (content.isBlank()) return@forEach
+                    val heading = when {
+                        type == "chapter"          -> "📖 Chapter Notes"
+                        type.startsWith("page_")  -> "📄 Page ${type.removePrefix("page_")} Notes"
+                        type == "exercises"        -> "✏️ Exercise Notes"
+                        else -> "📋 $type"
+                    }
+                    sb.append("$heading\n\n$content\n\n──────────────\n\n")
+                }
+                val text = sb.toString().trim()
+                if (text.isEmpty()) {
+                    Toast.makeText(this, "No notes content found.", Toast.LENGTH_SHORT).show()
+                } else {
+                    android.app.AlertDialog.Builder(this)
+                        .setTitle("📋 Saved Notes — $chapterName")
+                        .setMessage(text)
+                        .setPositiveButton("OK", null)
+                        .show()
+                }
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "Couldn't load notes.", Toast.LENGTH_SHORT).show()
+            }
     }
 
     private fun saveMessageToFirestore(message: Message) {

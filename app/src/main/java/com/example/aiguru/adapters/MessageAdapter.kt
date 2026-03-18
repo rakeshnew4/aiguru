@@ -265,6 +265,8 @@ class MessageAdapter(
 
     fun getMessages(): List<Message> = messages.toList()
 
+    fun getLastAIMessage(): Message? = messages.lastOrNull { !it.isUser }
+
     fun clear() {
         messages.clear()
         notifyDataSetChanged()

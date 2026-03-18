@@ -79,6 +79,28 @@
                 android:layout_marginEnd="6dp"/>
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/saveNotesButton"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="💾 Save Notes"
+                android:textSize="12sp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                app:strokeColor="#2E7D32"
+                app:cornerRadius="18dp"
+                android:layout_marginEnd="6dp"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/viewNotesButton"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="📖 View Notes"
+                android:textSize="12sp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                app:strokeColor="#4527A0"
+                app:cornerRadius="18dp"
+                android:layout_marginEnd="6dp"/>
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/flashcardsButton"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
