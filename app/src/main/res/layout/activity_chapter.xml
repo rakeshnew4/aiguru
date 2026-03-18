@@ -117,32 +117,46 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="16dp">
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="8dp">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/uploadImageButton"
             android:layout_width="0dp"
-            android:layout_height="56dp"
+            android:layout_height="52dp"
             android:layout_weight="1"
             android:text="📷  Upload"
-            android:textSize="14sp"
+            android:textSize="13sp"
             android:textColor="#1565C0"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             app:strokeColor="#1565C0"
             app:cornerRadius="12dp"
-            android:layout_marginEnd="8dp" />
+            android:layout_marginEnd="6dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/realTeacherChapterButton"
+            android:layout_width="0dp"
+            android:layout_height="52dp"
+            android:layout_weight="1"
+            android:text="👩‍🏫 Teacher"
+            android:textSize="13sp"
+            android:textColor="#FFFFFF"
+            app:backgroundTint="#2E7D32"
+            app:cornerRadius="12dp"
+            android:layout_marginEnd="6dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/askAIButton"
             android:layout_width="0dp"
-            android:layout_height="56dp"
+            android:layout_height="52dp"
             android:layout_weight="1"
             android:text="🤖  Ask AI"
-            android:textSize="14sp"
+            android:textSize="13sp"
             android:textColor="#FFFFFF"
             app:backgroundTint="#FF8F00"
             app:cornerRadius="12dp"
-            android:layout_marginStart="8dp" />
+            android:layout_marginStart="6dp" />
 
     </LinearLayout>
 

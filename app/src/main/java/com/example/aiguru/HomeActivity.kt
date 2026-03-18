@@ -36,6 +36,9 @@ class HomeActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.libraryButton).setOnClickListener {
             startActivity(Intent(this, LibraryActivity::class.java))
         }
+        findViewById<MaterialButton>(R.id.realTeacherButton).setOnClickListener {
+            startActivity(Intent(this, RealTeacherActivity::class.java))
+        }
     }
 
     private fun setupGreeting() {

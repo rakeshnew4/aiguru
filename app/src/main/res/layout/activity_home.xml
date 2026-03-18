@@ -126,11 +126,24 @@
             android:layout_width="0dp"
             android:layout_height="56dp"
             android:layout_weight="1"
-            android:layout_marginEnd="8dp"
+            android:layout_marginEnd="6dp"
             android:text="📖 Library"
-            android:textSize="15sp"
+            android:textSize="14sp"
             android:textColor="#FFFFFF"
             app:backgroundTint="#1565C0"
+            app:cornerRadius="12dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/realTeacherButton"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            android:layout_marginEnd="6dp"
+            android:text="👩‍🏫 Teacher"
+            android:textSize="14sp"
+            android:textColor="#FFFFFF"
+            app:backgroundTint="#2E7D32"
             app:cornerRadius="12dp" />
 
         <com.google.android.material.button.MaterialButton
@@ -138,8 +151,9 @@
             android:layout_width="0dp"
             android:layout_height="56dp"
             android:layout_weight="1"
-            android:text="＋ Add Subject"
-            android:textSize="15sp"
+            android:layout_marginStart="6dp"
+            android:text="＋ Add"
+            android:textSize="14sp"
             android:textColor="#FFFFFF"
             app:backgroundTint="#FF8F00"
             app:cornerRadius="12dp" />

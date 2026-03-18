@@ -36,6 +36,10 @@
         <activity android:name=".RevisionActivity" android:exported="false"/>
         <activity android:name=".LibraryActivity" android:exported="false"/>
         <activity android:name=".PageViewerActivity" android:exported="false"/>
+        <activity
+            android:name=".RealTeacherActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"/>
 
         <provider
             android:name="androidx.core.content.FileProvider"
