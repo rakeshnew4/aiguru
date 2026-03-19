@@ -369,7 +369,47 @@
             android:paddingTop="6dp"
             android:paddingBottom="6dp">
 
-            <!-- Listening Indicator Bar -->
+            <!-- Interactive Voice Chat Status Bar -->
+            <LinearLayout
+                android:id="@+id/voiceChatBar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="#F1F8E9"
+                android:paddingStart="14dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:layout_marginBottom="4dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/voiceChatStatus"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="🎙️ Listening… speak now"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="#2E7D32" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/stopVoiceChatButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:minHeight="0dp"
+                    android:text="✕ Stop"
+                    android:textSize="11sp"
+                    android:textColor="#FFFFFF"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    app:backgroundTint="#E53935"
+                    app:cornerRadius="16dp" />
+
+            </LinearLayout>
+
+            <!-- Listening Indicator Bar (regular mic press) -->
             <TextView
                 android:id="@+id/listeningIndicator"
                 android:layout_width="match_parent"
@@ -501,6 +541,20 @@
                     app:backgroundTint="#E3F2FD"
                     app:cornerRadius="23dp"
                     android:layout_marginEnd="4dp" />
+
+                <!-- Live Voice Chat Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/voiceChatButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:minHeight="0dp"
+                    android:text="🎙️"
+                    android:textSize="18sp"
+                    app:backgroundTint="#E8F5E9"
+                    app:cornerRadius="20dp"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:layout_marginEnd="2dp" />
 
                 <!-- Image Attach -->
                 <com.google.android.material.button.MaterialButton

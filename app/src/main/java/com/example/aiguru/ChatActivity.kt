@@ -92,6 +92,14 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private var cameraImageUri: Uri? = null
     private var isListening = false
 
+    // ── Interactive Voice Chat Mode ────────────────────────────────────────────
+    private var isVoiceModeActive = false
+    private lateinit var voiceChatButton: MaterialButton
+    private lateinit var voiceChatBar: LinearLayout
+    private lateinit var voiceChatStatus: TextView
+    // Interrupt / barge-in state
+    private var currentTTSText = ""
+    private var isInterrupted = false
     // Language for voice recognition, TTS, and LLM responses
     private var currentLang = "en-US"
     private var currentLangName = "English"
@@ -228,6 +236,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         removeImageButton = findViewById(R.id.removeImageButton)
         listeningIndicator = findViewById(R.id.listeningIndicator)
         bottomDescribeButton = findViewById(R.id.bottomDescribeButton)
+        voiceChatBar = findViewById(R.id.voiceChatBar)
+        voiceChatStatus = findViewById(R.id.voiceChatStatus)
 
         setupButtons()
         setupQuickActions()
@@ -247,6 +257,10 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     }
 
     private fun setupButtons() {
+        voiceChatButton = findViewById(R.id.voiceChatButton)
+        voiceChatButton.setOnClickListener {
+            if (isVoiceModeActive) stopVoiceMode() else startVoiceMode()
+        }
         voiceButton.setOnClickListener {
             if (isListening) voiceManager.stopListening() else checkPermissionAndStartListening()
         }
@@ -436,6 +450,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                          PromptRepository.getLanguageInstruction(currentLang)
         val ctxMessage = "Subject: $subjectName | Chapter: $chapterName\n\n$userText"
 
+        if (isVoiceModeActive) setVoiceModeStatus("🤖 AI is thinking…", "#E65100")
+
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val rawResponse = when {
@@ -460,13 +476,38 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                         messageAdapter.addMessage(aiMsg)
                         historyRepo.saveMessage(aiMsg)
                         messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
-                        if (lastInputWasVoice) {
+                        if (lastInputWasVoice || isVoiceModeActive) {
                             lastInputWasVoice = false
+                            val voiceText = TutorController.trimForVoice(reply.response)
+                            if (isVoiceModeActive) {
+                                currentTTSText = voiceText
+                                setVoiceModeStatus("🔊 AI is speaking…", "#1565C0")
+                            }
                             ttsManager.setLocale(Locale.forLanguageTag(currentLang))
-                            ttsManager.speak(TutorController.trimForVoice(reply.response), object : TTSCallback {
-                                override fun onStart() {}
-                                override fun onComplete() {}
-                                override fun onError(error: String) {}
+                            ttsManager.speak(voiceText, object : TTSCallback {
+                                override fun onStart() {
+                                    // After 700ms warmup, start barge-in listener
+                                    if (isVoiceModeActive) {
+                                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                            if (isVoiceModeActive && ttsManager.isSpeaking()) {
+                                                voiceManager.startInterruptListening(interruptCallback, currentLang)
+                                            }
+                                        }, 700)
+                                    }
+                                }
+                                override fun onComplete() {
+                                    runOnUiThread {
+                                        voiceManager.stopInterruptListening()
+                                        if (isVoiceModeActive && !isInterrupted) startVoiceLoopListening()
+                                        isInterrupted = false
+                                    }
+                                }
+                                override fun onError(error: String) {
+                                    runOnUiThread {
+                                        voiceManager.stopInterruptListening()
+                                        if (isVoiceModeActive) startVoiceLoopListening()
+                                    }
+                                }
                             })
                         }
                         if (autoSaveNotes && saveNotesType != null) {
@@ -564,13 +605,17 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     // VoiceRecognitionCallback
     override fun onResults(text: String) {
         runOnUiThread {
-            resetVoiceButton()
+            isListening = false
+            if (!isVoiceModeActive) resetVoiceButton()
             if (text.isNotEmpty()) {
                 lastInputWasVoice = true
+                isInterrupted = false   // clear — good result received
                 messageInput.setText("")
-                sendMessage(text)  // auto-send voice → tutor loop
+                if (isVoiceModeActive) setVoiceModeStatus("🤖 AI is thinking…", "#E65100")
+                sendMessage(text)
             } else {
-                messageInput.setText(text)
+                if (isVoiceModeActive) startVoiceLoopListening()
+                else messageInput.setText(text)
             }
         }
     }
@@ -583,13 +628,23 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     }
 
     override fun onError(error: String) {
-        runOnUiThread { resetVoiceButton() }
+        runOnUiThread {
+            if (isVoiceModeActive) {
+                // Automatically retry — errors like no-match or timeout are common
+                startVoiceLoopListening()
+            } else {
+                resetVoiceButton()
+            }
+        }
     }
 
     override fun onListeningStarted() {}
 
     override fun onListeningFinished() {
-        runOnUiThread { resetVoiceButton() }
+        runOnUiThread {
+            isListening = false
+            if (!isVoiceModeActive) resetVoiceButton()
+        }
     }
 
     override fun onRequestPermissionsResult(
@@ -667,6 +722,99 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         }
     }
 
+    // ── Interactive Voice Chat Mode ───────────────────────────────────────────
+
+    private fun startVoiceMode() {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                this, arrayOf(android.Manifest.permission.RECORD_AUDIO), PERMISSION_REQUEST_CODE
+            )
+            return
+        }
+        isVoiceModeActive = true
+        isInterrupted = false
+        voiceButton.isEnabled = false
+        voiceChatBar.visibility = View.VISIBLE
+        listeningIndicator.visibility = View.GONE
+        voiceChatButton.backgroundTintList = ColorStateList.valueOf(android.graphics.Color.parseColor("#E53935"))
+        Toast.makeText(this, "🎙️ Voice mode ON — just speak!", Toast.LENGTH_SHORT).show()
+        startVoiceLoopListening()
+    }
+
+    private fun stopVoiceMode() {
+        isVoiceModeActive = false
+        isInterrupted = false
+        ttsManager.stop()
+        voiceManager.stopInterruptListening()
+        if (isListening) { voiceManager.stopListening(); isListening = false }
+        voiceButton.isEnabled = true
+        voiceChatBar.visibility = View.GONE
+        voiceChatButton.text = "🎙️"
+        voiceChatButton.backgroundTintList = ColorStateList.valueOf(android.graphics.Color.parseColor("#E8F5E9"))
+        Toast.makeText(this, "Voice mode OFF", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun startVoiceLoopListening() {
+        if (!isVoiceModeActive) return
+        isListening = true
+        setVoiceModeStatus("🎙️ Listening… speak now", "#2E7D32")
+        voiceManager.startListening(this, currentLang)
+    }
+
+    private fun setVoiceModeStatus(text: String, colorHex: String) {
+        voiceChatStatus.text = text
+        voiceChatStatus.setTextColor(android.graphics.Color.parseColor(colorHex))
+    }
+
+    /**
+     * Called by the interrupt recognizer while TTS is speaking.
+     * Uses partial results + echo filter to detect real user barge-in.
+     */
+    private val interruptCallback = object : VoiceRecognitionCallback {
+        override fun onPartialResults(text: String) {
+            if (!isVoiceModeActive || !ttsManager.isSpeaking() || text.length < 3) return
+            // Echo filter: Skip if partial text matches the beginning of what TTS is saying
+            val normalizedTTS = currentTTSText.lowercase()
+            val normalizedText = text.lowercase().trim()
+            if (normalizedTTS.contains(normalizedText)) return
+            // Real user speech — barge-in!
+            triggerBargein()
+        }
+
+        override fun onBeginningOfSpeech() {
+            // Secondary signal: if TTS is playing and user starts speaking, stop TTS
+            // (gives instant responsiveness; onPartialResults will confirm with real text)
+        }
+
+        override fun onResults(text: String) {
+            // Interrupt recognizer captured a full utterance (user spoke while TTS was playing)
+            // This can also handle the case where partial didn't trigger (short utterance).
+            if (!isVoiceModeActive || text.length < 2) return
+            val normalizedTTS = currentTTSText.lowercase()
+            if (!normalizedTTS.contains(text.lowercase().trim())) {
+                triggerBargein()
+            }
+        }
+
+        override fun onError(error: String) { /* ignore — interrupt recognizer errors are expected */ }
+        override fun onListeningStarted() {}
+        override fun onListeningFinished() {}
+    }
+
+    private fun triggerBargein() {
+        if (isInterrupted) return // already triggered
+        isInterrupted = true
+        ttsManager.stop()
+        voiceManager.stopInterruptListening()
+        runOnUiThread {
+            setVoiceModeStatus("\ud83c\udf99\ufe0f Listening (interrupted)\u2026", "#6A1B9A")
+        }
+        // Now start the main recognizer to capture the full user utterance
+        isListening = true
+        voiceManager.startListening(this, currentLang)
+    }
+
     private fun updateModeChipStates() {
         val activeColor  = android.graphics.Color.parseColor("#1565C0")
         val inactiveColor = android.graphics.Color.parseColor("#EEF2FF")
@@ -687,6 +835,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     }
 
     override fun onDestroy() {
+        if (isVoiceModeActive) stopVoiceMode()
         voiceManager.destroy()
         ttsManager.destroy()
         super.onDestroy()

@@ -14,6 +14,7 @@ interface VoiceRecognitionCallback {
     fun onPartialResults(text: String)
     fun onListeningStarted()
     fun onListeningFinished()
+    fun onBeginningOfSpeech() {}
 }
 
 class VoiceManager(private val context: Context) {
@@ -21,6 +22,10 @@ class VoiceManager(private val context: Context) {
     private lateinit var speechRecognizer: SpeechRecognizer
     private var callback: VoiceRecognitionCallback? = null
     private val TAG = "VoiceManager"
+
+    // ── Interrupt recognizer (runs while TTS is speaking) ──────────────────
+    private var interruptRecognizer: SpeechRecognizer? = null
+    private var interruptCallback: VoiceRecognitionCallback? = null
 
     init {
         try {
@@ -61,12 +66,43 @@ class VoiceManager(private val context: Context) {
         }
     }
 
+    fun startInterruptListening(cb: VoiceRecognitionCallback, language: String = "en-US") {
+        interruptCallback = cb
+        try {
+            if (!SpeechRecognizer.isRecognitionAvailable(context)) return
+            interruptRecognizer?.destroy()
+            interruptRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
+            interruptRecognizer?.setRecognitionListener(InterruptListenerImpl())
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
+                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            }
+            interruptRecognizer?.startListening(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting interrupt listener", e)
+        }
+    }
+
+    fun stopInterruptListening() {
+        try {
+            interruptRecognizer?.stopListening()
+            interruptRecognizer?.destroy()
+            interruptRecognizer = null
+            interruptCallback = null
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping interrupt listener", e)
+        }
+    }
+
     fun destroy() {
         try {
             speechRecognizer.destroy()
         } catch (e: Exception) {
             Log.e(TAG, "Error destroying SpeechRecognizer", e)
         }
+        stopInterruptListening()
     }
 
     private inner class RecognitionListenerImpl : RecognitionListener {
@@ -78,6 +114,7 @@ class VoiceManager(private val context: Context) {
 
         override fun onBeginningOfSpeech() {
             Log.d(TAG, "Beginning of speech")
+            callback?.onBeginningOfSpeech()
         }
 
         override fun onRmsChanged(rmsdB: Float) {}
@@ -125,6 +162,37 @@ class VoiceManager(private val context: Context) {
                     callback?.onPartialResults(partialText)
                 }
             }
+        }
+    }
+
+    // ── Interrupt Recognizer Listener ─────────────────────────────────────────
+    private inner class InterruptListenerImpl : RecognitionListener {
+        override fun onReadyForSpeech(params: Bundle?) {}
+        override fun onEvent(eventType: Int, params: Bundle?) {}
+        override fun onBufferReceived(buffer: ByteArray?) {}
+        override fun onRmsChanged(rmsdB: Float) {}
+        override fun onEndOfSpeech() {}
+
+        override fun onBeginningOfSpeech() {
+            Log.d(TAG, "Interrupt: beginning of speech detected")
+            interruptCallback?.onBeginningOfSpeech()
+        }
+
+        override fun onPartialResults(partialResults: Bundle?) {
+            partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                ?.firstOrNull()?.takeIf { it.isNotEmpty() }
+                ?.let { interruptCallback?.onPartialResults(it) }
+        }
+
+        override fun onResults(results: Bundle?) {
+            results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                ?.firstOrNull()?.takeIf { it.isNotEmpty() }
+                ?.let { interruptCallback?.onResults(it) }
+        }
+
+        override fun onError(error: Int) {
+            Log.d(TAG, "Interrupt recognizer error: $error (expected)")
+            interruptCallback?.onError(error.toString())
         }
     }
 }
