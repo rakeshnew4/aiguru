@@ -1,0 +1,69 @@
+{
+  "version": "1.0",
+  "appName": "AI Guru",
+  "tagline": "Your Smart Study Companion",
+  "supportEmail": "support@aiguru.app",
+  "appVersion": "1.0.0",
+
+  "defaultTheme": {
+    "primaryColor": "#1565C0",
+    "primaryDarkColor": "#003C8F",
+    "primaryLightColor": "#5E92F3",
+    "accentColor": "#FF8F00",
+    "backgroundColor": "#EEF2FF",
+    "headerTextColor": "#FFFFFF",
+    "headerSubtextColor": "#B3C5FF",
+    "bodyTextPrimaryColor": "#1A237E",
+    "bodyTextSecondaryColor": "#546E7A",
+    "cardBackgroundColor": "#FFFFFF",
+    "buttonPrimaryColor": "#1565C0",
+    "buttonSecondaryColor": "#2E7D32",
+    "buttonAccentColor": "#FF8F00",
+    "successColor": "#2E7D32",
+    "warningColor": "#F57F17"
+  },
+
+  "features": {
+    "realTeacher": true,
+    "library": true,
+    "revision": true,
+    "voiceChat": true,
+    "pdfAnalysis": true,
+    "flashcards": true,
+    "mockTests": false,
+    "parentReports": false
+  },
+
+  "greetingMessages": {
+    "morning": "Good morning! ☀️",
+    "afternoon": "Good afternoon! 👋",
+    "evening": "Good evening! 🌙"
+  },
+
+  "homeScreen": {
+    "showSubjectGrid": true,
+    "showLibraryButton": true,
+    "showRealTeacherButton": true,
+    "showAddSubjectButton": true,
+    "gridColumns": 2,
+    "motivationalQuotes": [
+      "Learning is the eye of the mind.",
+      "Education is the most powerful weapon.",
+      "The more you read, the more you know.",
+      "Every expert was once a beginner.",
+      "Dream big, study hard!"
+    ]
+  },
+
+  "loginScreen": {
+    "allowAnyStudentId": true,
+    "requireStudentName": false,
+    "showTestCredentialsHint": true
+  },
+
+  "subscriptionScreen": {
+    "showFreeTrialBadge": true,
+    "highlightRecommendedPlan": true,
+    "recommendedPlanId": "BASIC"
+  }
+}

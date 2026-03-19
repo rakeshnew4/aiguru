@@ -4,11 +4,14 @@ import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.animation.LinearInterpolator
 import android.widget.LinearLayout
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -76,7 +79,7 @@ class RealTeacherActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private lateinit var subjectName: String
     private lateinit var chapterName: String
 
-    // Conversation history sent to the LLM (system + turns)
+    private val mainHandler = Handler(Looper.getMainLooper())
     private val conversationHistory = mutableListOf<JSONObject>()
 
     private var micPulseAnimator: ObjectAnimator? = null
@@ -256,21 +259,17 @@ Remember: You are speaking aloud, not writing. Keep it conversational and human.
                 if (!isDestroyed && !isFinishing) {
                     runOnUiThread {
                         if (response != null) {
-                            try {
-                                val cleanResponse = stripMarkdown(response)
-                                conversationHistory.add(JSONObject().put("role", "assistant").put("content", cleanResponse))
-                                val teacherMsg = Message(
-                                    id = UUID.randomUUID().toString(),
-                                    content = cleanResponse,
-                                    isUser = false,
-                                    messageType = Message.MessageType.TEXT
-                                )
-                                messageAdapter.addMessage(teacherMsg)
-                                scrollToBottom()
-                                speakTeacherMessage(cleanResponse)
-                            } catch (uiEx: Exception) {
-                                setState(SessionState.IDLE)
-                            }
+                            val cleanResponse = stripMarkdown(response)
+                            conversationHistory.add(JSONObject().put("role", "assistant").put("content", cleanResponse))
+                            val teacherMsg = Message(
+                                id = UUID.randomUUID().toString(),
+                                content = cleanResponse,
+                                isUser = false,
+                                messageType = Message.MessageType.TEXT
+                            )
+                            messageAdapter.addMessage(teacherMsg)
+                            scrollToBottom()
+                            speakTeacherMessage(cleanResponse)
                         } else {
                             setState(SessionState.IDLE)
                             showBubble("I couldn't reach the server. Check your internet connection and tap the mic to try again.", false)
@@ -293,15 +292,26 @@ Remember: You are speaking aloud, not writing. Keep it conversational and human.
         ttsManager.speak(text, object : TTSCallback {
             override fun onStart() {}
             override fun onComplete() {
-                runOnUiThread {
-                    setState(SessionState.IDLE)
-                    if (autoListenSwitch.isChecked) {
-                        startListeningIfAllowed()
+                // Small delay to let audio session release before mic starts
+                mainHandler.postDelayed({
+                    if (!isDestroyed && !isFinishing) {
+                        setState(SessionState.IDLE)
+                        if (autoListenSwitch.isChecked) {
+                            startListeningIfAllowed()
+                        }
                     }
-                }
+                }, 600)
             }
             override fun onError(error: String) {
-                runOnUiThread { setState(SessionState.IDLE) }
+                // TTS failed — still start auto-listen so conversation can continue
+                mainHandler.postDelayed({
+                    if (!isDestroyed && !isFinishing) {
+                        setState(SessionState.IDLE)
+                        if (autoListenSwitch.isChecked) {
+                            startListeningIfAllowed()
+                        }
+                    }
+                }, 400)
             }
         })
     }
@@ -350,6 +360,7 @@ Remember: You are speaking aloud, not writing. Keep it conversational and human.
     override fun onResults(text: String) {
         runOnUiThread {
             stopMicPulse()
+            messageInput.setText("")
             setState(SessionState.IDLE)
             if (text.isNotBlank()) {
                 handleStudentInput(text)
@@ -363,11 +374,23 @@ Remember: You are speaking aloud, not writing. Keep it conversational and human.
         }
     }
 
+    /**
+     * On many devices, SpeechRecognizer fires onError(ERROR_NO_MATCH / ERROR_SPEECH_TIMEOUT)
+     * instead of onResults even when speech was partly recognised. If the input box
+     * already has text from onPartialResults, we submit it instead of discarding it.
+     */
     override fun onError(error: String) {
         runOnUiThread {
             stopMicPulse()
-            setState(SessionState.IDLE)
+            val partial = messageInput.text?.toString()?.trim() ?: ""
             messageInput.setText("")
+            setState(SessionState.IDLE)
+            if (partial.isNotBlank()) {
+                // Submit whatever partial text the recognizer captured
+                handleStudentInput(partial)
+            } else {
+                Toast.makeText(this, "Couldn't hear you — please try again", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

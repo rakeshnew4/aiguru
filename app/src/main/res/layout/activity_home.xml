@@ -10,6 +10,7 @@
 
     <!-- Gradient Header -->
     <LinearLayout
+        android:id="@+id/homeHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="#1565C0"
@@ -17,7 +18,7 @@
         android:paddingStart="20dp"
         android:paddingEnd="20dp"
         android:paddingTop="20dp"
-        android:paddingBottom="24dp">
+        android:paddingBottom="20dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -48,25 +49,62 @@
                     android:textSize="22sp"
                     android:textStyle="bold" />
 
+                <TextView
+                    android:id="@+id/schoolNameSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textColor="#90CAF9"
+                    android:textSize="12sp"
+                    android:layout_marginTop="2dp" />
+
             </LinearLayout>
 
+            <!-- Profile button (tappable avatar) -->
             <TextView
+                android:id="@+id/profileButton"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:gravity="center"
-                android:text="🎓"
-                android:textSize="26sp"
-                android:background="@drawable/bg_avatar_circle" />
+                android:text="👤"
+                android:textSize="22sp"
+                android:background="@drawable/bg_avatar_circle"
+                android:clickable="true"
+                android:focusable="true" />
 
         </LinearLayout>
 
-        <TextView
-            android:layout_width="wrap_content"
+        <!-- Plan badge row -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Ready to learn something new today?"
-            android:textColor="#90A4AE"
-            android:textSize="13sp"
-            android:layout_marginTop="4dp" />
+            android:orientation="horizontal"
+            android:layout_marginTop="10dp"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/planBadgeText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:background="@drawable/bg_badge_rounded"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
+                android:visibility="gone" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:text="Ready to learn something new today?"
+                android:textColor="#90A4AE"
+                android:textSize="12sp" />
+        </LinearLayout>
 
     </LinearLayout>
 
