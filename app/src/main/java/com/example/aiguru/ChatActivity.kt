@@ -100,6 +100,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     // Interrupt / barge-in state
     private var currentTTSText = ""
     private var isInterrupted = false
+    private var ttsResumeOffset = 0         // char position saved when TTS is paused
+    private var isWaitingForInterruptResult = false  // TTS paused, main recognizer capturing
     // Language for voice recognition, TTS, and LLM responses
     private var currentLang = "en-US"
     private var currentLangName = "English"
@@ -481,6 +483,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                             val voiceText = TutorController.trimForVoice(reply.response)
                             if (isVoiceModeActive) {
                                 currentTTSText = voiceText
+                                ttsResumeOffset = 0
+                                isWaitingForInterruptResult = false
                                 setVoiceModeStatus("🔊 AI is speaking…", "#1565C0")
                             }
                             ttsManager.setLocale(Locale.forLanguageTag(currentLang))
@@ -606,31 +610,90 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     override fun onResults(text: String) {
         runOnUiThread {
             isListening = false
-            if (!isVoiceModeActive) resetVoiceButton()
-            if (text.isNotEmpty()) {
-                lastInputWasVoice = true
-                isInterrupted = false   // clear — good result received
-                messageInput.setText("")
-                if (isVoiceModeActive) setVoiceModeStatus("🤖 AI is thinking…", "#E65100")
-                sendMessage(text)
+            if (!isVoiceModeActive) {
+                resetVoiceButton()
+                if (text.isNotEmpty()) {
+                    lastInputWasVoice = true
+                    messageInput.setText("")
+                    sendMessage(text)
+                }
+                return@runOnUiThread
+            }
+
+            if (isWaitingForInterruptResult) {
+                // TTS was paused for this capture — run full decision pipeline
+                isWaitingForInterruptResult = false
+                when {
+                    text.isEmpty() -> {
+                        // Nothing useful captured (silence) — resume TTS
+                        resumeTTS()
+                    }
+                    currentTTSText.lowercase().contains(text.lowercase().trim()) -> {
+                        // Echo (mic picked up TTS) — resume TTS
+                        resumeTTS()
+                    }
+                    voiceManager.getInterruptPeakRms() < dynamicRmsThreshold() -> {
+                        // RMS too low — probably background noise, not user speech
+                        setVoiceModeStatus("🔊 AI is speaking… (noise ignored)", "#1565C0")
+                        resumeTTS()
+                    }
+                    !isStudyRelatedSpeech(text) -> {
+                        // Ambient/off-topic speech — resume TTS
+                        setVoiceModeStatus("🔊 Resumed (off-topic)", "#1565C0")
+                        resumeTTS()
+                    }
+                    else -> {
+                        // ✅ Real, on-topic interrupt — barge-in and respond
+                        isInterrupted = true
+                        lastInputWasVoice = true
+                        messageInput.setText("")
+                        setVoiceModeStatus("🤖 AI is thinking…", "#E65100")
+                        sendMessage(text)
+                    }
+                }
             } else {
-                if (isVoiceModeActive) startVoiceLoopListening()
-                else messageInput.setText(text)
+                // Normal voice loop result
+                if (text.isNotEmpty()) {
+                    lastInputWasVoice = true
+                    isInterrupted = false
+                    messageInput.setText("")
+                    setVoiceModeStatus("🤖 AI is thinking…", "#E65100")
+                    sendMessage(text)
+                } else {
+                    startVoiceLoopListening()
+                }
             }
         }
     }
 
     override fun onPartialResults(text: String) {
         runOnUiThread {
-            messageInput.setText(text)
-            messageInput.setSelection(text.length)
+            if (!isVoiceModeActive) {
+                messageInput.setText(text)
+                messageInput.setSelection(text.length)
+            }
+        }
+    }
+
+    override fun onSoundLevel(rms: Float) {
+        // Animate the voice-chat button as a live level indicator during voice mode
+        if (!isVoiceModeActive) return
+        runOnUiThread {
+            // Map rms (roughly -2 to 10 dB) to a scale of 1.0 – 1.25
+            val scale = (1.0f + (rms.coerceIn(0f, 8f) / 8f) * 0.25f)
+            voiceChatButton.scaleX = scale
+            voiceChatButton.scaleY = scale
         }
     }
 
     override fun onError(error: String) {
         runOnUiThread {
-            if (isVoiceModeActive) {
-                // Automatically retry — errors like no-match or timeout are common
+            if (isWaitingForInterruptResult) {
+                // We paused TTS but recognizer failed to capture speech — resume
+                isWaitingForInterruptResult = false
+                resumeTTS()
+            } else if (isVoiceModeActive) {
+                // Normal voice loop error (no-match, timeout) — quietly retry
                 startVoiceLoopListening()
             } else {
                 resetVoiceButton()
@@ -750,6 +813,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         if (isListening) { voiceManager.stopListening(); isListening = false }
         voiceButton.isEnabled = true
         voiceChatBar.visibility = View.GONE
+        voiceChatButton.scaleX = 1f
+        voiceChatButton.scaleY = 1f
         voiceChatButton.text = "🎙️"
         voiceChatButton.backgroundTintList = ColorStateList.valueOf(android.graphics.Color.parseColor("#E8F5E9"))
         Toast.makeText(this, "Voice mode OFF", Toast.LENGTH_SHORT).show()
@@ -768,51 +833,130 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     }
 
     /**
-     * Called by the interrupt recognizer while TTS is speaking.
-     * Uses partial results + echo filter to detect real user barge-in.
+     * Called by the background interrupt recognizer while TTS is speaking.
+     *
+     * Decision pipeline:
+     *  1. Length / echo filter  → is this real speech, not audio feedback?
+     *  2. RMS check             → was the sound loud enough to be intentional?
+     *  3. Topic / intent check  → is it related to the lesson or a command?
+     *
+     * If all pass → pause TTS, start main recognizer to get full utterance.
+     * If any fail → TTS continues uninterrupted.
      */
     private val interruptCallback = object : VoiceRecognitionCallback {
         override fun onPartialResults(text: String) {
-            if (!isVoiceModeActive || !ttsManager.isSpeaking() || text.length < 3) return
-            // Echo filter: Skip if partial text matches the beginning of what TTS is saying
-            val normalizedTTS = currentTTSText.lowercase()
-            val normalizedText = text.lowercase().trim()
-            if (normalizedTTS.contains(normalizedText)) return
-            // Real user speech — barge-in!
-            triggerBargein()
-        }
+            // Guard: only act while TTS is playing and we're not already handling one
+            if (!isVoiceModeActive || !ttsManager.isSpeaking() || isWaitingForInterruptResult) return
+            if (text.length < 3) return  // too short — noise burst
 
-        override fun onBeginningOfSpeech() {
-            // Secondary signal: if TTS is playing and user starts speaking, stop TTS
-            // (gives instant responsiveness; onPartialResults will confirm with real text)
-        }
+            // ── 1. Echo filter ────────────────────────────────────────────────
+            // If what we heard matches what TTS is saying, it's mic picking up speaker
+            if (currentTTSText.lowercase().contains(text.lowercase().trim())) return
 
-        override fun onResults(text: String) {
-            // Interrupt recognizer captured a full utterance (user spoke while TTS was playing)
-            // This can also handle the case where partial didn't trigger (short utterance).
-            if (!isVoiceModeActive || text.length < 2) return
-            val normalizedTTS = currentTTSText.lowercase()
-            if (!normalizedTTS.contains(text.lowercase().trim())) {
-                triggerBargein()
+            // ── 2. RMS gate ───────────────────────────────────────────────────
+            // Compare peak RMS against the calibrated noise floor for this session.
+            // If the ambient noise floor isn't known yet fall back to a safe fixed threshold.
+            val dynamicThreshold = if (voiceManager.getInterruptNoiseFloor() > 0f)
+                voiceManager.getInterruptNoiseFloor() + 1.5f   // must be 1.5 dB above ambient
+            else 1.0f
+            if (voiceManager.getInterruptPeakRms() < dynamicThreshold && text.split(" ").size < 2) return
+
+            // Real speech detected — pause TTS and capture full utterance
+            isWaitingForInterruptResult = true
+            ttsResumeOffset = ttsManager.currentSpeakingChar
+            runOnUiThread {
+                ttsManager.stop()                          // pauses; onStop() is suppressed → no spurious onError
+                voiceManager.stopInterruptListening()
+                isListening = true
+                setVoiceModeStatus("⏸️ Heard you — capturing…", "#7E57C2")
+                voiceManager.startListening(this@ChatActivity, currentLang)
             }
         }
 
-        override fun onError(error: String) { /* ignore — interrupt recognizer errors are expected */ }
+        // Full results are handled by ChatActivity.onResults() via the main recognizer
+        override fun onResults(text: String) {}
+        override fun onError(error: String) {
+            // Interrupt recognizer errors (no-match, timeout) are normal — ignore silently
+        }
         override fun onListeningStarted() {}
         override fun onListeningFinished() {}
     }
 
-    private fun triggerBargein() {
-        if (isInterrupted) return // already triggered
-        isInterrupted = true
-        ttsManager.stop()
-        voiceManager.stopInterruptListening()
-        runOnUiThread {
-            setVoiceModeStatus("\ud83c\udf99\ufe0f Listening (interrupted)\u2026", "#6A1B9A")
-        }
-        // Now start the main recognizer to capture the full user utterance
-        isListening = true
-        voiceManager.startListening(this, currentLang)
+    /**
+     * Resume TTS from the sentence boundary nearest to where it was paused.
+     * Re-arms the interrupt listener after warmup so barge-in remains possible.
+     */
+    private fun resumeTTS() {
+        isWaitingForInterruptResult = false
+        isInterrupted = false
+        if (!isVoiceModeActive || currentTTSText.isEmpty()) return
+        runOnUiThread { setVoiceModeStatus("🔊 AI is speaking…", "#1565C0") }
+        ttsManager.setLocale(Locale.forLanguageTag(currentLang))
+        ttsManager.speakFrom(currentTTSText, ttsResumeOffset, object : TTSCallback {
+            override fun onStart() {
+                if (isVoiceModeActive) {
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        if (isVoiceModeActive && ttsManager.isSpeaking()) {
+                            voiceManager.startInterruptListening(interruptCallback, currentLang)
+                        }
+                    }, 700)
+                }
+            }
+            override fun onComplete() {
+                runOnUiThread {
+                    voiceManager.stopInterruptListening()
+                    if (isVoiceModeActive) startVoiceLoopListening()
+                }
+            }
+            override fun onError(error: String) {
+                runOnUiThread {
+                    voiceManager.stopInterruptListening()
+                    if (isVoiceModeActive) startVoiceLoopListening()
+                }
+            }
+        })
+    }
+
+    /** Dynamic noise threshold: calibrated floor + 1.5 dB margin, or 1.0 dB if not yet calibrated. */
+    private fun dynamicRmsThreshold(): Float {
+        val floor = voiceManager.getInterruptNoiseFloor()
+        return if (floor > 0f) floor + 1.5f else 1.0f
+    }
+
+    /**
+     * Fast local heuristic: is this speech worth interrupting the AI for?
+     *
+     * Returns true if the text:
+     *  - Contains a question word / study command (always interrupt)
+     *  - Contains a word from the current subject or chapter name
+     *  - Is very short (≤4 words) — likely a direct command like "wait" or "stop"
+     *
+     * Returns false for long ambient off-topic speech (e.g. someone talking nearby).
+     */
+    private fun isStudyRelatedSpeech(text: String): Boolean {
+        val lower = text.lowercase().trim()
+        if (lower.length < 3) return false
+
+        // Short utterance (≤ 4 words) → almost certainly an intentional command
+        if (lower.split(Regex("\\s+")).size <= 4) return true
+
+        // Question / study command words
+        val studyKeywords = listOf(
+            "what", "how", "why", "when", "where", "who", "which",
+            "explain", "tell me", "can you", "could you",
+            "define", "describe", "give me", "show me",
+            "i don't understand", "i didn't get", "unclear",
+            "repeat", "again", "say that", "slower", "faster",
+            "wait", "stop", "pause", "next", "continue", "skip", "example"
+        )
+        if (studyKeywords.any { lower.contains(it) }) return true
+
+        // Subject / chapter keyword overlap
+        val topicTokens = "$subjectName $chapterName".lowercase()
+            .split(Regex("[\\s\\-_/]+")).filter { it.length > 3 }
+        if (topicTokens.any { lower.contains(it) }) return true
+
+        return false
     }
 
     private fun updateModeChipStates() {
