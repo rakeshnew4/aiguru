@@ -54,9 +54,9 @@ class HomeActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.progressButton).setOnClickListener {
             startActivity(Intent(this, ProgressDashboardActivity::class.java))
         }
-        findViewById<MaterialButton>(R.id.realTeacherButton).setOnClickListener {
-            startActivity(Intent(this, RealTeacherActivity::class.java))
-        }
+//        findViewById<MaterialButton>(R.id.realTeacherButton).setOnClickListener {
+//            startActivity(Intent(this, RealTeacherActivity::class.java))
+//        }
         // Profile / logout button
         findViewById<TextView?>(R.id.profileButton)?.setOnClickListener {
             showProfileDialog()

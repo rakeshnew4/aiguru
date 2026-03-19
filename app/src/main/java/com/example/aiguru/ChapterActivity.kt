@@ -78,13 +78,13 @@ class ChapterActivity : AppCompatActivity() {
         }
 
         // Real Teacher button
-        findViewById<MaterialButton>(R.id.realTeacherChapterButton).setOnClickListener {
-            startActivity(
-                Intent(this, RealTeacherActivity::class.java)
-                    .putExtra("subjectName", subjectName)
-                    .putExtra("chapterName", chapterName)
-            )
-        }
+//        findViewById<MaterialButton>(R.id.realTeacherChapterButton).setOnClickListener {
+//            startActivity(
+//                Intent(this, RealTeacherActivity::class.java)
+//                    .putExtra("subjectName", subjectName)
+//                    .putExtra("chapterName", chapterName)
+//            )
+//        }
 
         // Set up RecyclerView with PageListAdapter
         pagesRecyclerView = findViewById(R.id.pagesList)
@@ -282,7 +282,10 @@ class ChapterActivity : AppCompatActivity() {
             return
         }
 
-        findViewById<MaterialButton>(R.id.uploadImageButton).visibility = View.GONE
+        findViewById<MaterialButton>(R.id.uploadImageButton).apply {
+            visibility = View.VISIBLE
+            setOnClickListener { showImageSourceDialog() }
+        }
         findViewById<MaterialButton>(R.id.askAIButton).apply {
             text = "💬 Ask AI about this Chapter"
             setOnClickListener {

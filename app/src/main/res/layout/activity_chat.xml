@@ -6,6 +6,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@color/chat_bg"
+    android:fitsSystemWindows="true"
     tools:context=".ChatActivity">
 
     <!-- Modern Gradient Toolbar -->
@@ -37,18 +38,6 @@
             android:paddingEnd="10dp"
             android:gravity="center_vertical">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/summarizeButton"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:text="📄 Summarize"
-                android:textSize="12sp"
-                android:textColor="#1565C0"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
-                app:backgroundTint="#E3F2FD"
-                app:cornerRadius="18dp"
-                android:layout_marginEnd="6dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/explainButton"
@@ -384,6 +373,45 @@
                 android:layout_marginBottom="4dp"
                 android:visibility="gone">
 
+                <!-- Animated equaliser-style wave bars -->
+                <LinearLayout
+                    android:id="@+id/waveBarContainer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="26dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginEnd="8dp"
+                    android:clipChildren="false">
+
+                    <View
+                        android:id="@+id/waveBar1"
+                        android:layout_width="4dp"
+                        android:layout_height="8dp"
+                        android:background="#2E7D32"
+                        android:layout_marginEnd="3dp" />
+
+                    <View
+                        android:id="@+id/waveBar2"
+                        android:layout_width="4dp"
+                        android:layout_height="16dp"
+                        android:background="#43A047"
+                        android:layout_marginEnd="3dp" />
+
+                    <View
+                        android:id="@+id/waveBar3"
+                        android:layout_width="4dp"
+                        android:layout_height="12dp"
+                        android:background="#2E7D32"
+                        android:layout_marginEnd="3dp" />
+
+                    <View
+                        android:id="@+id/waveBar4"
+                        android:layout_width="4dp"
+                        android:layout_height="6dp"
+                        android:background="#43A047" />
+
+                </LinearLayout>
+
                 <TextView
                     android:id="@+id/voiceChatStatus"
                     android:layout_width="0dp"
@@ -455,18 +483,7 @@
                         app:cornerRadius="16dp"
                         android:layout_marginEnd="6dp" />
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/bottomSummarizeButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="32dp"
-                        android:text="📄 Summarize"
-                        android:textSize="11sp"
-                        android:textColor="#1565C0"
-                        android:paddingStart="12dp"
-                        android:paddingEnd="12dp"
-                        app:backgroundTint="#E3F2FD"
-                        app:cornerRadius="16dp"
-                        android:layout_marginEnd="6dp" />
+                    
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/bottomQuizButton"
@@ -481,18 +498,7 @@
                         app:cornerRadius="16dp"
                         android:layout_marginEnd="6dp" />
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/bottomFormulaButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="32dp"
-                        android:text="⚗️ Formulas"
-                        android:textSize="11sp"
-                        android:textColor="#E65100"
-                        android:paddingStart="12dp"
-                        android:paddingEnd="12dp"
-                        app:backgroundTint="#FFF3E0"
-                        app:cornerRadius="16dp"
-                        android:layout_marginEnd="6dp" />
+                   
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/bottomPracticeButton"

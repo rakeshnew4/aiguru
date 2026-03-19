@@ -8,11 +8,15 @@ import android.content.res.ColorStateList
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore
 import android.util.Base64
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.animation.Animation
+import android.view.animation.ScaleAnimation
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -97,6 +101,12 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private lateinit var voiceChatButton: MaterialButton
     private lateinit var voiceChatBar: LinearLayout
     private lateinit var voiceChatStatus: TextView
+    // Equaliser wave bars inside voiceChatBar
+    private lateinit var waveBarContainer: LinearLayout
+    private lateinit var waveBar1: View
+    private lateinit var waveBar2: View
+    private lateinit var waveBar3: View
+    private lateinit var waveBar4: View
     // Interrupt / barge-in state
     private var currentTTSText = ""
     private var isInterrupted = false
@@ -238,7 +248,11 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         bottomDescribeButton = findViewById(R.id.bottomDescribeButton)
         voiceChatBar = findViewById(R.id.voiceChatBar)
         voiceChatStatus = findViewById(R.id.voiceChatStatus)
-
+        waveBarContainer = findViewById(R.id.waveBarContainer)
+        waveBar1 = findViewById(R.id.waveBar1)
+        waveBar2 = findViewById(R.id.waveBar2)
+        waveBar3 = findViewById(R.id.waveBar3)
+        waveBar4 = findViewById(R.id.waveBar4)
         setupButtons()
         setupQuickActions()
         setupModeChips()
@@ -296,19 +310,10 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             sendMessage(PromptRepository.getQuickAction(if (hasMedia) "explain_image" else "explain", subjectName, chapterName))
             if (hasMedia) messageInput.setText("")
         }
-        findViewById<MaterialButton>(R.id.bottomSummarizeButton).setOnClickListener {
-            metricsTracker.recordEvent(ChapterMetricsTracker.EventType.SUMMARIZE_USED)
-            val hasMedia = selectedImageUri != null || pdfPageBase64 != null
-            sendMessage(PromptRepository.getQuickAction(if (hasMedia) "summarize_image" else "summarize", subjectName, chapterName))
-            if (hasMedia) messageInput.setText("")
-        }
+
         findViewById<MaterialButton>(R.id.bottomQuizButton).setOnClickListener {
             metricsTracker.recordEvent(ChapterMetricsTracker.EventType.QUIZ_REQUESTED)
             sendMessage(PromptRepository.getQuickAction("quiz", subjectName, chapterName))
-        }
-        findViewById<MaterialButton>(R.id.bottomFormulaButton).setOnClickListener {
-            metricsTracker.recordEvent(ChapterMetricsTracker.EventType.FORMULA_USED)
-            sendMessage(PromptRepository.getQuickAction("formula", subjectName, chapterName))
         }
         findViewById<MaterialButton>(R.id.bottomPracticeButton).setOnClickListener {
             metricsTracker.recordEvent(ChapterMetricsTracker.EventType.PRACTICE_USED)
@@ -318,7 +323,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
     private fun setupQuickActions() {
         mapOf(
-            R.id.summarizeButton to "summarize",
+            
             R.id.explainButton   to "explain",
             R.id.quizButton      to "quiz",
             R.id.notesButton     to "notes"
@@ -748,6 +753,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         ttsManager.stop()
         voiceManager.stopInterruptListening()
         if (isListening) { voiceManager.stopListening(); isListening = false }
+        stopWaveAnimation()
+        stopMicPulse()
         voiceButton.isEnabled = true
         voiceChatBar.visibility = View.GONE
         voiceChatButton.text = "🎙️"
@@ -760,11 +767,18 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         isListening = true
         setVoiceModeStatus("🎙️ Listening… speak now", "#2E7D32")
         voiceManager.startListening(this, currentLang)
+        startMicPulse()
     }
 
     private fun setVoiceModeStatus(text: String, colorHex: String) {
         voiceChatStatus.text = text
         voiceChatStatus.setTextColor(android.graphics.Color.parseColor(colorHex))
+        // Drive wave bar animation from status transitions
+        when (colorHex) {
+            "#2E7D32", "#6A1B9A" -> startWaveAnimation(colorHex)  // listening / barge-in
+            "#1565C0"             -> { startWaveAnimation("#1565C0"); stopMicPulse() }  // AI speaking
+            else                  -> { stopWaveAnimation(); stopMicPulse() }            // processing / idle
+        }
     }
 
     /**
@@ -803,16 +817,70 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     }
 
     private fun triggerBargein() {
-        if (isInterrupted) return // already triggered
+        if (isInterrupted) return
         isInterrupted = true
         ttsManager.stop()
         voiceManager.stopInterruptListening()
         runOnUiThread {
-            setVoiceModeStatus("\ud83c\udf99\ufe0f Listening (interrupted)\u2026", "#6A1B9A")
+            setVoiceModeStatus("🎙️ Listening (interrupted)…", "#6A1B9A")
         }
-        // Now start the main recognizer to capture the full user utterance
         isListening = true
         voiceManager.startListening(this, currentLang)
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
+    //  Animation helpers
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    /** Start equaliser wave bar animation. Green = listening, blue = AI speaking, purple = barge-in. */
+    private fun startWaveAnimation(colorHex: String) {
+        waveBarContainer.visibility = View.VISIBLE
+        val tint = ColorStateList.valueOf(android.graphics.Color.parseColor(colorHex))
+        listOf(waveBar1, waveBar2, waveBar3, waveBar4).forEach { it.backgroundTintList = tint }
+        val durations = longArrayOf(420L, 600L, 360L, 510L)
+        val delays    = longArrayOf(  0L, 130L, 260L,  80L)
+        listOf(waveBar1, waveBar2, waveBar3, waveBar4).forEachIndexed { i, bar ->
+            bar.clearAnimation()
+            bar.startAnimation(ScaleAnimation(
+                1f, 1f, 0.15f, 1f,
+                Animation.RELATIVE_TO_SELF, 0.5f,
+                Animation.RELATIVE_TO_SELF, 1.0f   // scale from bottom
+            ).apply {
+                duration    = durations[i]
+                startOffset = delays[i]
+                repeatMode  = Animation.REVERSE
+                repeatCount = Animation.INFINITE
+                fillAfter   = true
+            })
+        }
+    }
+
+    /** Stop wave bars and hide the container. */
+    private fun stopWaveAnimation() {
+        listOf(waveBar1, waveBar2, waveBar3, waveBar4).forEach { it.clearAnimation() }
+        waveBarContainer.visibility = View.GONE
+    }
+
+    /** Gentle scale pulse on the mic button while single-turn or loop listening is active. */
+    private fun startMicPulse() {
+        voiceButton.clearAnimation()
+        voiceButton.startAnimation(ScaleAnimation(
+            1f, 1.15f, 1f, 1.15f,
+            Animation.RELATIVE_TO_SELF, 0.5f,
+            Animation.RELATIVE_TO_SELF, 0.5f
+        ).apply {
+            duration    = 600L
+            repeatMode  = Animation.REVERSE
+            repeatCount = Animation.INFINITE
+            fillAfter   = true
+        })
+    }
+
+    /** Stop mic pulse and restore original size. */
+    private fun stopMicPulse() {
+        voiceButton.clearAnimation()
+        voiceButton.scaleX = 1f
+        voiceButton.scaleY = 1f
     }
 
     private fun updateModeChipStates() {

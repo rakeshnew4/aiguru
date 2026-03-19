@@ -143,9 +143,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback, TTSCallback 
     }
 
     private fun setupQuickActionButtons() {
-        findViewById<MaterialButton>(R.id.summarizeButton).setOnClickListener {
-            sendMessage("Please summarize this chapter in 5-7 key points")
-        }
+
         findViewById<MaterialButton>(R.id.explainButton).setOnClickListener {
             sendMessage("Please explain the main concepts in this chapter in simple terms")
         }
