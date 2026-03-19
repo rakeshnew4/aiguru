@@ -35,10 +35,9 @@ class LoginActivity : AppCompatActivity() {
 
         auth = FirebaseAuth.getInstance()
 
-        // If already logged in go to Home
+        // Already signed in via Firebase → skip login
         if (auth.currentUser != null) {
-            startActivity(Intent(this, HomeActivity::class.java))
-            finish()
+            navigateAfterLogin()
             return
         }
 
@@ -63,11 +62,21 @@ class LoginActivity : AppCompatActivity() {
         auth.signInWithCredential(credential)
             .addOnCompleteListener(this) { task ->
                 if (task.isSuccessful) {
-                    startActivity(Intent(this, HomeActivity::class.java))
-                    finish()
+                    navigateAfterLogin()
                 } else {
                     Toast.makeText(this, "Authentication failed", Toast.LENGTH_SHORT).show()
                 }
             }
+    }
+
+    /** After Firebase login, go to school selection if no session exists, else go to Home. */
+    private fun navigateAfterLogin() {
+        val destination = if (com.example.aiguru.utils.SessionManager.isLoggedIn(this)) {
+            Intent(this, HomeActivity::class.java)
+        } else {
+            Intent(this, SchoolLoginActivity::class.java)
+        }
+        startActivity(destination)
+        finish()
     }
 }

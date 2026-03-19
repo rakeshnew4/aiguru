@@ -15,6 +15,7 @@ import com.example.aiguru.adapters.SubjectAdapter
 import com.example.aiguru.utils.ConfigManager
 import com.example.aiguru.utils.SessionManager
 import com.google.android.material.button.MaterialButton
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.util.Calendar
 
@@ -28,9 +29,11 @@ class HomeActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Redirect to login if no session
-        if (!SessionManager.isLoggedIn(this)) {
-            startActivity(Intent(this, SchoolLoginActivity::class.java))
+        // Redirect to login if Firebase user is not authenticated or no school session
+        if (FirebaseAuth.getInstance().currentUser == null || !SessionManager.isLoggedIn(this)) {
+            startActivity(Intent(this, WelcomeActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            })
             finish()
             return
         }
@@ -92,8 +95,13 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
+    /** Returns the user's display name: Firebase display name if set, else SessionManager fallback. */
+    private fun getDisplayName(): String =
+        FirebaseAuth.getInstance().currentUser?.displayName?.takeIf { it.isNotBlank() }
+            ?: SessionManager.getStudentName(this)
+
     private fun setupStudentInfo() {
-        val studentName = SessionManager.getStudentName(this)
+        val studentName = getDisplayName()
         val schoolName = SessionManager.getSchoolName(this)
         val planName = SessionManager.getPlanName(this)
 
@@ -121,18 +129,22 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun showProfileDialog() {
-        val studentName = SessionManager.getStudentName(this)
+        val displayName = getDisplayName()
+        val email = FirebaseAuth.getInstance().currentUser?.email ?: ""
         val studentId = SessionManager.getStudentId(this)
         val schoolName = SessionManager.getSchoolName(this)
         val planName = SessionManager.getPlanName(this).ifBlank { "No plan selected" }
 
+        val message = buildString {
+            if (email.isNotBlank()) appendLine("Email: $email")
+            appendLine("School: $schoolName")
+            appendLine("Student ID: $studentId")
+            append("Plan: $planName")
+        }
+
         AlertDialog.Builder(this)
-            .setTitle("👤 $studentName")
-            .setMessage(
-                "School: $schoolName\n" +
-                "Student ID: $studentId\n" +
-                "Plan: $planName"
-            )
+            .setTitle("👤 $displayName")
+            .setMessage(message)
             .setPositiveButton("Change Plan") { _, _ ->
                 startActivity(
                     Intent(this, SubscriptionActivity::class.java)
@@ -149,8 +161,9 @@ class HomeActivity : AppCompatActivity() {
             .setTitle("Logout")
             .setMessage("Are you sure you want to logout?")
             .setPositiveButton("Logout") { _, _ ->
+                FirebaseAuth.getInstance().signOut()
                 SessionManager.logout(this)
-                startActivity(Intent(this, SchoolLoginActivity::class.java).apply {
+                startActivity(Intent(this, WelcomeActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 })
                 finish()
