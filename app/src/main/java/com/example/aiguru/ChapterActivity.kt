@@ -275,8 +275,15 @@ class ChapterActivity : AppCompatActivity() {
     // ─── PDF chapter ──────────────────────────────────────────────────────────
 
     private fun setupPdfChapter() {
-        findViewById<Button>(R.id.uploadImageButton).visibility = View.GONE
-        findViewById<Button>(R.id.askAIButton).apply {
+        if (pdfAssetPath.isBlank() || pdfId.isBlank()) {
+            pagesListData.clear()
+            pagesListData.add("⚠️ PDF data missing. Re-add this chapter from the Library.")
+            pageListAdapter.notifyDataSetChanged()
+            return
+        }
+
+        findViewById<MaterialButton>(R.id.uploadImageButton).visibility = View.GONE
+        findViewById<MaterialButton>(R.id.askAIButton).apply {
             text = "💬 Ask AI about this Chapter"
             setOnClickListener {
                 startActivity(
@@ -368,8 +375,8 @@ class ChapterActivity : AppCompatActivity() {
     // ─── Image chapter (plain photo uploads) ──────────────────────────────────
 
     private fun setupImageChapter() {
-        findViewById<Button>(R.id.uploadImageButton).setOnClickListener { showImageSourceDialog() }
-        findViewById<Button>(R.id.askAIButton).setOnClickListener {
+        findViewById<MaterialButton>(R.id.uploadImageButton).setOnClickListener { showImageSourceDialog() }
+        findViewById<MaterialButton>(R.id.askAIButton).setOnClickListener {
             startActivity(
                 Intent(this, ChatActivity::class.java)
                     .putExtra("subjectName", subjectName)
