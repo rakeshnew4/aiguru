@@ -172,6 +172,10 @@ class HomeActivity : AppCompatActivity() {
         subjectsRecyclerView.adapter = subjectAdapter
     }
 
+    private val defaultSubjects = listOf(
+        "Mathematics", "Science", "Computer", "English", "History", "Geography"
+    )
+
     private fun loadSubjects() {
         val userId = SessionManager.getFirestoreUserId(this)
         db.collection("users").document(userId)
@@ -182,9 +186,26 @@ class HomeActivity : AppCompatActivity() {
                 for (doc in documents) {
                     subjectsList.add(doc.getString("name") ?: "")
                 }
-                subjectAdapter.notifyDataSetChanged()
-                updateSubjectCount()
+                if (subjectsList.isEmpty()) {
+                    seedDefaultSubjects(userId)
+                } else {
+                    subjectAdapter.notifyDataSetChanged()
+                    updateSubjectCount()
+                }
             }
+    }
+
+    private fun seedDefaultSubjects(userId: String) {
+        val batch = db.batch()
+        val colRef = db.collection("users").document(userId).collection("subjects")
+        defaultSubjects.forEach { name ->
+            batch.set(colRef.document(name), hashMapOf("name" to name))
+        }
+        batch.commit().addOnSuccessListener {
+            subjectsList.addAll(defaultSubjects)
+            subjectAdapter.notifyDataSetChanged()
+            updateSubjectCount()
+        }
     }
 
     private fun updateSubjectCount() {

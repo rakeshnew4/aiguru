@@ -300,6 +300,104 @@
                 android:layout_marginBottom="4dp"
                 android:visibility="gone" />
 
+            <!-- Bottom quick-action chips (always visible above input) -->
+            <HorizontalScrollView
+                android:id="@+id/bottomQuickActionsScroll"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"
+                android:paddingBottom="4dp"
+                android:paddingTop="2dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="4dp">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/bottomExplainButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:text="💡 Explain"
+                        android:textSize="11sp"
+                        android:textColor="#6A1B9A"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        app:backgroundTint="#F3E5F5"
+                        app:cornerRadius="16dp"
+                        android:layout_marginEnd="6dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/bottomSummarizeButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:text="📄 Summarize"
+                        android:textSize="11sp"
+                        android:textColor="#1565C0"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        app:backgroundTint="#E3F2FD"
+                        app:cornerRadius="16dp"
+                        android:layout_marginEnd="6dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/bottomQuizButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:text="❓ Quiz Me"
+                        android:textSize="11sp"
+                        android:textColor="#00695C"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        app:backgroundTint="#E0F2F1"
+                        app:cornerRadius="16dp"
+                        android:layout_marginEnd="6dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/bottomFormulaButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:text="⚗️ Formulas"
+                        android:textSize="11sp"
+                        android:textColor="#E65100"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        app:backgroundTint="#FFF3E0"
+                        app:cornerRadius="16dp"
+                        android:layout_marginEnd="6dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/bottomPracticeButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:text="🏋️ Practice"
+                        android:textSize="11sp"
+                        android:textColor="#880E4F"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        app:backgroundTint="#FCE4EC"
+                        app:cornerRadius="16dp"
+                        android:layout_marginEnd="6dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/bottomDescribeButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:text="🔍 Describe Image"
+                        android:textSize="11sp"
+                        android:textColor="#1B5E20"
+                        android:paddingStart="12dp"
+                        android:paddingEnd="12dp"
+                        app:backgroundTint="#E8F5E9"
+                        app:cornerRadius="16dp"
+                        android:visibility="gone" />
+
+                </LinearLayout>
+            </HorizontalScrollView>
+
             <!-- Input row: mic + image + pdf + text + send -->
             <LinearLayout
                 android:layout_width="match_parent"

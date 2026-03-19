@@ -70,6 +70,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private lateinit var imagePreviewLabel: TextView
     private lateinit var removeImageButton: MaterialButton
     private lateinit var listeningIndicator: TextView
+    private lateinit var bottomDescribeButton: MaterialButton
 
     private val client = OkHttpClient()
     private val API_KEY = BuildConfig.GROQ_API_KEY
@@ -221,6 +222,7 @@ Math & Science formatting rules:
         imagePreviewLabel = findViewById(R.id.imagePreviewLabel)
         removeImageButton = findViewById(R.id.removeImageButton)
         listeningIndicator = findViewById(R.id.listeningIndicator)
+        bottomDescribeButton = findViewById(R.id.bottomDescribeButton)
 
         setupButtons()
         setupQuickActions()
@@ -274,6 +276,41 @@ Math & Science formatting rules:
             selectedImageUri = null
             pdfPageBase64 = null
             imagePreviewStrip.visibility = View.GONE
+            messageInput.setText("")
+            bottomDescribeButton.visibility = View.GONE
+        }
+
+        // Bottom quick-action chips
+        findViewById<MaterialButton>(R.id.bottomExplainButton).setOnClickListener {
+            val hasMedia = selectedImageUri != null || pdfPageBase64 != null
+            if (hasMedia) {
+                sendMessage("Explain what you see in this image in the context of $chapterName ($subjectName). Describe key concepts, labels, or information shown.")
+                messageInput.setText("")
+            } else {
+                sendMessage("Explain \"$chapterName\" in simple, easy-to-understand language. Use real-world examples and analogies.")
+            }
+        }
+        findViewById<MaterialButton>(R.id.bottomSummarizeButton).setOnClickListener {
+            val hasMedia = selectedImageUri != null || pdfPageBase64 != null
+            if (hasMedia) {
+                sendMessage("Summarize the key information visible in this image or page in structured bullet points.")
+                messageInput.setText("")
+            } else {
+                sendMessage("Summarize the key points of \"$chapterName\" in a structured format with clear headings and bullet points.")
+            }
+        }
+        findViewById<MaterialButton>(R.id.bottomQuizButton).setOnClickListener {
+            sendMessage("Create 5 quiz questions about \"$chapterName\". For each question show the answer after it.\nFormat:\nQ: [question]\nA: [answer]")
+        }
+        findViewById<MaterialButton>(R.id.bottomFormulaButton).setOnClickListener {
+            sendMessage("Generate a complete formula sheet for \"$chapterName\" ($subjectName). List every important formula with explanation and an example.")
+        }
+        findViewById<MaterialButton>(R.id.bottomPracticeButton).setOnClickListener {
+            sendMessage("Create 5 practice problems for \"$chapterName\" ($subjectName) at different difficulty levels (Easy/Medium/Hard). Show full step-by-step solutions.")
+        }
+        bottomDescribeButton.setOnClickListener {
+            sendMessage("Describe everything you see in this image in detail. Identify all objects, text, diagrams, or concepts visible and explain them in the context of $chapterName.")
+            messageInput.setText("")
         }
     }
 
@@ -335,6 +372,10 @@ Math & Science formatting rules:
         imagePreviewStrip.visibility = View.VISIBLE
         Glide.with(this).load(uri).centerCrop().into(imagePreviewThumbnail)
         imagePreviewLabel.text = mediaManager.getFileInfo(uri)
+        // Auto-populate input with "Explain" and show image-specific chip
+        messageInput.setText("Explain this")
+        messageInput.setSelection(messageInput.text.length)
+        bottomDescribeButton.visibility = View.VISIBLE
     }
 
     /**
@@ -352,6 +393,10 @@ Math & Science formatting rules:
         imagePreviewStrip.visibility = View.VISIBLE
         Glide.with(this).load(pageFile).centerCrop().into(imagePreviewThumbnail)
         imagePreviewLabel.text = "Page $pageNumber"
+        // Auto-populate input with "Explain" and show image-specific chip
+        messageInput.setText("Explain this page")
+        messageInput.setSelection(messageInput.text.length)
+        bottomDescribeButton.visibility = View.VISIBLE
     }
 
     private fun showImageSourceDialog() {
