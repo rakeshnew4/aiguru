@@ -3,6 +3,7 @@ package com.example.aiguru
 import com.example.aiguru.models.TutorIntent
 import com.example.aiguru.models.TutorMode
 import com.example.aiguru.models.TutorSession
+import com.example.aiguru.utils.PromptRepository
 import org.json.JSONObject
 
 /**
@@ -25,23 +26,16 @@ object TutorController {
     // ── 1. Prompt Builder ────────────────────────────────────────────────────
 
     fun buildSystemPrompt(session: TutorSession, pageContext: String? = null): String {
-        val modeGuide = when (session.mode) {
-            TutorMode.PRACTICE ->
-                "MODE=PRACTICE: Give step-by-step practice guidance. Never give the final answer directly — always let the student work it out."
-            TutorMode.EVALUATE ->
-                "MODE=EVALUATE: Ask the student to explain their reasoning. Follow up with targeted questions to verify real understanding."
-            TutorMode.EXPLAIN  ->
-                "MODE=EXPLAIN: Give a crystal-clear explanation using simple language and a real-life analogy or example."
-            TutorMode.AUTO     ->
-                "MODE=AUTO: Read the student's message carefully and decide the best response style on your own."
-        }
+        val modeGuide  = PromptRepository.getModeGuide(session.mode)
+        val rules      = PromptRepository.getTutorRules()
+            .mapIndexed { i, r -> "${i + 1}. $r" }.joinToString("\n")
+        val header     = PromptRepository.getSystemPromptHeader()
+        val footer     = PromptRepository.getSystemPromptFooter()
 
-        val contextBlock = pageContext
-            ?.let { "\nSTUDENT IS CURRENTLY VIEWING THIS PAGE:\n$it\n" } ?: ""
+        val contextBlock       = pageContext?.let { "\nSTUDENT IS CURRENTLY VIEWING THIS PAGE:\n$it\n" } ?: ""
+        val intelligenceBlock  = buildIntelligenceNote(session)
 
-        val intelligenceBlock = buildIntelligenceNote(session)
-
-        return """You are a friendly home tutor sitting beside a school student after class. Your job is to guide, not just answer.
+        return """$header
 
 SESSION CONTEXT:
 Subject: ${session.subject}
@@ -53,23 +47,9 @@ $contextBlock$intelligenceBlock
 $modeGuide
 
 TUTOR RULES (follow every rule, every time):
-1. Keep your reply SHORT — 3 to 4 sentences maximum (voice-friendly).
-2. Always help the student UNDERSTAND — never just state a fact without explanation.
-3. End with ONE small follow-up question to check understanding (when appropriate).
-4. If the student gave a wrong answer → guide them gently, never say "wrong" or "incorrect".
-5. If the student seems confused → use a simple real-life analogy or example.
-6. For homework → give hints and step-by-step guidance, never the full answer directly.
-7. Be warm and encouraging — use phrases like "Nice thinking!", "You're close!", "Great effort!".
-8. If the student repeats the same doubt → switch to a different explanation approach.
+$rules
 
-MATH & SCIENCE FORMATTING:
-- Superscripts as ^{expr}: x^{2}, E=mc^{2}
-- Subscripts as _{n}: H_{2}O, CO_{2}
-- Wrap standalone equations in ${'$'}${'$'}...${'$'}${'$'}
-- Always show units: m/s, kg, N, J
-
-STRICT OUTPUT — return ONLY valid JSON, no extra text before or after:
-{"intent":"EXPLAIN|SIMPLIFY|EVALUATE|HOMEWORK|CONFUSED|GENERAL","response":"your tutor reply here"}"""
+$footer"""
     }
 
     private fun buildIntelligenceNote(session: TutorSession): String {
