@@ -23,6 +23,7 @@ import com.example.aiguru.adapters.MessageAdapter
 import com.example.aiguru.models.Message
 import com.example.aiguru.utils.TTSCallback
 import com.example.aiguru.utils.TextToSpeechManager
+import com.example.aiguru.utils.ChapterMetricsTracker
 import com.example.aiguru.utils.VoiceManager
 import com.example.aiguru.utils.VoiceRecognitionCallback
 import com.google.android.material.appbar.MaterialToolbar
@@ -66,6 +67,7 @@ class RealTeacherActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private lateinit var messageAdapter: MessageAdapter
     private lateinit var voiceManager: VoiceManager
     private lateinit var ttsManager: TextToSpeechManager
+    private var metricsTracker: ChapterMetricsTracker? = null
 
     // ─── API ──────────────────────────────────────────────────────────────────
 
@@ -98,6 +100,13 @@ class RealTeacherActivity : AppCompatActivity(), VoiceRecognitionCallback {
         subjectName = intent.getStringExtra("subjectName") ?: "General"
         chapterName = intent.getStringExtra("chapterName") ?: "General Studies"
 
+        // Record Real Teacher usage if launched from a chapter context
+        if (intent.hasExtra("subjectName") && intent.hasExtra("chapterName")) {
+            metricsTracker = ChapterMetricsTracker(subjectName, chapterName).also {
+                it.recordEvent(ChapterMetricsTracker.EventType.REAL_TEACHER_USED)
+            }
+        }
+
         voiceManager = VoiceManager(this)
         ttsManager = TextToSpeechManager(this)
 
@@ -108,6 +117,11 @@ class RealTeacherActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
         // Let TTS finish initializing (it's async), then kick off the session
         messagesRecyclerView.postDelayed({ startSession() }, 1200)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        metricsTracker?.endSession(this)
     }
 
     override fun onDestroy() {

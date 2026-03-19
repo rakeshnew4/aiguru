@@ -32,7 +32,9 @@ import java.io.File
 import com.example.aiguru.adapters.MessageAdapter
 import com.example.aiguru.models.Flashcard
 import com.example.aiguru.models.Message
+import com.example.aiguru.utils.ChapterMetricsTracker
 import com.example.aiguru.utils.MediaManager
+import com.example.aiguru.utils.SessionManager
 import com.example.aiguru.utils.TextToSpeechManager
 import com.example.aiguru.utils.TTSCallback
 import com.example.aiguru.utils.VoiceManager
@@ -85,6 +87,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private lateinit var voiceManager: VoiceManager
     private lateinit var ttsManager: TextToSpeechManager
     private lateinit var mediaManager: MediaManager
+    private lateinit var metricsTracker: ChapterMetricsTracker
 
     private var selectedImageUri: Uri? = null
     private var cameraImageUri: Uri? = null
@@ -159,6 +162,7 @@ Math & Science formatting rules:
         voiceManager = VoiceManager(this)
         ttsManager = TextToSpeechManager(this)
         mediaManager = MediaManager(this)
+        metricsTracker = ChapterMetricsTracker(subjectName, chapterName)
 
         initializeUI()
         loadChatHistory()
@@ -255,7 +259,7 @@ Math & Science formatting rules:
         saveNotesButton.setOnClickListener { saveLastAIMessageAsNotes() }
         viewNotesButton.setOnClickListener { viewSavedNotes() }
 
-        formulaButton.setOnClickListener {
+        formulaButton.setOnClickListener {            metricsTracker.recordEvent(ChapterMetricsTracker.EventType.FORMULA_USED)
             sendMessage(
                 "Generate a complete formula sheet for \"$chapterName\" ($subjectName)." +
                 " List every important formula, equation, and rule used in this topic." +
@@ -265,6 +269,7 @@ Math & Science formatting rules:
         }
 
         practiceButton.setOnClickListener {
+            metricsTracker.recordEvent(ChapterMetricsTracker.EventType.PRACTICE_USED)
             sendMessage(
                 "Create 5 practice problems for \"$chapterName\" ($subjectName) at different difficulty levels." +
                 " Label them Easy / Medium / Hard." +
@@ -282,6 +287,7 @@ Math & Science formatting rules:
 
         // Bottom quick-action chips
         findViewById<MaterialButton>(R.id.bottomExplainButton).setOnClickListener {
+            metricsTracker.recordEvent(ChapterMetricsTracker.EventType.EXPLAIN_USED)
             val hasMedia = selectedImageUri != null || pdfPageBase64 != null
             if (hasMedia) {
                 sendMessage("Explain what you see in this image in the context of $chapterName ($subjectName). Describe key concepts, labels, or information shown.")
@@ -291,6 +297,7 @@ Math & Science formatting rules:
             }
         }
         findViewById<MaterialButton>(R.id.bottomSummarizeButton).setOnClickListener {
+            metricsTracker.recordEvent(ChapterMetricsTracker.EventType.SUMMARIZE_USED)
             val hasMedia = selectedImageUri != null || pdfPageBase64 != null
             if (hasMedia) {
                 sendMessage("Summarize the key information visible in this image or page in structured bullet points.")
@@ -300,15 +307,19 @@ Math & Science formatting rules:
             }
         }
         findViewById<MaterialButton>(R.id.bottomQuizButton).setOnClickListener {
+            metricsTracker.recordEvent(ChapterMetricsTracker.EventType.QUIZ_REQUESTED)
             sendMessage("Create 5 quiz questions about \"$chapterName\". For each question show the answer after it.\nFormat:\nQ: [question]\nA: [answer]")
         }
         findViewById<MaterialButton>(R.id.bottomFormulaButton).setOnClickListener {
+            metricsTracker.recordEvent(ChapterMetricsTracker.EventType.FORMULA_USED)
             sendMessage("Generate a complete formula sheet for \"$chapterName\" ($subjectName). List every important formula with explanation and an example.")
         }
         findViewById<MaterialButton>(R.id.bottomPracticeButton).setOnClickListener {
+            metricsTracker.recordEvent(ChapterMetricsTracker.EventType.PRACTICE_USED)
             sendMessage("Create 5 practice problems for \"$chapterName\" ($subjectName) at different difficulty levels (Easy/Medium/Hard). Show full step-by-step solutions.")
         }
         bottomDescribeButton.setOnClickListener {
+            metricsTracker.recordEvent(ChapterMetricsTracker.EventType.EXPLAIN_USED)
             sendMessage("Describe everything you see in this image in detail. Identify all objects, text, diagrams, or concepts visible and explain them in the context of $chapterName.")
             messageInput.setText("")
         }
@@ -354,6 +365,7 @@ Math & Science formatting rules:
 
     private fun startVoiceInput() {
         isListening = true
+        metricsTracker.recordEvent(ChapterMetricsTracker.EventType.VOICE_INPUT)
         voiceButton.text = "⏹️"
         voiceButton.backgroundTintList = ColorStateList.valueOf(android.graphics.Color.parseColor("#E53935"))
         listeningIndicator.visibility = View.VISIBLE
@@ -369,6 +381,7 @@ Math & Science formatting rules:
 
     private fun showImagePreview(uri: Uri) {
         selectedImageUri = uri
+        metricsTracker.recordEvent(ChapterMetricsTracker.EventType.IMAGE_UPLOADED)
         imagePreviewStrip.visibility = View.VISIBLE
         Glide.with(this).load(uri).centerCrop().into(imagePreviewThumbnail)
         imagePreviewLabel.text = mediaManager.getFileInfo(uri)
@@ -430,7 +443,8 @@ Math & Science formatting rules:
     private fun openPdfPicker() = pickPdfLauncher.launch("application/pdf")
 
     private fun loadChatHistory() {
-        db.collection("users").document("testuser123")
+        val userId = SessionManager.getFirestoreUserId(this)
+        db.collection("users").document(userId)
             .collection("chats")
             .document("${subjectName}_${chapterName}")
             .collection("messages")
@@ -658,7 +672,8 @@ Make questions test key concepts, definitions, or important facts."""
     }
 
     private fun persistNotesToFirestore(content: String, type: String) {
-        db.collection("users").document("testuser123")
+        val userId = SessionManager.getFirestoreUserId(this)
+        db.collection("users").document(userId)
             .collection("subjects").document(subjectName)
             .collection("chapters").document(chapterName)
             .collection("notes").document(type)
@@ -668,6 +683,7 @@ Make questions test key concepts, definitions, or important facts."""
                 "updatedAt" to System.currentTimeMillis()
             ))
             .addOnSuccessListener {
+                metricsTracker.recordEvent(ChapterMetricsTracker.EventType.NOTES_SAVED)
                 runOnUiThread {
                     Toast.makeText(this, "✅ Notes saved!", Toast.LENGTH_SHORT).show()
                 }
@@ -680,7 +696,8 @@ Make questions test key concepts, definitions, or important facts."""
     }
 
     private fun viewSavedNotes() {
-        db.collection("users").document("testuser123")
+        val userId = SessionManager.getFirestoreUserId(this)
+        db.collection("users").document(userId)
             .collection("subjects").document(subjectName)
             .collection("chapters").document(chapterName)
             .collection("notes")
@@ -730,7 +747,8 @@ Make questions test key concepts, definitions, or important facts."""
             "timestamp" to message.timestamp,
             "messageType" to message.messageType.name
         )
-        db.collection("users").document("testuser123")
+        val userId = SessionManager.getFirestoreUserId(this)
+        db.collection("users").document(userId)
             .collection("chats").document("${subjectName}_${chapterName}")
             .collection("messages").document(message.id)
             .set(data)
@@ -824,6 +842,11 @@ Make questions test key concepts, definitions, or important facts."""
         "kn-IN" -> "\n\nIMPORTANT: Respond in Kannada (ಕನ್ನಡ). Technical terms may remain in English."
         "gu-IN" -> "\n\nIMPORTANT: Respond in Gujarati (ગુજરાતી). Technical terms may remain in English."
         else -> ""
+    }
+
+    override fun onStop() {
+        super.onStop()
+        metricsTracker.endSession(this)
     }
 
     override fun onDestroy() {

@@ -10,6 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.aiguru.adapters.ChapterAdapter
+import com.example.aiguru.utils.SessionManager
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.firestore.FirebaseFirestore
 
@@ -57,7 +58,8 @@ class SubjectActivity : AppCompatActivity() {
     }
 
     private fun loadChapters() {
-        db.collection("users").document("testuser123")
+        val userId = SessionManager.getFirestoreUserId(this)
+        db.collection("users").document(userId)
             .collection("subjects").document(subjectName)
             .collection("chapters")
             .get()
@@ -96,7 +98,8 @@ class SubjectActivity : AppCompatActivity() {
     }
 
     private fun addChapter(name: String) {
-        db.collection("users").document("testuser123")
+        val userId = SessionManager.getFirestoreUserId(this)
+        db.collection("users").document(userId)
             .collection("subjects").document(subjectName)
             .collection("chapters").document(name)
             .set(hashMapOf("name" to name, "order" to chaptersListData.size))
@@ -107,7 +110,8 @@ class SubjectActivity : AppCompatActivity() {
     }
 
     private fun deleteChapter(name: String) {
-        db.collection("users").document("testuser123")
+        val userId = SessionManager.getFirestoreUserId(this)
+        db.collection("users").document(userId)
             .collection("subjects").document(subjectName)
             .collection("chapters").document(name)
             .delete()

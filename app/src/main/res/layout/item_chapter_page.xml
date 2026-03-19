@@ -21,9 +21,9 @@
     <com.google.android.material.button.MaterialButton
         android:id="@+id/viewPageButton"
         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-        android:layout_width="wrap_content"
+        android:layout_width="36dp"
         android:layout_height="36dp"
-        android:text="👁 View"
+        android:text="👁"
         android:textSize="12sp"
         android:paddingStart="10dp"
         android:paddingEnd="10dp"

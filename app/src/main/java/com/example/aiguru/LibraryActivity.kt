@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.aiguru.models.LibraryBook
+import com.example.aiguru.utils.SessionManager
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.firestore.FirebaseFirestore
 
@@ -111,28 +112,46 @@ class LibraryActivity : AppCompatActivity() {
 
     // ─── Add to Subject dialog ────────────────────────────────────────────────
 
+    private val defaultSubjects = listOf(
+        "Mathematics", "Science", "Computer", "English", "History", "Geography"
+    )
+
     private fun showAddToSubjectDialog(book: LibraryBook) {
-        db.collection("users").document("testuser123")
+        val userId = SessionManager.getFirestoreUserId(this)
+        db.collection("users").document(userId)
             .collection("subjects").get()
             .addOnSuccessListener { docs ->
-                val subjects = docs.mapNotNull { it.getString("name") }.toTypedArray()
-                if (subjects.isEmpty()) {
-                    Toast.makeText(this, "No subjects yet — add a subject first!", Toast.LENGTH_SHORT).show()
-                    return@addOnSuccessListener
-                }
+                val fromFirestore = docs.mapNotNull { it.getString("name") }
+                // Merge Firestore subjects with defaults, preserve order, deduplicate
+                val merged = (defaultSubjects + fromFirestore)
+                    .distinct()
+                    .filter { it.isNotBlank() }
+                    .sorted()
+                    .toTypedArray()
+                AlertDialog.Builder(this)
+                    .setTitle("➕ Add \"${book.title}\" to…")
+                    .setItems(merged) { _, idx -> addBookAsChapter(book, merged[idx]) }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            }
+            .addOnFailureListener {
+                // Firestore unavailable — still show defaults so user isn't stuck
+                val subjects = defaultSubjects.sorted().toTypedArray()
                 AlertDialog.Builder(this)
                     .setTitle("➕ Add \"${book.title}\" to…")
                     .setItems(subjects) { _, idx -> addBookAsChapter(book, subjects[idx]) }
                     .setNegativeButton("Cancel", null)
                     .show()
             }
-            .addOnFailureListener {
-                Toast.makeText(this, "Couldn't load subjects. Try again.", Toast.LENGTH_SHORT).show()
-            }
     }
 
     private fun addBookAsChapter(book: LibraryBook, subjectName: String) {
-        db.collection("users").document("testuser123")
+        val userId = SessionManager.getFirestoreUserId(this)
+        // Ensure the subject doc exists (covers case where it's a default that wasn't seeded yet)
+        db.collection("users").document(userId)
+            .collection("subjects").document(subjectName)
+            .set(hashMapOf("name" to subjectName), com.google.firebase.firestore.SetOptions.merge())
+        db.collection("users").document(userId)
             .collection("subjects").document(subjectName)
             .collection("chapters").document(book.title)
             .set(hashMapOf(

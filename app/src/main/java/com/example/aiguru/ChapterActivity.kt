@@ -17,7 +17,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.aiguru.adapters.PageListAdapter
+import com.example.aiguru.utils.ChapterMetricsTracker
 import com.example.aiguru.utils.PdfPageManager
+import com.example.aiguru.utils.SessionManager
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
@@ -43,6 +45,7 @@ class ChapterActivity : AppCompatActivity() {
     private var pdfId = ""
     private var pdfPageCount = 0
     private lateinit var pdfPageManager: PdfPageManager
+    private lateinit var metricsTracker: ChapterMetricsTracker
 
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -63,6 +66,8 @@ class ChapterActivity : AppCompatActivity() {
 
         subjectName = intent.getStringExtra("subjectName") ?: "Subject"
         chapterName = intent.getStringExtra("chapterName") ?: "Chapter"
+
+        metricsTracker = ChapterMetricsTracker(subjectName, chapterName)
 
         findViewById<TextView>(R.id.chapterTitle).text = chapterName
         findViewById<ImageButton>(R.id.backButton).setOnClickListener { finish() }
@@ -92,6 +97,31 @@ class ChapterActivity : AppCompatActivity() {
         pagesRecyclerView.adapter = pageListAdapter
 
         loadChapterType()
+        loadMasteryScore()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        metricsTracker.endSession(this, pdfPageCount)
+    }
+
+    private fun loadMasteryScore() {
+        val userId = SessionManager.getFirestoreUserId(this)
+        db.collection("users").document(userId)
+            .collection("subjects").document(subjectName)
+            .collection("chapters").document(chapterName)
+            .collection("metrics").document("summary")
+            .get()
+            .addOnSuccessListener { doc ->
+                if (!doc.exists()) return@addOnSuccessListener
+                val score = doc.getLong("masteryScore")?.toInt() ?: 0
+                val masteryCard = findViewById<View>(R.id.masteryCard)
+                val masteryBar = findViewById<ProgressBar>(R.id.masteryProgressBar)
+                val masteryText = findViewById<TextView>(R.id.masteryScoreText)
+                masteryCard.visibility = View.VISIBLE
+                masteryBar.progress = score
+                masteryText.text = "$score%"
+            }
     }
 
     // ─── Notes generation ─────────────────────────────────────────────────────
@@ -178,7 +208,8 @@ class ChapterActivity : AppCompatActivity() {
     }
 
     private fun viewSavedNotes() {
-        db.collection("users").document("testuser123")
+        val userId = SessionManager.getFirestoreUserId(this)
+        db.collection("users").document(userId)
             .collection("subjects").document(subjectName)
             .collection("chapters").document(chapterName)
             .collection("notes")
@@ -223,7 +254,8 @@ class ChapterActivity : AppCompatActivity() {
     // ─── Chapter type detection ───────────────────────────────────────────────
 
     private fun loadChapterType() {
-        db.collection("users").document("testuser123")
+        val userId = SessionManager.getFirestoreUserId(this)
+        db.collection("users").document(userId)
             .collection("subjects").document(subjectName)
             .collection("chapters").document(chapterName)
             .get()
@@ -264,7 +296,8 @@ class ChapterActivity : AppCompatActivity() {
                 val count = pdfPageManager.getPageCount(pdfId, pdfAssetPath)
                 pdfPageCount = count
 
-                db.collection("users").document("testuser123")
+                val userId = SessionManager.getFirestoreUserId(this@ChapterActivity)
+                db.collection("users").document(userId)
                     .collection("subjects").document(subjectName)
                     .collection("chapters").document(chapterName)
                     .update("pageCount", count)
@@ -285,6 +318,7 @@ class ChapterActivity : AppCompatActivity() {
     }
 
     private fun onViewPage(position: Int) {
+        metricsTracker.recordPageViewed(position + 1)
         // Pre-render this page (and let PageViewerActivity handle rest)
         lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -309,6 +343,7 @@ class ChapterActivity : AppCompatActivity() {
     }
 
     private fun onAskPage(position: Int) {
+        metricsTracker.recordPageViewed(position + 1)
         Toast.makeText(this, "Rendering page ${position + 1}…", Toast.LENGTH_SHORT).show()
         lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -380,7 +415,8 @@ class ChapterActivity : AppCompatActivity() {
 
     private fun savePage(imagePath: String) {
         val timestamp = SimpleDateFormat("dd MMM yyyy HH:mm", Locale.getDefault()).format(Date())
-        db.collection("users").document("testuser123")
+        val userId = SessionManager.getFirestoreUserId(this)
+        db.collection("users").document(userId)
             .collection("subjects").document(subjectName)
             .collection("chapters").document(chapterName)
             .collection("pages")
@@ -415,7 +451,8 @@ class ChapterActivity : AppCompatActivity() {
         )
         pagesRecyclerView.adapter = pageListAdapter
 
-        db.collection("users").document("testuser123")
+        val userId = SessionManager.getFirestoreUserId(this)
+        db.collection("users").document(userId)
             .collection("subjects").document(subjectName)
             .collection("chapters").document(chapterName)
             .collection("pages")
