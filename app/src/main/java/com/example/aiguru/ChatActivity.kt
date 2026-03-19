@@ -38,6 +38,9 @@ import com.example.aiguru.utils.SessionManager
 import com.example.aiguru.utils.TextToSpeechManager
 import com.example.aiguru.utils.TTSCallback
 import com.example.aiguru.utils.VoiceManager
+import com.example.aiguru.models.TutorIntent
+import com.example.aiguru.models.TutorMode
+import com.example.aiguru.models.TutorSession
 import com.example.aiguru.utils.VoiceRecognitionCallback
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -113,6 +116,14 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     // When set, the AI response from the next auto-send is also saved as notes
     private var saveNotesType: String? = null
 
+    // ── Tutor System ──────────────────────────────────────────────────────────
+    private lateinit var tutorSession: TutorSession
+    private var lastInputWasVoice = false
+    private lateinit var modeAutoButton: MaterialButton
+    private lateinit var modeExplainButton: MaterialButton
+    private lateinit var modePracticeButton: MaterialButton
+    private lateinit var modeEvaluateButton: MaterialButton
+
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
             if (uri != null) showImagePreview(uri)
@@ -127,25 +138,6 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
             if (uri != null) Toast.makeText(this, "PDF support coming soon", Toast.LENGTH_SHORT).show()
         }
-
-    private val systemPrompt = """You are AI Guru, a friendly and encouraging educational tutor for school and college students.
-Your goals:
-- Explain concepts clearly with simple language and real-world examples
-- Break down complex topics into easy-to-understand steps
-- Be patient, supportive, and always encouraging
-- Use bullet points, numbered lists, and structure answers clearly
-- When asked for quizzes, format clearly with Q: and A: on separate lines
-- When asked for notes, use headings (with ## or ###) and well-organized sections
-- Always relate new concepts to things the student already knows
-- Keep responses focused and appropriately detailed for the topic
-
-Math & Science formatting rules:
-- Write superscripts as ^{expr}: e.g. x^{2}, a^{n+1}, E=mc^{2}
-- Write subscripts as _{n} for chemistry/physics: e.g. H_{2}O, CO_{2}, Fe_{2}O_{3}
-- Wrap standalone math expressions in $$..$$
-- For fractions write them as (numerator)/(denominator) and also explain in words
-- Always show units in physics: m/s, kg, N, J, W, etc.
-- Use step-by-step working for all calculations"""
 
     companion object {
         private const val PERMISSION_REQUEST_CODE = 100
@@ -164,6 +156,12 @@ Math & Science formatting rules:
         mediaManager = MediaManager(this)
         metricsTracker = ChapterMetricsTracker(subjectName, chapterName)
 
+        tutorSession = TutorSession(
+            studentId = SessionManager.getFirestoreUserId(this),
+            subject   = subjectName,
+            chapter   = chapterName
+        )
+
         initializeUI()
         loadChatHistory()
 
@@ -181,14 +179,15 @@ Math & Science formatting rules:
         val pdfPageFilePath = intent.getStringExtra("pdfPageFilePath")
         val pdfPageNumber = intent.getIntExtra("pdfPageNumber", 1)
         if (pdfPageFilePath != null) {
+            tutorSession.currentPage = pdfPageNumber
             preloadPdfPage(File(pdfPageFilePath), pdfPageNumber)
         }
     }
 
     private fun initializeUI() {
         toolbar = findViewById(R.id.toolbar)
-        toolbar.title = chapterName
-        toolbar.subtitle = subjectName
+        toolbar.title = "📘 $chapterName"
+        toolbar.subtitle = "👩\u200d🏫 AI Tutor · $subjectName"
         toolbar.setNavigationOnClickListener { finish() }
         setSupportActionBar(toolbar)
 
@@ -230,6 +229,7 @@ Math & Science formatting rules:
 
         setupButtons()
         setupQuickActions()
+        setupModeChips()
 
         sendButton.setOnClickListener {
             val text = messageInput.text.toString().trim()
@@ -481,7 +481,7 @@ Math & Science formatting rules:
         messageAdapter.addMessage(
             Message(
                 id = UUID.randomUUID().toString(),
-                content = "👋 Hello! I'm AI Guru, your personal tutor for **$chapterName** ($subjectName).\n\nUse the quick buttons above to Summarize, get an Explanation, take a Quiz, generate Study Notes, or create Flashcards. You can also ask me anything by typing or using your voice! 🎤",
+                content = "👋 Hi! I'm your AI Tutor for **$chapterName** ($subjectName).\n\n🎯 **Let's learn this together!**\n\n• Ask me any doubt — I'll guide you step by step\n• Use your 🎤 voice to ask (I'll reply out loud!)\n• Tap **Practice** for problems, **Quiz Me** to test yourself\n• Choose a **Tutor Mode** above to focus your session\n\nWhat would you like to understand first? 😊",
                 isUser = false,
                 messageType = Message.MessageType.TEXT
             )
@@ -523,13 +523,27 @@ Math & Science formatting rules:
                 runOnUiThread {
                     showLoading(false)
                     if (responseText != null) {
-                        val aiMessage = Message(UUID.randomUUID().toString(), responseText, false)
+                        val tutorReply = TutorController.parseResponse(responseText)
+                        TutorController.updateSession(tutorSession, tutorReply.intent, userText)
+                        updateModeChipStates() // reflect any auto mode-switch
+                        val aiMessage = Message(UUID.randomUUID().toString(), tutorReply.response, false)
                         messageAdapter.addMessage(aiMessage)
                         saveMessageToFirestore(aiMessage)
                         messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
+                        // Auto-TTS when the student used voice input
+                        if (lastInputWasVoice) {
+                            lastInputWasVoice = false
+                            val voiceText = TutorController.trimForVoice(tutorReply.response)
+                            ttsManager.setLocale(java.util.Locale.forLanguageTag(currentLang))
+                            ttsManager.speak(voiceText, object : TTSCallback {
+                                override fun onStart() {}
+                                override fun onComplete() {}
+                                override fun onError(error: String) {}
+                            })
+                        }
                         // Auto-save as notes if triggered from ChapterActivity notes flow
                         if (autoSaveNotes && saveNotesType != null) {
-                            persistNotesToFirestore(responseText, saveNotesType!!)
+                            persistNotesToFirestore(tutorReply.response, saveNotesType!!)
                         }
                     } else {
                         showError("Couldn't get a response. Check your connection and try again.")
@@ -548,9 +562,8 @@ Math & Science formatting rules:
         val json = JSONObject().apply {
             put("model", MODEL_TEXT)
             put("messages", JSONArray().apply {
-                put(JSONObject().put("role", "system").put("content", systemPrompt + getLanguageInstruction()))
-                put(JSONObject().put("role", "user").put("content",
-                    "Subject: $subjectName | Chapter: $chapterName\n\n$userText"))
+                put(JSONObject().put("role", "system").put("content", TutorController.buildSystemPrompt(tutorSession) + getLanguageInstruction()))
+                put(JSONObject().put("role", "user").put("content", userText))
             })
             put("temperature", 0.7)
             put("max_tokens", 2048)
@@ -572,7 +585,7 @@ Math & Science formatting rules:
         val json = JSONObject().apply {
             put("model", MODEL_VISION)
             put("messages", JSONArray().apply {
-                put(JSONObject().put("role", "system").put("content", systemPrompt + getLanguageInstruction()))
+                put(JSONObject().put("role", "system").put("content", TutorController.buildSystemPrompt(tutorSession) + getLanguageInstruction()))
                 put(JSONObject().put("role", "user").put("content", contentArray))
             })
             put("temperature", 0.7)
@@ -766,8 +779,13 @@ Make questions test key concepts, definitions, or important facts."""
     override fun onResults(text: String) {
         runOnUiThread {
             resetVoiceButton()
-            messageInput.setText(text)
-            messageInput.setSelection(text.length)
+            if (text.isNotEmpty()) {
+                lastInputWasVoice = true
+                messageInput.setText("")
+                sendMessage(text)  // auto-send voice → tutor loop
+            } else {
+                messageInput.setText(text)
+            }
         }
     }
 
@@ -842,6 +860,50 @@ Make questions test key concepts, definitions, or important facts."""
         "kn-IN" -> "\n\nIMPORTANT: Respond in Kannada (ಕನ್ನಡ). Technical terms may remain in English."
         "gu-IN" -> "\n\nIMPORTANT: Respond in Gujarati (ગુજરાતી). Technical terms may remain in English."
         else -> ""
+    }
+
+    // ── Tutor Mode Chips ─────────────────────────────────────────────────────
+
+    private fun setupModeChips() {
+        modeAutoButton     = findViewById(R.id.modeAutoButton)
+        modeExplainButton  = findViewById(R.id.modeExplainButton)
+        modePracticeButton = findViewById(R.id.modePracticeButton)
+        modeEvaluateButton = findViewById(R.id.modeEvaluateButton)
+        updateModeChipStates()
+        modeAutoButton.setOnClickListener {
+            tutorSession.mode = TutorMode.AUTO
+            updateModeChipStates()
+            Toast.makeText(this, "🤖 Auto — I'll adapt to what you need", Toast.LENGTH_SHORT).show()
+        }
+        modeExplainButton.setOnClickListener {
+            tutorSession.mode = TutorMode.EXPLAIN
+            updateModeChipStates()
+            Toast.makeText(this, "💡 Explain mode — simple explanations with examples", Toast.LENGTH_SHORT).show()
+        }
+        modePracticeButton.setOnClickListener {
+            tutorSession.mode = TutorMode.PRACTICE
+            updateModeChipStates()
+            Toast.makeText(this, "✍️ Practice mode — let's solve problems together", Toast.LENGTH_SHORT).show()
+        }
+        modeEvaluateButton.setOnClickListener {
+            tutorSession.mode = TutorMode.EVALUATE
+            updateModeChipStates()
+            Toast.makeText(this, "🧪 Test mode — I'll check your understanding", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun updateModeChipStates() {
+        val activeColor  = android.graphics.Color.parseColor("#1565C0")
+        val inactiveColor = android.graphics.Color.parseColor("#EEF2FF")
+        mapOf(
+            modeAutoButton     to (tutorSession.mode == TutorMode.AUTO),
+            modeExplainButton  to (tutorSession.mode == TutorMode.EXPLAIN),
+            modePracticeButton to (tutorSession.mode == TutorMode.PRACTICE),
+            modeEvaluateButton to (tutorSession.mode == TutorMode.EVALUATE)
+        ).forEach { (btn, isActive) ->
+            btn.backgroundTintList = ColorStateList.valueOf(if (isActive) activeColor else inactiveColor)
+            btn.setTextColor(if (isActive) android.graphics.Color.WHITE else activeColor)
+        }
     }
 
     override fun onStop() {
