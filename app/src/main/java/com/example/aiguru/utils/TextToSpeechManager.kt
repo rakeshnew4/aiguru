@@ -19,10 +19,6 @@ class TextToSpeechManager(private val context: Context) : TextToSpeech.OnInitLis
     private var callback: TTSCallback? = null
     private val TAG = "TextToSpeechManager"
 
-    /** Updated by onRangeStart — char offset of the word currently being spoken. */
-    var currentSpeakingChar: Int = 0
-        private set
-
     init {
         tts = TextToSpeech(context, this)
     }
@@ -66,19 +62,6 @@ class TextToSpeechManager(private val context: Context) : TextToSpeech.OnInitLis
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping TTS", e)
         }
-    }
-
-    /**
-     * Resume speaking from a saved char offset, jumping back to the nearest sentence
-     * boundary so the speech sounds natural (not starting mid-word).
-     */
-    fun speakFrom(fullText: String, charOffset: Int, callback: TTSCallback) {
-        val safeOffset = charOffset.coerceIn(0, fullText.length)
-        val sentenceStart = if (safeOffset < 2) 0 else {
-            val idx = fullText.lastIndexOfAny(charArrayOf('.', '?', '!', '\n'), safeOffset - 1)
-            if (idx < 0) 0 else minOf(idx + 2, fullText.length)
-        }
-        speak(fullText.substring(sentenceStart).trimStart(), callback)
     }
 
     fun setPitch(pitch: Float) {
@@ -128,37 +111,15 @@ class TextToSpeechManager(private val context: Context) : TextToSpeech.OnInitLis
     private inner class UtteranceProgressListenerImpl : UtteranceProgressListener() {
         override fun onStart(utteranceId: String?) {
             Log.d(TAG, "Speech started")
-            currentSpeakingChar = 0
-        }
-
-        // Tracks the char position of each word being spoken (API 26+)
-        override fun onRangeStart(
-            utteranceId: String?,
-            start: Int,
-            end: Int,
-            frame: Int
-        ) {
-            currentSpeakingChar = start
         }
 
         override fun onDone(utteranceId: String?) {
             Log.d(TAG, "Speech completed")
-            currentSpeakingChar = 0
             callback?.onComplete()
-        }
-
-        // Override onStop so that calling tts.stop() does NOT fire onError.
-        // Default UtteranceProgressListener.onStop() calls onError() which would
-        // incorrectly trigger error handlers when we manually stop for a barge-in.
-        override fun onStop(utteranceId: String?, interrupted: Boolean) {
-            Log.d(TAG, "Speech stopped manually (interrupted=$interrupted)")
-            currentSpeakingChar = 0
-            // Intentionally NOT forwarding to callback — manual stop is not an error.
         }
 
         override fun onError(utteranceId: String?) {
             Log.e(TAG, "Speech error")
-            currentSpeakingChar = 0
             callback?.onError("Speech error occurred")
         }
     }
