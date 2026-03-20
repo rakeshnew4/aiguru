@@ -5,30 +5,32 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/chat_bg"
+    android:background="#FFFFFF"
     android:fitsSystemWindows="true"
     tools:context=".ChatActivity">
 
-    <!-- Modern Gradient Toolbar -->
+    <!-- ── Toolbar ─────────────────────────────────────────────────── -->
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:background="@drawable/bg_toolbar_gradient"
-        app:titleTextColor="@android:color/white"
-        app:subtitleTextColor="#CCE0FF"
+        android:layout_height="56dp"
+        android:background="#FFFFFF"
+        app:titleTextColor="#111827"
+        app:subtitleTextColor="#6B7280"
         app:navigationIcon="@drawable/ic_arrow_back"
-        android:elevation="6dp" />
+        android:elevation="0dp" />
 
-    <!-- Quick Action Chips — Horizontally Scrollable -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#E8EAED" />
+
+    <!-- ── Hidden quick-action chips (IDs preserved; code still works) ── -->
     <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#FFFFFF"
-        android:elevation="3dp"
         android:scrollbars="none"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp">
+        android:visibility="gone">
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -38,17 +40,16 @@
             android:paddingEnd="10dp"
             android:gravity="center_vertical">
 
-
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/explainButton"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
-                android:text="💡 Explain"
+                android:text="Explain"
                 android:textSize="12sp"
-                android:textColor="#6A1B9A"
+                android:textColor="#1565C0"
                 android:paddingStart="14dp"
                 android:paddingEnd="14dp"
-                app:backgroundTint="#F3E5F5"
+                app:backgroundTint="#EEF2FF"
                 app:cornerRadius="18dp"
                 android:layout_marginEnd="6dp" />
 
@@ -56,12 +57,12 @@
                 android:id="@+id/quizButton"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
-                android:text="❓ Quiz Me"
+                android:text="Quiz Me"
                 android:textSize="12sp"
-                android:textColor="#00695C"
+                android:textColor="#1565C0"
                 android:paddingStart="14dp"
                 android:paddingEnd="14dp"
-                app:backgroundTint="#E0F2F1"
+                app:backgroundTint="#EEF2FF"
                 app:cornerRadius="18dp"
                 android:layout_marginEnd="6dp" />
 
@@ -69,12 +70,12 @@
                 android:id="@+id/formulaButton"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
-                android:text="⚗️ Formulas"
+                android:text="Formulas"
                 android:textSize="12sp"
-                android:textColor="#E65100"
+                android:textColor="#1565C0"
                 android:paddingStart="14dp"
                 android:paddingEnd="14dp"
-                app:backgroundTint="#FFF3E0"
+                app:backgroundTint="#EEF2FF"
                 app:cornerRadius="18dp"
                 android:layout_marginEnd="6dp" />
 
@@ -82,12 +83,12 @@
                 android:id="@+id/practiceButton"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
-                android:text="🏋️ Practice"
+                android:text="Practice"
                 android:textSize="12sp"
-                android:textColor="#880E4F"
+                android:textColor="#1565C0"
                 android:paddingStart="14dp"
                 android:paddingEnd="14dp"
-                app:backgroundTint="#FCE4EC"
+                app:backgroundTint="#EEF2FF"
                 app:cornerRadius="18dp"
                 android:layout_marginEnd="6dp" />
 
@@ -95,12 +96,12 @@
                 android:id="@+id/notesButton"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
-                android:text="📝 Notes"
+                android:text="Notes"
                 android:textSize="12sp"
-                android:textColor="#BF360C"
+                android:textColor="#1565C0"
                 android:paddingStart="14dp"
                 android:paddingEnd="14dp"
-                app:backgroundTint="#FBE9E7"
+                app:backgroundTint="#EEF2FF"
                 app:cornerRadius="18dp"
                 android:layout_marginEnd="6dp" />
 
@@ -108,12 +109,12 @@
                 android:id="@+id/saveNotesButton"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
-                android:text="💾 Save Notes"
+                android:text="Save Notes"
                 android:textSize="12sp"
-                android:textColor="#2E7D32"
+                android:textColor="#1565C0"
                 android:paddingStart="14dp"
                 android:paddingEnd="14dp"
-                app:backgroundTint="#E8F5E9"
+                app:backgroundTint="#EEF2FF"
                 app:cornerRadius="18dp"
                 android:layout_marginEnd="6dp" />
 
@@ -121,12 +122,12 @@
                 android:id="@+id/viewNotesButton"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
-                android:text="📖 View Notes"
+                android:text="View Notes"
                 android:textSize="12sp"
-                android:textColor="#4527A0"
+                android:textColor="#1565C0"
                 android:paddingStart="14dp"
                 android:paddingEnd="14dp"
-                app:backgroundTint="#EDE7F6"
+                app:backgroundTint="#EEF2FF"
                 app:cornerRadius="18dp"
                 android:layout_marginEnd="6dp" />
 
@@ -134,122 +135,133 @@
                 android:id="@+id/flashcardsButton"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
-                android:text="🃏 Flashcards"
+                android:text="Flashcards"
                 android:textSize="12sp"
-                android:textColor="#E65100"
+                android:textColor="#1565C0"
                 android:paddingStart="14dp"
                 android:paddingEnd="14dp"
-                app:backgroundTint="#FFF8E1"
+                app:backgroundTint="#EEF2FF"
                 app:cornerRadius="18dp" />
 
         </LinearLayout>
     </HorizontalScrollView>
 
-
-
-    <!-- AI Tutor Mode Bar -->
+    <!-- ── AI Tutor Mode: compact outlined pills ─────────────────────── -->
     <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#EEF2FF"
-        android:elevation="2dp"
+        android:background="#FFFFFF"
         android:scrollbars="none"
-        android:paddingTop="5dp"
-        android:paddingBottom="5dp">
+        android:paddingTop="7dp"
+        android:paddingBottom="7dp">
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp">
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="👩‍🏫 Mode:"
+                android:text="Mode"
                 android:textSize="11sp"
-                android:textColor="#3949AB"
-                android:textStyle="bold"
-                android:layout_marginEnd="6dp" />
+                android:textColor="#9CA3AF"
+                android:layout_marginEnd="10dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/modeAutoButton"
                 android:layout_width="wrap_content"
-                android:layout_height="32dp"
+                android:layout_height="28dp"
                 android:minHeight="0dp"
-                android:text="🤖 Auto"
-                android:textSize="11sp"
+                android:text="Auto"
+                android:textSize="12sp"
                 android:textColor="#1565C0"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                app:backgroundTint="#EEF2FF"
-                app:cornerRadius="16dp"
-                android:layout_marginEnd="4dp" />
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                app:strokeColor="#1565C0"
+                app:cornerRadius="14dp"
+                android:layout_marginEnd="6dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/modeExplainButton"
                 android:layout_width="wrap_content"
-                android:layout_height="32dp"
+                android:layout_height="28dp"
                 android:minHeight="0dp"
-                android:text="💡 Explain"
-                android:textSize="11sp"
-                android:textColor="#1565C0"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                app:backgroundTint="#EEF2FF"
-                app:cornerRadius="16dp"
-                android:layout_marginEnd="4dp" />
+                android:text="Explain"
+                android:textSize="12sp"
+                android:textColor="#6B7280"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                app:strokeColor="#D1D5DB"
+                app:cornerRadius="14dp"
+                app:backgroundTint="#00000000"
+                android:layout_marginEnd="6dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/modePracticeButton"
                 android:layout_width="wrap_content"
-                android:layout_height="32dp"
+                android:layout_height="28dp"
                 android:minHeight="0dp"
-                android:text="✍️ Practice"
-                android:textSize="11sp"
-                android:textColor="#1565C0"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                app:backgroundTint="#EEF2FF"
-                app:cornerRadius="16dp"
-                android:layout_marginEnd="4dp" />
+                android:text="Practice"
+                android:textSize="12sp"
+                android:textColor="#6B7280"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                app:strokeColor="#D1D5DB"
+                app:cornerRadius="14dp"
+                app:backgroundTint="#00000000"
+                android:layout_marginEnd="6dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/modeEvaluateButton"
                 android:layout_width="wrap_content"
-                android:layout_height="32dp"
+                android:layout_height="28dp"
                 android:minHeight="0dp"
-                android:text="🧪 Test Me"
-                android:textSize="11sp"
-                android:textColor="#1565C0"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                app:backgroundTint="#EEF2FF"
-                app:cornerRadius="16dp" />
+                android:text="Test Me"
+                android:textSize="12sp"
+                android:textColor="#6B7280"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                app:strokeColor="#D1D5DB"
+                app:cornerRadius="14dp"
+                app:backgroundTint="#00000000" />
 
         </LinearLayout>
     </HorizontalScrollView>
 
-    <!-- Messages RecyclerView -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#F3F4F6" />
+
+    <!-- ── Messages ──────────────────────────────────────────────────── -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/messagesRecyclerView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:paddingTop="12dp"
+        android:background="#FFFFFF"
+        android:paddingTop="8dp"
         android:paddingBottom="4dp"
+        android:paddingStart="6dp"
+        android:paddingEnd="6dp"
         android:clipToPadding="false"
         tools:listitem="@android:layout/simple_list_item_1" />
 
-    <!-- Image Preview Strip (shown when image/page selected) -->
+    <!-- ── Image Preview Strip ───────────────────────────────────────── -->
     <LinearLayout
         android:id="@+id/imagePreviewStrip"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:background="#FFF8E1"
+        android:background="#F9FAFB"
         android:paddingStart="12dp"
         android:paddingEnd="8dp"
         android:paddingTop="8dp"
@@ -259,8 +271,8 @@
 
         <ImageView
             android:id="@+id/imagePreviewThumbnail"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:scaleType="centerCrop"
             android:layout_marginEnd="10dp"
             android:contentDescription="Image preview" />
@@ -270,352 +282,340 @@
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:text="Image selected – ask AI about it!"
+            android:text="Image selected — ask anything"
             android:textSize="13sp"
-            android:textColor="#E65100" />
+            android:textColor="#374151" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/removeImageButton"
             android:layout_width="36dp"
             android:layout_height="36dp"
             android:padding="0dp"
-            android:text="✕"
-            android:textSize="16sp"
-            android:textColor="#E65100"
+            android:text="X"
+            android:textSize="14sp"
+            android:textColor="#9CA3AF"
             style="@style/Widget.MaterialComponents.Button.TextButton" />
 
     </LinearLayout>
 
-    <!-- AI Typing Indicator (bubble style) -->
+    <!-- ── AI Thinking Indicator ─────────────────────────────────────── -->
     <LinearLayout
         android:id="@+id/loadingLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:paddingStart="12dp"
+        android:paddingStart="16dp"
         android:paddingEnd="20dp"
-        android:paddingTop="6dp"
-        android:paddingBottom="6dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
         android:gravity="center_vertical"
         android:visibility="gone">
 
         <TextView
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:text="AI"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:gravity="center"
+            android:background="@drawable/bg_avatar_circle"
+            android:layout_marginEnd="10dp" />
+
+        <ProgressBar
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:indeterminateTint="#9CA3AF"
+            android:layout_marginEnd="8dp"
+            style="@style/Widget.AppCompat.ProgressBar" />
+
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="🤖"
-            android:textSize="22sp"
-            android:layout_marginEnd="8dp" />
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:background="@drawable/bg_ai_bubble"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp"
-            android:gravity="center_vertical">
-
-            <ProgressBar
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:indeterminateTint="#1565C0"
-                style="@style/Widget.AppCompat.ProgressBar" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="  AI Guru is thinking…"
-                android:textSize="13sp"
-                android:textStyle="italic"
-                android:textColor="#1565C0" />
-
-        </LinearLayout>
+            android:text="Thinking..."
+            android:textSize="13sp"
+            android:textStyle="italic"
+            android:textColor="#9CA3AF" />
 
     </LinearLayout>
 
-    <!-- Modern Input Card -->
-    <com.google.android.material.card.MaterialCardView
+    <!-- ── Bottom Input Section ──────────────────────────────────────── -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginBottom="10dp"
-        android:layout_marginTop="4dp"
-        app:cardCornerRadius="24dp"
-        app:cardElevation="8dp"
-        app:strokeWidth="1dp"
-        app:strokeColor="#DDE3FF">
+        android:orientation="vertical"
+        android:background="#FFFFFF">
 
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#E8EAED" />
+
+        <!-- Voice Chat Active Bar -->
         <LinearLayout
+            android:id="@+id/voiceChatBar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:background="#FFFFFF"
-            android:paddingStart="6dp"
-            android:paddingEnd="6dp"
-            android:paddingTop="6dp"
-            android:paddingBottom="6dp">
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="#FAFAFA"
+            android:paddingStart="14dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:visibility="gone">
 
-            <!-- Interactive Voice Chat Status Bar -->
+            <!-- Animated equaliser wave bars -->
             <LinearLayout
-                android:id="@+id/voiceChatBar"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:id="@+id/waveBarContainer"
+                android:layout_width="wrap_content"
+                android:layout_height="24dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:background="#F1F8E9"
-                android:paddingStart="14dp"
-                android:paddingEnd="8dp"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp"
-                android:layout_marginBottom="4dp"
+                android:layout_marginEnd="8dp"
+                android:clipChildren="false"
                 android:visibility="gone">
 
-                <!-- Animated equaliser-style wave bars -->
-                <LinearLayout
-                    android:id="@+id/waveBarContainer"
-                    android:layout_width="wrap_content"
-                    android:layout_height="26dp"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginEnd="8dp"
-                    android:clipChildren="false">
+                <View
+                    android:id="@+id/waveBar1"
+                    android:layout_width="3dp"
+                    android:layout_height="8dp"
+                    android:background="#1565C0"
+                    android:layout_marginEnd="3dp" />
 
-                    <View
-                        android:id="@+id/waveBar1"
-                        android:layout_width="4dp"
-                        android:layout_height="8dp"
-                        android:background="#2E7D32"
-                        android:layout_marginEnd="3dp" />
+                <View
+                    android:id="@+id/waveBar2"
+                    android:layout_width="3dp"
+                    android:layout_height="16dp"
+                    android:background="#1565C0"
+                    android:layout_marginEnd="3dp" />
 
-                    <View
-                        android:id="@+id/waveBar2"
-                        android:layout_width="4dp"
-                        android:layout_height="16dp"
-                        android:background="#43A047"
-                        android:layout_marginEnd="3dp" />
+                <View
+                    android:id="@+id/waveBar3"
+                    android:layout_width="3dp"
+                    android:layout_height="12dp"
+                    android:background="#1565C0"
+                    android:layout_marginEnd="3dp" />
 
-                    <View
-                        android:id="@+id/waveBar3"
-                        android:layout_width="4dp"
-                        android:layout_height="12dp"
-                        android:background="#2E7D32"
-                        android:layout_marginEnd="3dp" />
-
-                    <View
-                        android:id="@+id/waveBar4"
-                        android:layout_width="4dp"
-                        android:layout_height="6dp"
-                        android:background="#43A047" />
-
-                </LinearLayout>
-
-                <TextView
-                    android:id="@+id/voiceChatStatus"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    android:text="🎙️ Listening… speak now"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:textColor="#2E7D32" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/stopVoiceChatButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:minHeight="0dp"
-                    android:text="✕ Stop"
-                    android:textSize="11sp"
-                    android:textColor="#FFFFFF"
-                    android:paddingStart="10dp"
-                    android:paddingEnd="10dp"
-                    app:backgroundTint="#E53935"
-                    app:cornerRadius="16dp" />
+                <View
+                    android:id="@+id/waveBar4"
+                    android:layout_width="3dp"
+                    android:layout_height="6dp"
+                    android:background="#1565C0" />
 
             </LinearLayout>
 
-            <!-- Listening Indicator Bar (regular mic press) -->
             <TextView
-                android:id="@+id/listeningIndicator"
-                android:layout_width="match_parent"
+                android:id="@+id/voiceChatStatus"
+                android:layout_width="0dp"
+                android:layout_weight="1"
                 android:layout_height="wrap_content"
-                android:text="🎙️  Listening… speak now"
+                android:text="Listening..."
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#111827" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/stopVoiceChatButton"
+                android:layout_width="wrap_content"
+                android:layout_height="30dp"
+                android:minHeight="0dp"
+                android:text="Stop"
                 android:textSize="12sp"
-                android:textColor="#E53935"
-                android:textStyle="italic|bold"
-                android:gravity="center"
-                android:background="#FFF5F5"
-                android:paddingTop="6dp"
-                android:paddingBottom="6dp"
-                android:layout_marginBottom="4dp"
-                android:visibility="gone" />
+                android:textColor="#FFFFFF"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                app:backgroundTint="#DC2626"
+                app:cornerRadius="15dp" />
 
-            <!-- Bottom quick-action chips (always visible above input) -->
-            <HorizontalScrollView
-                android:id="@+id/bottomQuickActionsScroll"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:scrollbars="none"
-                android:paddingBottom="4dp"
-                android:paddingTop="2dp">
+        </LinearLayout>
 
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingStart="4dp"
-                    android:paddingEnd="4dp">
+        <!-- Listening Indicator (single-shot mic) -->
+        <TextView
+            android:id="@+id/listeningIndicator"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Listening... speak now"
+            android:textSize="12sp"
+            android:textColor="#DC2626"
+            android:textStyle="italic"
+            android:gravity="center"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:visibility="gone" />
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/bottomExplainButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="32dp"
-                        android:text="💡 Explain"
-                        android:textSize="11sp"
-                        android:textColor="#6A1B9A"
-                        android:paddingStart="12dp"
-                        android:paddingEnd="12dp"
-                        app:backgroundTint="#F3E5F5"
-                        app:cornerRadius="16dp"
-                        android:layout_marginEnd="6dp" />
+        <!-- Bottom quick-action chips -->
+        <HorizontalScrollView
+            android:id="@+id/bottomQuickActionsScroll"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="4dp">
 
-                    
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/bottomQuizButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="32dp"
-                        android:text="❓ Quiz Me"
-                        android:textSize="11sp"
-                        android:textColor="#00695C"
-                        android:paddingStart="12dp"
-                        android:paddingEnd="12dp"
-                        app:backgroundTint="#E0F2F1"
-                        app:cornerRadius="16dp"
-                        android:layout_marginEnd="6dp" />
-
-                   
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/bottomPracticeButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="32dp"
-                        android:text="🏋️ Practice"
-                        android:textSize="11sp"
-                        android:textColor="#880E4F"
-                        android:paddingStart="12dp"
-                        android:paddingEnd="12dp"
-                        app:backgroundTint="#FCE4EC"
-                        app:cornerRadius="16dp"
-                        android:layout_marginEnd="6dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/bottomDescribeButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="32dp"
-                        android:text="🔍 Describe Image"
-                        android:textSize="11sp"
-                        android:textColor="#1B5E20"
-                        android:paddingStart="12dp"
-                        android:paddingEnd="12dp"
-                        app:backgroundTint="#E8F5E9"
-                        app:cornerRadius="16dp"
-                        android:visibility="gone" />
-
-                </LinearLayout>
-            </HorizontalScrollView>
-
-            <!-- Input row: mic + image + pdf + text + send -->
             <LinearLayout
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-                <!-- Voice Mic Button (filled circle, turns red when active) -->
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/voiceButton"
-                    android:layout_width="46dp"
-                    android:layout_height="46dp"
-                    android:padding="0dp"
-                    android:text="🎤"
-                    android:textSize="20sp"
-                    app:backgroundTint="#E3F2FD"
-                    app:cornerRadius="23dp"
-                    android:layout_marginEnd="4dp" />
-
-                <!-- Live Voice Chat Button -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/voiceChatButton"
+                    android:id="@+id/bottomExplainButton"
                     android:layout_width="wrap_content"
-                    android:layout_height="40dp"
+                    android:layout_height="30dp"
                     android:minHeight="0dp"
-                    android:text="🎙️"
-                    android:textSize="18sp"
-                    app:backgroundTint="#E8F5E9"
-                    app:cornerRadius="20dp"
-                    android:paddingStart="10dp"
-                    android:paddingEnd="10dp"
-                    android:layout_marginEnd="2dp" />
+                    android:text="Explain"
+                    android:textSize="11sp"
+                    android:textColor="#374151"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    app:strokeColor="#E5E7EB"
+                    app:cornerRadius="15dp"
+                    app:backgroundTint="#00000000"
+                    android:layout_marginEnd="6dp" />
 
-                <!-- Image Attach -->
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/imageButton"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:padding="0dp"
-                    android:text="🖼️"
-                    android:textSize="18sp"
-                    style="@style/Widget.MaterialComponents.Button.TextButton"
-                    android:layout_marginEnd="2dp" />
+                    android:id="@+id/bottomQuizButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="30dp"
+                    android:minHeight="0dp"
+                    android:text="Quiz Me"
+                    android:textSize="11sp"
+                    android:textColor="#374151"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    app:strokeColor="#E5E7EB"
+                    app:cornerRadius="15dp"
+                    app:backgroundTint="#00000000"
+                    android:layout_marginEnd="6dp" />
 
-                <!-- PDF -->
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/pdfButton"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:padding="0dp"
-                    android:text="📄"
-                    android:textSize="18sp"
-                    style="@style/Widget.MaterialComponents.Button.TextButton"
-                    android:layout_marginEnd="4dp" />
+                    android:id="@+id/bottomPracticeButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="30dp"
+                    android:minHeight="0dp"
+                    android:text="Practice"
+                    android:textSize="11sp"
+                    android:textColor="#374151"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    app:strokeColor="#E5E7EB"
+                    app:cornerRadius="15dp"
+                    app:backgroundTint="#00000000"
+                    android:layout_marginEnd="6dp" />
 
-                <!-- Message Input -->
-                <EditText
-                    android:id="@+id/messageInput"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:hint="Ask anything…"
-                    android:minLines="1"
-                    android:maxLines="5"
-                    android:background="@drawable/rounded_edittext_bg"
-                    android:padding="10dp"
-                    android:textSize="15sp"
-                    android:inputType="textMultiLine|textCapSentences"
-                    android:imeOptions="flagNoEnterAction" />
-
-                <!-- Send Button (filled circle) -->
                 <com.google.android.material.button.MaterialButton
-                    android:id="@+id/sendButton"
-                    android:layout_width="46dp"
-                    android:layout_height="46dp"
-                    android:padding="0dp"
-                    android:text="➤"
-                    android:textSize="20sp"
-                    android:textColor="#FFFFFF"
-                    android:layout_marginStart="6dp"
-                    app:backgroundTint="#1565C0"
-                    app:cornerRadius="23dp" />
+                    android:id="@+id/bottomDescribeButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="30dp"
+                    android:minHeight="0dp"
+                    android:text="Describe Image"
+                    android:textSize="11sp"
+                    android:textColor="#374151"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    app:strokeColor="#E5E7EB"
+                    app:cornerRadius="15dp"
+                    app:backgroundTint="#00000000"
+                    android:visibility="gone" />
 
             </LinearLayout>
+        </HorizontalScrollView>
+
+        <!-- ── Main Input Row ───────────────────────────────────────── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="10dp">
+
+            <!-- Attach: Image -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/imageButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:padding="0dp"
+                android:text="&#128444;"
+                android:textSize="18sp"
+                style="@style/Widget.MaterialComponents.Button.TextButton" />
+
+            <!-- Attach: PDF -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/pdfButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:padding="0dp"
+                android:text="&#128196;"
+                android:textSize="18sp"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_marginEnd="4dp" />
+
+            <!-- Text Input -->
+            <EditText
+                android:id="@+id/messageInput"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="Message AI Guru..."
+                android:minLines="1"
+                android:maxLines="5"
+                android:background="@drawable/rounded_edittext_bg"
+                android:padding="10dp"
+                android:textSize="15sp"
+                android:textColor="#111827"
+                android:textColorHint="#9CA3AF"
+                android:inputType="textMultiLine|textCapSentences"
+                android:imeOptions="flagNoEnterAction" />
+
+            <!-- Single-turn Mic -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/voiceButton"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:padding="0dp"
+                android:text="&#127908;"
+                android:textSize="19sp"
+                app:backgroundTint="#F3F4F6"
+                app:cornerRadius="22dp"
+                android:layout_marginStart="6dp" />
+
+            <!-- Live Voice Chat -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/voiceChatButton"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:padding="0dp"
+                android:text="&#127897;"
+                android:textSize="19sp"
+                app:backgroundTint="#F3F4F6"
+                app:cornerRadius="22dp"
+                android:layout_marginStart="4dp" />
+
+            <!-- Send -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/sendButton"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:padding="0dp"
+                android:text="&#10148;"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:layout_marginStart="4dp"
+                app:backgroundTint="#1565C0"
+                app:cornerRadius="22dp" />
 
         </LinearLayout>
 
-    </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
 
 </LinearLayout>

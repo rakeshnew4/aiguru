@@ -140,26 +140,24 @@ class MessageAdapter(
                     layoutParams = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT
-                    ).apply { topMargin = (8 * dp).toInt() }
+                    ).apply { topMargin = (6 * dp).toInt() }
                 }
                 val speakBtn = TextView(context).apply {
-                    text = "🔊 Speak"
-                    textSize = 12f
-                    setTextColor(android.graphics.Color.parseColor("#1565C0"))
-                    setPadding((10 * dp).toInt(), (4 * dp).toInt(), (10 * dp).toInt(), (4 * dp).toInt())
-                    background = ContextCompat.getDrawable(context, R.drawable.bg_ai_bubble)
+                    text = "▶ Speak"
+                    textSize = 11f
+                    setTextColor(Color.parseColor("#6B7280"))
+                    setPadding((8 * dp).toInt(), (3 * dp).toInt(), (8 * dp).toInt(), (3 * dp).toInt())
                     setOnClickListener { onVoiceClick(message) }
                 }
                 val stopBtn = TextView(context).apply {
-                    text = "⏹ Stop"
-                    textSize = 12f
-                    setTextColor(android.graphics.Color.parseColor("#E53935"))
-                    setPadding((10 * dp).toInt(), (4 * dp).toInt(), (10 * dp).toInt(), (4 * dp).toInt())
+                    text = "■ Stop"
+                    textSize = 11f
+                    setTextColor(Color.parseColor("#9CA3AF"))
+                    setPadding((8 * dp).toInt(), (3 * dp).toInt(), (8 * dp).toInt(), (3 * dp).toInt())
                     layoutParams = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.WRAP_CONTENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT
-                    ).apply { marginStart = (8 * dp).toInt() }
-                    background = ContextCompat.getDrawable(context, R.drawable.bg_ai_bubble)
+                    ).apply { marginStart = (4 * dp).toInt() }
                     setOnClickListener { onStopClick(message) }
                 }
                 speakRow.addView(speakBtn)
@@ -376,6 +374,17 @@ class MessageAdapter(
             notifyItemChanged(index)
         }
     }
+
+    /** Update a streaming message by its id with new accumulated content. */
+    fun updateMessage(msgId: String, newContent: String) {
+        val index = messages.indexOfFirst { it.id == msgId }
+        if (index >= 0) {
+            messages[index] = messages[index].copy(content = newContent)
+            notifyItemChanged(index)
+        }
+    }
+
+    fun hasMessage(msgId: String): Boolean = messages.any { it.id == msgId }
 
     fun removeMessage(index: Int) {
         if (index in messages.indices) {

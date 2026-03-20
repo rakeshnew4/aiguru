@@ -16,6 +16,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.AIGuru"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:usesCleartextTraffic="true"
         tools:targetApi="31">
 
         <activity
@@ -36,6 +38,7 @@
             android:exported="false"
             android:windowSoftInputMode="adjustResize"/>
         <activity android:name=".RevisionActivity" android:exported="false"/>
+        <activity android:name=".ModelSettingsActivity" android:exported="false"/>
         <activity android:name=".LibraryActivity" android:exported="false"/>
         <activity android:name=".PageViewerActivity" android:exported="false"/>
         <activity android:name=".ProgressDashboardActivity" android:exported="false"/>

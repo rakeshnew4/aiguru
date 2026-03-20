@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow HTTP cleartext traffic to the AI Guru server -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">108.181.187.227</domain>
+    </domain-config>
+</network-security-config>

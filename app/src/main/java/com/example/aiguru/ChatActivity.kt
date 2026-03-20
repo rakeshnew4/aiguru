@@ -33,8 +33,11 @@ import com.bumptech.glide.Glide
 import com.example.aiguru.BuildConfig
 import com.example.aiguru.adapters.MessageAdapter
 import com.example.aiguru.chat.ChatHistoryRepository
+import com.example.aiguru.chat.AiClient
 import com.example.aiguru.chat.GroqApiClient
 import com.example.aiguru.chat.NotesRepository
+import com.example.aiguru.chat.ServerProxyClient
+import com.example.aiguru.models.ModelConfig
 import com.example.aiguru.models.Flashcard
 import com.example.aiguru.models.Message
 import com.example.aiguru.models.TutorMode
@@ -84,7 +87,6 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private lateinit var chapterName: String
 
     // ── Modular Components ────────────────────────────────────────────────────
-    private lateinit var groqClient:   GroqApiClient
     private lateinit var historyRepo:  ChatHistoryRepository
     private lateinit var notesRepo:    NotesRepository
     private lateinit var voiceManager: VoiceManager
@@ -172,7 +174,6 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         val db     = FirebaseFirestore.getInstance()
 
         tutorSession = TutorSession(studentId = userId, subject = subjectName, chapter = chapterName)
-        groqClient   = GroqApiClient(BuildConfig.GROQ_API_KEY)
         historyRepo  = ChatHistoryRepository(db, userId, subjectName, chapterName)
         notesRepo    = NotesRepository(db, userId, subjectName, chapterName)
         voiceManager = VoiceManager(this)
@@ -435,10 +436,19 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         ))
     }
 
+    private fun buildAiClient(): AiClient {
+        return ServerProxyClient(
+            serverUrl = "http://108.181.187.227:8003",
+            modelName = "",
+            apiKey    = ""
+        )
+    }
+
     private fun sendMessage(userText: String, autoSaveNotes: Boolean = false) {
         val imageUri          = selectedImageUri.also { selectedImageUri = null }
         val capturedPdfBase64 = pdfPageBase64.also   { pdfPageBase64 = null }
-        imagePreviewStrip.visibility = View.GONE
+        imagePreviewStrip.visibility   = View.GONE
+        bottomDescribeButton.visibility = View.GONE
 
         val userMessage = Message(
             id          = UUID.randomUUID().toString(),
@@ -457,29 +467,40 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
         if (isVoiceModeActive) setVoiceModeStatus("🤖 AI is thinking…", "#E65100")
 
+        // Streaming state — mutated only from runOnUiThread
+        val streamingId  = UUID.randomUUID().toString()
+        val streamingMsg = Message(id = streamingId, content = "", isUser = false)
+        val accumulated  = StringBuilder()
+        var loadingHidden = false
+
         lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val rawResponse = when {
-                    imageUri != null -> {
-                        val b64 = mediaManager.uriToBase64(imageUri)
-                        if (b64 != null) groqClient.callWithImage(sysPrompt, ctxMessage, b64)
-                        else             groqClient.callText(sysPrompt, userText)
+          try {
+            historyRepo.saveMessage(userMessage.copy(imageUrl = null))
+
+            val onToken: (String) -> Unit = { token ->
+                accumulated.append(token)
+                runOnUiThread {
+                    if (!loadingHidden) {
+                        loadingHidden = true
+                        showLoading(false)
+                        messageAdapter.addMessage(streamingMsg)
                     }
-                    capturedPdfBase64 != null -> groqClient.callWithImage(sysPrompt, ctxMessage, capturedPdfBase64)
-                    else                      -> groqClient.callText(sysPrompt, userText)
+                    messageAdapter.updateMessage(streamingId, accumulated.toString())
+                    messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
                 }
+            }
 
-                historyRepo.saveMessage(userMessage.copy(imageUrl = null))
-
+            val onDone: () -> Unit = {
                 runOnUiThread {
                     showLoading(false)
-                    if (rawResponse != null) {
+                    val rawResponse = accumulated.toString()
+                    if (rawResponse.isNotEmpty()) {
                         val reply = TutorController.parseResponse(rawResponse)
                         TutorController.updateSession(tutorSession, reply.intent, userText)
                         updateModeChipStates()
-                        val aiMsg = Message(UUID.randomUUID().toString(), reply.response, false)
-                        messageAdapter.addMessage(aiMsg)
-                        historyRepo.saveMessage(aiMsg)
+                        messageAdapter.updateMessage(streamingId, reply.response)
+                        val finalMsg = Message(streamingId, reply.response, false)
+                        historyRepo.saveMessage(finalMsg)
                         messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
                         if (lastInputWasVoice || isVoiceModeActive) {
                             lastInputWasVoice = false
@@ -491,7 +512,6 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                             ttsManager.setLocale(Locale.forLanguageTag(currentLang))
                             ttsManager.speak(voiceText, object : TTSCallback {
                                 override fun onStart() {
-                                    // After 700ms warmup, start barge-in listener
                                     if (isVoiceModeActive) {
                                         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                                             if (isVoiceModeActive && ttsManager.isSpeaking()) {
@@ -522,9 +542,28 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                         showError("Couldn't get a response. Check your connection and try again.")
                     }
                 }
-            } catch (e: Exception) {
-                runOnUiThread { showLoading(false); showError("Error: ${e.message ?: "Unknown error"}") }
             }
+
+            val onError: (String) -> Unit = { err ->
+                runOnUiThread { showLoading(false); showError("Error: $err") }
+            }
+
+            val client = buildAiClient()
+            when {
+                imageUri != null -> {
+                    val b64 = mediaManager.uriToBase64(imageUri)
+                    if (b64 != null) client.streamWithImage(sysPrompt, ctxMessage, b64, onToken, onDone, onError)
+                    else             client.streamText(sysPrompt, ctxMessage, onToken, onDone, onError)
+                }
+                capturedPdfBase64 != null ->
+                    client.streamWithImage(sysPrompt, ctxMessage, capturedPdfBase64, onToken, onDone, onError)
+                else ->
+                    client.streamText(sysPrompt, ctxMessage, onToken, onDone, onError)
+            }
+          } catch (e: Exception) {
+              android.util.Log.e("ChatActivity", "sendMessage crash: ${e.message}", e)
+              runOnUiThread { showLoading(false); showError("Error: ${e.message}") }
+          }
         }
     }
 
@@ -533,19 +572,27 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         messageAdapter.addMessage(Message(UUID.randomUUID().toString(), "🃏 Generating revision flashcards for $chapterName…", true))
         showLoading(true)
 
+        val sysPrompt    = TutorController.buildSystemPrompt(tutorSession)
+        val fullResponse = StringBuilder()
         lifecycleScope.launch(Dispatchers.IO) {
-            val sysPrompt = TutorController.buildSystemPrompt(tutorSession)
-            val raw = groqClient.callText(sysPrompt, prompt)
-            runOnUiThread {
-                showLoading(false)
-                if (raw != null) {
-                    val cards = parseFlashcards(raw)
-                    if (cards.isNotEmpty()) {
-                        messageAdapter.addMessage(Message(UUID.randomUUID().toString(), "✅ ${cards.size} flashcards ready! Opening revision mode…", false))
-                        startActivity(Intent(this@ChatActivity, RevisionActivity::class.java).putExtra("flashcards", ArrayList(cards)))
-                    } else showError("Could not parse flashcards. Please try again.")
-                } else showError("Failed to generate flashcards. Check your connection.")
-            }
+            buildAiClient().streamText(
+                systemPrompt = sysPrompt,
+                userText     = prompt,
+                onToken      = { token -> fullResponse.append(token) },
+                onDone       = {
+                    runOnUiThread {
+                        showLoading(false)
+                        val cards = parseFlashcards(fullResponse.toString())
+                        if (cards.isNotEmpty()) {
+                            messageAdapter.addMessage(Message(UUID.randomUUID().toString(), "✅ ${cards.size} flashcards ready! Opening revision mode…", false))
+                            startActivity(Intent(this@ChatActivity, RevisionActivity::class.java).putExtra("flashcards", ArrayList(cards)))
+                        } else showError("Could not parse flashcards. Please try again.")
+                    }
+                },
+                onError      = { err ->
+                    runOnUiThread { showLoading(false); showError("Failed to generate flashcards: $err") }
+                }
+            )
         }
     }
 
@@ -673,11 +720,14 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == R.id.action_language) {
-            showLanguagePicker()
-            return true
+        return when (item.itemId) {
+            R.id.action_language -> { showLanguagePicker(); true }
+            R.id.action_model_settings -> {
+                startActivity(Intent(this, ModelSettingsActivity::class.java))
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
         }
-        return super.onOptionsItemSelected(item)
     }
 
     private fun showLanguagePicker() {
@@ -884,16 +934,18 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     }
 
     private fun updateModeChipStates() {
-        val activeColor  = android.graphics.Color.parseColor("#1565C0")
-        val inactiveColor = android.graphics.Color.parseColor("#EEF2FF")
+        val activeBg      = android.graphics.Color.parseColor("#1565C0")
+        val inactiveBg    = android.graphics.Color.TRANSPARENT
+        val activeText    = android.graphics.Color.WHITE
+        val inactiveText  = android.graphics.Color.parseColor("#6B7280")
         mapOf(
             modeAutoButton     to (tutorSession.mode == TutorMode.AUTO),
             modeExplainButton  to (tutorSession.mode == TutorMode.EXPLAIN),
             modePracticeButton to (tutorSession.mode == TutorMode.PRACTICE),
             modeEvaluateButton to (tutorSession.mode == TutorMode.EVALUATE)
         ).forEach { (btn, isActive) ->
-            btn.backgroundTintList = ColorStateList.valueOf(if (isActive) activeColor else inactiveColor)
-            btn.setTextColor(if (isActive) android.graphics.Color.WHITE else activeColor)
+            btn.backgroundTintList = ColorStateList.valueOf(if (isActive) activeBg else inactiveBg)
+            btn.setTextColor(if (isActive) activeText else inactiveText)
         }
     }
 

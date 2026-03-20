@@ -7,4 +7,9 @@
         android:title="🌐 English"
         app:showAsAction="always" />
 
+    <item
+        android:id="@+id/action_model_settings"
+        android:title="Model"
+        app:showAsAction="never" />
+
 </menu>
