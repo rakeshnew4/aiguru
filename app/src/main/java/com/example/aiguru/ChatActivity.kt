@@ -52,7 +52,6 @@ import com.example.aiguru.utils.VoiceManager
 import com.example.aiguru.utils.VoiceRecognitionCallback
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
-import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
@@ -171,11 +170,10 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         PromptRepository.init(this)
 
         val userId = SessionManager.getFirestoreUserId(this)
-        val db     = FirebaseFirestore.getInstance()
 
         tutorSession = TutorSession(studentId = userId, subject = subjectName, chapter = chapterName)
-        historyRepo  = ChatHistoryRepository(db, userId, subjectName, chapterName)
-        notesRepo    = NotesRepository(db, userId, subjectName, chapterName)
+        historyRepo  = ChatHistoryRepository(userId, subjectName, chapterName)
+        notesRepo    = NotesRepository(this, userId, subjectName, chapterName)
         voiceManager = VoiceManager(this)
         ttsManager   = TextToSpeechManager(this)
         mediaManager = MediaManager(this)

@@ -1,75 +1,65 @@
 package com.example.aiguru.chat
 
-import com.google.firebase.firestore.FirebaseFirestore
+import android.content.Context
 
 /**
  * Handles saving and loading AI-generated notes for one subject+chapter.
- * Firestore path: users/{userId}/subjects/{subject}/chapters/{chapter}/notes/{type}
+ * Stored locally in SharedPreferences. Firestore sync will be added later.
  */
 class NotesRepository(
-    private val db:      FirebaseFirestore,
+    private val context: Context,
     private val userId:  String,
     private val subject: String,
     private val chapter: String
 ) {
+    private fun prefs() = context.getSharedPreferences("notes_prefs", Context.MODE_PRIVATE)
+    private fun key(type: String) = "notes_${userId}_${subject}_${chapter}_$type"
+    private val prefix get() = "notes_${userId}_${subject}_${chapter}_"
 
-    private fun notesRef() = db
-        .collection("users").document(userId)
-        .collection("subjects").document(subject)
-        .collection("chapters").document(chapter)
-        .collection("notes")
-
-    /** Saves [content] under the given [type] document (e.g. "chapter", "page_1"). */
     fun save(
         content:   String,
         type:      String,
         onSuccess: () -> Unit = {},
         onFailure: () -> Unit = {}
     ) {
-        notesRef().document(type)
-            .set(mapOf(
-                "content"   to content,
-                "type"      to type,
-                "updatedAt" to System.currentTimeMillis()
-            ))
-            .addOnSuccessListener { onSuccess() }
-            .addOnFailureListener { onFailure() }
+        try {
+            prefs().edit().putString(key(type), content).apply()
+            onSuccess()
+        } catch (_: Exception) {
+            onFailure()
+        }
     }
 
-    /**
-     * Loads all saved notes and concatenates them into a single formatted string.
-     * [onResult]  — combined notes text (non-empty).
-     * [onEmpty]   — no notes saved yet.
-     * [onFailure] — Firestore error.
-     */
     fun loadAll(
         onResult:  (String) -> Unit,
         onEmpty:   () -> Unit,
         onFailure: () -> Unit
     ) {
-        notesRef().get()
-            .addOnSuccessListener { snapshot ->
-                if (snapshot.isEmpty) { onEmpty(); return@addOnSuccessListener }
-
-                val sorted = snapshot.documents.sortedBy { doc ->
-                    when (doc.id) { "chapter" -> "0"; "exercises" -> "z"; else -> doc.id }
+        try {
+            val matching = prefs().all.entries
+                .filter { it.key.startsWith(prefix) }
+                .sortedBy { entry ->
+                    val type = entry.key.removePrefix(prefix)
+                    when (type) { "chapter" -> "0"; "exercises" -> "z"; else -> type }
                 }
-                val sb = StringBuilder()
-                sorted.forEach { doc ->
-                    val type    = doc.getString("type") ?: doc.id
-                    val content = doc.getString("content") ?: return@forEach
-                    if (content.isBlank()) return@forEach
-                    val heading = when {
-                        type == "chapter"         -> "📖 Chapter Notes"
-                        type.startsWith("page_")  -> "📄 Page ${type.removePrefix("page_")} Notes"
-                        type == "exercises"        -> "✏️ Exercise Notes"
-                        else                       -> "📋 $type"
-                    }
-                    sb.append("$heading\n\n$content\n\n──────────────\n\n")
+            if (matching.isEmpty()) { onEmpty(); return }
+            val sb = StringBuilder()
+            matching.forEach { entry ->
+                val type    = entry.key.removePrefix(prefix)
+                val content = entry.value as? String ?: return@forEach
+                if (content.isBlank()) return@forEach
+                val heading = when {
+                    type == "chapter"        -> "📖 Chapter Notes"
+                    type.startsWith("page_") -> "📄 Page ${type.removePrefix("page_")} Notes"
+                    type == "exercises"      -> "✏️ Exercise Notes"
+                    else                     -> "📋 $type"
                 }
-                val text = sb.toString().trim()
-                if (text.isEmpty()) onEmpty() else onResult(text)
+                sb.append("$heading\n\n$content\n\n──────────────\n\n")
             }
-            .addOnFailureListener { onFailure() }
+            val text = sb.toString().trim()
+            if (text.isEmpty()) onEmpty() else onResult(text)
+        } catch (_: Exception) {
+            onFailure()
+        }
     }
 }

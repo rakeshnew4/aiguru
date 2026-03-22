@@ -15,12 +15,11 @@ import com.example.aiguru.adapters.SubjectAdapter
 import com.example.aiguru.utils.ConfigManager
 import com.example.aiguru.utils.SessionManager
 import com.google.android.material.button.MaterialButton
-import com.google.firebase.firestore.FirebaseFirestore
+import android.util.Log
 import java.util.Calendar
 
 class HomeActivity : AppCompatActivity() {
 
-    private lateinit var db: FirebaseFirestore
     private lateinit var subjectsRecyclerView: RecyclerView
     private val subjectsList = mutableListOf<String>()
     private lateinit var subjectAdapter: SubjectAdapter
@@ -36,8 +35,6 @@ class HomeActivity : AppCompatActivity() {
         }
 
         setContentView(R.layout.activity_home)
-
-        db = FirebaseFirestore.getInstance()
 
         applySchoolBranding()
         setupGreeting()
@@ -179,36 +176,34 @@ class HomeActivity : AppCompatActivity() {
         "Mathematics", "Science", "Computer", "English", "History", "Geography"
     )
 
-    private fun loadSubjects() {
-        val userId = SessionManager.getFirestoreUserId(this)
-        db.collection("users").document(userId)
-            .collection("subjects")
-            .get()
-            .addOnSuccessListener { documents ->
-                subjectsList.clear()
-                for (doc in documents) {
-                    subjectsList.add(doc.getString("name") ?: "")
-                }
-                if (subjectsList.isEmpty()) {
-                    seedDefaultSubjects(userId)
-                } else {
-                    subjectAdapter.notifyDataSetChanged()
-                    updateSubjectCount()
-                }
-            }
+    // ── Local SharedPreferences storage (Firestore will be added later) ──────
+
+    private fun subjectsPrefs() =
+        getSharedPreferences("subjects_prefs", MODE_PRIVATE)
+
+    private fun saveSubjectsLocally(subjects: List<String>) {
+        subjectsPrefs().edit()
+            .putString("subjects_list", subjects.joinToString("||||"))
+            .apply()
     }
 
-    private fun seedDefaultSubjects(userId: String) {
-        val batch = db.batch()
-        val colRef = db.collection("users").document(userId).collection("subjects")
-        defaultSubjects.forEach { name ->
-            batch.set(colRef.document(name), hashMapOf("name" to name))
-        }
-        batch.commit().addOnSuccessListener {
+    private fun loadSubjectsLocally(): MutableList<String> {
+        val raw = subjectsPrefs().getString("subjects_list", "") ?: ""
+        return if (raw.isEmpty()) mutableListOf()
+               else raw.split("||||").filter { it.isNotEmpty() }.toMutableList()
+    }
+
+    private fun loadSubjects() {
+        val saved = loadSubjectsLocally()
+        subjectsList.clear()
+        if (saved.isEmpty()) {
             subjectsList.addAll(defaultSubjects)
-            subjectAdapter.notifyDataSetChanged()
-            updateSubjectCount()
+            saveSubjectsLocally(subjectsList)
+        } else {
+            subjectsList.addAll(saved)
         }
+        subjectAdapter.notifyDataSetChanged()
+        updateSubjectCount()
     }
 
     private fun updateSubjectCount() {
@@ -243,29 +238,19 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun addSubject(name: String) {
-        val userId = SessionManager.getFirestoreUserId(this)
-        db.collection("users").document(userId)
-            .collection("subjects").document(name)
-            .set(hashMapOf("name" to name))
-            .addOnSuccessListener {
-                subjectsList.add(name)
-                subjectAdapter.notifyItemInserted(subjectsList.size - 1)
-                updateSubjectCount()
-            }
+        subjectsList.add(name)
+        saveSubjectsLocally(subjectsList)
+        subjectAdapter.notifyItemInserted(subjectsList.size - 1)
+        updateSubjectCount()
     }
 
     private fun deleteSubject(name: String) {
-        val userId = SessionManager.getFirestoreUserId(this)
-        db.collection("users").document(userId)
-            .collection("subjects").document(name)
-            .delete()
-            .addOnSuccessListener {
-                val idx = subjectsList.indexOf(name)
-                if (idx >= 0) {
-                    subjectsList.removeAt(idx)
-                    subjectAdapter.notifyItemRemoved(idx)
-                    updateSubjectCount()
-                }
-            }
+        val idx = subjectsList.indexOf(name)
+        if (idx >= 0) {
+            subjectsList.removeAt(idx)
+            saveSubjectsLocally(subjectsList)
+            subjectAdapter.notifyItemRemoved(idx)
+            updateSubjectCount()
+        }
     }
 }

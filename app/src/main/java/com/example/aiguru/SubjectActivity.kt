@@ -13,11 +13,10 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.aiguru.adapters.ChapterAdapter
 import com.example.aiguru.utils.SessionManager
 import com.google.android.material.button.MaterialButton
-import com.google.firebase.firestore.FirebaseFirestore
+import org.json.JSONObject
 
 class SubjectActivity : AppCompatActivity() {
 
-    private lateinit var db: FirebaseFirestore
     private lateinit var chaptersRecyclerView: RecyclerView
     private val chaptersListData = mutableListOf<String>()
     private lateinit var chapterAdapter: ChapterAdapter
@@ -30,7 +29,6 @@ class SubjectActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_subject)
 
-        db = FirebaseFirestore.getInstance()
         subjectName = intent.getStringExtra("subjectName") ?: "Subject"
 
         findViewById<TextView>(R.id.subjectTitle).text = subjectName
@@ -62,19 +60,38 @@ class SubjectActivity : AppCompatActivity() {
     }
 
     private fun loadChapters() {
-        val userId = SessionManager.getFirestoreUserId(this)
-        db.collection("users").document(userId)
-            .collection("subjects").document(subjectName)
-            .collection("chapters")
-            .get()
-            .addOnSuccessListener { documents ->
-                chaptersListData.clear()
-                for (doc in documents) {
-                    val name = doc.getString("name") ?: ""
-                    if (name.isNotBlank()) chaptersListData.add(name)
-                }
-                chapterAdapter.notifyDataSetChanged()
-            }
+        chaptersListData.clear()
+        chaptersListData.addAll(loadChaptersLocally())
+        chapterAdapter.notifyDataSetChanged()
+    }
+
+    // ── Local SharedPreferences helpers ──────────────────────────────────
+
+    private fun chaptersPrefs() = getSharedPreferences("chapters_prefs", MODE_PRIVATE)
+
+    private fun loadChaptersLocally(): MutableList<String> {
+        val raw = chaptersPrefs().getString("chapters_$subjectName", "") ?: ""
+        return if (raw.isEmpty()) mutableListOf()
+               else raw.split("||||").filter { it.isNotEmpty() }.toMutableList()
+    }
+
+    private fun saveChaptersLocally(chapters: List<String>) {
+        chaptersPrefs().edit().putString("chapters_$subjectName", chapters.joinToString("||||")).apply()
+    }
+
+    private fun saveChapterMeta(name: String, isPdf: Boolean, pdfAssetPath: String = "", pdfId: String = "") {
+        chaptersPrefs().edit().putString(
+            "meta_${subjectName}_$name",
+            JSONObject().apply {
+                put("isPdf", isPdf)
+                put("pdfAssetPath", pdfAssetPath)
+                put("pdfId", pdfId)
+            }.toString()
+        ).apply()
+    }
+
+    private fun deleteChapterMeta(name: String) {
+        chaptersPrefs().edit().remove("meta_${subjectName}_$name").apply()
     }
 
     // ─── Add chapter options ───────────────────────────────────────────────────
@@ -146,44 +163,24 @@ class SubjectActivity : AppCompatActivity() {
     // ─── Chapter persistence ───────────────────────────────────────────────────
 
     private fun addManualChapter(name: String) {
-        val userId = SessionManager.getFirestoreUserId(this)
-        db.collection("users").document(userId)
-            .collection("subjects").document(subjectName)
-            .collection("chapters").document(name)
-            .set(hashMapOf("name" to name, "order" to chaptersListData.size))
-            .addOnSuccessListener {
-                chaptersListData.add(name)
-                chapterAdapter.notifyItemInserted(chaptersListData.size - 1)
-            }
+        val chapters = loadChaptersLocally()
+        if (!chapters.contains(name)) chapters.add(name)
+        saveChaptersLocally(chapters)
+        saveChapterMeta(name, isPdf = false)
+        chaptersListData.clear()
+        chaptersListData.addAll(chapters)
+        chapterAdapter.notifyDataSetChanged()
     }
 
     private fun addChapterFromLibrary(book: LibItem) {
-        val userId = SessionManager.getFirestoreUserId(this)
-        // Ensure the subject doc exists
-        db.collection("users").document(userId)
-            .collection("subjects").document(subjectName)
-            .set(hashMapOf("name" to subjectName), com.google.firebase.firestore.SetOptions.merge())
-        db.collection("users").document(userId)
-            .collection("subjects").document(subjectName)
-            .collection("chapters").document(book.title)
-            .set(hashMapOf(
-                "name"         to book.title,
-                "order"        to System.currentTimeMillis(),
-                "isPdf"        to true,
-                "pdfAssetPath" to book.assetPath,
-                "pdfId"        to book.pdfId,
-                "pageCount"    to 0
-            ))
-            .addOnSuccessListener {
-                if (!chaptersListData.contains(book.title)) {
-                    chaptersListData.add(book.title)
-                    chapterAdapter.notifyItemInserted(chaptersListData.size - 1)
-                }
-                Toast.makeText(this, "\"${book.title}\" added ✓", Toast.LENGTH_SHORT).show()
-            }
-            .addOnFailureListener {
-                Toast.makeText(this, "Failed to add chapter. Try again.", Toast.LENGTH_SHORT).show()
-            }
+        val chapters = loadChaptersLocally()
+        if (!chapters.contains(book.title)) chapters.add(book.title)
+        saveChaptersLocally(chapters)
+        saveChapterMeta(book.title, isPdf = true, pdfAssetPath = book.assetPath, pdfId = book.pdfId)
+        chaptersListData.clear()
+        chaptersListData.addAll(chapters)
+        chapterAdapter.notifyDataSetChanged()
+        Toast.makeText(this, "\"${book.title}\" added ✓", Toast.LENGTH_SHORT).show()
     }
 
     private fun showDeleteChapterDialog(name: String) {
@@ -196,17 +193,14 @@ class SubjectActivity : AppCompatActivity() {
     }
 
     private fun deleteChapter(name: String) {
-        val userId = SessionManager.getFirestoreUserId(this)
-        db.collection("users").document(userId)
-            .collection("subjects").document(subjectName)
-            .collection("chapters").document(name)
-            .delete()
-            .addOnSuccessListener {
-                val idx = chaptersListData.indexOf(name)
-                if (idx >= 0) {
-                    chaptersListData.removeAt(idx)
-                    chapterAdapter.notifyItemRemoved(idx)
-                }
-            }
+        val chapters = loadChaptersLocally()
+        chapters.remove(name)
+        saveChaptersLocally(chapters)
+        deleteChapterMeta(name)
+        val idx = chaptersListData.indexOf(name)
+        if (idx >= 0) {
+            chaptersListData.removeAt(idx)
+            chapterAdapter.notifyItemRemoved(idx)
+        }
     }
 }

@@ -12,18 +12,13 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.example.aiguru.utils.SessionManager
-import com.google.firebase.firestore.FirebaseFirestore
 import java.util.concurrent.TimeUnit
 
 class ProgressDashboardActivity : AppCompatActivity() {
 
-    private lateinit var db: FirebaseFirestore
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_progress_dashboard)
-
-        db = FirebaseFirestore.getInstance()
 
         findViewById<ImageButton>(R.id.backButton).setOnClickListener { finish() }
 
@@ -34,77 +29,8 @@ class ProgressDashboardActivity : AppCompatActivity() {
     }
 
     private fun loadProgress() {
-        val userId = SessionManager.getFirestoreUserId(this)
-
-        // Fetch all subjects for this user
-        db.collection("users").document(userId)
-            .collection("subjects")
-            .get()
-            .addOnSuccessListener { subjectDocs ->
-                if (subjectDocs.isEmpty) {
-                    showEmpty()
-                    return@addOnSuccessListener
-                }
-
-                val subjects = subjectDocs.documents.map { it.id }
-                val allChapterData = mutableListOf<ChapterSummary>()
-                var pending = 0
-
-                subjects.forEach { subjectName ->
-                    db.collection("users").document(userId)
-                        .collection("subjects").document(subjectName)
-                        .collection("chapters")
-                        .get()
-                        .addOnSuccessListener { chapterDocs ->
-                            val chapters = chapterDocs.documents.map { it.id }
-                            if (chapters.isEmpty()) {
-                                pending++
-                                if (pending == subjects.size) displayData(allChapterData)
-                                return@addOnSuccessListener
-                            }
-
-                            var chapterPending = 0
-                            chapters.forEach { chapterName ->
-                                db.collection("users").document(userId)
-                                    .collection("subjects").document(subjectName)
-                                    .collection("chapters").document(chapterName)
-                                    .collection("metrics").document("summary")
-                                    .get()
-                                    .addOnSuccessListener { summaryDoc ->
-                                        if (summaryDoc.exists()) {
-                                            allChapterData.add(
-                                                ChapterSummary(
-                                                    subject = subjectName,
-                                                    chapter = chapterName,
-                                                    masteryScore = summaryDoc.getLong("masteryScore")?.toInt() ?: 0,
-                                                    totalTimeSeconds = summaryDoc.getLong("totalTimeSeconds")?.toInt() ?: 0,
-                                                    quizAttempts = summaryDoc.getLong("quizAttempts")?.toInt() ?: 0,
-                                                    lastAccessed = summaryDoc.getLong("lastAccessed") ?: 0L
-                                                )
-                                            )
-                                        }
-                                        chapterPending++
-                                        if (chapterPending == chapters.size) {
-                                            pending++
-                                            if (pending == subjects.size) displayData(allChapterData)
-                                        }
-                                    }
-                                    .addOnFailureListener {
-                                        chapterPending++
-                                        if (chapterPending == chapters.size) {
-                                            pending++
-                                            if (pending == subjects.size) displayData(allChapterData)
-                                        }
-                                    }
-                            }
-                        }
-                        .addOnFailureListener {
-                            pending++
-                            if (pending == subjects.size) displayData(allChapterData)
-                        }
-                }
-            }
-            .addOnFailureListener { showEmpty() }
+        // Progress data requires Firestore — will be re-enabled later
+        showEmpty()
     }
 
     private fun displayData(data: List<ChapterSummary>) {

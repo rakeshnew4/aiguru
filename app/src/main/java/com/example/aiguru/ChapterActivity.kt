@@ -21,7 +21,6 @@ import com.example.aiguru.utils.ChapterMetricsTracker
 import com.example.aiguru.utils.PdfPageManager
 import com.example.aiguru.utils.SessionManager
 import com.google.android.material.button.MaterialButton
-import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -30,7 +29,6 @@ import java.util.*
 
 class ChapterActivity : AppCompatActivity() {
 
-    private lateinit var db: FirebaseFirestore
     private lateinit var pagesRecyclerView: RecyclerView
     private val pagesListData = mutableListOf<String>()
     private lateinit var pageListAdapter: PageListAdapter
@@ -61,7 +59,6 @@ class ChapterActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chapter)
 
-        db = FirebaseFirestore.getInstance()
         pdfPageManager = PdfPageManager(this)
 
         subjectName = intent.getStringExtra("subjectName") ?: "Subject"
@@ -106,22 +103,8 @@ class ChapterActivity : AppCompatActivity() {
     }
 
     private fun loadMasteryScore() {
-        val userId = SessionManager.getFirestoreUserId(this)
-        db.collection("users").document(userId)
-            .collection("subjects").document(subjectName)
-            .collection("chapters").document(chapterName)
-            .collection("metrics").document("summary")
-            .get()
-            .addOnSuccessListener { doc ->
-                if (!doc.exists()) return@addOnSuccessListener
-                val score = doc.getLong("masteryScore")?.toInt() ?: 0
-                val masteryCard = findViewById<View>(R.id.masteryCard)
-                val masteryBar = findViewById<ProgressBar>(R.id.masteryProgressBar)
-                val masteryText = findViewById<TextView>(R.id.masteryScoreText)
-                masteryCard.visibility = View.VISIBLE
-                masteryBar.progress = score
-                masteryText.text = "$score%"
-            }
+        // Mastery data will be loaded from Firestore when re-enabled
+        findViewById<View>(R.id.masteryCard).visibility = View.GONE
     }
 
     // ─── Notes generation ─────────────────────────────────────────────────────
@@ -209,67 +192,38 @@ class ChapterActivity : AppCompatActivity() {
 
     private fun viewSavedNotes() {
         val userId = SessionManager.getFirestoreUserId(this)
-        db.collection("users").document(userId)
-            .collection("subjects").document(subjectName)
-            .collection("chapters").document(chapterName)
-            .collection("notes")
-            .get()
-            .addOnSuccessListener { snapshot ->
-                if (snapshot.isEmpty) {
-                    Toast.makeText(this, "No saved notes yet — generate some from the chat!", Toast.LENGTH_SHORT).show()
-                    return@addOnSuccessListener
-                }
-                val docs = snapshot.documents.sortedBy { doc ->
-                    when (doc.id) { "chapter" -> "0"; "exercises" -> "z"; else -> doc.id }
-                }
-                val sb = StringBuilder()
-                docs.forEach { doc ->
-                    val type = doc.getString("type") ?: doc.id
-                    val content = doc.getString("content") ?: return@forEach
-                    if (content.isBlank()) return@forEach
-                    val heading = when {
-                        type == "chapter"         -> "📖 Chapter Notes"
-                        type.startsWith("page_") -> "📄 Page ${type.removePrefix("page_")} Notes"
-                        type == "exercises"       -> "✏️ Exercise Notes"
-                        else -> "📋 $type"
-                    }
-                    sb.append("$heading\n\n$content\n\n──────────────\n\n")
-                }
-                val text = sb.toString().trim()
-                if (text.isEmpty()) {
-                    Toast.makeText(this, "No notes content found.", Toast.LENGTH_SHORT).show()
-                } else {
-                    AlertDialog.Builder(this)
-                        .setTitle("📋 Notes: $chapterName")
-                        .setMessage(text)
-                        .setPositiveButton("OK", null)
-                        .show()
-                }
-            }
-            .addOnFailureListener {
-                Toast.makeText(this, "Couldn't load notes. Try again.", Toast.LENGTH_SHORT).show()
-            }
+        val notesRepo = com.example.aiguru.chat.NotesRepository(this, userId, subjectName, chapterName)
+        notesRepo.loadAll(
+            onResult  = { text ->
+                AlertDialog.Builder(this)
+                    .setTitle("📋 Notes: $chapterName")
+                    .setMessage(text)
+                    .setPositiveButton("OK", null)
+                    .show()
+            },
+            onEmpty   = { Toast.makeText(this, "No saved notes yet — generate some from the chat!", Toast.LENGTH_SHORT).show() },
+            onFailure = { Toast.makeText(this, "Couldn't load notes. Try again.", Toast.LENGTH_SHORT).show() }
+        )
     }
 
     // ─── Chapter type detection ───────────────────────────────────────────────
 
     private fun loadChapterType() {
-        val userId = SessionManager.getFirestoreUserId(this)
-        db.collection("users").document(userId)
-            .collection("subjects").document(subjectName)
-            .collection("chapters").document(chapterName)
-            .get()
-            .addOnSuccessListener { doc ->
-                isPdfChapter = doc.getBoolean("isPdf") ?: false
+        val meta = getSharedPreferences("chapters_prefs", MODE_PRIVATE)
+            .getString("meta_${subjectName}_${chapterName}", null)
+        if (meta != null) {
+            try {
+                val json = org.json.JSONObject(meta)
+                isPdfChapter = json.optBoolean("isPdf", false)
                 if (isPdfChapter) {
-                    pdfAssetPath = doc.getString("pdfAssetPath") ?: ""
-                    pdfId = doc.getString("pdfId") ?: ""
+                    pdfAssetPath = json.optString("pdfAssetPath", "")
+                    pdfId        = json.optString("pdfId", "")
                     setupPdfChapter()
-                } else {
-                    setupImageChapter()
+                    return
                 }
-            }
-            .addOnFailureListener { setupImageChapter() }
+            } catch (_: Exception) { }
+        }
+        setupImageChapter()
     }
 
     // ─── PDF chapter ──────────────────────────────────────────────────────────
@@ -305,12 +259,7 @@ class ChapterActivity : AppCompatActivity() {
             try {
                 val count = pdfPageManager.getPageCount(pdfId, pdfAssetPath)
                 pdfPageCount = count
-
-                val userId = SessionManager.getFirestoreUserId(this@ChapterActivity)
-                db.collection("users").document(userId)
-                    .collection("subjects").document(subjectName)
-                    .collection("chapters").document(chapterName)
-                    .update("pageCount", count)
+                // pageCount will be synced to Firestore when re-enabled
 
                 withContext(Dispatchers.Main) {
                     pagesListData.clear()
@@ -425,17 +374,18 @@ class ChapterActivity : AppCompatActivity() {
 
     private fun savePage(imagePath: String) {
         val timestamp = SimpleDateFormat("dd MMM yyyy HH:mm", Locale.getDefault()).format(Date())
-        val userId = SessionManager.getFirestoreUserId(this)
-        db.collection("users").document(userId)
-            .collection("subjects").document(subjectName)
-            .collection("chapters").document(chapterName)
-            .collection("pages")
-            .add(hashMapOf("path" to imagePath, "timestamp" to timestamp))
-            .addOnSuccessListener {
-                pagesListData.add("Page uploaded - $timestamp")
-                pageListAdapter.notifyItemInserted(pagesListData.size - 1)
-                Toast.makeText(this, "Page saved!", Toast.LENGTH_SHORT).show()
-            }
+        val prefs = getSharedPreferences("chapters_prefs", MODE_PRIVATE)
+        val key = "imgpages_${subjectName}_${chapterName}"
+        val existing = prefs.getString(key, "[]") ?: "[]"
+        val arr = try { org.json.JSONArray(existing) } catch (_: Exception) { org.json.JSONArray() }
+        arr.put(org.json.JSONObject().apply {
+            put("path", imagePath)
+            put("timestamp", timestamp)
+        })
+        prefs.edit().putString(key, arr.toString()).apply()
+        pagesListData.add("Page uploaded - $timestamp")
+        pageListAdapter.notifyItemInserted(pagesListData.size - 1)
+        Toast.makeText(this, "Page saved!", Toast.LENGTH_SHORT).show()
     }
 
     private fun loadImagePages() {
@@ -461,16 +411,15 @@ class ChapterActivity : AppCompatActivity() {
         )
         pagesRecyclerView.adapter = pageListAdapter
 
-        val userId = SessionManager.getFirestoreUserId(this)
-        db.collection("users").document(userId)
-            .collection("subjects").document(subjectName)
-            .collection("chapters").document(chapterName)
-            .collection("pages")
-            .get()
-            .addOnSuccessListener { documents ->
-                pagesListData.clear()
-                for (doc in documents) pagesListData.add("Page - ${doc.getString("timestamp") ?: ""}")
-                pageListAdapter.notifyDataSetChanged()
+        val key = "imgpages_${subjectName}_${chapterName}"
+        val raw = getSharedPreferences("chapters_prefs", MODE_PRIVATE).getString(key, "[]") ?: "[]"
+        pagesListData.clear()
+        try {
+            val arr = org.json.JSONArray(raw)
+            for (i in 0 until arr.length()) {
+                pagesListData.add("Page - ${arr.getJSONObject(i).optString("timestamp", "")}")
             }
+        } catch (_: Exception) { }
+        pageListAdapter.notifyDataSetChanged()
     }
 }

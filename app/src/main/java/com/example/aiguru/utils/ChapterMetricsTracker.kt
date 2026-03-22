@@ -1,9 +1,6 @@
 package com.example.aiguru.utils
 
 import android.content.Context
-import com.google.firebase.firestore.FieldValue
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.SetOptions
 import java.util.UUID
 
 /**
@@ -21,7 +18,6 @@ class ChapterMetricsTracker(
         NOTES_SAVED, FLASHCARD_GENERATED, REAL_TEACHER_USED
     }
 
-    private val db = FirebaseFirestore.getInstance()
     private val sessionId = UUID.randomUUID().toString()
     private val startTime = System.currentTimeMillis()
 
@@ -40,14 +36,6 @@ class ChapterMetricsTracker(
     private var realTeacherCount = 0
 
     private var sessionEnded = false
-
-    // ── Firestore path helper ─────────────────────────────────────────────────
-
-    private fun metricsRef(ctx: Context) =
-        db.collection("users").document(SessionManager.getFirestoreUserId(ctx))
-            .collection("subjects").document(subjectName)
-            .collection("chapters").document(chapterName)
-            .collection("metrics")
 
     // ── Public API ────────────────────────────────────────────────────────────
 
@@ -87,73 +75,6 @@ class ChapterMetricsTracker(
     fun endSession(ctx: Context, totalPages: Int = 0) {
         if (sessionEnded) return
         sessionEnded = true
-
-        val endTime = System.currentTimeMillis()
-        val durationSeconds = ((endTime - startTime) / 1000).toInt()
-        val metricsBase = metricsRef(ctx)
-
-        // 1. Write session doc
-        val sessionData = hashMapOf(
-            "startTime" to startTime,
-            "endTime" to endTime,
-            "durationSeconds" to durationSeconds,
-            "pagesViewed" to pagesViewed.toList(),
-            "messageCount" to messageCount,
-            "voiceCount" to voiceCount,
-            "imageCount" to imageCount
-        )
-        metricsBase.document("sessions")
-            .collection("log")
-            .document(sessionId)
-            .set(sessionData)
-
-        // 2. Update summary doc with FieldValue.increment + page merge via transaction
-        val summaryRef = metricsBase.document("summary")
-        db.runTransaction { tx ->
-            val snap = tx.get(summaryRef)
-
-            // Merge existing pagesViewed set
-            @Suppress("UNCHECKED_CAST")
-            val existingPages = (snap.get("pagesViewed") as? List<Long>)
-                ?.map { it.toInt() }?.toMutableSet() ?: mutableSetOf()
-            existingPages.addAll(pagesViewed)
-
-            val existingTime = snap.getLong("totalTimeSeconds") ?: 0L
-            val existingSessions = snap.getLong("sessionCount") ?: 0L
-            val existingMessages = snap.getLong("messageCount") ?: 0L
-            val existingVoice = snap.getLong("voiceCount") ?: 0L
-            val existingImages = snap.getLong("imageCount") ?: 0L
-            val existingQuiz = snap.getLong("quizAttempts") ?: 0L
-            val existingExplain = snap.getLong("explainCount") ?: 0L
-            val existingSummarize = snap.getLong("summarizeCount") ?: 0L
-            val existingNotes = snap.getLong("notesCount") ?: 0L
-            val existingFlash = snap.getLong("flashcardCount") ?: 0L
-            val existingRealTeacher = snap.getLong("realTeacherCount") ?: 0L
-            val existingTotalPages = snap.getLong("totalPages")?.toInt()
-                ?: if (totalPages > 0) totalPages else 0
-            val resolvedTotalPages = if (totalPages > existingTotalPages) totalPages else existingTotalPages
-
-            val newSummary = hashMapOf<String, Any>(
-                "totalTimeSeconds" to existingTime + durationSeconds,
-                "sessionCount" to existingSessions + 1,
-                "messageCount" to existingMessages + messageCount,
-                "voiceCount" to existingVoice + voiceCount,
-                "imageCount" to existingImages + imageCount,
-                "quizAttempts" to existingQuiz + quizCount,
-                "explainCount" to existingExplain + explainCount,
-                "summarizeCount" to existingSummarize + summarizeCount,
-                "notesCount" to existingNotes + notesCount,
-                "flashcardCount" to existingFlash + flashcardCount,
-                "realTeacherCount" to existingRealTeacher + realTeacherCount,
-                "pagesViewed" to existingPages.toList(),
-                "totalPages" to resolvedTotalPages,
-                "lastAccessed" to endTime
-            )
-
-            // Compute mastery score from updated summary
-            newSummary["masteryScore"] = MasteryCalculator.calculate(newSummary, resolvedTotalPages)
-
-            tx.set(summaryRef, newSummary, SetOptions.merge())
-        }
+        // Metrics will be written to Firestore when re-enabled
     }
 }

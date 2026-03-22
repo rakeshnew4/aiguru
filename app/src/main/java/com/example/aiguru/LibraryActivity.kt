@@ -14,11 +14,10 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.aiguru.models.LibraryBook
 import com.example.aiguru.utils.SessionManager
 import com.google.android.material.button.MaterialButton
-import com.google.firebase.firestore.FirebaseFirestore
+import org.json.JSONObject
 
 class LibraryActivity : AppCompatActivity() {
 
-    private lateinit var db: FirebaseFirestore
     private lateinit var recyclerView: RecyclerView
     private lateinit var emptyText: TextView
 
@@ -37,7 +36,6 @@ class LibraryActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_library)
 
-        db = FirebaseFirestore.getInstance()
         findViewById<ImageButton>(R.id.backButton).setOnClickListener { finish() }
 
         emptyText = findViewById(R.id.emptyText)
@@ -117,57 +115,44 @@ class LibraryActivity : AppCompatActivity() {
     )
 
     private fun showAddToSubjectDialog(book: LibraryBook) {
-        val userId = SessionManager.getFirestoreUserId(this)
-        db.collection("users").document(userId)
-            .collection("subjects").get()
-            .addOnSuccessListener { docs ->
-                val fromFirestore = docs.mapNotNull { it.getString("name") }
-                // Merge Firestore subjects with defaults, preserve order, deduplicate
-                val merged = (defaultSubjects + fromFirestore)
-                    .distinct()
-                    .filter { it.isNotBlank() }
-                    .sorted()
-                    .toTypedArray()
-                AlertDialog.Builder(this)
-                    .setTitle("➕ Add \"${book.title}\" to…")
-                    .setItems(merged) { _, idx -> addBookAsChapter(book, merged[idx]) }
-                    .setNegativeButton("Cancel", null)
-                    .show()
-            }
-            .addOnFailureListener {
-                // Firestore unavailable — still show defaults so user isn't stuck
-                val subjects = defaultSubjects.sorted().toTypedArray()
-                AlertDialog.Builder(this)
-                    .setTitle("➕ Add \"${book.title}\" to…")
-                    .setItems(subjects) { _, idx -> addBookAsChapter(book, subjects[idx]) }
-                    .setNegativeButton("Cancel", null)
-                    .show()
-            }
+        val savedRaw = getSharedPreferences("subjects_prefs", MODE_PRIVATE)
+            .getString("subjects_list", "") ?: ""
+        val saved = if (savedRaw.isNotEmpty()) savedRaw.split("||||").filter { it.isNotEmpty() } else emptyList()
+        val merged = (defaultSubjects + saved).distinct().filter { it.isNotBlank() }.sorted().toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("➕ Add \"${book.title}\" to…")
+            .setItems(merged) { _, idx -> addBookAsChapter(book, merged[idx]) }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun addBookAsChapter(book: LibraryBook, subjectName: String) {
-        val userId = SessionManager.getFirestoreUserId(this)
-        // Ensure the subject doc exists (covers case where it's a default that wasn't seeded yet)
-        db.collection("users").document(userId)
-            .collection("subjects").document(subjectName)
-            .set(hashMapOf("name" to subjectName), com.google.firebase.firestore.SetOptions.merge())
-        db.collection("users").document(userId)
-            .collection("subjects").document(subjectName)
-            .collection("chapters").document(book.title)
-            .set(hashMapOf(
-                "name"         to book.title,
-                "order"        to System.currentTimeMillis(),
-                "isPdf"        to true,
-                "pdfAssetPath" to book.assetPath,
-                "pdfId"        to book.pdfId,
-                "pageCount"    to 0
-            ))
-            .addOnSuccessListener {
-                Toast.makeText(this, "\"${book.title}\" added to $subjectName ✓", Toast.LENGTH_SHORT).show()
-            }
-            .addOnFailureListener {
-                Toast.makeText(this, "Failed to add chapter. Try again.", Toast.LENGTH_SHORT).show()
-            }
+        val prefs = getSharedPreferences("chapters_prefs", MODE_PRIVATE)
+        // Add to chapters list
+        val listKey = "chapters_$subjectName"
+        val existing = (prefs.getString(listKey, "") ?: "")
+            .split("||||").filter { it.isNotEmpty() }.toMutableList()
+        if (!existing.contains(book.title)) existing.add(book.title)
+        // Save metadata
+        val meta = JSONObject().apply {
+            put("isPdf", true)
+            put("pdfAssetPath", book.assetPath)
+            put("pdfId", book.pdfId)
+        }.toString()
+        prefs.edit()
+            .putString(listKey, existing.joinToString("||||"))
+            .putString("meta_${subjectName}_${book.title}", meta)
+            .apply()
+        // Also ensure subject is in subjects list
+        val subjectsPrefs = getSharedPreferences("subjects_prefs", MODE_PRIVATE)
+        val subjectsRaw = subjectsPrefs.getString("subjects_list", "") ?: ""
+        val subjects = if (subjectsRaw.isNotEmpty()) subjectsRaw.split("||||").filter { it.isNotEmpty() }.toMutableList()
+                       else mutableListOf()
+        if (!subjects.contains(subjectName)) {
+            subjects.add(subjectName)
+            subjectsPrefs.edit().putString("subjects_list", subjects.joinToString("||||")).apply()
+        }
+        Toast.makeText(this, "\"${book.title}\" added to $subjectName ✓", Toast.LENGTH_SHORT).show()
     }
 
     // ─── Data types ───────────────────────────────────────────────────────────

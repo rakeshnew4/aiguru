@@ -42,8 +42,14 @@ class LoginActivity : AppCompatActivity() {
             return
         }
 
+        val webClientId = try { getString(R.string.default_web_client_id) } catch (_: Exception) { "" }
+        if (webClientId.isEmpty()) {
+            Toast.makeText(this, "Google Sign-In not configured.\nAdd SHA-1 + enable Google auth in Firebase Console, then re-download google-services.json.", Toast.LENGTH_LONG).show()
+            return
+        }
+
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(getString(R.string.default_web_client_id))
+            .requestIdToken(webClientId)
             .requestEmail()
             .build()
 
