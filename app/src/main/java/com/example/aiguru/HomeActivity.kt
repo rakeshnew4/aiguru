@@ -29,7 +29,7 @@ class HomeActivity : AppCompatActivity() {
 
         // Redirect to login if no session
         if (!SessionManager.isLoggedIn(this)) {
-            startActivity(Intent(this, SchoolLoginActivity::class.java))
+            startActivity(Intent(this, LoginActivity::class.java))
             finish()
             return
         }
@@ -147,7 +147,8 @@ class HomeActivity : AppCompatActivity() {
             .setMessage("Are you sure you want to logout?")
             .setPositiveButton("Logout") { _, _ ->
                 SessionManager.logout(this)
-                startActivity(Intent(this, SchoolLoginActivity::class.java).apply {
+                com.google.firebase.auth.FirebaseAuth.getInstance().signOut()
+                startActivity(Intent(this, LoginActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 })
                 finish()

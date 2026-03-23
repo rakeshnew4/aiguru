@@ -41,7 +41,32 @@
         android:textSize="16sp"
         android:textColor="#FFFFFF"
         android:backgroundTint="#1A73E8"
-        android:layout_marginBottom="16dp"/>
+        android:layout_marginBottom="12dp"/>
+
+    <ProgressBar
+        android:id="@+id/loginProgressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:layout_marginBottom="12dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="— or —"
+        android:textSize="13sp"
+        android:textColor="#AAAAAA"
+        android:layout_marginBottom="12dp"/>
+
+    <Button
+        android:id="@+id/schoolLoginButton"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="Sign in with School ID"
+        android:textSize="16sp"
+        android:textColor="#1A73E8"
+        android:backgroundTint="#E8F0FE"
+        android:layout_marginBottom="24dp"/>
 
     <TextView
         android:layout_width="wrap_content"
