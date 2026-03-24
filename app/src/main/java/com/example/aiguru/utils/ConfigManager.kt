@@ -150,7 +150,7 @@ object ConfigManager {
 
         val features = root.optJSONObject("features")?.let { f ->
             FeaturesConfig(
-                realTeacher = f.optBoolean("realTeacher", true),
+               
                 library = f.optBoolean("library", true),
                 revision = f.optBoolean("revision", true),
                 voiceChat = f.optBoolean("voiceChat", true),
@@ -159,7 +159,7 @@ object ConfigManager {
                 mockTests = f.optBoolean("mockTests", false),
                 parentReports = f.optBoolean("parentReports", false)
             )
-        } ?: FeaturesConfig(true, true, true, true, true, true, false, false)
+        } ?: FeaturesConfig(true, true, true, true, true, true, false)
 
         val greetings = mutableMapOf<String, String>()
         root.optJSONObject("greetingMessages")?.let { g ->
@@ -173,12 +173,12 @@ object ConfigManager {
             HomeScreenConfig(
                 showSubjectGrid = h.optBoolean("showSubjectGrid", true),
                 showLibraryButton = h.optBoolean("showLibraryButton", true),
-                showRealTeacherButton = h.optBoolean("showRealTeacherButton", true),
+        
                 showAddSubjectButton = h.optBoolean("showAddSubjectButton", true),
                 gridColumns = h.optInt("gridColumns", 2),
                 motivationalQuotes = quotes
             )
-        } ?: HomeScreenConfig(true, true, true, true, 2, emptyList())
+        } ?: HomeScreenConfig(true, true, true, 2, emptyList())
 
         return AppConfig(
             version = root.optString("version", "1.0"),
@@ -209,12 +209,12 @@ object ConfigManager {
             buttonAccentColor = "#FF8F00", successColor = "#2E7D32",
             warningColor = "#F57F17"
         ),
-        features = FeaturesConfig(true, true, true, true, true, true, false, false),
+        features = FeaturesConfig(true, true, true, true, true, true, false),
         greetingMessages = mapOf(
             "morning" to "Good morning! ☀️",
             "afternoon" to "Good afternoon! 👋",
             "evening" to "Good evening! 🌙"
         ),
-        homeScreen = HomeScreenConfig(true, true, true, true, 2, emptyList())
+        homeScreen = HomeScreenConfig(true, true, true, 2, emptyList())
     )
 }

@@ -197,17 +197,7 @@
             app:cornerRadius="12dp"
             android:layout_marginEnd="6dp" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/realTeacherChapterButton"
-            android:layout_width="0dp"
-            android:layout_height="52dp"
-            android:layout_weight="1"
-            android:text="👩‍🏫 Teacher"
-            android:textSize="13sp"
-            android:textColor="#FFFFFF"
-            app:backgroundTint="#2E7D32"
-            app:cornerRadius="12dp"
-            android:layout_marginEnd="6dp" />
+
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/askAIButton"

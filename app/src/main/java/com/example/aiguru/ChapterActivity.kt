@@ -74,14 +74,7 @@ class ChapterActivity : AppCompatActivity() {
             showNotesOptions()
         }
 
-        // Real Teacher button
-//        findViewById<MaterialButton>(R.id.realTeacherChapterButton).setOnClickListener {
-//            startActivity(
-//                Intent(this, RealTeacherActivity::class.java)
-//                    .putExtra("subjectName", subjectName)
-//                    .putExtra("chapterName", chapterName)
-//            )
-//        }
+      
 
         // Set up RecyclerView with PageListAdapter
         pagesRecyclerView = findViewById(R.id.pagesList)

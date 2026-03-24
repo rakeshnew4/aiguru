@@ -15,7 +15,7 @@ class ChapterMetricsTracker(
     enum class EventType {
         PAGE_VIEWED, QUIZ_REQUESTED, EXPLAIN_USED, SUMMARIZE_USED,
         FORMULA_USED, PRACTICE_USED, VOICE_INPUT, IMAGE_UPLOADED,
-        NOTES_SAVED, FLASHCARD_GENERATED, REAL_TEACHER_USED
+        NOTES_SAVED, FLASHCARD_GENERATED
     }
 
     private val sessionId = UUID.randomUUID().toString()
@@ -33,7 +33,7 @@ class ChapterMetricsTracker(
     private var imageCount = 0
     private var notesCount = 0
     private var flashcardCount = 0
-    private var realTeacherCount = 0
+  
 
     private var sessionEnded = false
 
@@ -55,7 +55,7 @@ class ChapterMetricsTracker(
             EventType.IMAGE_UPLOADED -> imageCount++
             EventType.NOTES_SAVED -> notesCount++
             EventType.FLASHCARD_GENERATED -> flashcardCount++
-            EventType.REAL_TEACHER_USED -> realTeacherCount++
+
             EventType.PAGE_VIEWED -> { /* handled by recordPageViewed */ }
         }
     }

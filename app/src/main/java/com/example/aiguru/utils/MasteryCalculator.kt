@@ -15,7 +15,6 @@ import kotlin.math.min
  *   Notes saved            → up to 10 pts
  *   Flashcards generated   → up to  5 pts
  *   Voice + image use      → up to  5 pts
- *   Real Teacher session   → up to  5 pts
  */
 object MasteryCalculator {
 
@@ -69,10 +68,6 @@ object MasteryCalculator {
         val voiceCount = (summary["voiceCount"] as? Long)?.toInt() ?: 0
         val imageCount = (summary["imageCount"] as? Long)?.toInt() ?: 0
         score += if (voiceCount + imageCount > 0) 5 else 0
-
-        // ── Real Teacher session (up to 5) ───────────────────────────────────
-        val realTeacherCount = (summary["realTeacherCount"] as? Long)?.toInt() ?: 0
-        score += if (realTeacherCount > 0) 5 else 0
 
         return min(100, score)
     }

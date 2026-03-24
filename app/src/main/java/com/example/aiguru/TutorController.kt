@@ -240,6 +240,10 @@ $footer"""
             .replace(Regex("\\s{2,}"), " ")
             .replace(Regex("(\\.\\s*){2,}"), ". ")
             .trim()
+            // Remove emojis (covers most emoji ranges)
+            .replace(
+                Regex("[\\p{So}\\p{Cn}]"), ""
+            )
     }
 
     /**

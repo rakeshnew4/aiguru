@@ -45,10 +45,6 @@
         <activity android:name=".PageViewerActivity" android:exported="false"/>
         <activity android:name=".ProgressDashboardActivity" android:exported="false"/>
         <activity
-            android:name=".RealTeacherActivity"
-            android:exported="false"
-            android:windowSoftInputMode="adjustResize"/>
-        <activity
             android:name=".GeminiLiveActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"/>

@@ -19,7 +19,7 @@ data class ThemeConfig(
 )
 
 data class FeaturesConfig(
-    val realTeacher: Boolean,
+
     val library: Boolean,
     val revision: Boolean,
     val voiceChat: Boolean,
@@ -32,7 +32,6 @@ data class FeaturesConfig(
 data class HomeScreenConfig(
     val showSubjectGrid: Boolean,
     val showLibraryButton: Boolean,
-    val showRealTeacherButton: Boolean,
     val showAddSubjectButton: Boolean,
     val gridColumns: Int,
     val motivationalQuotes: List<String>

@@ -24,7 +24,6 @@
   },
 
   "features": {
-    "realTeacher": true,
     "library": true,
     "revision": true,
     "voiceChat": true,
@@ -43,7 +42,6 @@
   "homeScreen": {
     "showSubjectGrid": true,
     "showLibraryButton": true,
-    "showRealTeacherButton": true,
     "showAddSubjectButton": true,
     "gridColumns": 2,
     "motivationalQuotes": [

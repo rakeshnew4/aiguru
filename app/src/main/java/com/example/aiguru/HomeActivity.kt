@@ -54,10 +54,6 @@ class HomeActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.progressButton).setOnClickListener {
             startActivity(Intent(this, ProgressDashboardActivity::class.java))
         }
-//        findViewById<MaterialButton>(R.id.realTeacherButton).setOnClickListener {
-//            startActivity(Intent(this, RealTeacherActivity::class.java))
-//        }
-        // Profile / logout button
         findViewById<TextView?>(R.id.profileButton)?.setOnClickListener {
             showProfileDialog()
         }
@@ -78,11 +74,6 @@ class HomeActivity : AppCompatActivity() {
             // Buttons
             findViewById<MaterialButton?>(R.id.libraryButton)?.backgroundTintList =
                 ColorStateList.valueOf(primaryColor)
-            findViewById<MaterialButton?>(R.id.realTeacherButton)?.backgroundTintList =
-                ColorStateList.valueOf(Color.parseColor(branding?.primaryColor?.let {
-                    // Slightly dark variant
-                    it
-                } ?: "#2E7D32"))
             findViewById<MaterialButton?>(R.id.addSubjectButton)?.backgroundTintList =
                 ColorStateList.valueOf(accentColor)
 
