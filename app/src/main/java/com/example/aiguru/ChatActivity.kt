@@ -34,6 +34,7 @@ import com.example.aiguru.BuildConfig
 import com.example.aiguru.adapters.MessageAdapter
 import com.example.aiguru.chat.ChatHistoryRepository
 import com.example.aiguru.chat.AiClient
+import com.example.aiguru.chat.ConversationSummarizer
 import com.example.aiguru.chat.GroqApiClient
 import com.example.aiguru.chat.NotesRepository
 import com.example.aiguru.chat.ServerProxyClient
@@ -216,7 +217,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             context = this,
             onVoiceClick = { msg ->
                 ttsManager.setLocale(Locale.forLanguageTag(currentLang))
-                ttsManager.speak(msg.content, object : com.example.aiguru.utils.TTSCallback {
+                val speechText = TutorController.prepareSpeechText(msg.content)
+                ttsManager.speak(speechText, object : com.example.aiguru.utils.TTSCallback {
                     override fun onStart() {}
                     override fun onComplete() {}
                     override fun onError(error: String) {}
@@ -501,7 +503,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                 }
             }
 
-            val onDone: () -> Unit = {
+            val onDone: (Int, Int, Int) -> Unit = { inputTok, outputTok, totalTok ->
+                android.util.Log.d("TokenDebug", "[ChatActivity] onDone received in=$inputTok out=$outputTok total=$totalTok")
                 runOnUiThread {
                     showLoading(false)
                     val rawResponse = accumulated.toString()
@@ -511,11 +514,13 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                         updateModeChipStates()
                         messageAdapter.updateMessage(streamingId, reply.response)
                         val finalMsg = Message(streamingId, reply.response, false)
-                        historyRepo.saveMessage(finalMsg)
+                        val tokensToSave = totalTok.takeIf { it > 0 }
+                        android.util.Log.d("TokenDebug", "[ChatActivity] saving AI msg tokens=$tokensToSave")
+                        historyRepo.saveMessage(finalMsg, tokens = tokensToSave)
                         messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
                         if (lastInputWasVoice || isVoiceModeActive) {
                             lastInputWasVoice = false
-                            val voiceText = TutorController.trimForVoice(reply.response)
+                            val voiceText = TutorController.prepareSpeechTextBrief(reply.response)
                             if (isVoiceModeActive) {
                                 currentTTSText = voiceText
                                 setVoiceModeStatus("🔊 AI is speaking…", "#1565C0")
@@ -590,7 +595,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                 systemPrompt = sysPrompt,
                 userText     = prompt,
                 onToken      = { token -> fullResponse.append(token) },
-                onDone       = {
+                onDone       = { _, _, _ ->
                     runOnUiThread {
                         showLoading(false)
                         val cards = parseFlashcards(fullResponse.toString())
@@ -963,6 +968,20 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     override fun onStop() {
         super.onStop()
         metricsTracker.endSession(this)
+        // Generate and save conversation summary in background (fire-and-forget)
+        val msgs = messageAdapter.getMessages().filter { it.content.isNotBlank() }
+        val uid  = SessionManager.getFirestoreUserId(this)
+        if (uid.isNotBlank() && uid != "guest_user") {
+            lifecycleScope.launch {
+                ConversationSummarizer.summarize(
+                    messages  = msgs,
+                    subject   = subjectName,
+                    chapter   = chapterName,
+                    userId    = uid,
+                    aiClient  = buildAiClient()
+                )
+            }
+        }
     }
 
     override fun onDestroy() {

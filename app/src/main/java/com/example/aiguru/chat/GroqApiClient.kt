@@ -31,7 +31,7 @@ class GroqApiClient(
         systemPrompt: String,
         userText: String,
         onToken: (String) -> Unit,
-        onDone: () -> Unit,
+        onDone: (inputTokens: Int, outputTokens: Int, totalTokens: Int) -> Unit,
         onError: (String) -> Unit
     ) {
         val json = JSONObject().apply {
@@ -52,7 +52,7 @@ class GroqApiClient(
         userText: String,
         base64Image: String,
         onToken: (String) -> Unit,
-        onDone: () -> Unit,
+        onDone: (inputTokens: Int, outputTokens: Int, totalTokens: Int) -> Unit,
         onError: (String) -> Unit
     ) {
         val contentArray = JSONArray().apply {
@@ -98,7 +98,7 @@ class GroqApiClient(
     private fun executeStream(
         json: JSONObject,
         onToken: (String) -> Unit,
-        onDone: () -> Unit,
+        onDone: (inputTokens: Int, outputTokens: Int, totalTokens: Int) -> Unit,
         onError: (String) -> Unit
     ) {
         val request = Request.Builder()
@@ -127,7 +127,7 @@ class GroqApiClient(
                     } catch (_: Exception) { }
                 }
             }
-            onDone()
+            onDone(0, 0, 0)   // Groq streaming doesn't report usage in SSE frames
         } catch (e: IOException) {
             onError(e.message ?: "Network error")
         }

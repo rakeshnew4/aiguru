@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.aiguru.adapters.SubjectAdapter
+import com.example.aiguru.firestore.FirestoreManager
 import com.example.aiguru.utils.ConfigManager
 import com.example.aiguru.utils.SessionManager
 import com.google.android.material.button.MaterialButton
@@ -23,6 +24,7 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var subjectsRecyclerView: RecyclerView
     private val subjectsList = mutableListOf<String>()
     private lateinit var subjectAdapter: SubjectAdapter
+    private lateinit var userId: String
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,6 +41,7 @@ class HomeActivity : AppCompatActivity() {
         applySchoolBranding()
         setupGreeting()
         setupStudentInfo()
+        userId = SessionManager.getFirestoreUserId(this)
         setupRecyclerView()
         loadSubjects()
 
@@ -200,11 +203,28 @@ class HomeActivity : AppCompatActivity() {
         if (saved.isEmpty()) {
             subjectsList.addAll(defaultSubjects)
             saveSubjectsLocally(subjectsList)
+            // Push defaults to Firestore too
+            subjectsList.forEach { FirestoreManager.saveSubject(userId, it) }
         } else {
             subjectsList.addAll(saved)
         }
         subjectAdapter.notifyDataSetChanged()
         updateSubjectCount()
+        // Restore from Firestore if local was empty (e.g. fresh install)
+        if (saved.isEmpty()) return
+        FirestoreManager.loadSubjects(userId,
+            onSuccess = { remoteList ->
+                val toAdd = remoteList.filter { it !in subjectsList }
+                if (toAdd.isNotEmpty()) {
+                    subjectsList.addAll(toAdd)
+                    saveSubjectsLocally(subjectsList)
+                    runOnUiThread {
+                        subjectAdapter.notifyDataSetChanged()
+                        updateSubjectCount()
+                    }
+                }
+            }
+        )
     }
 
     private fun updateSubjectCount() {
@@ -241,6 +261,7 @@ class HomeActivity : AppCompatActivity() {
     private fun addSubject(name: String) {
         subjectsList.add(name)
         saveSubjectsLocally(subjectsList)
+        FirestoreManager.saveSubject(userId, name)
         subjectAdapter.notifyItemInserted(subjectsList.size - 1)
         updateSubjectCount()
     }
@@ -250,6 +271,7 @@ class HomeActivity : AppCompatActivity() {
         if (idx >= 0) {
             subjectsList.removeAt(idx)
             saveSubjectsLocally(subjectsList)
+            FirestoreManager.deleteSubject(userId, name)
             subjectAdapter.notifyItemRemoved(idx)
             updateSubjectCount()
         }

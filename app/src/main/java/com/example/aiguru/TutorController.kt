@@ -152,18 +152,103 @@ $footer"""
     // ── 5. Voice Helper ──────────────────────────────────────────────────────
 
     /**
-     * Returns a voice-friendly version of [response]: strips markdown,
-     * keeps the first 3 sentences, hard-caps at 280 chars.
+     * Converts a markdown AI response into clean, natural speech text.
+     *
+     * Handles: code blocks, tables, headers, bold/italic, bullets, numbered lists,
+     * inline code, math symbols, scientific notation, common Unicode symbols.
+     * Unlike trimForVoice(), this does NOT truncate — returns the full readable text
+     * so the [▶ Speak] button reads the complete message.
+     *
+     * For voice-loop auto-speak (where we want brevity), use [prepareSpeechText]
+     * then take sentences as needed.
      */
-    fun trimForVoice(response: String): String {
-        val clean = response
-            .replace(Regex("\\*{1,3}"), "")
-            .replace(Regex("#{1,6}\\s?"), "")
-            .replace(Regex("\n+"), " ")
+    fun prepareSpeechText(markdown: String): String {
+        return markdown
+            // Code blocks → spoken cue so listener knows it was omitted
+            .replace(Regex("```[\\s\\S]*?```"), " Code block omitted. ")
+
+            // Tables → skip entirely (unreadable when spoken)
+            .replace(Regex("(?m)^\\|.*\\|\\s*$"), "")
+            .replace(Regex("(?m)^[-|: ]+$"), "")
+
+            // Links → keep link text only
+            .replace(Regex("\\[(.*?)\\]\\(.*?\\)"), "$1")
+
+            // Headers → strip # prefix, add natural pause via period
+            .replace(Regex("#{1,6}\\s+(.*)"), "$1.")
+
+            // Bold / italic / underline
+            .replace(Regex("\\*\\*\\*(.*?)\\*\\*\\*"), "$1")
+            .replace(Regex("\\*\\*(.*?)\\*\\*"), "$1")
+            .replace(Regex("(?<!\\*)\\*(?!\\*)(.*?)(?<!\\*)\\*(?!\\*)"), "$1")
+            .replace(Regex("__(.*?)__"), "$1")
+            .replace(Regex("(?<!_)_(?!_)(.*?)(?<!_)_(?!_)"), "$1")
+
+            // Strikethrough
+            .replace(Regex("~~(.*?)~~"), "$1")
+
+            // Numbered lists → keep as natural sentences
+            .replace(Regex("(?m)^\\s*\\d+\\.\\s+"), ". ")
+
+            // Bullet points → add brief pause
+            .replace(Regex("(?m)^\\s*[-*•]\\s+"), ". ")
+
+            // Inline code → remove backticks, keep content
+            .replace(Regex("`([^`]+)`"), "$1")
+
+            // Math / science symbols → spoken equivalents
+            .replace(Regex("\\$\\$.*?\\$\\$"), " math expression ")
+            .replace("\u00b2", " squared")
+            .replace("\u00b3", " cubed")
+            .replace("\u221a", " root of ")
+            .replace("\u03b1", "alpha").replace("\u03b2", "beta")
+            .replace("\u03b3", "gamma").replace("\u03b4", "delta")
+            .replace("\u03c0", "pi").replace("\u03b8", "theta")
+            .replace("\u03bb", "lambda").replace("\u03a3", "sigma")
+            .replace("\u2206", "delta ").replace("\u221e", "infinity")
+            .replace("\u2248", " approximately ").replace("\u2260", " not equal to ")
+            .replace("\u2264", " less than or equal to ").replace("\u2265", " greater than or equal to ")
+            .replace("\u00b1", " plus or minus ").replace("\u00d7", " times ")
+            .replace("\u00f7", " divided by ").replace("%", " percent")
+            .replace("\u2192", " leads to ")
+            .replace("\u2190", " from ")
+            .replace("\u2194", " corresponds to ")
+            .replace("\u21d2", " therefore ")
+            .replace("\u2234", " therefore ")
+
+            // Scientific exponents: e.g. 1.5e10, 6.022E23
+            .replace(Regex("([0-9.]+)[eE]([+-]?[0-9]+)")) { m ->
+                "${m.groupValues[1]} times 10 to the power ${m.groupValues[2]}"
+            }
+
+            // Superscript ^2 / ^{n+1}
+            .replace(Regex("\\^\\{([^}]+)\\}"), " to the power $1")
+            .replace(Regex("\\^([0-9a-zA-Z+\\-]+)"), " to the power $1")
+
+            // Subscript _{2} or H_2
+            .replace(Regex("_\\{([^}]+)\\}"), " sub $1")
+            .replace(Regex("(?<=[A-Za-z])_([0-9]+)"), " $1")
+
+            // Remaining markdown symbols
+            .replace(Regex("[#*`_~|]"), "")
+
+            // Normalize whitespace and blank lines
+            .replace(Regex("\n{3,}"), "\n\n")
+            .replace(Regex("[ \t]+"), " ")
+            .lines()
+            .joinToString(" ") { it.trim() }
             .replace(Regex("\\s{2,}"), " ")
+            .replace(Regex("(\\.\\s*){2,}"), ". ")
             .trim()
-        val sentences = clean.split(Regex("(?<=[.!?])\\s+"))
-        val voiced = sentences.take(3).joinToString(" ")
-        return if (voiced.length > 280) voiced.take(277) + "…" else voiced
+    }
+
+    /**
+     * Keeps only the first [sentenceCount] sentences from [prepareSpeechText] output.
+     * Use for voice-loop auto-speaking where brevity matters.
+     */
+    fun prepareSpeechTextBrief(markdown: String, sentenceCount: Int = 3): String {
+        val full = prepareSpeechText(markdown)
+        val sentences = full.split(Regex("(?<=[.!?])\\s+"))
+        return sentences.take(sentenceCount).joinToString(" ")
     }
 }

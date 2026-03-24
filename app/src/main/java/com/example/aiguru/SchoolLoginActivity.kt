@@ -12,6 +12,7 @@ import com.example.aiguru.utils.ConfigManager
 import com.example.aiguru.utils.SessionManager
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
+import com.google.firebase.auth.FirebaseAuth
 
 class SchoolLoginActivity : AppCompatActivity() {
 
@@ -91,17 +92,31 @@ class SchoolLoginActivity : AppCompatActivity() {
             studentName = name
         )
 
-        // First-time users go through a quick profile setup; returning users go home
-        val nextClass = if (SessionManager.isSignupComplete(this)) {
-            HomeActivity::class.java
-        } else {
-            SignupActivity::class.java
+        val navigateNext: () -> Unit = {
+            val nextClass = if (SessionManager.isSignupComplete(this)) {
+                HomeActivity::class.java
+            } else {
+                SignupActivity::class.java
+            }
+            startActivity(Intent(this, nextClass).apply {
+                putExtra("schoolId", school.id)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            })
+            finish()
         }
 
-        startActivity(Intent(this, nextClass).apply {
-            putExtra("schoolId", school.id)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        })
-        finish()
+        val auth = FirebaseAuth.getInstance()
+        if (auth.currentUser != null) {
+            SessionManager.saveFirebaseUid(this, auth.currentUser!!.uid)
+            navigateNext()
+        } else {
+            loginButton.isEnabled = false
+            auth.signInAnonymously()
+                .addOnSuccessListener { result ->
+                    result.user?.uid?.let { uid -> SessionManager.saveFirebaseUid(this, uid) }
+                    navigateNext()
+                }
+                .addOnFailureListener { navigateNext() }
+        }
     }
 }

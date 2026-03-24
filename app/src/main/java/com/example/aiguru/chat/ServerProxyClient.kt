@@ -43,7 +43,7 @@ class ServerProxyClient(
         systemPrompt: String,
         userText: String,
         onToken: (String) -> Unit,
-        onDone: () -> Unit,
+        onDone: (inputTokens: Int, outputTokens: Int, totalTokens: Int) -> Unit,
         onError: (String) -> Unit
     ) {
         // Combine system prompt + user text into a single text field
@@ -58,7 +58,7 @@ class ServerProxyClient(
         userText: String,
         base64Image: String,
         onToken: (String) -> Unit,
-        onDone: () -> Unit,
+        onDone: (inputTokens: Int, outputTokens: Int, totalTokens: Int) -> Unit,
         onError: (String) -> Unit
     ) {
         // Image not supported by this server format — fall back to text only
@@ -70,7 +70,7 @@ class ServerProxyClient(
     private fun executeStream(
         json: JSONObject,
         onToken: (String) -> Unit,
-        onDone: () -> Unit,
+        onDone: (inputTokens: Int, outputTokens: Int, totalTokens: Int) -> Unit,
         onError: (String) -> Unit
     ) {
         val reqBuilder = Request.Builder()
@@ -85,6 +85,7 @@ class ServerProxyClient(
                 onError("HTTP ${response.code}: ${response.message}")
                 return
             }
+            var inputTokens = 0; var outputTokens = 0; var totalTokens = 0
             response.body?.source()?.let { source ->
                 while (!source.exhausted()) {
                     val line = source.readUtf8Line() ?: break
@@ -92,13 +93,20 @@ class ServerProxyClient(
                     val data = line.removePrefix("data: ").trim()
                     try {
                         val obj = JSONObject(data)
-                        if (obj.optBoolean("done", false)) break
+                        if (obj.optBoolean("done", false)) {
+                            inputTokens  = obj.optInt("inputTokens",  0)
+                            outputTokens = obj.optInt("outputTokens", 0)
+                            totalTokens  = obj.optInt("totalTokens",  0)
+                            Log.d("TokenDebug", "[ServerProxy] done frame → in=$inputTokens out=$outputTokens total=$totalTokens raw=$data")
+                            break
+                        }
                         val token = obj.optString("text", "")
                         if (token.isNotEmpty()) onToken(token)
                     } catch (_: Exception) { }
                 }
             }
-            onDone()
+            onDone(inputTokens, outputTokens, totalTokens)
+            Log.d("TokenDebug", "[ServerProxy] onDone called with in=$inputTokens out=$outputTokens total=$totalTokens")
         } catch (e: IOException) {
             Log.e("ServerProxyClient", "IOException: ${e.message}", e)
             onError(e.message ?: "Network error")

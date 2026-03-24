@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.aiguru.adapters.ChapterAdapter
+import com.example.aiguru.firestore.FirestoreManager
 import com.example.aiguru.utils.SessionManager
 import com.google.android.material.button.MaterialButton
 import org.json.JSONObject
@@ -21,6 +22,7 @@ class SubjectActivity : AppCompatActivity() {
     private val chaptersListData = mutableListOf<String>()
     private lateinit var chapterAdapter: ChapterAdapter
     private lateinit var subjectName: String
+    private lateinit var userId: String
 
     // Simple data holder for a scanned library book
     private data class LibItem(val title: String, val assetPath: String, val pdfId: String, val label: String)
@@ -30,6 +32,7 @@ class SubjectActivity : AppCompatActivity() {
         setContentView(R.layout.activity_subject)
 
         subjectName = intent.getStringExtra("subjectName") ?: "Subject"
+        userId = SessionManager.getFirestoreUserId(this)
 
         findViewById<TextView>(R.id.subjectTitle).text = subjectName
         findViewById<ImageButton>(R.id.backButton).setOnClickListener { finish() }
@@ -167,6 +170,7 @@ class SubjectActivity : AppCompatActivity() {
         if (!chapters.contains(name)) chapters.add(name)
         saveChaptersLocally(chapters)
         saveChapterMeta(name, isPdf = false)
+        FirestoreManager.saveChapter(userId, subjectName, name, isPdf = false)
         chaptersListData.clear()
         chaptersListData.addAll(chapters)
         chapterAdapter.notifyDataSetChanged()
@@ -177,6 +181,7 @@ class SubjectActivity : AppCompatActivity() {
         if (!chapters.contains(book.title)) chapters.add(book.title)
         saveChaptersLocally(chapters)
         saveChapterMeta(book.title, isPdf = true, pdfAssetPath = book.assetPath, pdfId = book.pdfId)
+        FirestoreManager.saveChapter(userId, subjectName, book.title, isPdf = true, pdfAssetPath = book.assetPath)
         chaptersListData.clear()
         chaptersListData.addAll(chapters)
         chapterAdapter.notifyDataSetChanged()
@@ -197,6 +202,7 @@ class SubjectActivity : AppCompatActivity() {
         chapters.remove(name)
         saveChaptersLocally(chapters)
         deleteChapterMeta(name)
+        FirestoreManager.deleteChapter(userId, subjectName, name)
         val idx = chaptersListData.indexOf(name)
         if (idx >= 0) {
             chaptersListData.removeAt(idx)

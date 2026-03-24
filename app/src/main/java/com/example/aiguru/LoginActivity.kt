@@ -14,6 +14,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import com.google.firebase.auth.FirebaseAuth
 class LoginActivity : AppCompatActivity() {
 
     private lateinit var googleSignInClient: GoogleSignInClient
@@ -27,9 +28,10 @@ class LoginActivity : AppCompatActivity() {
                 val account = task.getResult(ApiException::class.java)
                 val displayName = account.displayName ?: "Student"
                 val email = account.email ?: account.id ?: "google_user"
-                bridgeFirebaseUser(displayName, email)
-                setLoading(false)
-                goHome()
+                bridgeFirebaseUser(displayName, email) {
+                    setLoading(false)
+                    goHome()
+                }
             } catch (e: ApiException) {
                 setLoading(false)
                 Toast.makeText(this, "Sign in failed: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -51,8 +53,10 @@ class LoginActivity : AppCompatActivity() {
         // Check if Google account is already signed in
         val lastAccount = GoogleSignIn.getLastSignedInAccount(this)
         if (lastAccount != null) {
-            bridgeFirebaseUser(lastAccount.displayName ?: "Student", lastAccount.email ?: lastAccount.id ?: "google_user")
-            goHome(); return
+            bridgeFirebaseUser(lastAccount.displayName ?: "Student", lastAccount.email ?: lastAccount.id ?: "google_user") {
+                goHome()
+            }
+            return
         }
 
         // Use basic Google Sign-In (no idToken needed — we don't use Firebase Auth backend)
@@ -84,7 +88,7 @@ class LoginActivity : AppCompatActivity() {
      * Creates a SessionManager session from a Firebase Auth user so that
      * HomeActivity's SessionManager.isLoggedIn() check passes.
      */
-    private fun bridgeFirebaseUser(displayName: String, email: String) {
+    private fun bridgeFirebaseUser(displayName: String, email: String, onDone: () -> Unit = {}) {
         SessionManager.login(
             context     = this,
             schoolId    = "google",
@@ -92,6 +96,18 @@ class LoginActivity : AppCompatActivity() {
             studentId   = email,
             studentName = displayName
         )
+        val auth = FirebaseAuth.getInstance()
+        if (auth.currentUser != null) {
+            SessionManager.saveFirebaseUid(this, auth.currentUser!!.uid)
+            onDone()
+        } else {
+            auth.signInAnonymously()
+                .addOnSuccessListener { result ->
+                    result.user?.uid?.let { uid -> SessionManager.saveFirebaseUid(this, uid) }
+                    onDone()
+                }
+                .addOnFailureListener { onDone() }
+        }
     }
 
     private fun goHome() {
