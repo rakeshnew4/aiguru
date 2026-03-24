@@ -30,7 +30,9 @@
         </activity>
 
         <activity android:name=".LoginActivity" android:exported="false"/>
+        <activity android:name=".EmailAuthActivity" android:exported="false" android:windowSoftInputMode="adjustResize"/>
         <activity android:name=".SchoolLoginActivity" android:exported="false"/>
+        <activity android:name=".SignupActivity" android:exported="false" />
         <activity android:name=".SubscriptionActivity" android:exported="false"/>
         <activity android:name=".SubjectActivity" android:exported="false"/>
         <activity android:name=".ChapterActivity" android:exported="false"/>
@@ -44,6 +46,10 @@
         <activity android:name=".ProgressDashboardActivity" android:exported="false"/>
         <activity
             android:name=".RealTeacherActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"/>
+        <activity
+            android:name=".GeminiLiveActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"/>
 

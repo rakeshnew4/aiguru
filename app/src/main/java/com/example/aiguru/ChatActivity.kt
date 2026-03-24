@@ -100,6 +100,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     // ── Interactive Voice Chat Mode ────────────────────────────────────────────
     private var isVoiceModeActive = false
     private lateinit var voiceChatButton: MaterialButton
+    private lateinit var geminiLiveButton: MaterialButton
     private lateinit var voiceChatBar: LinearLayout
     private lateinit var voiceChatStatus: TextView
     // Equaliser wave bars inside voiceChatBar
@@ -274,6 +275,18 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         voiceChatButton.setOnClickListener {
             if (isVoiceModeActive) stopVoiceMode() else startVoiceMode()
         }
+
+        geminiLiveButton = findViewById(R.id.geminiLiveButton)
+        geminiLiveButton.setOnClickListener {
+            val intent = android.content.Intent(this, GeminiLiveActivity::class.java).apply {
+                putExtra(GeminiLiveActivity.EXTRA_SUBJECT,  subjectName)
+                putExtra(GeminiLiveActivity.EXTRA_CHAPTER,  chapterName)
+                putExtra(GeminiLiveActivity.EXTRA_MODE,     tutorSession.mode.name)
+                putExtra(GeminiLiveActivity.EXTRA_USER_ID,  tutorSession.studentId)
+            }
+            startActivity(intent)
+        }
+
         voiceButton.setOnClickListener {
             if (isListening) voiceManager.stopListening() else checkPermissionAndStartListening()
         }

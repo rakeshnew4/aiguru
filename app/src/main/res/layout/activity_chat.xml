@@ -601,6 +601,18 @@
                 app:cornerRadius="22dp"
                 android:layout_marginStart="4dp" />
 
+            <!-- Gemini Live -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/geminiLiveButton"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:padding="0dp"
+                android:text="&#128308;"
+                android:textSize="19sp"
+                app:backgroundTint="#F3F4F6"
+                app:cornerRadius="22dp"
+                android:layout_marginStart="4dp" />
+
             <!-- Send -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/sendButton"

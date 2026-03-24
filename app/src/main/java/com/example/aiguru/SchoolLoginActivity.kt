@@ -1,28 +1,23 @@
 package com.example.aiguru
 
 import android.content.Intent
-import android.graphics.Color
 import android.os.Bundle
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
-import android.widget.LinearLayout
-import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.aiguru.models.School
 import com.example.aiguru.utils.ConfigManager
 import com.example.aiguru.utils.SessionManager
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
-import com.google.android.material.textfield.TextInputLayout
 
 class SchoolLoginActivity : AppCompatActivity() {
 
     private lateinit var schoolAutoComplete: AutoCompleteTextView
     private lateinit var studentIdInput: TextInputEditText
     private lateinit var studentNameInput: TextInputEditText
-    private lateinit var schoolDropdownLayout: TextInputLayout
-    private lateinit var studentIdLayout: TextInputLayout
     private lateinit var loginButton: MaterialButton
 
     private var schools: List<School> = emptyList()
@@ -32,102 +27,81 @@ class SchoolLoginActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_school_login)
 
-        bindViews()
-        loadSchoolsAndSetupDropdown()
-        applyAppBranding()
-
-        loginButton.setOnClickListener { attemptLogin() }
-    }
-
-    private fun bindViews() {
         schoolAutoComplete = findViewById(R.id.schoolAutoComplete)
-        studentIdInput = findViewById(R.id.studentIdInput)
-        studentNameInput = findViewById(R.id.studentNameInput)
-        schoolDropdownLayout = findViewById(R.id.schoolDropdownLayout)
-        studentIdLayout = findViewById(R.id.studentIdLayout)
-        loginButton = findViewById(R.id.loginButton)
+        studentIdInput     = findViewById(R.id.studentIdInput)
+        studentNameInput   = findViewById(R.id.studentNameInput)
+        loginButton        = findViewById(R.id.loginButton)
+
+        setupSchoolDropdown()
+
+        loginButton.setOnClickListener { handleLogin() }
     }
 
-    private fun loadSchoolsAndSetupDropdown() {
+    private fun setupSchoolDropdown() {
         schools = ConfigManager.getSchools(this)
-        val displayNames = schools.map { "${it.name} — ${it.city}" }
+        val displayNames = schools.map { it.displayName }
 
         val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, displayNames)
         schoolAutoComplete.setAdapter(adapter)
-        schoolAutoComplete.threshold = 1
+        schoolAutoComplete.threshold = 1  // Show suggestions after 1 character
 
         schoolAutoComplete.setOnItemClickListener { _, _, position, _ ->
-            selectedSchool = schools[position]
-            schoolDropdownLayout.error = null
-            // Tint login button with school's primary color
-            selectedSchool?.branding?.primaryColor?.let { hex ->
-                runCatching {
-                    loginButton.backgroundTintList =
-                        android.content.res.ColorStateList.valueOf(Color.parseColor(hex))
-                }
-            }
+            // Match back to the School object by display name
+            val picked = schoolAutoComplete.text.toString()
+            selectedSchool = schools.find { it.displayName == picked }
         }
-
-        // Also filter as user types
-        schoolAutoComplete.addTextChangedListener(object : android.text.TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, st: Int, c: Int, a: Int) {}
-            override fun onTextChanged(s: CharSequence?, st: Int, c: Int, a: Int) {
-                if (selectedSchool != null && s.toString() != "${selectedSchool!!.name} — ${selectedSchool!!.city}") {
-                    selectedSchool = null
-                }
-            }
-            override fun afterTextChanged(s: android.text.Editable?) {}
-        })
     }
 
-    private fun applyAppBranding() {
-        val config = ConfigManager.getAppConfig(this)
-        val theme = config.defaultTheme
-        runCatching {
-            findViewById<LinearLayout>(R.id.loginHeader)
-                .setBackgroundColor(Color.parseColor(theme.primaryColor))
-            loginButton.backgroundTintList =
-                android.content.res.ColorStateList.valueOf(Color.parseColor(theme.buttonPrimaryColor))
-        }
-        findViewById<TextView>(R.id.appNameText).text = config.appName
-        findViewById<TextView>(R.id.appTaglineText).text = config.tagline
-    }
+    private fun handleLogin() {
+        val schoolText = schoolAutoComplete.text.toString().trim()
+        val studentId  = studentIdInput.text.toString().trim().uppercase()
+        val studentName = studentNameInput.text.toString().trim()
 
-    private fun attemptLogin() {
-        val school = selectedSchool
-        val studentId = studentIdInput.text?.toString()?.trim() ?: ""
-        val studentName = studentNameInput.text?.toString()?.trim() ?: ""
-
-        // Validate
-        var hasError = false
-        if (school == null) {
-            schoolDropdownLayout.error = "Please select your school"
-            hasError = true
-        } else {
-            schoolDropdownLayout.error = null
+        // Validate school selection
+        if (schoolText.isEmpty() || selectedSchool == null) {
+            selectedSchool = schools.find { it.displayName == schoolText }
         }
-        if (studentId.isBlank()) {
-            studentIdLayout.error = "Please enter your Student ID"
-            hasError = true
-        } else {
-            studentIdLayout.error = null
+        if (selectedSchool == null && schools.isNotEmpty()) {
+            // Accept any partial match as a convenience
+            selectedSchool = schools.firstOrNull {
+                it.name.contains(schoolText, ignoreCase = true) ||
+                it.shortName.contains(schoolText, ignoreCase = true)
+            }
         }
-        if (hasError) return
+        if (selectedSchool == null) {
+            Toast.makeText(this, "Please select a school from the list", Toast.LENGTH_SHORT).show()
+            schoolAutoComplete.requestFocus()
+            return
+        }
 
-        // Save session
+        if (studentId.isEmpty()) {
+            Toast.makeText(this, "Please enter your Student ID", Toast.LENGTH_SHORT).show()
+            studentIdInput.requestFocus()
+            return
+        }
+
+        val school = selectedSchool!!
+        val name = studentName.ifBlank { "Student" }
+
         SessionManager.login(
-            context = this,
-            schoolId = school!!.id,
-            schoolName = school.name,
-            studentId = studentId,
-            studentName = studentName
+            context     = this,
+            schoolId    = school.id,
+            schoolName  = school.name,
+            studentId   = studentId,
+            studentName = name
         )
 
-        // Navigate to subscription screen
-        startActivity(
-            Intent(this, SubscriptionActivity::class.java)
-                .putExtra("schoolId", school.id)
-        )
+        // First-time users go through a quick profile setup; returning users go home
+        val nextClass = if (SessionManager.isSignupComplete(this)) {
+            HomeActivity::class.java
+        } else {
+            SignupActivity::class.java
+        }
+
+        startActivity(Intent(this, nextClass).apply {
+            putExtra("schoolId", school.id)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        })
         finish()
     }
 }

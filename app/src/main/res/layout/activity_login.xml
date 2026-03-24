@@ -43,6 +43,16 @@
         android:backgroundTint="#1A73E8"
         android:layout_marginBottom="12dp"/>
 
+    <Button
+        android:id="@+id/emailSignInButton"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="Sign in with Email"
+        android:textSize="16sp"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="#34A853"
+        android:layout_marginBottom="12dp"/>
+
     <ProgressBar
         android:id="@+id/loginProgressBar"
         android:layout_width="wrap_content"
