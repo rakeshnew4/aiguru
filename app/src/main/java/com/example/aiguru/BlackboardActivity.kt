@@ -323,8 +323,6 @@ class BlackboardActivity : AppCompatActivity() {
         return card
     }
 
-    // ── Markdown parser (dark-board theme) ────────────────────────────────────
-
     /**
      * Converts step text to a styled SpannableStringBuilder for a dark background:
      *  **bold**  → golden yellow  (#FFE57F)
