@@ -32,7 +32,8 @@ class MessageAdapter(
     private val onVoiceClick: (Message) -> Unit = {},
     private val onStopClick: (Message) -> Unit = {},
     private val onImageClick: (Message) -> Unit = {},
-    private val onRetry: (Message) -> Unit = {}
+    private val onRetry: (Message) -> Unit = {},
+    private val onExplainClick: (Message) -> Unit = {}
 ) : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() {
 
     private val dp = context.resources.displayMetrics.density
@@ -160,8 +161,20 @@ class MessageAdapter(
                     ).apply { marginStart = (4 * dp).toInt() }
                     setOnClickListener { onStopClick(message) }
                 }
+                val explainBtn = TextView(context).apply {
+                    text = "🎯 Explain"
+                    textSize = 11f
+                    setTextColor(Color.parseColor("#6B7280"))
+                    setPadding((8 * dp).toInt(), (3 * dp).toInt(), (8 * dp).toInt(), (3 * dp).toInt())
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply { marginStart = (4 * dp).toInt() }
+                    setOnClickListener { onExplainClick(message) }
+                }
                 speakRow.addView(speakBtn)
                 speakRow.addView(stopBtn)
+                speakRow.addView(explainBtn)
                 bubble.addView(speakRow)
             }
 

@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0C0C14"
+    android:keepScreenOn="true">
+
+    <!-- ── LOADING STATE ───────────────────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/loadingGroup"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="32dp">
+
+        <ProgressBar
+            android:id="@+id/loadingSpinner"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:indeterminateTint="#FFFFFF" />
+
+        <TextView
+            android:id="@+id/loadingText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Building your lesson…"
+            android:textColor="#AAAACC"
+            android:textSize="16sp"
+            android:gravity="center" />
+
+    </LinearLayout>
+
+    <!-- ── CONTENT STATE ───────────────────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/contentGroup"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <!-- Header: close btn + step counter -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:paddingLeft="4dp"
+            android:paddingRight="16dp">
+
+            <TextView
+                android:id="@+id/closeButton"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:text="✕"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
+                android:gravity="center"
+                android:layout_centerVertical="true"
+                android:alpha="0.6" />
+
+            <TextView
+                android:id="@+id/stepCounter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:text="1 / 4"
+                android:textColor="#7777AA"
+                android:textSize="14sp"
+                android:letterSpacing="0.08" />
+
+        </RelativeLayout>
+
+        <!-- AI teacher avatar — animates while speaking -->
+        <!-- Removed from here: now a floating overlay at bottom-right -->
+
+        <!-- Keyword text — takes up the full remaining space -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:paddingLeft="40dp"
+            android:paddingRight="40dp">
+
+            <TextView
+                android:id="@+id/stepText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:textSize="30sp"
+                android:textColor="#FFFFFF"
+                android:gravity="center"
+                android:lineSpacingMultiplier="1.5"
+                android:textStyle="bold" />
+
+        </FrameLayout>
+
+        <!-- Progress dots -->
+        <LinearLayout
+            android:id="@+id/dotsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="20dp"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Controls: Prev | Pause | Replay | Next -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="72dp"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:paddingBottom="16dp">
+
+            <TextView
+                android:id="@+id/prevButton"
+                android:layout_width="64dp"
+                android:layout_height="56dp"
+                android:text="◀"
+                android:gravity="center"
+                android:textSize="22sp"
+                android:textColor="#AAAACC" />
+
+            <TextView
+                android:id="@+id/pauseButton"
+                android:layout_width="64dp"
+                android:layout_height="56dp"
+                android:text="⏸"
+                android:gravity="center"
+                android:textSize="28sp"
+                android:textColor="#FFFFFF" />
+
+            <TextView
+                android:id="@+id/replayButton"
+                android:layout_width="64dp"
+                android:layout_height="56dp"
+                android:text="↺"
+                android:gravity="center"
+                android:textSize="26sp"
+                android:textColor="#AAAACC" />
+
+            <TextView
+                android:id="@+id/nextButton"
+                android:layout_width="64dp"
+                android:layout_height="56dp"
+                android:text="▶"
+                android:gravity="center"
+                android:textSize="22sp"
+                android:textColor="#AAAACC" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- ── FLOATING TEACHER AVATAR (bottom-right, ~90dp circle) ──────────── -->
+    <com.example.aiguru.TeacherAvatarView
+        android:id="@+id/teacherAvatar"
+        android:layout_width="90dp"
+        android:layout_height="90dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="18dp"
+        android:layout_marginBottom="92dp"
+        android:elevation="8dp" />
+
+</FrameLayout>

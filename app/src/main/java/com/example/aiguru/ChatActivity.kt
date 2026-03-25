@@ -322,7 +322,13 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                 })
             },
             onStopClick = { ttsManager.stop() },
-            onImageClick = { }
+            onImageClick = { },
+            onExplainClick = { msg ->
+                startActivity(
+                    android.content.Intent(this, BlackboardActivity::class.java)
+                        .putExtra(BlackboardActivity.EXTRA_MESSAGE, msg.content)
+                )
+            }
         )
         messagesRecyclerView.layoutManager = LinearLayoutManager(this).apply {
             stackFromEnd = true
