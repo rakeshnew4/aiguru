@@ -70,29 +70,26 @@
 
         </RelativeLayout>
 
-        <!-- AI teacher avatar — animates while speaking -->
-        <!-- Removed from here: now a floating overlay at bottom-right -->
-
-        <!-- Keyword text — takes up the full remaining space -->
-        <FrameLayout
+        <!-- Steps scroll view — cards fade in one by one as lesson progresses -->
+        <ScrollView
+            android:id="@+id/stepsScrollView"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:paddingLeft="40dp"
-            android:paddingRight="40dp">
+            android:overScrollMode="never"
+            android:scrollbars="none">
 
-            <TextView
-                android:id="@+id/stepText"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:id="@+id/stepsContainer"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:textSize="30sp"
-                android:textColor="#FFFFFF"
-                android:gravity="center"
-                android:lineSpacingMultiplier="1.5"
-                android:textStyle="bold" />
+                android:orientation="vertical"
+                android:paddingLeft="16dp"
+                android:paddingRight="16dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="16dp" />
 
-        </FrameLayout>
+        </ScrollView>
 
         <!-- Progress dots -->
         <LinearLayout
