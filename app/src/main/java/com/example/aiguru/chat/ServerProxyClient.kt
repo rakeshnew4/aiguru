@@ -19,7 +19,9 @@ import java.util.concurrent.TimeUnit
  *     "question":      "<user message>",
  *     "page_id":       "<subject>__<chapter>",
  *     "student_level": <int 1-12>,
- *     "history":       ["user: ...", "assistant: ...", ...]
+ *     "history":       ["user: ...", "assistant: ...", ...],
+ *     "image_data":    { "transcript": "...", "paragraphs": [...],
+ *                        "diagrams": [...], "key_terms": [...] }  // optional
  *   }
  *   Response SSE : data: {"text": "<token>"}  (repeated)
  *                  data: {"done": true}          (terminal frame)
@@ -72,12 +74,15 @@ class ServerProxyClient(
      * @param pageId        "subject__chapter" identifier for the server's RAG context
      * @param studentLevel  Grade level as integer (1–12). Default 5.
      * @param history       Prior turns as ["user: ...", "assistant: ..."] strings
+     * @param imageData     Optional structured data extracted from an attached image/PDF page.
+     *                      Sent as `image_data` so the server can use full transcript + diagrams.
      */
     fun streamChat(
         question: String,
         pageId: String,
         studentLevel: Int = 5,
         history: List<String> = emptyList(),
+        imageData: JSONObject? = null,
         onToken: (String) -> Unit,
         onDone: (inputTokens: Int, outputTokens: Int, totalTokens: Int) -> Unit,
         onError: (String) -> Unit
@@ -88,7 +93,9 @@ class ServerProxyClient(
             put("page_id",       pageId)
             put("student_level", studentLevel)
             put("history",       historyArray)
+            if (imageData != null) put("image_data", imageData)
         }
+        Log.d("ServerProxyClient", "streamChat → imageData=${if (imageData != null) "present (${imageData.optString("transcript", "").take(40)}…)" else "none"}")
         executeStream(json, onToken, onDone, onError)
     }
 

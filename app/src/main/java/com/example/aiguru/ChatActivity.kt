@@ -51,14 +51,19 @@ import com.example.aiguru.utils.TTSCallback
 import com.example.aiguru.utils.TextToSpeechManager
 import com.example.aiguru.utils.VoiceManager
 import com.example.aiguru.utils.VoiceRecognitionCallback
+import com.example.aiguru.chat.PageAnalyzer
 import com.example.aiguru.config.AdminConfigRepository
 import com.example.aiguru.config.PlanEnforcer
 import com.example.aiguru.firestore.FirestoreManager
+import com.example.aiguru.models.PageContent
 import com.example.aiguru.models.UserMetadata
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
+import com.yalantis.ucrop.UCrop
+import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.Locale
@@ -104,6 +109,10 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private var cameraImageUri: Uri? = null
     private var isListening = false
 
+    // ── Page Analysis ─────────────────────────────────────────────────────────
+    /** Holds the analysis result for the currently-attached image/PDF page. */
+    private var currentPageContent: PageContent? = null
+
     // ── Interactive Voice Chat Mode ────────────────────────────────────────────
     private var isVoiceModeActive = false
     private lateinit var voiceChatButton: MaterialButton
@@ -139,6 +148,13 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     // When set, the AI response from the next auto-send is also saved as notes
     private var saveNotesType: String? = null
 
+    // ── Crop state ────────────────────────────────────────────────────────────
+    /** true when UCrop was launched for a PDF page (vs gallery/camera image) */
+    private var pendingCropIsPdf = false
+    private var pendingCropPdfPageNumber = 0
+    /** Kept so we can fall back to the full page if user cancels crop */
+    private var pendingCropPdfFile: File? = null
+
     // ── Tutor System ──────────────────────────────────────────────────────────
     private lateinit var tutorSession: TutorSession
     private var lastInputWasVoice = false
@@ -149,12 +165,78 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-            if (uri != null) showImagePreview(uri)
+            if (uri != null) launchCrop(uri, isPdf = false)
         }
 
     private val cameraLauncher =
         registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-            if (success && cameraImageUri != null) showImagePreview(cameraImageUri!!)
+            if (success && cameraImageUri != null) launchCrop(cameraImageUri!!, isPdf = false)
+        }
+
+    /** Receives the cropped image result from UCrop. */
+    private val cropLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val data = result.data
+            when (result.resultCode) {
+                RESULT_OK -> {
+                    val croppedUri = data?.let { UCrop.getOutput(it) } ?: return@registerForActivityResult
+                    if (pendingCropIsPdf) {
+                        // Read cropped region → base64 → show preview + run analysis
+                        lifecycleScope.launch(Dispatchers.IO) {
+                            try {
+                                val stream = contentResolver.openInputStream(croppedUri) ?: return@launch
+                                val bmp = android.graphics.BitmapFactory.decodeStream(stream)
+                                stream.close()
+                                if (bmp == null) return@launch
+                                val baos = ByteArrayOutputStream()
+                                bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, baos)
+                                bmp.recycle()
+                                val b64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
+                                val pageLabel = if (pendingCropPdfPageNumber > 0)
+                                    "Page $pendingCropPdfPageNumber \u2702\ufe0f cropped" else "\u2702\ufe0f Cropped region"
+                                withContext(Dispatchers.Main) {
+                                    pdfPageBase64 = b64
+                                    currentPageContent = null
+                                    imagePreviewStrip.visibility = View.VISIBLE
+                                    Glide.with(this@ChatActivity).load(croppedUri).centerCrop().into(imagePreviewThumbnail)
+                                    imagePreviewLabel.text = pageLabel
+                                    messageInput.setText("Explain this")
+                                    messageInput.setSelection(messageInput.text.length)
+                                    bottomDescribeButton.visibility = View.VISIBLE
+                                }
+                                PageAnalyzer.analyze(
+                                    base64Image = b64,
+                                    subject     = subjectName,
+                                    chapter     = chapterName,
+                                    pageNumber  = pendingCropPdfPageNumber,
+                                    sourceType  = "pdf",
+                                    onSuccess   = { content ->
+                                        currentPageContent = content
+                                        FirestoreManager.savePageContent(userId, content)
+                                        val analyzed = if (pendingCropPdfPageNumber > 0)
+                                            "Page $pendingCropPdfPageNumber \u2705 analyzed" else "\u2705 analyzed"
+                                        runOnUiThread { imagePreviewLabel.text = analyzed }
+                                    },
+                                    onError = { err -> android.util.Log.w("PageAnalyzer", "Cropped region analysis: $err") }
+                                )
+                            } catch (e: Exception) {
+                                android.util.Log.e("ChatActivity", "Crop result processing failed: ${e.message}")
+                            }
+                        }
+                    } else {
+                        // Gallery / camera image — run normal image preview + analysis
+                        showImagePreview(croppedUri)
+                    }
+                }
+                UCrop.RESULT_ERROR -> {
+                    android.util.Log.w("ChatActivity", "UCrop error: ${data?.let { UCrop.getError(it)?.message }}")
+                    if (pendingCropIsPdf) pendingCropPdfFile?.let { applyFullPdfPage(it, pendingCropPdfPageNumber) }
+                }
+                else -> {
+                    // User pressed back — fall back to full page (PDF) or do nothing (gallery)
+                    if (pendingCropIsPdf) pendingCropPdfFile?.let { applyFullPdfPage(it, pendingCropPdfPageNumber) }
+                }
+            }
         }
 
     private val pickPdfLauncher =
@@ -313,8 +395,9 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         viewNotesButton.setOnClickListener { viewSavedNotes() }
 
         removeImageButton.setOnClickListener {
-            selectedImageUri = null
-            pdfPageBase64 = null
+            selectedImageUri   = null
+            pdfPageBase64      = null
+            currentPageContent = null
             imagePreviewStrip.visibility = View.GONE
             messageInput.setText("")
             bottomDescribeButton.visibility = View.GONE
@@ -394,6 +477,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
     private fun showImagePreview(uri: Uri) {
         selectedImageUri = uri
+        currentPageContent = null   // clear any previous analysis
         metricsTracker.recordEvent(ChapterMetricsTracker.EventType.IMAGE_UPLOADED)
         imagePreviewStrip.visibility = View.VISIBLE
         Glide.with(this).load(uri).centerCrop().into(imagePreviewThumbnail)
@@ -402,27 +486,129 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         messageInput.setText("Explain this")
         messageInput.setSelection(messageInput.text.length)
         bottomDescribeButton.visibility = View.VISIBLE
+
+        // Kick off background page analysis using Groq vision
+        lifecycleScope.launch(Dispatchers.IO) {
+            val b64 = mediaManager.uriToBase64(uri) ?: return@launch
+            PageAnalyzer.analyze(
+                base64Image = b64,
+                subject     = subjectName,
+                chapter     = chapterName,
+                sourceType  = "image",
+                onSuccess   = { content ->
+                    currentPageContent = content
+                    // Save immediately — don't wait for AI response (avoids race with sendMessage)
+                    FirestoreManager.savePageContent(userId, content)
+                    runOnUiThread {
+                        imagePreviewLabel.text = "${mediaManager.getFileInfo(uri)} · ✅ analyzed"
+                    }
+                },
+                onError = { err ->
+                    android.util.Log.w("PageAnalyzer", "Image analysis failed: $err")
+                }
+            )
+        }
     }
 
     /**
      * Loads a rendered PDF page file as Base64 and shows it in the image preview strip
      * so the user can immediately ask questions about that page.
      */
+    /**
+     * Opens UCrop so the student can select a specific region of the PDF page to ask about.
+     * Falls back to [applyFullPdfPage] if the user cancels or UCrop fails.
+     */
     private fun preloadPdfPage(pageFile: File, pageNumber: Int) {
+        if (!pageFile.exists()) return
+        val sourceUri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", pageFile)
+        // Post so the activity window is fully attached before UCrop launches
+        messagesRecyclerView.post {
+            launchCrop(sourceUri, isPdf = true, pdfPageNumber = pageNumber, pdfFile = pageFile)
+        }
+    }
+
+    /**
+     * Loads the entire (uncropped) PDF page into the preview strip and kicks off background
+     * analysis. Used when the student cancels the crop UI or UCrop fails.
+     */
+    private fun applyFullPdfPage(pageFile: File, pageNumber: Int) {
         if (!pageFile.exists()) return
         val bmp = BitmapFactory.decodeFile(pageFile.absolutePath) ?: return
         val baos = ByteArrayOutputStream()
         bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, baos)
         bmp.recycle()
-        pdfPageBase64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
+        val b64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
+        pdfPageBase64      = b64
+        currentPageContent = null
 
         imagePreviewStrip.visibility = View.VISIBLE
         Glide.with(this).load(pageFile).centerCrop().into(imagePreviewThumbnail)
         imagePreviewLabel.text = "Page $pageNumber"
-        // Auto-populate input with "Explain" and show image-specific chip
         messageInput.setText("Explain this page")
         messageInput.setSelection(messageInput.text.length)
         bottomDescribeButton.visibility = View.VISIBLE
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            PageAnalyzer.analyze(
+                base64Image = b64,
+                subject     = subjectName,
+                chapter     = chapterName,
+                pageNumber  = pageNumber,
+                sourceType  = "pdf",
+                onSuccess   = { content ->
+                    currentPageContent = content
+                    FirestoreManager.savePageContent(userId, content)
+                    runOnUiThread { imagePreviewLabel.text = "Page $pageNumber · ✅ analyzed" }
+                },
+                onError = { err ->
+                    android.util.Log.w("PageAnalyzer", "PDF page analysis failed: $err")
+                }
+            )
+        }
+    }
+
+    /**
+     * Launches UCrop for [sourceUri].
+     * For PDF pages, saves state so the result handler knows which page to update.
+     */
+    private fun launchCrop(
+        sourceUri: Uri,
+        isPdf: Boolean,
+        pdfPageNumber: Int = 0,
+        pdfFile: File? = null
+    ) {
+        pendingCropIsPdf         = isPdf
+        pendingCropPdfPageNumber = pdfPageNumber
+        pendingCropPdfFile       = pdfFile
+
+        val destFile = File(cacheDir, "crop_${System.currentTimeMillis()}.jpg")
+        val options  = UCrop.Options().apply {
+            setToolbarTitle(if (isPdf) "Select Region to Ask About" else "Crop Image")
+            setToolbarColor(getColor(android.R.color.white))
+            setToolbarWidgetColor(getColor(android.R.color.black))
+            setActiveControlsWidgetColor(android.graphics.Color.parseColor("#1565C0"))
+            setFreeStyleCropEnabled(true)
+            setShowCropGrid(true)
+            setShowCropFrame(true)
+            setHideBottomControls(false)
+            withMaxResultSize(1920, 1920)
+            setCompressionFormat(android.graphics.Bitmap.CompressFormat.JPEG)
+            setCompressionQuality(90)
+            // Make the overlay outside crop area a semi-transparent black
+            setDimmedLayerColor(android.graphics.Color.parseColor("#88000000"))
+        }
+        try {
+            // Decode image size to set a large initial crop window
+            val uCrop = UCrop.of(sourceUri, Uri.fromFile(destFile))
+                .withOptions(options)
+                .withAspectRatio(0f, 0f)
+                .withMaxResultSize(1920, 1920)
+            cropLauncher.launch(uCrop.getIntent(this))
+        } catch (e: Exception) {
+            android.util.Log.w("ChatActivity", "UCrop launch failed: ${e.message}")
+            if (isPdf) pdfFile?.let { applyFullPdfPage(it, pdfPageNumber) }
+            else showImagePreview(sourceUri)
+        }
     }
 
     private fun showImageSourceDialog() {
@@ -474,8 +660,9 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     }
 
     private fun sendMessage(userText: String, autoSaveNotes: Boolean = false) {
-        val imageUri          = selectedImageUri.also { selectedImageUri = null }
-        val capturedPdfBase64 = pdfPageBase64.also   { pdfPageBase64 = null }
+        val imageUri            = selectedImageUri.also   { selectedImageUri    = null }
+        val capturedPdfBase64   = pdfPageBase64.also      { pdfPageBase64       = null }
+        var capturedPageContent = currentPageContent.also { currentPageContent  = null }
 
         // ── Plan enforcement check ────────────────────────────────────────────
         val featureType = when {
@@ -511,13 +698,11 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                          PromptRepository.getLanguageInstruction(currentLang)
         val ctxMessage   = userText   // plain question — context is conveyed via history + page_id
 
-        // Build history as ["user: ...", "assistant: ..."] strings (last N messages, excl. current)
+        // Snapshot messages on main thread — adapter must not be read from IO thread
         val recentMsgs = messageAdapter.getMessages()
             .filter { it.content.isNotBlank() && it.id != userMessage.id }
             .takeLast(10)
-        val historyStrings = recentMsgs.map { msg ->
-            if (msg.isUser) "user: ${msg.content}" else "assistant: ${msg.content}"
-        }
+        // historyStrings is built inside the coroutine after optional inline page analysis
         val pageId       = "${FirestoreManager.safeId(subjectName)}__${FirestoreManager.safeId(chapterName)}"
         val studentLevel = cachedMetadata.grade.filter { it.isDigit() }.toIntOrNull() ?: 5
 
@@ -532,6 +717,37 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         lifecycleScope.launch(Dispatchers.IO) {
           try {
             historyRepo.saveMessage(userMessage.copy(imageUrl = null))
+
+            // ── Inline page analysis at send time ─────────────────────────────
+            // Runs if the background analysis (triggered on attach) wasn't completed
+            // or failed (e.g. invalid API key). PageAnalyzer.analyze() is synchronous
+            // on IO thread — it blocks until the Groq vision response is received.
+            if (capturedPageContent == null && (imageUri != null || capturedPdfBase64 != null)) {
+                val b64 = if (imageUri != null) mediaManager.uriToBase64(imageUri)
+                          else capturedPdfBase64
+                if (b64 != null) {
+                    val srcType = if (capturedPdfBase64 != null) "pdf" else "image"
+                    val pNum    = if (srcType == "pdf") (tutorSession.currentPage.takeIf { it > 0 } ?: 1) else 0
+                    PageAnalyzer.analyze(
+                        base64Image = b64,
+                        subject     = subjectName,
+                        chapter     = chapterName,
+                        pageNumber  = pNum,
+                        sourceType  = srcType,
+                        onSuccess   = { content ->
+                            capturedPageContent = content
+                            FirestoreManager.savePageContent(userId, content)
+                        },
+                        onError = { err -> android.util.Log.w("ChatActivity", "Inline page analysis failed: $err") }
+                    )
+                }
+            }
+
+            // Build history now — capturedPageContent may have been set by inline analysis above
+            val recentHistory = recentMsgs.map { if (it.isUser) "user: ${it.content}" else "assistant: ${it.content}" }
+            val pageContextEntry = capturedPageContent?.toContextSummary()
+                ?.let { listOf("system_context: $it") } ?: emptyList()
+            val historyStrings = pageContextEntry + recentHistory
 
             val onToken: (String) -> Unit = { token ->
                 accumulated.append(token)
@@ -550,6 +766,10 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                 android.util.Log.d("TokenDebug", "[ChatActivity] onDone received in=$inputTok out=$outputTok total=$totalTok")
                 // Persist token counters to Firestore (async, runs on IO thread)
                 if (totalTok > 0) PlanEnforcer.recordTokensUsed(userId, totalTok)
+                // Save page analysis to Firestore after it has been used in this response
+                if (capturedPageContent != null) {
+                    FirestoreManager.savePageContent(userId, capturedPageContent)
+                }
                 runOnUiThread {
                     // Update in-memory counter so next enforcement check uses fresh numbers
                     if (totalTok > 0) {
@@ -618,13 +838,12 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             }
 
             val client = buildAiClient()
+            val imageDataJson = capturedPageContent?.toImageDataJson()
             when {
                 imageUri != null -> {
                     val b64 = mediaManager.uriToBase64(imageUri)
-                    val imgClient = if (b64 != null) b64 else null
                     if (client is ServerProxyClient) {
-                        val q = if (imgClient != null) ctxMessage else ctxMessage
-                        client.streamChat(q, pageId, studentLevel, historyStrings, onToken, onDone, onError)
+                        client.streamChat(ctxMessage, pageId, studentLevel, historyStrings, imageDataJson, onToken, onDone, onError)
                     } else {
                         if (b64 != null) client.streamWithImage(sysPrompt, ctxMessage, b64, onToken, onDone, onError)
                         else             client.streamText(sysPrompt, ctxMessage, onToken, onDone, onError)
@@ -632,12 +851,12 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                 }
                 capturedPdfBase64 != null ->
                     if (client is ServerProxyClient)
-                        client.streamChat(ctxMessage, pageId, studentLevel, historyStrings, onToken, onDone, onError)
+                        client.streamChat(ctxMessage, pageId, studentLevel, historyStrings, imageDataJson, onToken, onDone, onError)
                     else
                         client.streamWithImage(sysPrompt, ctxMessage, capturedPdfBase64, onToken, onDone, onError)
                 else ->
                     if (client is ServerProxyClient)
-                        client.streamChat(ctxMessage, pageId, studentLevel, historyStrings, onToken, onDone, onError)
+                        client.streamChat(ctxMessage, pageId, studentLevel, historyStrings, null, onToken, onDone, onError)
                     else
                         client.streamText(sysPrompt, ctxMessage, onToken, onDone, onError)
             }

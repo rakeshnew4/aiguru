@@ -1,6 +1,7 @@
 package com.example.aiguru.firestore
 
 import android.util.Log
+import com.example.aiguru.models.PageContent
 import com.example.aiguru.models.UserMetadata
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -251,6 +252,104 @@ object FirestoreManager {
             .get()
             .addOnSuccessListener { snap ->
                 onSuccess(snap.documents.mapNotNull { it.data })
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    // ── Page Content (image / PDF page analysis) ──────────────────────────────
+    // Stored under users/{uid}/subjects/{safeSubject}/chapters/{safeChapter}/pages/{pageId}
+    //
+    // Each document captures:
+    //   • transcript      – full OCR text from the image
+    //   • paragraphs_json – JSON array of {number, text, summary}
+    //   • diagrams_json   – JSON array of {heading, context, description, depiction,
+    //                         position, labelled_parts}
+    //   • key_terms       – array of key term strings
+    //   • analyzed_at     – epoch ms of analysis
+
+    private fun pagesRef(userId: String, subject: String, chapter: String) =
+        usersRef(userId)
+            .collection("subjects").document(safeId(subject))
+            .collection("chapters").document(safeId(chapter))
+            .collection("pages")
+
+    /**
+     * Save or update a page analysis document.
+     * Path: users/{uid}/subjects/{subject}/chapters/{chapter}/pages/{pageId}
+     */
+    fun savePageContent(
+        userId: String,
+        page: PageContent,
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") {
+            Log.w("Firestore", "savePageContent skipped — no valid userId (userId='$userId')")
+            return
+        }
+        if (page.pageId.isBlank()) {
+            Log.w("Firestore", "savePageContent skipped — blank pageId for subject=${page.subject} chapter=${page.chapter}")
+            return
+        }
+        Log.d("Firestore", "savePageContent → uid=$userId pageId=${page.pageId} subject=${page.subject}")
+        val doc = mapOf(
+            "page_id"         to page.pageId,
+            "subject"         to page.subject,
+            "chapter"         to page.chapter,
+            "page_number"     to page.pageNumber,
+            "source_type"     to page.sourceType,
+            "transcript"      to page.transcript,
+            "paragraphs_json" to page.paragraphsJson,
+            "diagrams_json"   to page.diagramsJson,
+            "key_terms"       to page.keyTerms,
+            "analyzed_at"     to page.analyzedAt
+        )
+        pagesRef(userId, page.subject, page.chapter)
+            .document(safeId(page.pageId))
+            .set(doc, SetOptions.merge())
+            .addOnSuccessListener {
+                Log.d("Firestore", "savePageContent ✅ saved pageId=${page.pageId}")
+                onSuccess()
+            }
+            .addOnFailureListener {
+                Log.e("Firestore", "savePageContent failed uid=$userId pageId=${page.pageId}: ${it.message}")
+                onFailure(it)
+            }
+    }
+
+    /**
+     * Load all page analysis documents for a chapter, ordered by analysis time.
+     */
+    fun loadChapterPages(
+        userId: String,
+        subject: String,
+        chapter: String,
+        onSuccess: (List<PageContent>) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") { onFailure(null); return }
+        pagesRef(userId, subject, chapter)
+            .orderBy("analyzed_at", Query.Direction.ASCENDING)
+            .get()
+            .addOnSuccessListener { snap ->
+                val pages = snap.documents.mapNotNull { doc ->
+                    runCatching {
+                        PageContent(
+                            pageId         = doc.getString("page_id")          ?: "",
+                            subject        = doc.getString("subject")          ?: subject,
+                            chapter        = doc.getString("chapter")          ?: chapter,
+                            pageNumber     = (doc.getLong("page_number") ?: 0L).toInt(),
+                            sourceType     = doc.getString("source_type")      ?: "image",
+                            transcript     = doc.getString("transcript")       ?: "",
+                            paragraphsJson = doc.getString("paragraphs_json")  ?: "[]",
+                            diagramsJson   = doc.getString("diagrams_json")    ?: "[]",
+                            keyTerms       = (doc.get("key_terms") as? List<*>)
+                                               ?.mapNotNull { it?.toString() }  ?: emptyList(),
+                            analyzedAt     = doc.getLong("analyzed_at")        ?: 0L
+                        )
+                    }.getOrNull()
+                }
+                onSuccess(pages)
             }
             .addOnFailureListener { onFailure(it) }
     }

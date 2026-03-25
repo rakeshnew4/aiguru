@@ -13,6 +13,8 @@ import com.example.aiguru.SchoolLoginActivity
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
 class LoginActivity : AppCompatActivity() {
@@ -23,8 +25,8 @@ class LoginActivity : AppCompatActivity() {
 
     private val signInLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             try {
+                val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
                 val account = task.getResult(ApiException::class.java)
                 val displayName = account.displayName ?: "Student"
                 val email = account.email ?: account.id ?: "google_user"
@@ -34,7 +36,11 @@ class LoginActivity : AppCompatActivity() {
                 }
             } catch (e: ApiException) {
                 setLoading(false)
-                Toast.makeText(this, "Sign in failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Google sign in failed (code ${e.statusCode})", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                // SecurityException thrown when Google Play Services broker is unavailable
+                setLoading(false)
+                Toast.makeText(this, "Google services unavailable. Use School or Email login.", Toast.LENGTH_LONG).show()
             }
         }
 
@@ -50,8 +56,8 @@ class LoginActivity : AppCompatActivity() {
             goHome(); return
         }
 
-        // Check if Google account is already signed in
-        val lastAccount = GoogleSignIn.getLastSignedInAccount(this)
+        // Check if Google account is already signed in (guard against missing GMS)
+        val lastAccount = try { GoogleSignIn.getLastSignedInAccount(this) } catch (_: Exception) { null }
         if (lastAccount != null) {
             bridgeFirebaseUser(lastAccount.displayName ?: "Student", lastAccount.email ?: lastAccount.id ?: "google_user") {
                 goHome()
@@ -67,6 +73,12 @@ class LoginActivity : AppCompatActivity() {
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
         signInButton.setOnClickListener {
+            val availability = GoogleApiAvailability.getInstance()
+                .isGooglePlayServicesAvailable(this)
+            if (availability != ConnectionResult.SUCCESS) {
+                Toast.makeText(this, "Google Play Services not available. Use School or Email login.", Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
             setLoading(true)
             signInLauncher.launch(googleSignInClient.signInIntent)
         }

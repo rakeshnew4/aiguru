@@ -64,6 +64,9 @@ dependencies {
     // Image handling
     implementation("com.squareup.picasso:picasso:2.8")
     
+    // Image crop + zoom (UCrop)
+    implementation("com.github.yalantis:ucrop:2.2.8")
+    
     // Lifecycle & ViewModel
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")

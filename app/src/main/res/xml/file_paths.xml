@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <external-files-path name="my_images" path="Pictures/" />
+    <!-- Required for UCrop to read PDF page files from app cache -->
+    <cache-path name="app_cache" path="." />
 </paths>

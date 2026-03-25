@@ -1,10 +1,12 @@
 package com.example.aiguru.models
 
+import com.google.firebase.firestore.IgnoreExtraProperties
 import com.google.firebase.firestore.PropertyName
 
 /**
  * User metadata stored in Firestore at users/{userId}
  */
+@IgnoreExtraProperties
 data class UserMetadata(
     val userId: String = "",
 
