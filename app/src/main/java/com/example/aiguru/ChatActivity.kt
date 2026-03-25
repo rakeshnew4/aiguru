@@ -51,6 +51,10 @@ import com.example.aiguru.utils.TTSCallback
 import com.example.aiguru.utils.TextToSpeechManager
 import com.example.aiguru.utils.VoiceManager
 import com.example.aiguru.utils.VoiceRecognitionCallback
+import com.example.aiguru.config.AdminConfigRepository
+import com.example.aiguru.config.PlanEnforcer
+import com.example.aiguru.firestore.FirestoreManager
+import com.example.aiguru.models.UserMetadata
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.Dispatchers
@@ -85,6 +89,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     // ── Session ───────────────────────────────────────────────────────────────
     private lateinit var subjectName: String
     private lateinit var chapterName: String
+    private var userId = ""
+    private var cachedMetadata = UserMetadata()
 
     // ── Modular Components ────────────────────────────────────────────────────
     private lateinit var historyRepo:  ChatHistoryRepository
@@ -171,7 +177,16 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         // Init prompt repository (reads tutor_prompts.json from assets once)
         PromptRepository.init(this)
 
-        val userId = SessionManager.getFirestoreUserId(this)
+        userId = SessionManager.getFirestoreUserId(this)
+        cachedMetadata = cachedMetadata.copy(userId = userId)
+
+        // Prime admin config + plans from Firestore (non-blocking, cached 1 h)
+        AdminConfigRepository.fetchIfStale()
+
+        // Load user plan metadata for enforcement
+        FirestoreManager.getUserMetadata(userId, onSuccess = { meta ->
+            if (meta != null) cachedMetadata = meta
+        })
 
         tutorSession = TutorSession(studentId = userId, subject = subjectName, chapter = chapterName)
         historyRepo  = ChatHistoryRepository(userId, subjectName, chapterName)
@@ -450,16 +465,34 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     }
 
     private fun buildAiClient(): AiClient {
+        val cfg = AdminConfigRepository.config
         return ServerProxyClient(
-            serverUrl = "http://108.181.187.227:8003",
+            serverUrl = cfg.serverUrl.ifBlank { "http://108.181.187.227:8003" },
             modelName = "",
-            apiKey    = ""
+            apiKey    = cfg.serverApiKey
         )
     }
 
     private fun sendMessage(userText: String, autoSaveNotes: Boolean = false) {
         val imageUri          = selectedImageUri.also { selectedImageUri = null }
         val capturedPdfBase64 = pdfPageBase64.also   { pdfPageBase64 = null }
+
+        // ── Plan enforcement check ────────────────────────────────────────────
+        val featureType = when {
+            imageUri != null          -> PlanEnforcer.FeatureType.IMAGE_UPLOAD
+            capturedPdfBase64 != null -> PlanEnforcer.FeatureType.PDF_UPLOAD
+            else                      -> PlanEnforcer.FeatureType.TEXT_CHAT
+        }
+        val effectiveLimits = AdminConfigRepository.resolveEffectiveLimits(
+            cachedMetadata.planId, cachedMetadata.planLimits)
+        val planCheck = PlanEnforcer.check(cachedMetadata, effectiveLimits, featureType)
+        if (!planCheck.allowed) {
+            if (imageUri != null) selectedImageUri = imageUri
+            if (capturedPdfBase64 != null) pdfPageBase64 = capturedPdfBase64
+            showError(planCheck.upgradeMessage)
+            return
+        }
+
         imagePreviewStrip.visibility   = View.GONE
         bottomDescribeButton.visibility = View.GONE
 
@@ -474,9 +507,19 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
         showLoading(true)
 
-        val sysPrompt  = TutorController.buildSystemPrompt(tutorSession) +
+        val sysPrompt    = TutorController.buildSystemPrompt(tutorSession) +
                          PromptRepository.getLanguageInstruction(currentLang)
-        val ctxMessage = "Subject: $subjectName | Chapter: $chapterName\n\n$userText"
+        val ctxMessage   = userText   // plain question — context is conveyed via history + page_id
+
+        // Build history as ["user: ...", "assistant: ..."] strings (last N messages, excl. current)
+        val recentMsgs = messageAdapter.getMessages()
+            .filter { it.content.isNotBlank() && it.id != userMessage.id }
+            .takeLast(10)
+        val historyStrings = recentMsgs.map { msg ->
+            if (msg.isUser) "user: ${msg.content}" else "assistant: ${msg.content}"
+        }
+        val pageId       = "${FirestoreManager.safeId(subjectName)}__${FirestoreManager.safeId(chapterName)}"
+        val studentLevel = cachedMetadata.grade.filter { it.isDigit() }.toIntOrNull() ?: 5
 
         if (isVoiceModeActive) setVoiceModeStatus("🤖 AI is thinking…", "#E65100")
 
@@ -505,7 +548,17 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
             val onDone: (Int, Int, Int) -> Unit = { inputTok, outputTok, totalTok ->
                 android.util.Log.d("TokenDebug", "[ChatActivity] onDone received in=$inputTok out=$outputTok total=$totalTok")
+                // Persist token counters to Firestore (async, runs on IO thread)
+                if (totalTok > 0) PlanEnforcer.recordTokensUsed(userId, totalTok)
                 runOnUiThread {
+                    // Update in-memory counter so next enforcement check uses fresh numbers
+                    if (totalTok > 0) {
+                        cachedMetadata = cachedMetadata.copy(
+                            tokensToday     = cachedMetadata.tokensToday + totalTok,
+                            tokensThisMonth = cachedMetadata.tokensThisMonth + totalTok,
+                            tokensUpdatedAt = System.currentTimeMillis()
+                        )
+                    }
                     showLoading(false)
                     val rawResponse = accumulated.toString()
                     if (rawResponse.isNotEmpty()) {
@@ -568,13 +621,25 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             when {
                 imageUri != null -> {
                     val b64 = mediaManager.uriToBase64(imageUri)
-                    if (b64 != null) client.streamWithImage(sysPrompt, ctxMessage, b64, onToken, onDone, onError)
-                    else             client.streamText(sysPrompt, ctxMessage, onToken, onDone, onError)
+                    val imgClient = if (b64 != null) b64 else null
+                    if (client is ServerProxyClient) {
+                        val q = if (imgClient != null) ctxMessage else ctxMessage
+                        client.streamChat(q, pageId, studentLevel, historyStrings, onToken, onDone, onError)
+                    } else {
+                        if (b64 != null) client.streamWithImage(sysPrompt, ctxMessage, b64, onToken, onDone, onError)
+                        else             client.streamText(sysPrompt, ctxMessage, onToken, onDone, onError)
+                    }
                 }
                 capturedPdfBase64 != null ->
-                    client.streamWithImage(sysPrompt, ctxMessage, capturedPdfBase64, onToken, onDone, onError)
+                    if (client is ServerProxyClient)
+                        client.streamChat(ctxMessage, pageId, studentLevel, historyStrings, onToken, onDone, onError)
+                    else
+                        client.streamWithImage(sysPrompt, ctxMessage, capturedPdfBase64, onToken, onDone, onError)
                 else ->
-                    client.streamText(sysPrompt, ctxMessage, onToken, onDone, onError)
+                    if (client is ServerProxyClient)
+                        client.streamChat(ctxMessage, pageId, studentLevel, historyStrings, onToken, onDone, onError)
+                    else
+                        client.streamText(sysPrompt, ctxMessage, onToken, onDone, onError)
             }
           } catch (e: Exception) {
               android.util.Log.e("ChatActivity", "sendMessage crash: ${e.message}", e)

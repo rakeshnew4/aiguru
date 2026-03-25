@@ -10,7 +10,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.example.aiguru.models.School
-import com.example.aiguru.models.SubscriptionPlan
+import com.example.aiguru.models.SchoolPlan
 import com.example.aiguru.utils.ConfigManager
 import com.example.aiguru.utils.SessionManager
 import com.google.android.material.button.MaterialButton
@@ -64,7 +64,7 @@ class SubscriptionActivity : AppCompatActivity() {
         }
     }
 
-    private fun bindPlanCard(view: View, plan: SubscriptionPlan, isRecommended: Boolean) {
+    private fun bindPlanCard(view: View, plan: SchoolPlan, isRecommended: Boolean) {
         val branding = school.branding
         val primaryColor = runCatching { Color.parseColor(branding.primaryColor) }
             .getOrDefault(Color.parseColor("#1565C0"))
@@ -114,7 +114,7 @@ class SubscriptionActivity : AppCompatActivity() {
         }
     }
 
-    private fun selectPlan(plan: SubscriptionPlan) {
+    private fun selectPlan(plan: SchoolPlan) {
         SessionManager.savePlan(this, plan.id, plan.name)
         navigateHome()
     }

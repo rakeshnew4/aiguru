@@ -12,7 +12,7 @@ data class SchoolBranding(
     val logoEmoji: String
 )
 
-data class SubscriptionPlan(
+data class SchoolPlan(
     val id: String,
     val name: String,
     val badge: String,
@@ -33,10 +33,10 @@ data class School(
     val code: String,
     val contactEmail: String,
     val branding: SchoolBranding,
-    val plans: List<SubscriptionPlan>,
+    val plans: List<SchoolPlan>,
     val testStudentIds: List<String>
 ) {
     val displayName: String get() = "$name, $city"
 
-    fun getPlan(planId: String): SubscriptionPlan? = plans.find { it.id == planId }
+    fun getPlan(planId: String): SchoolPlan? = plans.find { it.id == planId }
 }

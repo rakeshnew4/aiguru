@@ -101,11 +101,11 @@ object ConfigManager {
         )
     }
 
-    private fun parsePlan(obj: JSONObject): SubscriptionPlan {
+    private fun parsePlan(obj: JSONObject): SchoolPlan {
         val features = obj.getJSONArray("features").let { arr ->
             (0 until arr.length()).map { arr.getString(it) }
         }
-        return SubscriptionPlan(
+        return SchoolPlan(
             id = obj.getString("id"),
             name = obj.getString("name"),
             badge = obj.optString("badge", ""),

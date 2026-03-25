@@ -5,6 +5,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -14,7 +15,12 @@ import java.util.concurrent.TimeUnit
  *
  * Expected server contract:
  *   POST <serverUrl>/chat-stream
- *   Request body : {"text": "<user message>"}
+ *   Request body : {
+ *     "question":      "<user message>",
+ *     "page_id":       "<subject>__<chapter>",
+ *     "student_level": <int 1-12>,
+ *     "history":       ["user: ...", "assistant: ...", ...]
+ *   }
  *   Response SSE : data: {"text": "<token>"}  (repeated)
  *                  data: {"done": true}          (terminal frame)
  *
@@ -46,10 +52,43 @@ class ServerProxyClient(
         onDone: (inputTokens: Int, outputTokens: Int, totalTokens: Int) -> Unit,
         onError: (String) -> Unit
     ) {
-        // Combine system prompt + user text into a single text field
-        val combined = if (systemPrompt.isBlank()) userText
-                       else "$systemPrompt\n\n$userText"
-        val json = JSONObject().apply { put("text", combined) }
+        // Fallback: no page_id / history available — wrap system prompt into question
+        val combined = if (systemPrompt.isBlank()) userText else "$systemPrompt\n\n$userText"
+        streamChat(
+            question     = combined,
+            pageId       = "",
+            studentLevel = 5,
+            history      = emptyList(),
+            onToken      = onToken,
+            onDone       = onDone,
+            onError      = onError
+        )
+    }
+
+    /**
+     * Primary entry point — builds the full ChatRequest payload.
+     *
+     * @param question      The student's question (plain text, no system prompt)
+     * @param pageId        "subject__chapter" identifier for the server's RAG context
+     * @param studentLevel  Grade level as integer (1–12). Default 5.
+     * @param history       Prior turns as ["user: ...", "assistant: ..."] strings
+     */
+    fun streamChat(
+        question: String,
+        pageId: String,
+        studentLevel: Int = 5,
+        history: List<String> = emptyList(),
+        onToken: (String) -> Unit,
+        onDone: (inputTokens: Int, outputTokens: Int, totalTokens: Int) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        val historyArray = JSONArray().apply { history.forEach { put(it) } }
+        val json = JSONObject().apply {
+            put("question",      question)
+            put("page_id",       pageId)
+            put("student_level", studentLevel)
+            put("history",       historyArray)
+        }
         executeStream(json, onToken, onDone, onError)
     }
 
