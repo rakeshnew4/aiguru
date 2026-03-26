@@ -16,7 +16,9 @@ object BlackboardGenerator {
         /** Keywords / title for the screen (3–6 words, can use \\n and →). */
         val text: String,
         /** Speech for TTS (1–2 short sentences). */
-        val speech: String
+        val speech: String,
+        /** BCP-47 language tag for step speech, e.g. en-US, hi-IN, ta-IN. */
+        val languageTag: String = "en-US"
     )
 
     // System prompt is loaded from assets/tutor_prompts.json → "blackboard_system_prompt"
@@ -33,6 +35,7 @@ object BlackboardGenerator {
         messageId: String? = null,
         userId: String? = null,
         conversationId: String? = null,
+        preferredLanguageTag: String? = null,
         onSuccess: (List<BlackboardStep>) -> Unit,
         onError: (String) -> Unit
     ) {
@@ -65,7 +68,11 @@ object BlackboardGenerator {
                                 val obj = arr.getJSONObject(i)
                                 BlackboardStep(
                                     text   = obj.getString("text"),
-                                    speech = obj.getString("speech")
+                                    speech = obj.getString("speech"),
+                                    languageTag = normalizeLanguageTag(
+                                        raw = obj.optString("lang", obj.optString("language", "")),
+                                        fallback = preferredLanguageTag ?: "en-US"
+                                    )
                                 )
                             }
                             if (steps.isNotEmpty()) cachedSteps = steps
@@ -98,8 +105,11 @@ object BlackboardGenerator {
         val latch    = java.util.concurrent.CountDownLatch(1)
 
         val systemPrompt = PromptRepository.getBlackboardSystemPrompt()
+        val languageHint = preferredLanguageTag?.takeIf { it.isNotBlank() }
+            ?.let { "\n\nPreferred speech language tag: $it" }
+            ?: ""
         server.streamChat(
-            question     = systemPrompt + "\n\nExplanation to convert:\n" + messageContent.take(3000),
+            question     = systemPrompt + languageHint + "\n\nExplanation to convert:\n" + messageContent.take(3000),
             pageId       = "blackboard__lesson",
             studentLevel = 5,
             history      = emptyList(),
@@ -122,7 +132,11 @@ object BlackboardGenerator {
                 val obj = arr.getJSONObject(i)
                 BlackboardStep(
                     text   = obj.getString("text"),
-                    speech = obj.getString("speech")
+                    speech = obj.getString("speech"),
+                    languageTag = normalizeLanguageTag(
+                        raw = obj.optString("lang", obj.optString("language", "")),
+                        fallback = preferredLanguageTag ?: "en-US"
+                    )
                 )
             }
             if (result.isEmpty()) { onError("No steps were generated"); return }
@@ -131,7 +145,12 @@ object BlackboardGenerator {
             try {
                 val stepsJson = JSONArray().apply {
                     result.forEach { step ->
-                        put(JSONObject().put("text", step.text).put("speech", step.speech))
+                        put(
+                            JSONObject()
+                                .put("text", step.text)
+                                .put("speech", step.speech)
+                                .put("lang", step.languageTag)
+                        )
                     }
                 }.toString()
                 cacheDocRef
@@ -141,6 +160,22 @@ object BlackboardGenerator {
             onSuccess(result)
         } catch (e: Exception) {
             onError("Parse error: ${e.message}")
+        }
+    }
+
+    private fun normalizeLanguageTag(raw: String?, fallback: String): String {
+        val value = raw?.trim().orEmpty()
+        if (value.isEmpty()) return fallback
+        return when (value.lowercase()) {
+            "en", "english", "en-us" -> "en-US"
+            "hi", "hindi", "hi-in" -> "hi-IN"
+            "bn", "bengali", "bn-in" -> "bn-IN"
+            "te", "telugu", "te-in" -> "te-IN"
+            "ta", "tamil", "ta-in" -> "ta-IN"
+            "mr", "marathi", "mr-in" -> "mr-IN"
+            "kn", "kannada", "kn-in" -> "kn-IN"
+            "gu", "gujarati", "gu-in" -> "gu-IN"
+            else -> if (value.contains('-')) value else fallback
         }
     }
 }

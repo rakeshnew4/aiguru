@@ -24,6 +24,7 @@ import com.example.aiguru.utils.TTSCallback
 import com.example.aiguru.utils.TextToSpeechManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 /**
  * Full-screen "blackboard" lesson.
@@ -44,6 +45,7 @@ class BlackboardActivity : AppCompatActivity() {
         const val EXTRA_MESSAGE_ID      = "extra_message_id"
         const val EXTRA_USER_ID         = "extra_user_id"
         const val EXTRA_CONVERSATION_ID = "extra_conversation_id"
+        const val EXTRA_LANGUAGE_TAG    = "extra_language_tag"
     }
 
     // ── Views ─────────────────────────────────────────────────────────────────
@@ -67,6 +69,7 @@ class BlackboardActivity : AppCompatActivity() {
     private var visibleCount   = 0        // number of cards currently shown
     private var isPaused       = false
     private var computedFontSp = 20f      // font size derived from longest step text
+    private var preferredLanguageTag = "en-US"
 
     /** Index of the step that is currently visible / being spoken. */
     private val currentIndex get() = if (visibleCount > 0) visibleCount - 1 else 0
@@ -99,6 +102,7 @@ class BlackboardActivity : AppCompatActivity() {
 
         PromptRepository.init(this)
         tts = TextToSpeechManager(this)
+        preferredLanguageTag = intent.getStringExtra(EXTRA_LANGUAGE_TAG)?.takeIf { it.isNotBlank() } ?: "en-US"
         generateSteps(
             message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
             messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
@@ -126,6 +130,7 @@ class BlackboardActivity : AppCompatActivity() {
                 messageId      = messageId,
                 userId         = userId,
                 conversationId = conversationId,
+                preferredLanguageTag = preferredLanguageTag,
                 onSuccess = { generated ->
                     lifecycleScope.launch(Dispatchers.Main) {
                         steps = generated
@@ -181,7 +186,7 @@ class BlackboardActivity : AppCompatActivity() {
 
         // Start speaking after the fade-in settles
         if (!isPaused) {
-            card.postDelayed({ tts.speak(steps[index].speech, makeTtsCallback()) }, 380)
+            card.postDelayed({ speakStep(index) }, 380)
         }
     }
 
@@ -210,7 +215,7 @@ class BlackboardActivity : AppCompatActivity() {
             updateCounterAndDots()
             if (!isPaused) {
                 stepsScrollView.postDelayed({
-                    steps.getOrNull(currentIndex)?.let { tts.speak(it.speech, makeTtsCallback()) }
+                    speakStep(currentIndex)
                 }, 200)
             }
         }.start()
@@ -218,7 +223,7 @@ class BlackboardActivity : AppCompatActivity() {
 
     private fun reSpeakCurrent() {
         tts.stop()
-        if (!isPaused) steps.getOrNull(currentIndex)?.let { tts.speak(it.speech, makeTtsCallback()) }
+        if (!isPaused) speakStep(currentIndex)
     }
 
     private fun togglePause() {
@@ -228,8 +233,14 @@ class BlackboardActivity : AppCompatActivity() {
             tts.stop()
             teacherAvatar.setSpeaking(false)
         } else {
-            steps.getOrNull(currentIndex)?.let { tts.speak(it.speech, makeTtsCallback()) }
+            speakStep(currentIndex)
         }
+    }
+
+    private fun speakStep(index: Int) {
+        val step = steps.getOrNull(index) ?: return
+        tts.setLocale(Locale.forLanguageTag(step.languageTag))
+        tts.speak(step.speech, makeTtsCallback())
     }
 
     private fun updateCounterAndDots() {

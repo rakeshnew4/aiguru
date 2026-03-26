@@ -273,6 +273,11 @@ object FirestoreManager {
             .collection("chapters").document(safeId(chapter))
             .collection("pages")
 
+    private fun chapterRef(userId: String, subject: String, chapter: String) =
+        usersRef(userId)
+            .collection("subjects").document(safeId(subject))
+            .collection("chapters").document(safeId(chapter))
+
     /**
      * Save or update a page analysis document.
      * Path: users/{uid}/subjects/{subject}/chapters/{chapter}/pages/{pageId}
@@ -315,6 +320,64 @@ object FirestoreManager {
                 Log.e("Firestore", "savePageContent failed uid=$userId pageId=${page.pageId}: ${it.message}")
                 onFailure(it)
             }
+    }
+
+    /**
+     * Save chapter-level system context for LLM prompting.
+     * Latest uploaded page transcript replaces any previous transcript context.
+     * Path: users/{uid}/subjects/{subject}/chapters/{chapter}
+     */
+    fun saveChapterContext(
+        userId: String,
+        subject: String,
+        chapter: String,
+        pageId: String,
+        transcript: String,
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") {
+            onFailure(null)
+            return
+        }
+        val doc = mapOf(
+            "systemContext" to transcript,
+            "systemContextPageId" to pageId,
+            "systemContextUpdatedAt" to System.currentTimeMillis()
+        )
+        chapterRef(userId, subject, chapter)
+            .set(doc, SetOptions.merge())
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * Load chapter-level context fields used by the tutor system prompt.
+     * Reads optional fields from chapter document:
+     * - summary
+     * - systemContext
+     */
+    fun loadChapterContext(
+        userId: String,
+        subject: String,
+        chapter: String,
+        onSuccess: (summary: String?, systemContext: String?) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") {
+            onFailure(null)
+            return
+        }
+        chapterRef(userId, subject, chapter)
+            .get()
+            .addOnSuccessListener { doc ->
+                if (!doc.exists()) {
+                    onSuccess(null, null)
+                    return@addOnSuccessListener
+                }
+                onSuccess(doc.getString("summary"), doc.getString("systemContext"))
+            }
+            .addOnFailureListener { onFailure(it) }
     }
 
     /**

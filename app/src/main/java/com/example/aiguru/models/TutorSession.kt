@@ -15,7 +15,9 @@ data class TutorSession(
     var interactionCount: Int = 0,
     var confusionCount: Int = 0,
     val conceptsAsked: MutableList<String> = mutableListOf(),
-    var mistakesDetected: Int = 0
+    var mistakesDetected: Int = 0,
+    var chapterSummary: String = "",
+    var latestPageContext: String = ""
 )
 
 /** How the tutor should behave this session.  AUTO = LLM decides. */

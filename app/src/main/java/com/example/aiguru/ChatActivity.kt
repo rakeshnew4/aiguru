@@ -218,7 +218,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                                     sourceType = "pdf",
                                     onSuccess = { content ->
                                         currentPageContent = content
-                                        FirestoreManager.savePageContent(userId, content)
+                                        persistLatestPageContext(content)
                                         val analyzed = if (pendingCropPdfPageNumber > 0)
                                             "Page $pendingCropPdfPageNumber \u2705 analyzed" else "\u2705 analyzed"
                                         runOnUiThread { imagePreviewLabel.text = analyzed }
@@ -302,6 +302,20 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
         tutorSession =
             TutorSession(studentId = userId, subject = subjectName, chapter = chapterName)
+
+        FirestoreManager.loadChapterContext(
+            userId = userId,
+            subject = subjectName,
+            chapter = chapterName,
+            onSuccess = { summary, systemContext ->
+                tutorSession.chapterSummary = summary.orEmpty()
+                tutorSession.latestPageContext = systemContext.orEmpty()
+            },
+            onFailure = {
+                android.util.Log.w("ChatActivity", "Failed to load chapter context: ${it?.message}")
+            }
+        )
+
         historyRepo = ChatHistoryRepository(userId, subjectName, chapterName)
         notesRepo = NotesRepository(this, userId, subjectName, chapterName)
         voiceManager = VoiceManager(this)
@@ -371,6 +385,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                             .putExtra(BlackboardActivity.EXTRA_MESSAGE_ID, msg.id)
                             .putExtra(BlackboardActivity.EXTRA_USER_ID, userId)
                             .putExtra(BlackboardActivity.EXTRA_CONVERSATION_ID, convId)
+                            .putExtra(BlackboardActivity.EXTRA_LANGUAGE_TAG, currentLang)
                     )
                 }
             }
@@ -548,8 +563,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                 sourceType = "image",
                 onSuccess = { content ->
                     currentPageContent = content
-                    // Save immediately — don't wait for AI response (avoids race with sendMessage)
-                    FirestoreManager.savePageContent(userId, content)
+                    persistLatestPageContext(content)
                     runOnUiThread {
                         imagePreviewLabel.text = "${mediaManager.getFileInfo(uri)} · ✅ analyzed"
                     }
@@ -609,7 +623,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                 sourceType = "pdf",
                 onSuccess = { content ->
                     currentPageContent = content
-                    FirestoreManager.savePageContent(userId, content)
+                    persistLatestPageContext(content)
                     runOnUiThread { imagePreviewLabel.text = "Page $pageNumber · ✅ analyzed" }
                 },
                 onError = { err ->
@@ -796,7 +810,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                             sourceType = srcType,
                             onSuccess = { content ->
                                 capturedPageContent = content
-                                FirestoreManager.savePageContent(userId, content)
+                                persistLatestPageContext(content)
                             },
                             onError = { err ->
                                 android.util.Log.w(
@@ -837,7 +851,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                     if (totalTok > 0) PlanEnforcer.recordTokensUsed(userId, totalTok)
                     // Save page analysis to Firestore after it has been used in this response
                     if (capturedPageContent != null) {
-                        FirestoreManager.savePageContent(userId, capturedPageContent)
+                        persistLatestPageContext(capturedPageContent)
                     }
                     runOnUiThread {
                         // Update in-memory counter so next enforcement check uses fresh numbers
@@ -920,6 +934,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                                         .putExtra(BlackboardActivity.EXTRA_MESSAGE_ID, streamingId)
                                         .putExtra(BlackboardActivity.EXTRA_USER_ID, userId)
                                         .putExtra(BlackboardActivity.EXTRA_CONVERSATION_ID, convId)
+                                        .putExtra(BlackboardActivity.EXTRA_LANGUAGE_TAG, currentLang)
                                 )
                             }
                         } else {
@@ -1003,6 +1018,19 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                 runOnUiThread { showLoading(false); showError("Error: ${e.message}") }
             }
         }
+    }
+
+    private fun persistLatestPageContext(pageContent: PageContent?) {
+        val page = pageContent ?: return
+        tutorSession.latestPageContext = page.transcript
+        FirestoreManager.savePageContent(userId, page)
+        FirestoreManager.saveChapterContext(
+            userId = userId,
+            subject = page.subject,
+            chapter = page.chapter,
+            pageId = page.pageId,
+            transcript = page.transcript
+        )
     }
 
     private fun generateFlashcards() {

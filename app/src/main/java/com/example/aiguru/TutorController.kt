@@ -33,6 +33,7 @@ object TutorController {
         val footer     = PromptRepository.getSystemPromptFooter()
 
         val contextBlock       = pageContext?.let { "\nSTUDENT IS CURRENTLY VIEWING THIS PAGE:\n$it\n" } ?: ""
+        val chapterContextBlock = buildChapterContextBlock(session)
         val intelligenceBlock  = buildIntelligenceNote(session)
 
         return """$header
@@ -43,13 +44,25 @@ Chapter: ${session.chapter}
 Current page: ${session.currentPage}
 Last detected intent: ${session.lastIntent.name}
 Session interaction #: ${session.interactionCount + 1}
-$contextBlock$intelligenceBlock
+$contextBlock$chapterContextBlock$intelligenceBlock
 $modeGuide
 
 TUTOR RULES (follow every rule, every time):
 $rules
 
 $footer"""
+    }
+
+    private fun buildChapterContextBlock(session: TutorSession): String {
+        val lines = mutableListOf<String>()
+        if (session.chapterSummary.isNotBlank()) {
+            lines += "Chapter summary: ${session.chapterSummary.trim()}"
+        }
+        if (session.latestPageContext.isNotBlank()) {
+            lines += "Latest page transcript:\n${session.latestPageContext.trim()}"
+        }
+        if (lines.isEmpty()) return ""
+        return "CHAPTER CONTENT CONTEXT:\n${lines.joinToString("\n\n")}\n"
     }
 
     private fun buildIntelligenceNote(session: TutorSession): String {
