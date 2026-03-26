@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#FFFFFF"
+    android:background="#F4F6FA"
     android:fitsSystemWindows="true"
     tools:context=".ChatActivity">
 
@@ -18,12 +18,7 @@
         app:titleTextColor="#111827"
         app:subtitleTextColor="#6B7280"
         app:navigationIcon="@drawable/ic_arrow_back"
-        android:elevation="0dp" />
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="#E8EAED" />
+        android:elevation="3dp" />
 
     <!-- ── Hidden quick-action chips (IDs preserved; code still works) ── -->
     <HorizontalScrollView
@@ -146,108 +141,13 @@
         </LinearLayout>
     </HorizontalScrollView>
 
-    <!-- ── AI Tutor Mode: compact outlined pills ─────────────────────── -->
-    <HorizontalScrollView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="#FFFFFF"
-        android:scrollbars="none"
-        android:paddingTop="7dp"
-        android:paddingBottom="7dp">
-
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Mode"
-                android:textSize="11sp"
-                android:textColor="#9CA3AF"
-                android:layout_marginEnd="10dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/modeAutoButton"
-                android:layout_width="wrap_content"
-                android:layout_height="28dp"
-                android:minHeight="0dp"
-                android:text="Auto"
-                android:textSize="12sp"
-                android:textColor="#1565C0"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                app:strokeColor="#1565C0"
-                app:cornerRadius="14dp"
-                android:layout_marginEnd="6dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/modeExplainButton"
-                android:layout_width="wrap_content"
-                android:layout_height="28dp"
-                android:minHeight="0dp"
-                android:text="Explain"
-                android:textSize="12sp"
-                android:textColor="#6B7280"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                app:strokeColor="#D1D5DB"
-                app:cornerRadius="14dp"
-                app:backgroundTint="#00000000"
-                android:layout_marginEnd="6dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/modePracticeButton"
-                android:layout_width="wrap_content"
-                android:layout_height="28dp"
-                android:minHeight="0dp"
-                android:text="Practice"
-                android:textSize="12sp"
-                android:textColor="#6B7280"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                app:strokeColor="#D1D5DB"
-                app:cornerRadius="14dp"
-                app:backgroundTint="#00000000"
-                android:layout_marginEnd="6dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/modeEvaluateButton"
-                android:layout_width="wrap_content"
-                android:layout_height="28dp"
-                android:minHeight="0dp"
-                android:text="Test Me"
-                android:textSize="12sp"
-                android:textColor="#6B7280"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                app:strokeColor="#D1D5DB"
-                app:cornerRadius="14dp"
-                app:backgroundTint="#00000000" />
-
-        </LinearLayout>
-    </HorizontalScrollView>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="#F3F4F6" />
-
     <!-- ── Messages ──────────────────────────────────────────────────── -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/messagesRecyclerView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:background="#FFFFFF"
+        android:background="#00000000"
         android:paddingTop="8dp"
         android:paddingBottom="4dp"
         android:paddingStart="6dp"
@@ -344,7 +244,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="#FFFFFF">
+        android:background="#FFFFFF"
+        android:elevation="8dp">
 
         <View
             android:layout_width="match_parent"
@@ -589,7 +490,7 @@
                 app:cornerRadius="22dp"
                 android:layout_marginStart="6dp" />
 
-            <!-- Live Voice Chat -->
+            <!-- AI Guru Live Voice Chat -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/voiceChatButton"
                 android:layout_width="44dp"
@@ -597,19 +498,7 @@
                 android:padding="0dp"
                 android:text="&#127897;"
                 android:textSize="19sp"
-                app:backgroundTint="#F3F4F6"
-                app:cornerRadius="22dp"
-                android:layout_marginStart="4dp" />
-
-            <!-- Gemini Live -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/geminiLiveButton"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:padding="0dp"
-                android:text="&#128308;"
-                android:textSize="19sp"
-                app:backgroundTint="#F3F4F6"
+                app:backgroundTint="#E8F5E9"
                 app:cornerRadius="22dp"
                 android:layout_marginStart="4dp" />
 

@@ -1,6 +1,8 @@
 package com.example.aiguru.chat
 
 import com.example.aiguru.config.AdminConfigRepository
+import com.google.firebase.firestore.FirebaseFirestore
+import org.json.JSONArray
 import org.json.JSONObject
 
 /**
@@ -69,6 +71,7 @@ In short, a squared minus b squared equals a plus b into a minus b."}]}"""
 
     /**
      * Generate teaching steps from [messageContent].
+     * Checks Firestore cache first; falls back to LLM and saves result to cache.
      * Must be called from a background thread (blocks on network).
      */
     fun generate(
@@ -76,6 +79,41 @@ In short, a squared minus b squared equals a plus b into a minus b."}]}"""
         onSuccess: (List<BlackboardStep>) -> Unit,
         onError: (String) -> Unit
     ) {
+        val cacheKey = "bbc_${messageContent.take(500).hashCode()}"
+        val db = FirebaseFirestore.getInstance()
+
+        // ── 1. Try cache ──────────────────────────────────────────────────────
+        val cacheLatch = java.util.concurrent.CountDownLatch(1)
+        var cachedSteps: List<BlackboardStep>? = null
+        db.collection("blackboard_cache").document(cacheKey).get()
+            .addOnSuccessListener { doc ->
+                if (doc.exists()) {
+                    try {
+                        val stepsJson = doc.getString("steps") ?: ""
+                        if (stepsJson.isNotEmpty()) {
+                            val arr = JSONArray(stepsJson)
+                            val steps = (0 until arr.length()).map { i ->
+                                val obj = arr.getJSONObject(i)
+                                BlackboardStep(
+                                    text   = obj.getString("text"),
+                                    speech = obj.getString("speech")
+                                )
+                            }
+                            if (steps.isNotEmpty()) cachedSteps = steps
+                        }
+                    } catch (_: Exception) {}
+                }
+                cacheLatch.countDown()
+            }
+            .addOnFailureListener { cacheLatch.countDown() }
+        cacheLatch.await(10, java.util.concurrent.TimeUnit.SECONDS)
+
+        if (cachedSteps != null) {
+            onSuccess(cachedSteps!!)
+            return
+        }
+
+        // ── 2. Generate via LLM ───────────────────────────────────────────────
         val cfg = AdminConfigRepository.config
         val serverUrl = cfg.serverUrl.ifBlank { "http://108.181.187.227:8003" }
 
@@ -85,7 +123,6 @@ In short, a squared minus b squared equals a plus b into a minus b."}]}"""
             apiKey    = cfg.serverApiKey
         )
 
-        val question = "Break this explanation into teaching steps using SYSTEM_PROMPT rules:\n\n${messageContent.take(3000)}"
         val buffer   = StringBuilder()
         var streamErr: String? = null
         val latch    = java.util.concurrent.CountDownLatch(1)
@@ -117,8 +154,20 @@ In short, a squared minus b squared equals a plus b into a minus b."}]}"""
                     speech = obj.getString("speech")
                 )
             }
-            if (result.isEmpty()) onError("No steps were generated")
-            else onSuccess(result)
+            if (result.isEmpty()) { onError("No steps were generated"); return }
+
+            // ── 3. Save result to Firestore cache ─────────────────────────────
+            try {
+                val stepsJson = JSONArray().apply {
+                    result.forEach { step ->
+                        put(JSONObject().put("text", step.text).put("speech", step.speech))
+                    }
+                }.toString()
+                db.collection("blackboard_cache").document(cacheKey)
+                    .set(mapOf("steps" to stepsJson, "createdAt" to System.currentTimeMillis()))
+            } catch (_: Exception) { /* cache write failure is non-fatal */ }
+
+            onSuccess(result)
         } catch (e: Exception) {
             onError("Parse error: ${e.message}")
         }

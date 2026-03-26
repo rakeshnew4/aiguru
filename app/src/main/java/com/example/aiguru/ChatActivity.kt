@@ -91,6 +91,19 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private lateinit var listeningIndicator: TextView
     private lateinit var bottomDescribeButton: MaterialButton
 
+    // ── Interactive Voice Chat Mode ────────────────────────────────────────────
+    private var isVoiceModeActive = false
+    private lateinit var voiceChatButton: MaterialButton
+    private lateinit var voiceChatBar: LinearLayout
+    private lateinit var voiceChatStatus: TextView
+    private lateinit var waveBarContainer: LinearLayout
+    private lateinit var waveBar1: View
+    private lateinit var waveBar2: View
+    private lateinit var waveBar3: View
+    private lateinit var waveBar4: View
+    private var currentTTSText = ""
+    private var isInterrupted = false
+
     // ── Session ───────────────────────────────────────────────────────────────
     private lateinit var subjectName: String
     private lateinit var chapterName: String
@@ -98,10 +111,10 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private var cachedMetadata = UserMetadata()
 
     // ── Modular Components ────────────────────────────────────────────────────
-    private lateinit var historyRepo:  ChatHistoryRepository
-    private lateinit var notesRepo:    NotesRepository
+    private lateinit var historyRepo: ChatHistoryRepository
+    private lateinit var notesRepo: NotesRepository
     private lateinit var voiceManager: VoiceManager
-    private lateinit var ttsManager:   TextToSpeechManager
+    private lateinit var ttsManager: TextToSpeechManager
     private lateinit var mediaManager: MediaManager
     private lateinit var metricsTracker: ChapterMetricsTracker
 
@@ -113,32 +126,18 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     /** Holds the analysis result for the currently-attached image/PDF page. */
     private var currentPageContent: PageContent? = null
 
-    // ── Interactive Voice Chat Mode ────────────────────────────────────────────
-    private var isVoiceModeActive = false
-    private lateinit var voiceChatButton: MaterialButton
-    private lateinit var geminiLiveButton: MaterialButton
-    private lateinit var voiceChatBar: LinearLayout
-    private lateinit var voiceChatStatus: TextView
-    // Equaliser wave bars inside voiceChatBar
-    private lateinit var waveBarContainer: LinearLayout
-    private lateinit var waveBar1: View
-    private lateinit var waveBar2: View
-    private lateinit var waveBar3: View
-    private lateinit var waveBar4: View
-    // Interrupt / barge-in state
-    private var currentTTSText = ""
-    private var isInterrupted = false
+    // ── Language ───────────────────────────────────────────────────────────────
     // Language for voice recognition, TTS, and LLM responses
     private var currentLang = "en-US"
     private var currentLangName = "English"
     private val LANGUAGES = linkedMapOf(
-        "English"              to "en-US",
-        "हिंदी (Hindi)"       to "hi-IN",
-        "বাংলা (Bengali)"     to "bn-IN",
-        "తెలుగు (Telugu)"     to "te-IN",
-        "தமிழ் (Tamil)"       to "ta-IN",
-        "मराठी (Marathi)"     to "mr-IN",
-        "ಕನ್ನಡ (Kannada)"    to "kn-IN",
+        "English" to "en-US",
+        "हिंदी (Hindi)" to "hi-IN",
+        "বাংলা (Bengali)" to "bn-IN",
+        "తెలుగు (Telugu)" to "te-IN",
+        "தமிழ் (Tamil)" to "ta-IN",
+        "मराठी (Marathi)" to "mr-IN",
+        "ಕನ್ನಡ (Kannada)" to "kn-IN",
         "ગુજરાતી (Gujarati)" to "gu-IN"
     )
 
@@ -152,16 +151,13 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     /** true when UCrop was launched for a PDF page (vs gallery/camera image) */
     private var pendingCropIsPdf = false
     private var pendingCropPdfPageNumber = 0
+
     /** Kept so we can fall back to the full page if user cancels crop */
     private var pendingCropPdfFile: File? = null
 
     // ── Tutor System ──────────────────────────────────────────────────────────
     private lateinit var tutorSession: TutorSession
     private var lastInputWasVoice = false
-    private lateinit var modeAutoButton: MaterialButton
-    private lateinit var modeExplainButton: MaterialButton
-    private lateinit var modePracticeButton: MaterialButton
-    private lateinit var modeEvaluateButton: MaterialButton
 
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -179,12 +175,14 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             val data = result.data
             when (result.resultCode) {
                 RESULT_OK -> {
-                    val croppedUri = data?.let { UCrop.getOutput(it) } ?: return@registerForActivityResult
+                    val croppedUri =
+                        data?.let { UCrop.getOutput(it) } ?: return@registerForActivityResult
                     if (pendingCropIsPdf) {
                         // Read cropped region → base64 → show preview + run analysis
                         lifecycleScope.launch(Dispatchers.IO) {
                             try {
-                                val stream = contentResolver.openInputStream(croppedUri) ?: return@launch
+                                val stream =
+                                    contentResolver.openInputStream(croppedUri) ?: return@launch
                                 val bmp = android.graphics.BitmapFactory.decodeStream(stream)
                                 stream.close()
                                 if (bmp == null) return@launch
@@ -198,7 +196,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                                     pdfPageBase64 = b64
                                     currentPageContent = null
                                     imagePreviewStrip.visibility = View.VISIBLE
-                                    Glide.with(this@ChatActivity).load(croppedUri).centerCrop().into(imagePreviewThumbnail)
+                                    Glide.with(this@ChatActivity).load(croppedUri).centerCrop()
+                                        .into(imagePreviewThumbnail)
                                     imagePreviewLabel.text = pageLabel
                                     messageInput.setText("Explain this")
                                     messageInput.setSelection(messageInput.text.length)
@@ -206,21 +205,29 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                                 }
                                 PageAnalyzer.analyze(
                                     base64Image = b64,
-                                    subject     = subjectName,
-                                    chapter     = chapterName,
-                                    pageNumber  = pendingCropPdfPageNumber,
-                                    sourceType  = "pdf",
-                                    onSuccess   = { content ->
+                                    subject = subjectName,
+                                    chapter = chapterName,
+                                    pageNumber = pendingCropPdfPageNumber,
+                                    sourceType = "pdf",
+                                    onSuccess = { content ->
                                         currentPageContent = content
                                         FirestoreManager.savePageContent(userId, content)
                                         val analyzed = if (pendingCropPdfPageNumber > 0)
                                             "Page $pendingCropPdfPageNumber \u2705 analyzed" else "\u2705 analyzed"
                                         runOnUiThread { imagePreviewLabel.text = analyzed }
                                     },
-                                    onError = { err -> android.util.Log.w("PageAnalyzer", "Cropped region analysis: $err") }
+                                    onError = { err ->
+                                        android.util.Log.w(
+                                            "PageAnalyzer",
+                                            "Cropped region analysis: $err"
+                                        )
+                                    }
                                 )
                             } catch (e: Exception) {
-                                android.util.Log.e("ChatActivity", "Crop result processing failed: ${e.message}")
+                                android.util.Log.e(
+                                    "ChatActivity",
+                                    "Crop result processing failed: ${e.message}"
+                                )
                             }
                         }
                     } else {
@@ -228,20 +235,36 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                         showImagePreview(croppedUri)
                     }
                 }
+
                 UCrop.RESULT_ERROR -> {
-                    android.util.Log.w("ChatActivity", "UCrop error: ${data?.let { UCrop.getError(it)?.message }}")
-                    if (pendingCropIsPdf) pendingCropPdfFile?.let { applyFullPdfPage(it, pendingCropPdfPageNumber) }
+                    android.util.Log.w(
+                        "ChatActivity",
+                        "UCrop error: ${data?.let { UCrop.getError(it)?.message }}"
+                    )
+                    if (pendingCropIsPdf) pendingCropPdfFile?.let {
+                        applyFullPdfPage(
+                            it,
+                            pendingCropPdfPageNumber
+                        )
+                    }
                 }
+
                 else -> {
                     // User pressed back — fall back to full page (PDF) or do nothing (gallery)
-                    if (pendingCropIsPdf) pendingCropPdfFile?.let { applyFullPdfPage(it, pendingCropPdfPageNumber) }
+                    if (pendingCropIsPdf) pendingCropPdfFile?.let {
+                        applyFullPdfPage(
+                            it,
+                            pendingCropPdfPageNumber
+                        )
+                    }
                 }
             }
         }
 
     private val pickPdfLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-            if (uri != null) Toast.makeText(this, "PDF support coming soon", Toast.LENGTH_SHORT).show()
+            if (uri != null) Toast.makeText(this, "PDF support coming soon", Toast.LENGTH_SHORT)
+                .show()
         }
 
     companion object {
@@ -252,8 +275,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)
 
-        subjectName   = intent.getStringExtra("subjectName") ?: "General"
-        chapterName   = intent.getStringExtra("chapterName") ?: "Study Session"
+        subjectName = intent.getStringExtra("subjectName") ?: "General"
+        chapterName = intent.getStringExtra("chapterName") ?: "Study Session"
         saveNotesType = intent.getStringExtra("saveNotesType")
 
         // Init prompt repository (reads tutor_prompts.json from assets once)
@@ -270,11 +293,12 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             if (meta != null) cachedMetadata = meta
         })
 
-        tutorSession = TutorSession(studentId = userId, subject = subjectName, chapter = chapterName)
-        historyRepo  = ChatHistoryRepository(userId, subjectName, chapterName)
-        notesRepo    = NotesRepository(this, userId, subjectName, chapterName)
+        tutorSession =
+            TutorSession(studentId = userId, subject = subjectName, chapter = chapterName)
+        historyRepo = ChatHistoryRepository(userId, subjectName, chapterName)
+        notesRepo = NotesRepository(this, userId, subjectName, chapterName)
         voiceManager = VoiceManager(this)
-        ttsManager   = TextToSpeechManager(this)
+        ttsManager = TextToSpeechManager(this)
         mediaManager = MediaManager(this)
         metricsTracker = ChapterMetricsTracker(subjectName, chapterName)
 
@@ -295,7 +319,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
         // Pre-load PDF page passed from ChapterActivity (if any)
         val pdfPageFilePath = intent.getStringExtra("pdfPageFilePath")
-        val pdfPageNumber   = intent.getIntExtra("pdfPageNumber", 1)
+        val pdfPageNumber = intent.getIntExtra("pdfPageNumber", 1)
         if (pdfPageFilePath != null) {
             tutorSession.currentPage = pdfPageNumber
             preloadPdfPage(File(pdfPageFilePath), pdfPageNumber)
@@ -360,7 +384,6 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         waveBar4 = findViewById(R.id.waveBar4)
         setupButtons()
         setupQuickActions()
-        setupModeChips()
 
         sendButton.setOnClickListener {
             val text = messageInput.text.toString().trim()
@@ -381,17 +404,6 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             if (isVoiceModeActive) stopVoiceMode() else startVoiceMode()
         }
 
-        geminiLiveButton = findViewById(R.id.geminiLiveButton)
-        geminiLiveButton.setOnClickListener {
-            val intent = android.content.Intent(this, GeminiLiveActivity::class.java).apply {
-                putExtra(GeminiLiveActivity.EXTRA_SUBJECT,  subjectName)
-                putExtra(GeminiLiveActivity.EXTRA_CHAPTER,  chapterName)
-                putExtra(GeminiLiveActivity.EXTRA_MODE,     tutorSession.mode.name)
-                putExtra(GeminiLiveActivity.EXTRA_USER_ID,  tutorSession.studentId)
-            }
-            startActivity(intent)
-        }
-
         voiceButton.setOnClickListener {
             if (isListening) voiceManager.stopListening() else checkPermissionAndStartListening()
         }
@@ -401,8 +413,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         viewNotesButton.setOnClickListener { viewSavedNotes() }
 
         removeImageButton.setOnClickListener {
-            selectedImageUri   = null
-            pdfPageBase64      = null
+            selectedImageUri = null
+            pdfPageBase64 = null
             currentPageContent = null
             imagePreviewStrip.visibility = View.GONE
             messageInput.setText("")
@@ -425,7 +437,13 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         findViewById<MaterialButton>(R.id.bottomExplainButton).setOnClickListener {
             metricsTracker.recordEvent(ChapterMetricsTracker.EventType.EXPLAIN_USED)
             val hasMedia = selectedImageUri != null || pdfPageBase64 != null
-            sendMessage(PromptRepository.getQuickAction(if (hasMedia) "explain_image" else "explain", subjectName, chapterName))
+            sendMessage(
+                PromptRepository.getQuickAction(
+                    if (hasMedia) "explain_image" else "explain",
+                    subjectName,
+                    chapterName
+                )
+            )
             if (hasMedia) messageInput.setText("")
         }
 
@@ -441,10 +459,10 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
     private fun setupQuickActions() {
         mapOf(
-            
-            R.id.explainButton   to "explain",
-            R.id.quizButton      to "quiz",
-            R.id.notesButton     to "notes"
+
+            R.id.explainButton to "explain",
+            R.id.quizButton to "quiz",
+            R.id.notesButton to "notes"
         ).forEach { (id, key) ->
             findViewById<MaterialButton>(id).setOnClickListener {
                 sendMessage(PromptRepository.getQuickAction(key, subjectName, chapterName))
@@ -469,7 +487,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         isListening = true
         metricsTracker.recordEvent(ChapterMetricsTracker.EventType.VOICE_INPUT)
         voiceButton.text = "⏹️"
-        voiceButton.backgroundTintList = ColorStateList.valueOf(android.graphics.Color.parseColor("#E53935"))
+        voiceButton.backgroundTintList =
+            ColorStateList.valueOf(android.graphics.Color.parseColor("#E53935"))
         listeningIndicator.visibility = View.VISIBLE
         voiceManager.startListening(this, currentLang)
     }
@@ -477,7 +496,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private fun resetVoiceButton() {
         isListening = false
         voiceButton.text = "🎤"
-        voiceButton.backgroundTintList = ColorStateList.valueOf(android.graphics.Color.parseColor("#E3F2FD"))
+        voiceButton.backgroundTintList =
+            ColorStateList.valueOf(android.graphics.Color.parseColor("#E3F2FD"))
         listeningIndicator.visibility = View.GONE
     }
 
@@ -498,10 +518,10 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             val b64 = mediaManager.uriToBase64(uri) ?: return@launch
             PageAnalyzer.analyze(
                 base64Image = b64,
-                subject     = subjectName,
-                chapter     = chapterName,
-                sourceType  = "image",
-                onSuccess   = { content ->
+                subject = subjectName,
+                chapter = chapterName,
+                sourceType = "image",
+                onSuccess = { content ->
                     currentPageContent = content
                     // Save immediately — don't wait for AI response (avoids race with sendMessage)
                     FirestoreManager.savePageContent(userId, content)
@@ -544,7 +564,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, baos)
         bmp.recycle()
         val b64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
-        pdfPageBase64      = b64
+        pdfPageBase64 = b64
         currentPageContent = null
 
         imagePreviewStrip.visibility = View.VISIBLE
@@ -557,11 +577,11 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         lifecycleScope.launch(Dispatchers.IO) {
             PageAnalyzer.analyze(
                 base64Image = b64,
-                subject     = subjectName,
-                chapter     = chapterName,
-                pageNumber  = pageNumber,
-                sourceType  = "pdf",
-                onSuccess   = { content ->
+                subject = subjectName,
+                chapter = chapterName,
+                pageNumber = pageNumber,
+                sourceType = "pdf",
+                onSuccess = { content ->
                     currentPageContent = content
                     FirestoreManager.savePageContent(userId, content)
                     runOnUiThread { imagePreviewLabel.text = "Page $pageNumber · ✅ analyzed" }
@@ -583,12 +603,12 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         pdfPageNumber: Int = 0,
         pdfFile: File? = null
     ) {
-        pendingCropIsPdf         = isPdf
+        pendingCropIsPdf = isPdf
         pendingCropPdfPageNumber = pdfPageNumber
-        pendingCropPdfFile       = pdfFile
+        pendingCropPdfFile = pdfFile
 
         val destFile = File(cacheDir, "crop_${System.currentTimeMillis()}.jpg")
-        val options  = UCrop.Options().apply {
+        val options = UCrop.Options().apply {
             setToolbarTitle(if (isPdf) "Select Region to Ask About" else "Crop Image")
             setToolbarColor(getColor(android.R.color.white))
             setToolbarWidgetColor(getColor(android.R.color.black))
@@ -631,7 +651,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
     private fun openCamera() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
-            != PackageManager.PERMISSION_GRANTED) {
+            != PackageManager.PERMISSION_GRANTED
+        ) {
             ActivityCompat.requestPermissions(
                 this, arrayOf(android.Manifest.permission.CAMERA), PERMISSION_REQUEST_CODE
             )
@@ -641,19 +662,22 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             put(MediaStore.Images.Media.TITLE, "AI_Guru_${System.currentTimeMillis()}")
             put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
         }
-        cameraImageUri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+        cameraImageUri =
+            contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
         cameraImageUri?.let { cameraLauncher.launch(it) }
     }
 
     private fun openPdfPicker() = pickPdfLauncher.launch("application/pdf")
 
     private fun addWelcomeMessage() {
-        messageAdapter.addMessage(Message(
-            id          = UUID.randomUUID().toString(),
-            content     = PromptRepository.getWelcomeMessage(subjectName, chapterName),
-            isUser      = false,
-            messageType = Message.MessageType.TEXT
-        ))
+        messageAdapter.addMessage(
+            Message(
+                id = UUID.randomUUID().toString(),
+                content = PromptRepository.getWelcomeMessage(subjectName, chapterName),
+                isUser = false,
+                messageType = Message.MessageType.TEXT
+            )
+        )
     }
 
     private fun buildAiClient(): AiClient {
@@ -661,23 +685,24 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         return ServerProxyClient(
             serverUrl = cfg.serverUrl.ifBlank { "http://108.181.187.227:8003" },
             modelName = "",
-            apiKey    = cfg.serverApiKey
+            apiKey = cfg.serverApiKey
         )
     }
 
     private fun sendMessage(userText: String, autoSaveNotes: Boolean = false) {
-        val imageUri            = selectedImageUri.also   { selectedImageUri    = null }
-        val capturedPdfBase64   = pdfPageBase64.also      { pdfPageBase64       = null }
-        var capturedPageContent = currentPageContent.also { currentPageContent  = null }
+        val imageUri = selectedImageUri.also { selectedImageUri = null }
+        val capturedPdfBase64 = pdfPageBase64.also { pdfPageBase64 = null }
+        var capturedPageContent = currentPageContent.also { currentPageContent = null }
 
         // ── Plan enforcement check ────────────────────────────────────────────
         val featureType = when {
-            imageUri != null          -> PlanEnforcer.FeatureType.IMAGE_UPLOAD
+            imageUri != null -> PlanEnforcer.FeatureType.IMAGE_UPLOAD
             capturedPdfBase64 != null -> PlanEnforcer.FeatureType.PDF_UPLOAD
-            else                      -> PlanEnforcer.FeatureType.TEXT_CHAT
+            else -> PlanEnforcer.FeatureType.TEXT_CHAT
         }
         val effectiveLimits = AdminConfigRepository.resolveEffectiveLimits(
-            cachedMetadata.planId, cachedMetadata.planLimits)
+            cachedMetadata.planId, cachedMetadata.planLimits
+        )
         val planCheck = PlanEnforcer.check(cachedMetadata, effectiveLimits, featureType)
         if (!planCheck.allowed) {
             if (imageUri != null) selectedImageUri = imageUri
@@ -686,216 +711,294 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             return
         }
 
-        imagePreviewStrip.visibility   = View.GONE
+        imagePreviewStrip.visibility = View.GONE
         bottomDescribeButton.visibility = View.GONE
 
         val userMessage = Message(
-            id          = UUID.randomUUID().toString(),
-            content     = userText,
-            isUser      = true,
-            imageUrl    = imageUri?.toString(),
+            id = UUID.randomUUID().toString(),
+            content = userText,
+            isUser = true,
+            imageUrl = imageUri?.toString(),
             messageType = if (imageUri != null) Message.MessageType.IMAGE else Message.MessageType.TEXT
         )
         messageAdapter.addMessage(userMessage)
         messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
         showLoading(true)
 
-        val sysPrompt    = TutorController.buildSystemPrompt(tutorSession) +
-                         PromptRepository.getLanguageInstruction(currentLang)
-        val ctxMessage   = userText   // plain question — context is conveyed via history + page_id
+        val sysPrompt = TutorController.buildSystemPrompt(tutorSession) +
+                PromptRepository.getLanguageInstruction(currentLang)
+        val ctxMessage = userText   // plain question — context is conveyed via history + page_id
 
         // Snapshot messages on main thread — adapter must not be read from IO thread
         val recentMsgs = messageAdapter.getMessages()
             .filter { it.content.isNotBlank() && it.id != userMessage.id }
             .takeLast(10)
         // historyStrings is built inside the coroutine after optional inline page analysis
-        val pageId       = "${FirestoreManager.safeId(subjectName)}__${FirestoreManager.safeId(chapterName)}"
+        val pageId =
+            "${FirestoreManager.safeId(subjectName)}__${FirestoreManager.safeId(chapterName)}"
         val studentLevel = cachedMetadata.grade.filter { it.isDigit() }.toIntOrNull() ?: 5
 
-        if (isVoiceModeActive) setVoiceModeStatus("🤖 AI is thinking…", "#E65100")
-
         // Streaming state — mutated only from runOnUiThread
-        val streamingId  = UUID.randomUUID().toString()
+        val streamingId = UUID.randomUUID().toString()
         val streamingMsg = Message(id = streamingId, content = "", isUser = false)
-        val accumulated  = StringBuilder()
+        val accumulated = StringBuilder()
         var loadingHidden = false
 
         lifecycleScope.launch(Dispatchers.IO) {
-          try {
-            historyRepo.saveMessage(userMessage.copy(imageUrl = null))
+            try {
+                historyRepo.saveMessage(userMessage.copy(imageUrl = null))
 
-            // ── Inline page analysis at send time ─────────────────────────────
-            // Runs if the background analysis (triggered on attach) wasn't completed
-            // or failed (e.g. invalid API key). PageAnalyzer.analyze() is synchronous
-            // on IO thread — it blocks until the Groq vision response is received.
-            if (capturedPageContent == null && (imageUri != null || capturedPdfBase64 != null)) {
-                val b64 = if (imageUri != null) mediaManager.uriToBase64(imageUri)
-                          else capturedPdfBase64
-                if (b64 != null) {
-                    val srcType = if (capturedPdfBase64 != null) "pdf" else "image"
-                    val pNum    = if (srcType == "pdf") (tutorSession.currentPage.takeIf { it > 0 } ?: 1) else 0
-                    PageAnalyzer.analyze(
-                        base64Image = b64,
-                        subject     = subjectName,
-                        chapter     = chapterName,
-                        pageNumber  = pNum,
-                        sourceType  = srcType,
-                        onSuccess   = { content ->
-                            capturedPageContent = content
-                            FirestoreManager.savePageContent(userId, content)
-                        },
-                        onError = { err -> android.util.Log.w("ChatActivity", "Inline page analysis failed: $err") }
-                    )
-                }
-            }
-
-            // Build history now — capturedPageContent may have been set by inline analysis above
-            val recentHistory = recentMsgs.map { if (it.isUser) "user: ${it.content}" else "assistant: ${it.content}" }
-            val pageContextEntry = capturedPageContent?.toContextSummary()
-                ?.let { listOf("system_context: $it") } ?: emptyList()
-            val historyStrings = pageContextEntry + recentHistory
-
-            val onToken: (String) -> Unit = { token ->
-                accumulated.append(token)
-                runOnUiThread {
-                    if (!loadingHidden) {
-                        loadingHidden = true
-                        showLoading(false)
-                        messageAdapter.addMessage(streamingMsg)
-                    }
-                    messageAdapter.updateMessage(streamingId, accumulated.toString())
-                    messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
-                }
-            }
-
-            val onDone: (Int, Int, Int) -> Unit = { inputTok, outputTok, totalTok ->
-                android.util.Log.d("TokenDebug", "[ChatActivity] onDone received in=$inputTok out=$outputTok total=$totalTok")
-                // Persist token counters to Firestore (async, runs on IO thread)
-                if (totalTok > 0) PlanEnforcer.recordTokensUsed(userId, totalTok)
-                // Save page analysis to Firestore after it has been used in this response
-                if (capturedPageContent != null) {
-                    FirestoreManager.savePageContent(userId, capturedPageContent)
-                }
-                runOnUiThread {
-                    // Update in-memory counter so next enforcement check uses fresh numbers
-                    if (totalTok > 0) {
-                        cachedMetadata = cachedMetadata.copy(
-                            tokensToday     = cachedMetadata.tokensToday + totalTok,
-                            tokensThisMonth = cachedMetadata.tokensThisMonth + totalTok,
-                            tokensUpdatedAt = System.currentTimeMillis()
+                // ── Inline page analysis at send time ─────────────────────────────
+                // Runs if the background analysis (triggered on attach) wasn't completed
+                // or failed (e.g. invalid API key). PageAnalyzer.analyze() is synchronous
+                // on IO thread — it blocks until the Groq vision response is received.
+                if (capturedPageContent == null && (imageUri != null || capturedPdfBase64 != null)) {
+                    val b64 = if (imageUri != null) mediaManager.uriToBase64(imageUri)
+                    else capturedPdfBase64
+                    if (b64 != null) {
+                        val srcType = if (capturedPdfBase64 != null) "pdf" else "image"
+                        val pNum = if (srcType == "pdf") (tutorSession.currentPage.takeIf { it > 0 }
+                            ?: 1) else 0
+                        PageAnalyzer.analyze(
+                            base64Image = b64,
+                            subject = subjectName,
+                            chapter = chapterName,
+                            pageNumber = pNum,
+                            sourceType = srcType,
+                            onSuccess = { content ->
+                                capturedPageContent = content
+                                FirestoreManager.savePageContent(userId, content)
+                            },
+                            onError = { err ->
+                                android.util.Log.w(
+                                    "ChatActivity",
+                                    "Inline page analysis failed: $err"
+                                )
+                            }
                         )
                     }
-                    showLoading(false)
-                    val rawResponse = accumulated.toString()
-                    if (rawResponse.isNotEmpty()) {
-                        val reply = TutorController.parseResponse(rawResponse)
-                        TutorController.updateSession(tutorSession, reply.intent, userText)
-                        updateModeChipStates()
-                        messageAdapter.updateMessage(streamingId, reply.response)
-                        val finalMsg = Message(streamingId, reply.response, false)
-                        val tokensToSave = totalTok.takeIf { it > 0 }
-                        android.util.Log.d("TokenDebug", "[ChatActivity] saving AI msg tokens=$tokensToSave")
-                        historyRepo.saveMessage(finalMsg, tokens = tokensToSave)
+                }
+
+                // Build history now — capturedPageContent may have been set by inline analysis above
+                val recentHistory =
+                    recentMsgs.map { if (it.isUser) "user: ${it.content}" else "assistant: ${it.content}" }
+                val pageContextEntry = capturedPageContent?.toContextSummary()
+                    ?.let { listOf("system_context: $it") } ?: emptyList()
+                val historyStrings = pageContextEntry + recentHistory
+
+                val onToken: (String) -> Unit = { token ->
+                    accumulated.append(token)
+                    runOnUiThread {
+                        if (!loadingHidden) {
+                            loadingHidden = true
+                            showLoading(false)
+                            messageAdapter.addMessage(streamingMsg)
+                        }
+                        messageAdapter.updateMessage(streamingId, accumulated.toString())
                         messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
-                        if (lastInputWasVoice || isVoiceModeActive) {
-                            lastInputWasVoice = false
-                            val voiceText = TutorController.prepareSpeechTextBrief(reply.response)
-                            if (isVoiceModeActive) {
-                                currentTTSText = voiceText
-                                setVoiceModeStatus("🔊 AI is speaking…", "#1565C0")
+                    }
+                }
+
+                val onDone: (Int, Int, Int) -> Unit = { inputTok, outputTok, totalTok ->
+                    android.util.Log.d(
+                        "TokenDebug",
+                        "[ChatActivity] onDone received in=$inputTok out=$outputTok total=$totalTok"
+                    )
+                    // Persist token counters to Firestore (async, runs on IO thread)
+                    if (totalTok > 0) PlanEnforcer.recordTokensUsed(userId, totalTok)
+                    // Save page analysis to Firestore after it has been used in this response
+                    if (capturedPageContent != null) {
+                        FirestoreManager.savePageContent(userId, capturedPageContent)
+                    }
+                    runOnUiThread {
+                        // Update in-memory counter so next enforcement check uses fresh numbers
+                        if (totalTok > 0) {
+                            cachedMetadata = cachedMetadata.copy(
+                                tokensToday = cachedMetadata.tokensToday + totalTok,
+                                tokensThisMonth = cachedMetadata.tokensThisMonth + totalTok,
+                                tokensUpdatedAt = System.currentTimeMillis()
+                            )
+                        }
+                        showLoading(false)
+                        val rawResponse = accumulated.toString()
+                        if (rawResponse.isNotEmpty()) {
+                            val reply = TutorController.parseResponse(rawResponse)
+                            TutorController.updateSession(tutorSession, reply.intent, userText)
+                            messageAdapter.updateMessage(streamingId, reply.response)
+                            val finalMsg = Message(streamingId, reply.response, false)
+                            val tokensToSave = totalTok.takeIf { it > 0 }
+                            android.util.Log.d(
+                                "TokenDebug",
+                                "[ChatActivity] saving AI msg tokens=$tokensToSave"
+                            )
+                            historyRepo.saveMessage(finalMsg, tokens = tokensToSave)
+                            messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
+                            if (lastInputWasVoice || isVoiceModeActive) {
+                                lastInputWasVoice = false
+                                val voiceText =
+                                    TutorController.prepareSpeechTextBrief(reply.response)
+                                if (isVoiceModeActive) {
+                                    currentTTSText = voiceText
+                                    setVoiceModeStatus("🔊 AI is speaking…", "#1565C0")
+                                }
+                                ttsManager.setLocale(Locale.forLanguageTag(currentLang))
+                                ttsManager.speak(voiceText, object : TTSCallback {
+                                    override fun onStart() {
+                                        if (isVoiceModeActive) {
+                                            android.os.Handler(android.os.Looper.getMainLooper())
+                                                .postDelayed({
+                                                    if (isVoiceModeActive && ttsManager.isSpeaking()) {
+                                                        voiceManager.startInterruptListening(
+                                                            interruptCallback,
+                                                            currentLang
+                                                        )
+                                                    }
+                                                }, 700)
+                                        }
+                                    }
+
+                                    override fun onComplete() {
+                                        runOnUiThread {
+                                            voiceManager.stopInterruptListening()
+                                            if (isVoiceModeActive && !isInterrupted) startVoiceLoopListening()
+                                            isInterrupted = false
+                                        }
+                                    }
+
+                                    override fun onError(error: String) {
+                                        runOnUiThread {
+                                            voiceManager.stopInterruptListening()
+                                            if (isVoiceModeActive) startVoiceLoopListening()
+                                        }
+                                    }
+                                })
                             }
-                            ttsManager.setLocale(Locale.forLanguageTag(currentLang))
-                            ttsManager.speak(voiceText, object : TTSCallback {
-                                override fun onStart() {
-                                    if (isVoiceModeActive) {
-                                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                                            if (isVoiceModeActive && ttsManager.isSpeaking()) {
-                                                voiceManager.startInterruptListening(interruptCallback, currentLang)
-                                            }
-                                        }, 700)
-                                    }
-                                }
-                                override fun onComplete() {
-                                    runOnUiThread {
-                                        voiceManager.stopInterruptListening()
-                                        if (isVoiceModeActive && !isInterrupted) startVoiceLoopListening()
-                                        isInterrupted = false
-                                    }
-                                }
-                                override fun onError(error: String) {
-                                    runOnUiThread {
-                                        voiceManager.stopInterruptListening()
-                                        if (isVoiceModeActive) startVoiceLoopListening()
-                                    }
-                                }
-                            })
+                            if (autoSaveNotes && saveNotesType != null) {
+                                notesRepo.save(reply.response, saveNotesType!!)
+                            }
+                        } else {
+                            showError("Couldn't get a response. Check your connection and try again.")
                         }
-                        if (autoSaveNotes && saveNotesType != null) {
-                            notesRepo.save(reply.response, saveNotesType!!)
-                        }
-                    } else {
-                        showError("Couldn't get a response. Check your connection and try again.")
                     }
                 }
-            }
 
-            val onError: (String) -> Unit = { err ->
-                runOnUiThread { showLoading(false); showError("Error: $err") }
-            }
-
-            val client = buildAiClient()
-            val imageDataJson = capturedPageContent?.toImageDataJson()
-            when {
-                imageUri != null -> {
-                    val b64 = mediaManager.uriToBase64(imageUri)
-                    if (client is ServerProxyClient) {
-                        client.streamChat(ctxMessage, pageId, studentLevel, historyStrings, imageDataJson, onToken, onDone, onError)
-                    } else {
-                        if (b64 != null) client.streamWithImage(sysPrompt, ctxMessage, b64, onToken, onDone, onError)
-                        else             client.streamText(sysPrompt, ctxMessage, onToken, onDone, onError)
-                    }
+                val onError: (String) -> Unit = { err ->
+                    runOnUiThread { showLoading(false); showError("Error: $err") }
                 }
-                capturedPdfBase64 != null ->
-                    if (client is ServerProxyClient)
-                        client.streamChat(ctxMessage, pageId, studentLevel, historyStrings, imageDataJson, onToken, onDone, onError)
-                    else
-                        client.streamWithImage(sysPrompt, ctxMessage, capturedPdfBase64, onToken, onDone, onError)
-                else ->
-                    if (client is ServerProxyClient)
-                        client.streamChat(ctxMessage, pageId, studentLevel, historyStrings, null, onToken, onDone, onError)
-                    else
-                        client.streamText(sysPrompt, ctxMessage, onToken, onDone, onError)
+
+                val client = buildAiClient()
+                val imageDataJson = capturedPageContent?.toImageDataJson()
+                when {
+                    imageUri != null -> {
+                        val b64 = mediaManager.uriToBase64(imageUri)
+                        if (client is ServerProxyClient) {
+                            client.streamChat(
+                                ctxMessage,
+                                pageId,
+                                studentLevel,
+                                historyStrings,
+                                imageDataJson,
+                                onToken,
+                                onDone,
+                                onError
+                            )
+                        } else {
+                            if (b64 != null) client.streamWithImage(
+                                sysPrompt,
+                                ctxMessage,
+                                b64,
+                                onToken,
+                                onDone,
+                                onError
+                            )
+                            else client.streamText(sysPrompt, ctxMessage, onToken, onDone, onError)
+                        }
+                    }
+
+                    capturedPdfBase64 != null ->
+                        if (client is ServerProxyClient)
+                            client.streamChat(
+                                ctxMessage,
+                                pageId,
+                                studentLevel,
+                                historyStrings,
+                                imageDataJson,
+                                onToken,
+                                onDone,
+                                onError
+                            )
+                        else
+                            client.streamWithImage(
+                                sysPrompt,
+                                ctxMessage,
+                                capturedPdfBase64,
+                                onToken,
+                                onDone,
+                                onError
+                            )
+
+                    else ->
+                        if (client is ServerProxyClient)
+                            client.streamChat(
+                                ctxMessage,
+                                pageId,
+                                studentLevel,
+                                historyStrings,
+                                null,
+                                onToken,
+                                onDone,
+                                onError
+                            )
+                        else
+                            client.streamText(sysPrompt, ctxMessage, onToken, onDone, onError)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ChatActivity", "sendMessage crash: ${e.message}", e)
+                runOnUiThread { showLoading(false); showError("Error: ${e.message}") }
             }
-          } catch (e: Exception) {
-              android.util.Log.e("ChatActivity", "sendMessage crash: ${e.message}", e)
-              runOnUiThread { showLoading(false); showError("Error: ${e.message}") }
-          }
         }
     }
 
     private fun generateFlashcards() {
         val prompt = PromptRepository.getQuickAction("flashcards", subjectName, chapterName)
-        messageAdapter.addMessage(Message(UUID.randomUUID().toString(), "🃏 Generating revision flashcards for $chapterName…", true))
+        messageAdapter.addMessage(
+            Message(
+                UUID.randomUUID().toString(),
+                "🃏 Generating revision flashcards for $chapterName…",
+                true
+            )
+        )
         showLoading(true)
 
-        val sysPrompt    = TutorController.buildSystemPrompt(tutorSession)
+        val sysPrompt = TutorController.buildSystemPrompt(tutorSession)
         val fullResponse = StringBuilder()
         lifecycleScope.launch(Dispatchers.IO) {
             buildAiClient().streamText(
                 systemPrompt = sysPrompt,
-                userText     = prompt,
-                onToken      = { token -> fullResponse.append(token) },
-                onDone       = { _, _, _ ->
+                userText = prompt,
+                onToken = { token -> fullResponse.append(token) },
+                onDone = { _, _, _ ->
                     runOnUiThread {
                         showLoading(false)
                         val cards = parseFlashcards(fullResponse.toString())
                         if (cards.isNotEmpty()) {
-                            messageAdapter.addMessage(Message(UUID.randomUUID().toString(), "✅ ${cards.size} flashcards ready! Opening revision mode…", false))
-                            startActivity(Intent(this@ChatActivity, RevisionActivity::class.java).putExtra("flashcards", ArrayList(cards)))
+                            messageAdapter.addMessage(
+                                Message(
+                                    UUID.randomUUID().toString(),
+                                    "✅ ${cards.size} flashcards ready! Opening revision mode…",
+                                    false
+                                )
+                            )
+                            startActivity(
+                                Intent(
+                                    this@ChatActivity,
+                                    RevisionActivity::class.java
+                                ).putExtra("flashcards", ArrayList(cards))
+                            )
                         } else showError("Could not parse flashcards. Please try again.")
                     }
                 },
-                onError      = { err ->
+                onError = { err ->
                     runOnUiThread { showLoading(false); showError("Failed to generate flashcards: $err") }
                 }
             )
@@ -922,32 +1025,41 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
     private fun saveLastAIMessageAsNotes() {
         val lastAi = messageAdapter.getLastAIMessage() ?: run {
-            Toast.makeText(this, "Generate notes first, then tap 💾 Save Notes.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Generate notes first, then tap 💾 Save Notes.", Toast.LENGTH_SHORT)
+                .show()
             return
         }
         notesRepo.save(
-            content   = lastAi.content,
-            type      = saveNotesType ?: "chapter",
+            content = lastAi.content,
+            type = saveNotesType ?: "chapter",
             onSuccess = {
                 metricsTracker.recordEvent(ChapterMetricsTracker.EventType.NOTES_SAVED)
                 runOnUiThread { Toast.makeText(this, "✅ Notes saved!", Toast.LENGTH_SHORT).show() }
             },
             onFailure = {
-                runOnUiThread { Toast.makeText(this, "Failed to save notes.", Toast.LENGTH_SHORT).show() }
+                runOnUiThread {
+                    Toast.makeText(this, "Failed to save notes.", Toast.LENGTH_SHORT).show()
+                }
             }
         )
     }
 
     private fun viewSavedNotes() {
         notesRepo.loadAll(
-            onResult  = { text ->
+            onResult = { text ->
                 AlertDialog.Builder(this)
                     .setTitle("📋 Saved Notes — $chapterName")
                     .setMessage(text)
                     .setPositiveButton("OK", null)
                     .show()
             },
-            onEmpty   = { Toast.makeText(this, "No saved notes yet — generate and save notes first!", Toast.LENGTH_SHORT).show() },
+            onEmpty = {
+                Toast.makeText(
+                    this,
+                    "No saved notes yet — generate and save notes first!",
+                    Toast.LENGTH_SHORT
+                ).show()
+            },
             onFailure = { Toast.makeText(this, "Couldn't load notes.", Toast.LENGTH_SHORT).show() }
         )
     }
@@ -967,13 +1079,12 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             if (!isVoiceModeActive) resetVoiceButton()
             if (text.isNotEmpty()) {
                 lastInputWasVoice = true
-                isInterrupted = false   // clear — good result received
+                isInterrupted = false
                 messageInput.setText("")
                 if (isVoiceModeActive) setVoiceModeStatus("🤖 AI is thinking…", "#E65100")
                 sendMessage(text)
             } else {
                 if (isVoiceModeActive) startVoiceLoopListening()
-                else messageInput.setText(text)
             }
         }
     }
@@ -987,12 +1098,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
     override fun onError(error: String) {
         runOnUiThread {
-            if (isVoiceModeActive) {
-                // Automatically retry — errors like no-match or timeout are common
-                startVoiceLoopListening()
-            } else {
-                resetVoiceButton()
-            }
+            if (isVoiceModeActive) startVoiceLoopListening()
+            else resetVoiceButton()
         }
     }
 
@@ -1027,11 +1134,10 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-            R.id.action_language -> { showLanguagePicker(); true }
-            R.id.action_model_settings -> {
-                startActivity(Intent(this, ModelSettingsActivity::class.java))
-                true
+            R.id.action_language -> {
+                showLanguagePicker(); true
             }
+
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -1053,41 +1159,12 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             .show()
     }
 
-    // ── Tutor Mode Chips ─────────────────────────────────────────────────────
-
-    private fun setupModeChips() {
-        modeAutoButton     = findViewById(R.id.modeAutoButton)
-        modeExplainButton  = findViewById(R.id.modeExplainButton)
-        modePracticeButton = findViewById(R.id.modePracticeButton)
-        modeEvaluateButton = findViewById(R.id.modeEvaluateButton)
-        updateModeChipStates()
-        modeAutoButton.setOnClickListener {
-            tutorSession.mode = TutorMode.AUTO
-            updateModeChipStates()
-            Toast.makeText(this, "🤖 Auto — I'll adapt to what you need", Toast.LENGTH_SHORT).show()
-        }
-        modeExplainButton.setOnClickListener {
-            tutorSession.mode = TutorMode.EXPLAIN
-            updateModeChipStates()
-            Toast.makeText(this, "💡 Explain mode — simple explanations with examples", Toast.LENGTH_SHORT).show()
-        }
-        modePracticeButton.setOnClickListener {
-            tutorSession.mode = TutorMode.PRACTICE
-            updateModeChipStates()
-            Toast.makeText(this, "✍️ Practice mode — let's solve problems together", Toast.LENGTH_SHORT).show()
-        }
-        modeEvaluateButton.setOnClickListener {
-            tutorSession.mode = TutorMode.EVALUATE
-            updateModeChipStates()
-            Toast.makeText(this, "🧪 Test mode — I'll check your understanding", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    // ── Interactive Voice Chat Mode ───────────────────────────────────────────
+    // ── Interactive Voice Chat Mode (single-shot mic only) ──────────────────
 
     private fun startVoiceMode() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
-            != PackageManager.PERMISSION_GRANTED) {
+            != PackageManager.PERMISSION_GRANTED
+        ) {
             ActivityCompat.requestPermissions(
                 this, arrayOf(android.Manifest.permission.RECORD_AUDIO), PERMISSION_REQUEST_CODE
             )
@@ -1098,7 +1175,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         voiceButton.isEnabled = false
         voiceChatBar.visibility = View.VISIBLE
         listeningIndicator.visibility = View.GONE
-        voiceChatButton.backgroundTintList = ColorStateList.valueOf(android.graphics.Color.parseColor("#E53935"))
+        voiceChatButton.backgroundTintList =
+            ColorStateList.valueOf(android.graphics.Color.parseColor("#E53935"))
         Toast.makeText(this, "🎙️ Voice mode ON — just speak!", Toast.LENGTH_SHORT).show()
         startVoiceLoopListening()
     }
@@ -1108,13 +1186,15 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         isInterrupted = false
         ttsManager.stop()
         voiceManager.stopInterruptListening()
-        if (isListening) { voiceManager.stopListening(); isListening = false }
+        if (isListening) {
+            voiceManager.stopListening(); isListening = false
+        }
         stopWaveAnimation()
         stopMicPulse()
         voiceButton.isEnabled = true
         voiceChatBar.visibility = View.GONE
-        voiceChatButton.text = "🎙️"
-        voiceChatButton.backgroundTintList = ColorStateList.valueOf(android.graphics.Color.parseColor("#E8F5E9"))
+        voiceChatButton.backgroundTintList =
+            ColorStateList.valueOf(android.graphics.Color.parseColor("#E8F5E9"))
         Toast.makeText(this, "Voice mode OFF", Toast.LENGTH_SHORT).show()
     }
 
@@ -1129,45 +1209,33 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private fun setVoiceModeStatus(text: String, colorHex: String) {
         voiceChatStatus.text = text
         voiceChatStatus.setTextColor(android.graphics.Color.parseColor(colorHex))
-        // Drive wave bar animation from status transitions
         when (colorHex) {
-            "#2E7D32", "#6A1B9A" -> startWaveAnimation(colorHex)  // listening / barge-in
-            "#1565C0"             -> { startWaveAnimation("#1565C0"); stopMicPulse() }  // AI speaking
-            else                  -> { stopWaveAnimation(); stopMicPulse() }            // processing / idle
+            "#2E7D32", "#6A1B9A" -> startWaveAnimation(colorHex)
+            "#1565C0" -> {
+                startWaveAnimation("#1565C0"); stopMicPulse()
+            }
+
+            else -> {
+                stopWaveAnimation(); stopMicPulse()
+            }
         }
     }
 
-    /**
-     * Called by the interrupt recognizer while TTS is speaking.
-     * Uses partial results + echo filter to detect real user barge-in.
-     */
     private val interruptCallback = object : VoiceRecognitionCallback {
         override fun onPartialResults(text: String) {
             if (!isVoiceModeActive || !ttsManager.isSpeaking() || text.length < 3) return
-            // Echo filter: Skip if partial text matches the beginning of what TTS is saying
             val normalizedTTS = currentTTSText.lowercase()
-            val normalizedText = text.lowercase().trim()
-            if (normalizedTTS.contains(normalizedText)) return
-            // Real user speech — barge-in!
+            if (normalizedTTS.contains(text.lowercase().trim())) return
             triggerBargein()
         }
 
-        override fun onBeginningOfSpeech() {
-            // Secondary signal: if TTS is playing and user starts speaking, stop TTS
-            // (gives instant responsiveness; onPartialResults will confirm with real text)
-        }
-
+        override fun onBeginningOfSpeech() {}
         override fun onResults(text: String) {
-            // Interrupt recognizer captured a full utterance (user spoke while TTS was playing)
-            // This can also handle the case where partial didn't trigger (short utterance).
             if (!isVoiceModeActive || text.length < 2) return
-            val normalizedTTS = currentTTSText.lowercase()
-            if (!normalizedTTS.contains(text.lowercase().trim())) {
-                triggerBargein()
-            }
+            if (!currentTTSText.lowercase().contains(text.lowercase().trim())) triggerBargein()
         }
 
-        override fun onError(error: String) { /* ignore — interrupt recognizer errors are expected */ }
+        override fun onError(error: String) {}
         override fun onListeningStarted() {}
         override fun onListeningFinished() {}
     }
@@ -1177,108 +1245,58 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         isInterrupted = true
         ttsManager.stop()
         voiceManager.stopInterruptListening()
-        runOnUiThread {
-            setVoiceModeStatus("🎙️ Listening (interrupted)…", "#6A1B9A")
-        }
+        runOnUiThread { setVoiceModeStatus("🎙️ Listening (interrupted)…", "#6A1B9A") }
         isListening = true
         voiceManager.startListening(this, currentLang)
     }
 
-    // ─────────────────────────────────────────────────────────────────────────────
-    //  Animation helpers
-    // ─────────────────────────────────────────────────────────────────────────────
-
-    /** Start equaliser wave bar animation. Green = listening, blue = AI speaking, purple = barge-in. */
     private fun startWaveAnimation(colorHex: String) {
         waveBarContainer.visibility = View.VISIBLE
         val tint = ColorStateList.valueOf(android.graphics.Color.parseColor(colorHex))
         listOf(waveBar1, waveBar2, waveBar3, waveBar4).forEach { it.backgroundTintList = tint }
         val durations = longArrayOf(420L, 600L, 360L, 510L)
-        val delays    = longArrayOf(  0L, 130L, 260L,  80L)
+        val delays = longArrayOf(0L, 130L, 260L, 80L)
         listOf(waveBar1, waveBar2, waveBar3, waveBar4).forEachIndexed { i, bar ->
             bar.clearAnimation()
-            bar.startAnimation(ScaleAnimation(
-                1f, 1f, 0.15f, 1f,
-                Animation.RELATIVE_TO_SELF, 0.5f,
-                Animation.RELATIVE_TO_SELF, 1.0f   // scale from bottom
-            ).apply {
-                duration    = durations[i]
-                startOffset = delays[i]
-                repeatMode  = Animation.REVERSE
-                repeatCount = Animation.INFINITE
-                fillAfter   = true
-            })
+            bar.startAnimation(
+                ScaleAnimation(
+                    1f, 1f, 0.15f, 1f,
+                    Animation.RELATIVE_TO_SELF, 0.5f,
+                    Animation.RELATIVE_TO_SELF, 1.0f
+                ).apply {
+                    duration = durations[i]
+                    startOffset = delays[i]
+                    repeatMode = Animation.REVERSE
+                    repeatCount = Animation.INFINITE
+                    fillAfter = true
+                })
         }
     }
 
-    /** Stop wave bars and hide the container. */
     private fun stopWaveAnimation() {
         listOf(waveBar1, waveBar2, waveBar3, waveBar4).forEach { it.clearAnimation() }
         waveBarContainer.visibility = View.GONE
     }
 
-    /** Gentle scale pulse on the mic button while single-turn or loop listening is active. */
     private fun startMicPulse() {
         voiceButton.clearAnimation()
-        voiceButton.startAnimation(ScaleAnimation(
-            1f, 1.15f, 1f, 1.15f,
-            Animation.RELATIVE_TO_SELF, 0.5f,
-            Animation.RELATIVE_TO_SELF, 0.5f
-        ).apply {
-            duration    = 600L
-            repeatMode  = Animation.REVERSE
-            repeatCount = Animation.INFINITE
-            fillAfter   = true
-        })
+        voiceButton.startAnimation(
+            ScaleAnimation(
+                1f, 1.15f, 1f, 1.15f,
+                Animation.RELATIVE_TO_SELF, 0.5f,
+                Animation.RELATIVE_TO_SELF, 0.5f
+            ).apply {
+                duration = 600L
+                repeatMode = Animation.REVERSE
+                repeatCount = Animation.INFINITE
+                fillAfter = true
+            })
     }
 
-    /** Stop mic pulse and restore original size. */
     private fun stopMicPulse() {
         voiceButton.clearAnimation()
         voiceButton.scaleX = 1f
         voiceButton.scaleY = 1f
     }
 
-    private fun updateModeChipStates() {
-        val activeBg      = android.graphics.Color.parseColor("#1565C0")
-        val inactiveBg    = android.graphics.Color.TRANSPARENT
-        val activeText    = android.graphics.Color.WHITE
-        val inactiveText  = android.graphics.Color.parseColor("#6B7280")
-        mapOf(
-            modeAutoButton     to (tutorSession.mode == TutorMode.AUTO),
-            modeExplainButton  to (tutorSession.mode == TutorMode.EXPLAIN),
-            modePracticeButton to (tutorSession.mode == TutorMode.PRACTICE),
-            modeEvaluateButton to (tutorSession.mode == TutorMode.EVALUATE)
-        ).forEach { (btn, isActive) ->
-            btn.backgroundTintList = ColorStateList.valueOf(if (isActive) activeBg else inactiveBg)
-            btn.setTextColor(if (isActive) activeText else inactiveText)
-        }
-    }
-
-    override fun onStop() {
-        super.onStop()
-        metricsTracker.endSession(this)
-        // Generate and save conversation summary in background (fire-and-forget)
-        val msgs = messageAdapter.getMessages().filter { it.content.isNotBlank() }
-        val uid  = SessionManager.getFirestoreUserId(this)
-        if (uid.isNotBlank() && uid != "guest_user") {
-            lifecycleScope.launch {
-                ConversationSummarizer.summarize(
-                    messages  = msgs,
-                    subject   = subjectName,
-                    chapter   = chapterName,
-                    userId    = uid,
-                    aiClient  = buildAiClient()
-                )
-            }
-        }
-    }
-
-    override fun onDestroy() {
-        if (isVoiceModeActive) stopVoiceMode()
-        voiceManager.destroy()
-        ttsManager.destroy()
-        super.onDestroy()
-    }
 }
-
