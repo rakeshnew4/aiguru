@@ -18,6 +18,9 @@ import java.util.concurrent.TimeUnit
  *   Request body : {
  *     "question":      "<user message>",
  *     "page_id":       "<subject>__<chapter>",
+ *     "mode":          "normal|blackboard|...",
+ *     "language":      "en-US|hi-IN|...",
+ *     "language_tag":  "en-US|hi-IN|...",
  *     "student_level": <int 1-12>,
  *     "history":       ["user: ...", "assistant: ...", ...],
  *     "image_data":    { "transcript": "...", "paragraphs": [...],
@@ -59,6 +62,8 @@ class ServerProxyClient(
         streamChat(
             question     = combined,
             pageId       = "",
+            mode         = "normal",
+            languageTag  = "en-US",
             studentLevel = 5,
             history      = emptyList(),
             onToken      = onToken,
@@ -72,6 +77,8 @@ class ServerProxyClient(
      *
      * @param question      The student's question (plain text, no system prompt)
      * @param pageId        "subject__chapter" identifier for the server's RAG context
+      * @param mode          Routing hint for server-side prompt/control logic.
+    * @param languageTag   Preferred response language tag (BCP-47), e.g. en-US, hi-IN.
      * @param studentLevel  Grade level as integer (1–12). Default 5.
      * @param history       Prior turns as ["user: ...", "assistant: ..."] strings
      * @param imageData     Optional structured data extracted from an attached image/PDF page.
@@ -80,6 +87,8 @@ class ServerProxyClient(
     fun streamChat(
         question: String,
         pageId: String,
+                mode: String = "normal",
+                languageTag: String = "en-US",
         studentLevel: Int = 5,
         history: List<String> = emptyList(),
         imageData: JSONObject? = null,
@@ -91,6 +100,9 @@ class ServerProxyClient(
         val json = JSONObject().apply {
             put("question",      question)
             put("page_id",       pageId)
+            put("mode",          mode)
+            put("language",      languageTag)
+            put("language_tag",  languageTag)
             put("student_level", studentLevel)
             put("history",       historyArray)
             if (imageData != null) put("image_data", imageData)

@@ -111,6 +111,8 @@ object BlackboardGenerator {
         server.streamChat(
             question     = systemPrompt + languageHint + "\n\nExplanation to convert:\n" + messageContent.take(3000),
             pageId       = "blackboard__lesson",
+            mode         = "blackboard",
+            languageTag  = preferredLanguageTag ?: "en-US",
             studentLevel = 5,
             history      = emptyList(),
             onToken      = { token -> buffer.append(token) },

@@ -88,11 +88,12 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private lateinit var imagePreviewThumbnail: ImageView
     private lateinit var imagePreviewLabel: TextView
     private lateinit var removeImageButton: MaterialButton
+    private lateinit var languageButton: MaterialButton
     private lateinit var listeningIndicator: TextView
     private lateinit var bottomDescribeButton: MaterialButton
 
     // ── Auto Explain Mode ──────────────────────────────────────────────────────
-    private var isAutoExplainActive = false
+    private var isAutoExplainActive = true
     private lateinit var autoExplainButton: MaterialButton
 
     // ── Interactive Voice Chat Mode ────────────────────────────────────────────
@@ -301,7 +302,12 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         })
 
         tutorSession =
-            TutorSession(studentId = userId, subject = subjectName, chapter = chapterName)
+            TutorSession(
+                studentId = userId,
+                subject = subjectName,
+                chapter = chapterName,
+                mode = TutorMode.EXPLAIN
+            )
 
         FirestoreManager.loadChapterContext(
             userId = userId,
@@ -349,10 +355,13 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
     private fun initializeUI() {
         toolbar = findViewById(R.id.toolbar)
-        toolbar.title = "📘 $chapterName"
-        toolbar.subtitle = "👩\u200d🏫 AI Tutor · $subjectName"
+        toolbar.title = chapterName
+        toolbar.subtitle = "AI Tutor"
         toolbar.setNavigationOnClickListener { finish() }
         setSupportActionBar(toolbar)
+
+        findViewById<TextView>(R.id.chatHeaderTitle).text = chapterName
+        findViewById<TextView>(R.id.chatHeaderSubtitle).text = "$subjectName · Tutor Session"
 
         messagesRecyclerView = findViewById(R.id.messagesRecyclerView)
         messageAdapter = MessageAdapter(
@@ -409,6 +418,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         imagePreviewThumbnail = findViewById(R.id.imagePreviewThumbnail)
         imagePreviewLabel = findViewById(R.id.imagePreviewLabel)
         removeImageButton = findViewById(R.id.removeImageButton)
+        languageButton = findViewById(R.id.languageButton)
         listeningIndicator = findViewById(R.id.listeningIndicator)
         bottomDescribeButton = findViewById(R.id.bottomDescribeButton)
         voiceChatBar = findViewById(R.id.voiceChatBar)
@@ -418,6 +428,10 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         waveBar2 = findViewById(R.id.waveBar2)
         waveBar3 = findViewById(R.id.waveBar3)
         waveBar4 = findViewById(R.id.waveBar4)
+
+        languageButton.setOnClickListener { showLanguagePicker() }
+        updateLanguageButton()
+
         setupButtons()
         setupQuickActions()
 
@@ -450,6 +464,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             isAutoExplainActive = !isAutoExplainActive
             updateAutoExplainButton()
         }
+        updateAutoExplainButton()
 
         voiceButton.setOnClickListener {
             if (isListening) voiceManager.stopListening() else checkPermissionAndStartListening()
@@ -956,6 +971,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                             client.streamChat(
                                 ctxMessage,
                                 pageId,
+                                "normal",
+                                currentLang,
                                 studentLevel,
                                 historyStrings,
                                 imageDataJson,
@@ -981,6 +998,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                             client.streamChat(
                                 ctxMessage,
                                 pageId,
+                                "normal",
+                                currentLang,
                                 studentLevel,
                                 historyStrings,
                                 imageDataJson,
@@ -1003,6 +1022,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                             client.streamChat(
                                 ctxMessage,
                                 pageId,
+                                "normal",
+                                currentLang,
                                 studentLevel,
                                 historyStrings,
                                 null,
@@ -1202,7 +1223,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_chat, menu)
-        menu.findItem(R.id.action_language)?.title = "🌐 $currentLangName"
+        menu.findItem(R.id.action_language)?.title = "Language"
         return true
     }
 
@@ -1225,12 +1246,28 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                 currentLangName = names[which]
                 currentLang = LANGUAGES[currentLangName] ?: "en-US"
                 invalidateOptionsMenu()
+                updateLanguageButton()
                 ttsManager.setLocale(Locale.forLanguageTag(currentLang))
                 dialog.dismiss()
                 Toast.makeText(this, "Language: $currentLangName", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    private fun updateLanguageButton() {
+        val label = when (currentLang) {
+            "en-US" -> "English"
+            "hi-IN" -> "Hindi"
+            "bn-IN" -> "Bengali"
+            "te-IN" -> "Telugu"
+            "ta-IN" -> "Tamil"
+            "mr-IN" -> "Marathi"
+            "kn-IN" -> "Kannada"
+            "gu-IN" -> "Gujarati"
+            else -> currentLangName
+        }
+        languageButton.text = "Language: $label ▾"
     }
 
     // ── Interactive Voice Chat Mode (single-shot mic only) ──────────────────
