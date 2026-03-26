@@ -91,6 +91,10 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private lateinit var listeningIndicator: TextView
     private lateinit var bottomDescribeButton: MaterialButton
 
+    // ── Auto Explain Mode ──────────────────────────────────────────────────────
+    private var isAutoExplainActive = false
+    private lateinit var autoExplainButton: MaterialButton
+
     // ── Interactive Voice Chat Mode ────────────────────────────────────────────
     private var isVoiceModeActive = false
     private lateinit var voiceChatButton: MaterialButton
@@ -348,9 +352,22 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             onStopClick = { ttsManager.stop() },
             onImageClick = { },
             onExplainClick = { msg ->
+                val bbLimits = AdminConfigRepository.resolveEffectiveLimits(
+                    cachedMetadata.planId, cachedMetadata.planLimits
+                )
+                val bbCheck = PlanEnforcer.check(
+                    cachedMetadata, bbLimits, PlanEnforcer.FeatureType.BLACKBOARD
+                )
+                if (!bbCheck.allowed) {
+                    showError(bbCheck.upgradeMessage)
+                }
+                val convId = "${FirestoreManager.safeId(subjectName)}__${FirestoreManager.safeId(chapterName)}"
                 startActivity(
                     android.content.Intent(this, BlackboardActivity::class.java)
                         .putExtra(BlackboardActivity.EXTRA_MESSAGE, msg.content)
+                        .putExtra(BlackboardActivity.EXTRA_MESSAGE_ID, msg.id)
+                        .putExtra(BlackboardActivity.EXTRA_USER_ID, userId)
+                        .putExtra(BlackboardActivity.EXTRA_CONVERSATION_ID, convId)
                 )
             }
         )
@@ -404,6 +421,17 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             if (isVoiceModeActive) stopVoiceMode() else startVoiceMode()
         }
 
+        autoExplainButton = findViewById(R.id.autoExplainButton)
+        autoExplainButton.setOnClickListener {
+            val limits = AdminConfigRepository.resolveEffectiveLimits(
+                cachedMetadata.planId, cachedMetadata.planLimits
+            )
+            val check = PlanEnforcer.check(cachedMetadata, limits, PlanEnforcer.FeatureType.BLACKBOARD)
+            if (!check.allowed) { showError(check.upgradeMessage); return@setOnClickListener }
+            isAutoExplainActive = !isAutoExplainActive
+            updateAutoExplainButton()
+        }
+
         voiceButton.setOnClickListener {
             if (isListening) voiceManager.stopListening() else checkPermissionAndStartListening()
         }
@@ -434,27 +462,9 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             sendMessage(PromptRepository.getQuickAction("describe_image", subjectName, chapterName))
             messageInput.setText("")
         }
-        findViewById<MaterialButton>(R.id.bottomExplainButton).setOnClickListener {
-            metricsTracker.recordEvent(ChapterMetricsTracker.EventType.EXPLAIN_USED)
-            val hasMedia = selectedImageUri != null || pdfPageBase64 != null
-            sendMessage(
-                PromptRepository.getQuickAction(
-                    if (hasMedia) "explain_image" else "explain",
-                    subjectName,
-                    chapterName
-                )
-            )
-            if (hasMedia) messageInput.setText("")
-        }
 
-        findViewById<MaterialButton>(R.id.bottomQuizButton).setOnClickListener {
-            metricsTracker.recordEvent(ChapterMetricsTracker.EventType.QUIZ_REQUESTED)
-            sendMessage(PromptRepository.getQuickAction("quiz", subjectName, chapterName))
-        }
-        findViewById<MaterialButton>(R.id.bottomPracticeButton).setOnClickListener {
-            metricsTracker.recordEvent(ChapterMetricsTracker.EventType.PRACTICE_USED)
-            sendMessage(PromptRepository.getQuickAction("practice", subjectName, chapterName))
-        }
+
+
     }
 
     private fun setupQuickActions() {
@@ -499,6 +509,15 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         voiceButton.backgroundTintList =
             ColorStateList.valueOf(android.graphics.Color.parseColor("#E3F2FD"))
         listeningIndicator.visibility = View.GONE
+    }
+
+    private fun updateAutoExplainButton() {
+        autoExplainButton.backgroundTintList = ColorStateList.valueOf(
+            android.graphics.Color.parseColor(if (isAutoExplainActive) "#FFF9C4" else "#F3F4F6")
+        )
+        autoExplainButton.setTextColor(
+            android.graphics.Color.parseColor(if (isAutoExplainActive) "#E65100" else "#757575")
+        )
     }
 
     private fun showImagePreview(uri: Uri) {
@@ -833,7 +852,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                             )
                             historyRepo.saveMessage(finalMsg, tokens = tokensToSave)
                             messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
-                            if (lastInputWasVoice || isVoiceModeActive) {
+                            if ((lastInputWasVoice || isVoiceModeActive) && !isAutoExplainActive) {
                                 lastInputWasVoice = false
                                 val voiceText =
                                     TutorController.prepareSpeechTextBrief(reply.response)
@@ -875,6 +894,23 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                             }
                             if (autoSaveNotes && saveNotesType != null) {
                                 notesRepo.save(reply.response, saveNotesType!!)
+                            }
+                            // ── Auto Explain Mode ──────────────────────────────────────────────
+                            if (isAutoExplainActive) {
+                                // Skip TTS — blackboard handles audio; clean up voice state
+                                lastInputWasVoice = false
+                                if (isVoiceModeActive) {
+                                    setVoiceModeStatus("🎯 Blackboard open…", "#6A1B9A")
+                                    voiceManager.stopInterruptListening()
+                                }
+                                val convId = "${FirestoreManager.safeId(subjectName)}__${FirestoreManager.safeId(chapterName)}"
+                                startActivity(
+                                    android.content.Intent(this@ChatActivity, BlackboardActivity::class.java)
+                                        .putExtra(BlackboardActivity.EXTRA_MESSAGE, reply.response)
+                                        .putExtra(BlackboardActivity.EXTRA_MESSAGE_ID, streamingId)
+                                        .putExtra(BlackboardActivity.EXTRA_USER_ID, userId)
+                                        .putExtra(BlackboardActivity.EXTRA_CONVERSATION_ID, convId)
+                                )
                             }
                         } else {
                             showError("Couldn't get a response. Check your connection and try again.")
@@ -1160,6 +1196,18 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     }
 
     // ── Interactive Voice Chat Mode (single-shot mic only) ──────────────────
+
+    /**
+     * When returning from BlackboardActivity (auto explain mode), resume voice loop
+     * listening if voice mode was still active while the blackboard was open.
+     */
+    override fun onResume() {
+        super.onResume()
+        if (isVoiceModeActive && isAutoExplainActive && !isListening) {
+            setVoiceModeStatus("🎙️ Listening… speak now", "#2E7D32")
+            startVoiceLoopListening()
+        }
+    }
 
     private fun startVoiceMode() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)

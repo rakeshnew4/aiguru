@@ -19,6 +19,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.aiguru.chat.BlackboardGenerator
+import com.example.aiguru.utils.PromptRepository
 import com.example.aiguru.utils.TTSCallback
 import com.example.aiguru.utils.TextToSpeechManager
 import kotlinx.coroutines.Dispatchers
@@ -39,7 +40,10 @@ import kotlinx.coroutines.launch
 class BlackboardActivity : AppCompatActivity() {
 
     companion object {
-        const val EXTRA_MESSAGE = "extra_message"
+        const val EXTRA_MESSAGE         = "extra_message"
+        const val EXTRA_MESSAGE_ID      = "extra_message_id"
+        const val EXTRA_USER_ID         = "extra_user_id"
+        const val EXTRA_CONVERSATION_ID = "extra_conversation_id"
     }
 
     // ── Views ─────────────────────────────────────────────────────────────────
@@ -93,8 +97,14 @@ class BlackboardActivity : AppCompatActivity() {
         replayBtn.setOnClickListener { reSpeakCurrent() }
         pauseBtn.setOnClickListener  { togglePause() }
 
+        PromptRepository.init(this)
         tts = TextToSpeechManager(this)
-        generateSteps(intent.getStringExtra(EXTRA_MESSAGE) ?: "")
+        generateSteps(
+            message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
+            messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
+            userId         = intent.getStringExtra(EXTRA_USER_ID),
+            conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID)
+        )
     }
 
     override fun onDestroy() {
@@ -104,10 +114,18 @@ class BlackboardActivity : AppCompatActivity() {
 
     // ── Generation ────────────────────────────────────────────────────────────
 
-    private fun generateSteps(message: String) {
+    private fun generateSteps(
+        message: String,
+        messageId: String? = null,
+        userId: String? = null,
+        conversationId: String? = null
+    ) {
         lifecycleScope.launch(Dispatchers.IO) {
             BlackboardGenerator.generate(
                 messageContent = message,
+                messageId      = messageId,
+                userId         = userId,
+                conversationId = conversationId,
                 onSuccess = { generated ->
                     lifecycleScope.launch(Dispatchers.Main) {
                         steps = generated

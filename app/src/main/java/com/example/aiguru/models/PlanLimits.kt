@@ -48,6 +48,9 @@ data class PlanLimits(
     @field:PropertyName("conversation_summary_enabled")
     val conversationSummaryEnabled: Boolean = false,
 
+    @field:PropertyName("blackboard_enabled")
+    val blackboardEnabled: Boolean = true,
+
     // ── Quality / model routing ───────────────────────────────────────────────
     /**
      * Model tier key that maps to a server-side model name.

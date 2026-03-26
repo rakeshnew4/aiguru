@@ -145,14 +145,14 @@
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/messagesRecyclerView"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
+        android:layout_height="520dp"
         android:layout_weight="1"
         android:background="#00000000"
-        android:paddingTop="8dp"
-        android:paddingBottom="4dp"
-        android:paddingStart="6dp"
-        android:paddingEnd="6dp"
         android:clipToPadding="false"
+        android:paddingStart="6dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="6dp"
+        android:paddingBottom="4dp"
         tools:listitem="@android:layout/simple_list_item_1" />
 
     <!-- ── Image Preview Strip ───────────────────────────────────────── -->
@@ -249,7 +249,7 @@
 
         <View
             android:layout_width="match_parent"
-            android:layout_height="1dp"
+            android:layout_height="8dp"
             android:background="#E8EAED" />
 
         <!-- Voice Chat Active Bar -->
@@ -263,7 +263,6 @@
             android:paddingStart="14dp"
             android:paddingEnd="10dp"
             android:paddingTop="8dp"
-            android:paddingBottom="8dp"
             android:visibility="gone">
 
             <!-- Animated equaliser wave bars -->
@@ -316,18 +315,6 @@
                 android:textStyle="bold"
                 android:textColor="#111827" />
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/stopVoiceChatButton"
-                android:layout_width="wrap_content"
-                android:layout_height="30dp"
-                android:minHeight="0dp"
-                android:text="Stop"
-                android:textSize="12sp"
-                android:textColor="#FFFFFF"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                app:backgroundTint="#DC2626"
-                app:cornerRadius="15dp" />
 
         </LinearLayout>
 
@@ -349,7 +336,7 @@
         <HorizontalScrollView
             android:id="@+id/bottomQuickActionsScroll"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="40dp"
             android:scrollbars="none"
             android:paddingStart="10dp"
             android:paddingEnd="10dp"
@@ -360,55 +347,11 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:gravity="center_vertical"
+                >
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/bottomExplainButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="30dp"
-                    android:minHeight="0dp"
-                    android:text="Explain"
-                    android:textSize="11sp"
-                    android:textColor="#374151"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    app:strokeColor="#E5E7EB"
-                    app:cornerRadius="15dp"
-                    app:backgroundTint="#00000000"
-                    android:layout_marginEnd="6dp" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/bottomQuizButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="30dp"
-                    android:minHeight="0dp"
-                    android:text="Quiz Me"
-                    android:textSize="11sp"
-                    android:textColor="#374151"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    app:strokeColor="#E5E7EB"
-                    app:cornerRadius="15dp"
-                    app:backgroundTint="#00000000"
-                    android:layout_marginEnd="6dp" />
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/bottomPracticeButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="30dp"
-                    android:minHeight="0dp"
-                    android:text="Practice"
-                    android:textSize="11sp"
-                    android:textColor="#374151"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    app:strokeColor="#E5E7EB"
-                    app:cornerRadius="15dp"
-                    app:backgroundTint="#00000000"
-                    android:layout_marginEnd="6dp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/bottomDescribeButton"
@@ -425,6 +368,65 @@
                     app:cornerRadius="15dp"
                     app:backgroundTint="#00000000"
                     android:visibility="gone" />
+                <!-- Attach: Image -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/imageButton"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="0dp"
+                    android:text="&#128247;"
+                    android:layout_marginStart="15dp"
+                    android:textSize="18sp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+
+
+                <!-- Attach: PDF -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/pdfButton"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:padding="0dp"
+                    android:text="&#128196;"
+                    android:textSize="18sp"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_marginEnd="4dp" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/autoExplainButton"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:padding="0dp"
+                    android:text="&#128105;&#8205;&#127979;"
+                    android:textSize="25sp"
+                    app:backgroundTint="#F3F4F6"
+                    app:cornerRadius="22dp"
+                    app:rippleColor="#22000000"
+                    android:layout_marginStart="60dp"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+                <!-- Single-turn Mic -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/voiceButton"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:padding="0dp"
+                    android:text="&#127908;"
+                    android:textSize="19sp"
+                    app:backgroundTint="#E8F5E9"
+                    app:cornerRadius="22dp"
+                    android:layout_marginStart="80dp"
+                    style="@style/Animation.Design.BottomSheetDialog"/>
+                <!-- Auto Explain Mode: auto-launch blackboard on every bot reply -->
+
+                <!-- AI Guru Live Voice Chat -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/voiceChatButton"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:padding="0dp"
+                    android:text="&#127897;"
+                    android:textSize="19sp"
+                    app:backgroundTint="#E8F5E9"
+                    app:cornerRadius="22dp"
+                    android:layout_marginStart="4dp" />
 
             </LinearLayout>
         </HorizontalScrollView>
@@ -440,26 +442,6 @@
             android:paddingTop="6dp"
             android:paddingBottom="10dp">
 
-            <!-- Attach: Image -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/imageButton"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:padding="0dp"
-                android:text="&#128444;"
-                android:textSize="18sp"
-                style="@style/Widget.MaterialComponents.Button.TextButton" />
-
-            <!-- Attach: PDF -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/pdfButton"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:padding="0dp"
-                android:text="&#128196;"
-                android:textSize="18sp"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_marginEnd="4dp" />
 
             <!-- Text Input -->
             <EditText
@@ -478,29 +460,10 @@
                 android:inputType="textMultiLine|textCapSentences"
                 android:imeOptions="flagNoEnterAction" />
 
-            <!-- Single-turn Mic -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/voiceButton"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:padding="0dp"
-                android:text="&#127908;"
-                android:textSize="19sp"
-                app:backgroundTint="#F3F4F6"
-                app:cornerRadius="22dp"
-                android:layout_marginStart="6dp" />
 
-            <!-- AI Guru Live Voice Chat -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/voiceChatButton"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:padding="0dp"
-                android:text="&#127897;"
-                android:textSize="19sp"
-                app:backgroundTint="#E8F5E9"
-                app:cornerRadius="22dp"
-                android:layout_marginStart="4dp" />
+
+
+
 
             <!-- Send -->
             <com.google.android.material.button.MaterialButton

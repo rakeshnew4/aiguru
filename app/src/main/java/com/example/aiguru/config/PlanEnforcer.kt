@@ -44,7 +44,9 @@ object PlanEnforcer {
         MESSAGES_PER_HOUR,
         FEATURE_IMAGE,
         FEATURE_VOICE,
-        FEATURE_PDF
+        FEATURE_PDF,
+        BLACKBOARD,
+        FEATURE_BLACKBOARD
     }
 
     // In-memory hourly rate-limit counter (resets each clock-hour, per process)
@@ -137,6 +139,12 @@ object PlanEnforcer {
                 reason         = "PDF upload not available on ${metadata.planName} plan",
                 upgradeMessage = "PDF analysis is a premium feature. Upgrade to share your textbooks! 📄",
                 limitType      = LimitType.FEATURE_PDF
+            )
+            FeatureType.BLACKBOARD -> if (!limits.blackboardEnabled) return CheckResult(
+                allowed        = false,
+                reason         = "Blackboard explanation not available on ${metadata.planName} plan",
+                upgradeMessage = "Visual blackboard lessons are a premium feature. Upgrade to unlock step-by-step visual explanations! 🎓",
+                limitType      = LimitType.BLACKBOARD
             )
             else -> { /* TEXT_CHAT — always allowed if above checks pass */ }
         }
@@ -242,5 +250,5 @@ object PlanEnforcer {
         return cal.get(Calendar.YEAR) * 12 + cal.get(Calendar.MONTH)
     }
 
-    enum class FeatureType { TEXT_CHAT, IMAGE_UPLOAD, VOICE_MODE, PDF_UPLOAD }
+    enum class FeatureType { TEXT_CHAT, IMAGE_UPLOAD, VOICE_MODE, PDF_UPLOAD, BLACKBOARD }
 }

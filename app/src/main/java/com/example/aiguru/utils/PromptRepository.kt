@@ -53,6 +53,9 @@ object PromptRepository {
     fun getLanguageInstruction(langCode: String): String =
         require().getJSONObject("language_instructions").optString(langCode, "")
 
+    fun getBlackboardSystemPrompt(): String =
+        require().optString("blackboard_system_prompt", "")
+
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
     private fun require(): JSONObject =

@@ -162,7 +162,7 @@ class MessageAdapter(
                     setOnClickListener { onStopClick(message) }
                 }
                 val explainBtn = TextView(context).apply {
-                    text = "🎯 Explain"
+                    text = "👩‍🏫 Explain"
                     textSize = 11f
                     setTextColor(Color.parseColor("#6B7280"))
                     setPadding((8 * dp).toInt(), (3 * dp).toInt(), (8 * dp).toInt(), (3 * dp).toInt())
