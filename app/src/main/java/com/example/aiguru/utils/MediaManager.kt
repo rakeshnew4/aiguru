@@ -36,6 +36,8 @@ class MediaManager(private val context: Context) {
      */
     fun getFileNameFromUri(uri: Uri?): String? {
         if (uri == null) return null
+        // file:// URIs are not in the ContentResolver — extract name directly from path
+        if (uri.scheme == "file") return File(uri.path ?: return null).name
 
         return try {
             context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -55,6 +57,8 @@ class MediaManager(private val context: Context) {
      */
     fun getFileSizeFromUri(uri: Uri?): Long {
         if (uri == null) return 0L
+        // file:// URIs — read length directly from the File
+        if (uri.scheme == "file") return File(uri.path ?: return 0L).length()
 
         return try {
             context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -105,15 +109,39 @@ class MediaManager(private val context: Context) {
     }
 
     /**
-     * Convert URI to Base64 (compressed)
+     * Convert URI to Base64 (compressed).
+     * Handles both content:// (gallery / MediaStore) and file:// (UCrop cache output) URIs.
      */
     fun uriToBase64(uri: Uri, maxSizeKb: Int = 500): String? {
         return try {
-            val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
-            val bitmap = BitmapFactory.decodeStream(inputStream)
-            inputStream?.close()
+            // Use FileInputStream directly for file:// URIs; ContentResolver for content:// URIs.
+            // ContentResolver.openInputStream() silently returns null / empty for file:// URIs
+            // on API 24+ because FileUriExposedException policy changes.
+            val inputStream: InputStream = if (uri.scheme == "file") {
+                File(uri.path!!).inputStream()
+            } else {
+                context.contentResolver.openInputStream(uri)
+                    ?: return null
+            }
 
-            var quality = 100
+            // Decode with inSampleSize so large camera photos don't OOM (max 1920px side)
+            val opts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            inputStream.use { android.graphics.BitmapFactory.decodeStream(it, null, opts) }
+
+            val maxDim = 1920
+            var sample = 1
+            while (opts.outWidth / sample > maxDim || opts.outHeight / sample > maxDim) sample *= 2
+
+            val decodeStream: InputStream = if (uri.scheme == "file") {
+                File(uri.path!!).inputStream()
+            } else {
+                context.contentResolver.openInputStream(uri) ?: return null
+            }
+            val decodeOpts = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
+            val bitmap = decodeStream.use { android.graphics.BitmapFactory.decodeStream(it, null, decodeOpts) }
+                ?: return null.also { Log.e(TAG, "uriToBase64: bitmap decode returned null for $uri") }
+
+            var quality = 90
             var outputStream: ByteArrayOutputStream
 
             do {
@@ -122,10 +150,11 @@ class MediaManager(private val context: Context) {
                 quality -= 10
             } while (outputStream.size() / 1024 > maxSizeKb && quality > 10)
 
+            bitmap.recycle()
             Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
 
         } catch (e: Exception) {
-            Log.e(TAG, "Error converting URI to Base64", e)
+            Log.e(TAG, "Error converting URI to Base64: $uri", e)
             null
         }
     }

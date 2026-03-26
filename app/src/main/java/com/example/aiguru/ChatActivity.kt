@@ -124,6 +124,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
     private var selectedImageUri: Uri? = null
     private var cameraImageUri: Uri? = null
+    /** URI used only for displaying a thumbnail in the user's message bubble (not sent to LLM). */
+    private var pendingDisplayUri: Uri? = null
     private var isListening = false
 
     // ── Page Analysis ─────────────────────────────────────────────────────────
@@ -198,6 +200,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                                     "Page $pendingCropPdfPageNumber \u2702\ufe0f cropped" else "\u2702\ufe0f Cropped region"
                                 withContext(Dispatchers.Main) {
                                     pdfPageBase64 = b64
+                                    pendingDisplayUri = croppedUri
                                     currentPageContent = null
                                     imagePreviewStrip.visibility = View.VISIBLE
                                     Glide.with(this@ChatActivity).load(croppedUri).centerCrop()
@@ -360,15 +363,16 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                 )
                 if (!bbCheck.allowed) {
                     showError(bbCheck.upgradeMessage)
+                } else {
+                    val convId = "${FirestoreManager.safeId(subjectName)}__${FirestoreManager.safeId(chapterName)}"
+                    startActivity(
+                        android.content.Intent(this, BlackboardActivity::class.java)
+                            .putExtra(BlackboardActivity.EXTRA_MESSAGE, msg.content)
+                            .putExtra(BlackboardActivity.EXTRA_MESSAGE_ID, msg.id)
+                            .putExtra(BlackboardActivity.EXTRA_USER_ID, userId)
+                            .putExtra(BlackboardActivity.EXTRA_CONVERSATION_ID, convId)
+                    )
                 }
-                val convId = "${FirestoreManager.safeId(subjectName)}__${FirestoreManager.safeId(chapterName)}"
-                startActivity(
-                    android.content.Intent(this, BlackboardActivity::class.java)
-                        .putExtra(BlackboardActivity.EXTRA_MESSAGE, msg.content)
-                        .putExtra(BlackboardActivity.EXTRA_MESSAGE_ID, msg.id)
-                        .putExtra(BlackboardActivity.EXTRA_USER_ID, userId)
-                        .putExtra(BlackboardActivity.EXTRA_CONVERSATION_ID, convId)
-                )
             }
         )
         messagesRecyclerView.layoutManager = LinearLayoutManager(this).apply {
@@ -443,6 +447,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         removeImageButton.setOnClickListener {
             selectedImageUri = null
             pdfPageBase64 = null
+            pendingDisplayUri = null
             currentPageContent = null
             imagePreviewStrip.visibility = View.GONE
             messageInput.setText("")
@@ -522,6 +527,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
     private fun showImagePreview(uri: Uri) {
         selectedImageUri = uri
+        pendingDisplayUri = uri
         currentPageContent = null   // clear any previous analysis
         metricsTracker.recordEvent(ChapterMetricsTracker.EventType.IMAGE_UPLOADED)
         imagePreviewStrip.visibility = View.VISIBLE
@@ -584,6 +590,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         bmp.recycle()
         val b64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
         pdfPageBase64 = b64
+        pendingDisplayUri = Uri.fromFile(pageFile)
         currentPageContent = null
 
         imagePreviewStrip.visibility = View.VISIBLE
@@ -712,6 +719,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         val imageUri = selectedImageUri.also { selectedImageUri = null }
         val capturedPdfBase64 = pdfPageBase64.also { pdfPageBase64 = null }
         var capturedPageContent = currentPageContent.also { currentPageContent = null }
+        val capturedDisplayUri = pendingDisplayUri.also { pendingDisplayUri = null }
 
         // ── Plan enforcement check ────────────────────────────────────────────
         val featureType = when {
@@ -726,6 +734,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         if (!planCheck.allowed) {
             if (imageUri != null) selectedImageUri = imageUri
             if (capturedPdfBase64 != null) pdfPageBase64 = capturedPdfBase64
+            if (capturedDisplayUri != null) pendingDisplayUri = capturedDisplayUri
             showError(planCheck.upgradeMessage)
             return
         }
@@ -737,8 +746,9 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             id = UUID.randomUUID().toString(),
             content = userText,
             isUser = true,
-            imageUrl = imageUri?.toString(),
-            messageType = if (imageUri != null) Message.MessageType.IMAGE else Message.MessageType.TEXT
+            imageUrl = (imageUri ?: capturedDisplayUri)?.toString(),
+            messageType = if (imageUri != null || capturedDisplayUri != null)
+                Message.MessageType.IMAGE else Message.MessageType.TEXT
         )
         messageAdapter.addMessage(userMessage)
         messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)

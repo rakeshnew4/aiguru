@@ -22,7 +22,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.aiguru.R
 import com.example.aiguru.models.Message
 import com.google.android.material.imageview.ShapeableImageView
-import com.squareup.picasso.Picasso
+import com.bumptech.glide.Glide
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -79,15 +79,18 @@ class MessageAdapter(
             // --- Bubble ---
             val bubble = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    if (isUser) {
+                layoutParams = if (isUser) {
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply {
                         marginStart = (56 * dp).toInt()
                         marginEnd   = (8 * dp).toInt()
-                    } else {
-                        marginEnd = (56 * dp).toInt()
+                    }
+                } else {
+                    // Fill remaining row width (after 32dp avatar) so bot messages aren't cramped
+                    LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                        marginEnd = (8 * dp).toInt()
                     }
                 }
                 setPadding(
@@ -100,8 +103,8 @@ class MessageAdapter(
                 )
             }
 
-            // --- Image thumbnail ---
-            if (message.messageType == Message.MessageType.IMAGE && message.imageUrl != null) {
+            // --- Image thumbnail (gallery photo, camera, or PDF page) ---
+            if (message.imageUrl != null) {
                 val img = ShapeableImageView(context).apply {
                     val sz = (160 * dp).toInt()
                     layoutParams = LinearLayout.LayoutParams(sz, sz).apply {
@@ -112,7 +115,9 @@ class MessageAdapter(
                         .setAllCornerSizes(10f * dp).build()
                     setOnClickListener { onImageClick(message) }
                 }
-                Picasso.get().load(message.imageUrl).into(img)
+                try {
+                    Glide.with(context).load(message.imageUrl).centerCrop().into(img)
+                } catch (_: Exception) {}
                 bubble.addView(img)
             }
 
