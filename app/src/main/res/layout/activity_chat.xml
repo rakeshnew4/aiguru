@@ -372,6 +372,20 @@
                 android:textStyle="bold"
                 android:textColor="#111827" />
 
+            <TextView
+                android:id="@+id/voiceModeBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="PARTIAL"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="#0B4AA2"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp"
+                android:background="@drawable/rounded_edittext_bg" />
+
 
         </LinearLayout>
 
@@ -484,6 +498,21 @@
                     app:backgroundTint="#E8F5E9"
                     app:cornerRadius="22dp"
                     android:layout_marginStart="4dp" />
+
+                <TextView
+                    android:id="@+id/liveModeChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:text="Live: Partial"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="#0B4AA2"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp"
+                    android:background="@drawable/rounded_edittext_bg" />
 
             </LinearLayout>
         </HorizontalScrollView>

@@ -71,6 +71,8 @@ import java.util.UUID
 
 class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
+    private enum class LiveMicMode { PARTIAL, FULL }
+
     private lateinit var messagesRecyclerView: RecyclerView
     private lateinit var messageAdapter: MessageAdapter
     private lateinit var messageInput: EditText
@@ -98,9 +100,12 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
     // ── Interactive Voice Chat Mode ────────────────────────────────────────────
     private var isVoiceModeActive = false
+    private var liveMicMode = LiveMicMode.PARTIAL
     private lateinit var voiceChatButton: MaterialButton
     private lateinit var voiceChatBar: LinearLayout
     private lateinit var voiceChatStatus: TextView
+    private lateinit var voiceModeBadge: TextView
+    private lateinit var liveModeChip: TextView
     private lateinit var waveBarContainer: LinearLayout
     private lateinit var waveBar1: View
     private lateinit var waveBar2: View
@@ -108,6 +113,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private lateinit var waveBar4: View
     private var currentTTSText = ""
     private var isInterrupted = false
+    private val voiceStopWords = listOf("stop", "stop it", "wait", "wait wait", "hold on")
 
     // ── Session ───────────────────────────────────────────────────────────────
     private lateinit var subjectName: String
@@ -423,6 +429,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         bottomDescribeButton = findViewById(R.id.bottomDescribeButton)
         voiceChatBar = findViewById(R.id.voiceChatBar)
         voiceChatStatus = findViewById(R.id.voiceChatStatus)
+        voiceModeBadge = findViewById(R.id.voiceModeBadge)
+        liveModeChip = findViewById(R.id.liveModeChip)
         waveBarContainer = findViewById(R.id.waveBarContainer)
         waveBar1 = findViewById(R.id.waveBar1)
         waveBar2 = findViewById(R.id.waveBar2)
@@ -431,6 +439,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
         languageButton.setOnClickListener { showLanguagePicker() }
         updateLanguageButton()
+        updateLiveModeUi()
 
         setupButtons()
         setupQuickActions()
@@ -451,7 +460,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private fun setupButtons() {
         voiceChatButton = findViewById(R.id.voiceChatButton)
         voiceChatButton.setOnClickListener {
-            if (isVoiceModeActive) stopVoiceMode() else startVoiceMode()
+            if (isVoiceModeActive) stopVoiceMode() else showLiveModePickerAndStart()
         }
 
         autoExplainButton = findViewById(R.id.autoExplainButton)
@@ -893,19 +902,28 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                             messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
                             if ((lastInputWasVoice || isVoiceModeActive) && !isAutoExplainActive) {
                                 lastInputWasVoice = false
-                                val voiceText =
+                                val voiceText = if (isVoiceModeActive && liveMicMode == LiveMicMode.FULL)
+                                    TutorController.prepareSpeechText(reply.response)
+                                else
                                     TutorController.prepareSpeechTextBrief(reply.response)
                                 if (isVoiceModeActive) {
                                     currentTTSText = voiceText
-                                    setVoiceModeStatus("🔊 AI is speaking…", "#1565C0")
+                                    val speakingLabel = if (liveMicMode == LiveMicMode.FULL) {
+                                        "🔊 AI is speaking (Full Live)…"
+                                    } else {
+                                        "🔊 AI is speaking (Partial Live)…"
+                                    }
+                                    setVoiceModeStatus(speakingLabel, "#1565C0")
                                 }
                                 ttsManager.setLocale(Locale.forLanguageTag(currentLang))
                                 ttsManager.speak(voiceText, object : TTSCallback {
                                     override fun onStart() {
-                                        if (isVoiceModeActive) {
+                                        if (isVoiceModeActive && liveMicMode == LiveMicMode.FULL) {
                                             android.os.Handler(android.os.Looper.getMainLooper())
                                                 .postDelayed({
-                                                    if (isVoiceModeActive && ttsManager.isSpeaking()) {
+                                                    if (isVoiceModeActive &&
+                                                        liveMicMode == LiveMicMode.FULL &&
+                                                        ttsManager.isSpeaking()) {
                                                         voiceManager.startInterruptListening(
                                                             interruptCallback,
                                                             currentLang
@@ -1284,6 +1302,33 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         }
     }
 
+    private fun showLiveModePickerAndStart() {
+        val options = arrayOf(
+            "Full Live (stop-words can interrupt)",
+            "Partial Live (no interruptions)"
+        )
+        AlertDialog.Builder(this)
+            .setTitle("Select Live Mic Mode")
+            .setItems(options) { _, which ->
+                liveMicMode = if (which == 0) LiveMicMode.FULL else LiveMicMode.PARTIAL
+                updateLiveModeUi()
+                if (liveMicMode == LiveMicMode.FULL) {
+                    AlertDialog.Builder(this)
+                        .setTitle("Full Live Enabled")
+                        .setMessage("To stop TTS while it is speaking, say: 'stop it' or 'wait wait'.")
+                        .setPositiveButton("Start") { _, _ -> startVoiceMode() }
+                        .setNegativeButton("Cancel", null)
+                        .show()
+                } else {
+                    // Ensure no leftover secondary interrupt recognizer from previous FULL run.
+                    voiceManager.stopInterruptListening()
+                    startVoiceMode()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     private fun startVoiceMode() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED
@@ -1295,12 +1340,18 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         }
         isVoiceModeActive = true
         isInterrupted = false
+        if (liveMicMode == LiveMicMode.PARTIAL) {
+            // Hard guarantee: partial mode should never run secondary interrupt listener.
+            voiceManager.stopInterruptListening()
+        }
         voiceButton.isEnabled = false
         voiceChatBar.visibility = View.VISIBLE
         listeningIndicator.visibility = View.GONE
         voiceChatButton.backgroundTintList =
             ColorStateList.valueOf(android.graphics.Color.parseColor("#E53935"))
-        Toast.makeText(this, "🎙️ Voice mode ON — just speak!", Toast.LENGTH_SHORT).show()
+        val modeLabel = if (liveMicMode == LiveMicMode.FULL) "Full Live" else "Partial Live"
+        Toast.makeText(this, "🎙️ Voice mode ON ($modeLabel)", Toast.LENGTH_SHORT).show()
+        updateLiveModeUi()
         startVoiceLoopListening()
     }
 
@@ -1318,15 +1369,33 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         voiceChatBar.visibility = View.GONE
         voiceChatButton.backgroundTintList =
             ColorStateList.valueOf(android.graphics.Color.parseColor("#E8F5E9"))
+        updateLiveModeUi()
         Toast.makeText(this, "Voice mode OFF", Toast.LENGTH_SHORT).show()
     }
 
     private fun startVoiceLoopListening() {
         if (!isVoiceModeActive) return
         isListening = true
-        setVoiceModeStatus("🎙️ Listening… speak now", "#2E7D32")
+        val listeningLabel = if (liveMicMode == LiveMicMode.FULL) {
+            "🎙️ Full Live listening… say stop it / wait wait to interrupt"
+        } else {
+            "🎙️ Partial Live listening… no interruptions"
+        }
+        setVoiceModeStatus(listeningLabel, "#2E7D32")
         voiceManager.startListening(this, currentLang)
         startMicPulse()
+    }
+
+    private fun updateLiveModeUi() {
+        val isFull = liveMicMode == LiveMicMode.FULL
+        liveModeChip.text = if (isFull) "Live: Full" else "Live: Partial"
+        voiceModeBadge.text = if (isFull) "FULL" else "PARTIAL"
+        val chipBg = if (isFull) "#FFF3E0" else "#EAF2FF"
+        val chipText = if (isFull) "#B45309" else "#0B4AA2"
+        liveModeChip.setBackgroundColor(android.graphics.Color.parseColor(chipBg))
+        liveModeChip.setTextColor(android.graphics.Color.parseColor(chipText))
+        voiceModeBadge.setBackgroundColor(android.graphics.Color.parseColor(chipBg))
+        voiceModeBadge.setTextColor(android.graphics.Color.parseColor(chipText))
     }
 
     private fun setVoiceModeStatus(text: String, colorHex: String) {
@@ -1347,20 +1416,32 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private val interruptCallback = object : VoiceRecognitionCallback {
         override fun onPartialResults(text: String) {
             if (!isVoiceModeActive || !ttsManager.isSpeaking() || text.length < 3) return
-            val normalizedTTS = currentTTSText.lowercase()
-            if (normalizedTTS.contains(text.lowercase().trim())) return
-            triggerBargein()
+            if (shouldInterruptForText(text)) triggerBargein()
         }
 
         override fun onBeginningOfSpeech() {}
         override fun onResults(text: String) {
             if (!isVoiceModeActive || text.length < 2) return
-            if (!currentTTSText.lowercase().contains(text.lowercase().trim())) triggerBargein()
+            if (shouldInterruptForText(text)) triggerBargein()
         }
 
         override fun onError(error: String) {}
         override fun onListeningStarted() {}
         override fun onListeningFinished() {}
+    }
+
+    private fun shouldInterruptForText(text: String): Boolean {
+        val heard = text.lowercase().trim()
+        if (heard.isBlank()) return false
+        val normalizedTTS = currentTTSText.lowercase()
+
+        return if (liveMicMode == LiveMicMode.FULL) {
+            // Full Live: only explicit stop words interrupt TTS.
+            voiceStopWords.any { heard.contains(it) } && !normalizedTTS.contains(heard)
+        } else {
+            // Partial Live: no interruption while TTS is speaking.
+            false
+        }
     }
 
     private fun triggerBargein() {
