@@ -90,6 +90,31 @@ object FirestoreManager {
             .addOnFailureListener { onFailure(it) }
     }
 
+    /**
+     * Update subscription plan fields for a user after successful payment verification.
+     */
+    fun updateUserPlan(
+        userId: String,
+        planId: String,
+        planName: String,
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") {
+            onFailure(null)
+            return
+        }
+        val updates = mapOf(
+            "planId" to planId,
+            "planName" to planName,
+            "updatedAt" to System.currentTimeMillis()
+        )
+        db.collection("users").document(userId)
+            .set(updates, SetOptions.merge())
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { onFailure(it) }
+    }
+
     // ── Subjects ────────────────────────────────────────────────────────────────
 
     fun saveSubject(userId: String, subjectName: String) {
@@ -256,96 +281,47 @@ object FirestoreManager {
             .addOnFailureListener { onFailure(it) }
     }
 
-    // ── Page Content (image / PDF page analysis) ──────────────────────────────
-    // Stored under users/{uid}/subjects/{safeSubject}/chapters/{safeChapter}/pages/{pageId}
-    //
-    // Each document captures:
-    //   • transcript      – full OCR text from the image
-    //   • paragraphs_json – JSON array of {number, text, summary}
-    //   • diagrams_json   – JSON array of {heading, context, description, depiction,
-    //                         position, labelled_parts}
-    //   • key_terms       – array of key term strings
-    //   • analyzed_at     – epoch ms of analysis
-
-    private fun pagesRef(userId: String, subject: String, chapter: String) =
-        usersRef(userId)
-            .collection("subjects").document(safeId(subject))
-            .collection("chapters").document(safeId(chapter))
-            .collection("pages")
-
-    private fun chapterRef(userId: String, subject: String, chapter: String) =
-        usersRef(userId)
-            .collection("subjects").document(safeId(subject))
-            .collection("chapters").document(safeId(chapter))
+    // ── Conversation Context (latest analyzed page for chapter chat) ─────────
 
     /**
-     * Save or update a page analysis document.
-     * Path: users/{uid}/subjects/{subject}/chapters/{chapter}/pages/{pageId}
+     * Save chapter-level context on conversation document for LLM prompting.
+     * Latest uploaded page context replaces any previous page context.
+     * Path: users/{uid}/conversations/{subject__chapter}
      */
-    fun savePageContent(
+    fun saveChapterContext(
         userId: String,
         page: PageContent,
         onSuccess: () -> Unit = {},
         onFailure: (Exception?) -> Unit = {}
     ) {
-        if (userId.isBlank() || userId == "guest_user") {
-            Log.w("Firestore", "savePageContent skipped — no valid userId (userId='$userId')")
-            return
-        }
-        if (page.pageId.isBlank()) {
-            Log.w("Firestore", "savePageContent skipped — blank pageId for subject=${page.subject} chapter=${page.chapter}")
-            return
-        }
-        Log.d("Firestore", "savePageContent → uid=$userId pageId=${page.pageId} subject=${page.subject}")
-        val doc = mapOf(
-            "page_id"         to page.pageId,
-            "subject"         to page.subject,
-            "chapter"         to page.chapter,
-            "page_number"     to page.pageNumber,
-            "source_type"     to page.sourceType,
-            "transcript"      to page.transcript,
-            "paragraphs_json" to page.paragraphsJson,
-            "diagrams_json"   to page.diagramsJson,
-            "key_terms"       to page.keyTerms,
-            "analyzed_at"     to page.analyzedAt
-        )
-        pagesRef(userId, page.subject, page.chapter)
-            .document(safeId(page.pageId))
-            .set(doc, SetOptions.merge())
-            .addOnSuccessListener {
-                Log.d("Firestore", "savePageContent ✅ saved pageId=${page.pageId}")
-                onSuccess()
-            }
-            .addOnFailureListener {
-                Log.e("Firestore", "savePageContent failed uid=$userId pageId=${page.pageId}: ${it.message}")
-                onFailure(it)
-            }
-    }
-
-    /**
-     * Save chapter-level system context for LLM prompting.
-     * Latest uploaded page transcript replaces any previous transcript context.
-     * Path: users/{uid}/subjects/{subject}/chapters/{chapter}
-     */
-    fun saveChapterContext(
-        userId: String,
-        subject: String,
-        chapter: String,
-        pageId: String,
-        transcript: String,
-        onSuccess: () -> Unit = {},
-        onFailure: (Exception?) -> Unit = {}
-    ) {
-        if (userId.isBlank() || userId == "guest_user") {
+        // Resolve the effective userId — prefer the passed-in value, but fall back to
+        // live Firebase Auth in case the session wasn't written on this device/login path.
+        val effectiveUserId = userId.takeIf { it.isNotBlank() && it != "guest_user" }
+            ?: com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+            ?: ""
+        if (effectiveUserId.isBlank()) {
+            android.util.Log.e("PageContext",
+                "saveChapterContext BLOCKED: no valid userId (passed='$userId', " +
+                "FirebaseAuth.currentUser=null). Check login flow.")
             onFailure(null)
             return
         }
+        val cid = convId(page.subject, page.chapter)
         val doc = mapOf(
-            "systemContext" to transcript,
-            "systemContextPageId" to pageId,
-            "systemContextUpdatedAt" to System.currentTimeMillis()
+            "subject" to page.subject,
+            "chapter" to page.chapter,
+            "updatedAt" to System.currentTimeMillis(),
+            "createdAt" to System.currentTimeMillis(),
+            "systemContext" to page.transcript,
+            "systemContextPageId" to page.pageId,
+            "systemContextUpdatedAt" to System.currentTimeMillis(),
+            "systemContextSourceType" to page.sourceType,
+            "systemContextPageNumber" to page.pageNumber,
+            "systemContextKeyTerms" to page.keyTerms,
+            "systemContextParagraphsJson" to page.paragraphsJson,
+            "systemContextDiagramsJson" to page.diagramsJson
         )
-        chapterRef(userId, subject, chapter)
+        convsRef(effectiveUserId).document(cid)
             .set(doc, SetOptions.merge())
             .addOnSuccessListener { onSuccess() }
             .addOnFailureListener { onFailure(it) }
@@ -353,7 +329,7 @@ object FirestoreManager {
 
     /**
      * Load chapter-level context fields used by the tutor system prompt.
-     * Reads optional fields from chapter document:
+     * Reads optional fields from conversation document:
      * - summary
      * - systemContext
      */
@@ -368,7 +344,7 @@ object FirestoreManager {
             onFailure(null)
             return
         }
-        chapterRef(userId, subject, chapter)
+        convsRef(userId).document(convId(subject, chapter))
             .get()
             .addOnSuccessListener { doc ->
                 if (!doc.exists()) {
@@ -380,41 +356,5 @@ object FirestoreManager {
             .addOnFailureListener { onFailure(it) }
     }
 
-    /**
-     * Load all page analysis documents for a chapter, ordered by analysis time.
-     */
-    fun loadChapterPages(
-        userId: String,
-        subject: String,
-        chapter: String,
-        onSuccess: (List<PageContent>) -> Unit,
-        onFailure: (Exception?) -> Unit = {}
-    ) {
-        if (userId.isBlank() || userId == "guest_user") { onFailure(null); return }
-        pagesRef(userId, subject, chapter)
-            .orderBy("analyzed_at", Query.Direction.ASCENDING)
-            .get()
-            .addOnSuccessListener { snap ->
-                val pages = snap.documents.mapNotNull { doc ->
-                    runCatching {
-                        PageContent(
-                            pageId         = doc.getString("page_id")          ?: "",
-                            subject        = doc.getString("subject")          ?: subject,
-                            chapter        = doc.getString("chapter")          ?: chapter,
-                            pageNumber     = (doc.getLong("page_number") ?: 0L).toInt(),
-                            sourceType     = doc.getString("source_type")      ?: "image",
-                            transcript     = doc.getString("transcript")       ?: "",
-                            paragraphsJson = doc.getString("paragraphs_json")  ?: "[]",
-                            diagramsJson   = doc.getString("diagrams_json")    ?: "[]",
-                            keyTerms       = (doc.get("key_terms") as? List<*>)
-                                               ?.mapNotNull { it?.toString() }  ?: emptyList(),
-                            analyzedAt     = doc.getLong("analyzed_at")        ?: 0L
-                        )
-                    }.getOrNull()
-                }
-                onSuccess(pages)
-            }
-            .addOnFailureListener { onFailure(it) }
-    }
 }
 

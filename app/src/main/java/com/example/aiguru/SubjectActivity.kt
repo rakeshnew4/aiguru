@@ -51,7 +51,7 @@ class SubjectActivity : AppCompatActivity() {
             chapters = chaptersListData,
             onItemClick = { chapter ->
                 startActivity(
-                    Intent(this, ChapterActivity::class.java)
+                    Intent(this, ChatActivity::class.java)
                         .putExtra("subjectName", subjectName)
                         .putExtra("chapterName", chapter)
                 )

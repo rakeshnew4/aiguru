@@ -1,13 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:paddingStart="16dp"
+    android:layout_marginStart="10dp"
+    android:layout_marginEnd="10dp"
+    android:layout_marginTop="4dp"
+    android:layout_marginBottom="4dp"
+    android:background="#EAF3FF"
+    android:paddingStart="14dp"
     android:paddingEnd="12dp"
     android:paddingTop="10dp"
-    android:paddingBottom="10dp">
+    android:paddingBottom="10dp"
+    android:minHeight="52dp">
 
     <TextView
         android:id="@+id/pageLabel"
@@ -15,8 +22,9 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:textSize="15sp"
-        android:textColor="#1A237E"
-        android:text="📄 Page 1" />
+        android:textStyle="bold"
+        android:textColor="#0E3A72"
+        android:text="Page 1" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/viewPageButton"
@@ -27,21 +35,21 @@
         android:textSize="12sp"
         android:paddingStart="10dp"
         android:paddingEnd="10dp"
-        app:strokeColor="#1565C0"
+        app:strokeColor="#1E88E5"
+        app:backgroundTint="#FFFFFF"
         app:cornerRadius="8dp"
-        android:layout_marginEnd="6dp"
-        xmlns:app="http://schemas.android.com/apk/res-auto" />
+        android:layout_marginEnd="6dp" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/askPageButton"
         android:layout_width="wrap_content"
         android:layout_height="36dp"
-        android:text="🤖 Ask"
+        android:text="Ask"
+        android:textColor="#FFFFFF"
         android:textSize="12sp"
         android:paddingStart="10dp"
         android:paddingEnd="10dp"
-        app:backgroundTint="#FF8F00"
-        app:cornerRadius="8dp"
-        xmlns:app="http://schemas.android.com/apk/res-auto" />
+        app:backgroundTint="#FB8C00"
+        app:cornerRadius="8dp" />
 
 </LinearLayout>

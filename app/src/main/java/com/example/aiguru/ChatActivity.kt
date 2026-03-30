@@ -12,8 +12,6 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
 import android.util.Base64
-import android.view.Menu
-import android.view.MenuItem
 import android.view.View
 import android.view.animation.Animation
 import android.view.animation.ScaleAnimation
@@ -26,11 +24,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.GravityCompat
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.aiguru.BuildConfig
+import com.example.aiguru.adapters.PageListAdapter
 import com.example.aiguru.adapters.MessageAdapter
 import com.example.aiguru.chat.ChatHistoryRepository
 import com.example.aiguru.chat.AiClient
@@ -45,6 +46,7 @@ import com.example.aiguru.models.TutorMode
 import com.example.aiguru.models.TutorSession
 import com.example.aiguru.utils.ChapterMetricsTracker
 import com.example.aiguru.utils.MediaManager
+import com.example.aiguru.utils.PdfPageManager
 import com.example.aiguru.utils.PromptRepository
 import com.example.aiguru.utils.SessionManager
 import com.example.aiguru.utils.TTSCallback
@@ -57,7 +59,6 @@ import com.example.aiguru.config.PlanEnforcer
 import com.example.aiguru.firestore.FirestoreManager
 import com.example.aiguru.models.PageContent
 import com.example.aiguru.models.UserMetadata
-import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.yalantis.ucrop.UCrop
 import androidx.core.content.FileProvider
@@ -77,11 +78,9 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private lateinit var messageAdapter: MessageAdapter
     private lateinit var messageInput: EditText
     private lateinit var sendButton: MaterialButton
-    private lateinit var toolbar: MaterialToolbar
     private lateinit var loadingLayout: LinearLayout
     private lateinit var voiceButton: MaterialButton
     private lateinit var imageButton: MaterialButton
-    private lateinit var pdfButton: MaterialButton
     private lateinit var saveNotesButton: MaterialButton
     private lateinit var viewNotesButton: MaterialButton
     private lateinit var formulaButton: MaterialButton
@@ -93,6 +92,24 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private lateinit var languageButton: MaterialButton
     private lateinit var listeningIndicator: TextView
     private lateinit var bottomDescribeButton: MaterialButton
+
+    // ── Chapter Workspace Drawer ─────────────────────────────────────────────
+    private lateinit var chatDrawerLayout: DrawerLayout
+    private lateinit var openPagesDrawerButton: MaterialButton
+    private lateinit var pagesDrawerCloseButton: MaterialButton
+    private lateinit var pagesDrawerAddPageButton: MaterialButton
+    private lateinit var pagesDrawerTitle: TextView
+    private lateinit var pagesDrawerHint: TextView
+    private lateinit var pagesDrawerList: RecyclerView
+    private val chapterPages = mutableListOf<String>()
+    private val chapterImagePaths = mutableListOf<String>()
+    private lateinit var chapterPagesAdapter: PageListAdapter
+    private var isPdfChapterWorkspace = false
+    private var chapterPdfAssetPath = ""
+    private var chapterPdfId = ""
+    private var chapterPdfPageCount = 0
+    private var saveNextPickedImageToChapter = false
+    private lateinit var pdfPageManager: PdfPageManager
 
     // ── Auto Explain Mode ──────────────────────────────────────────────────────
     private var isAutoExplainActive = true
@@ -175,11 +192,13 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
             if (uri != null) launchCrop(uri, isPdf = false)
+            else saveNextPickedImageToChapter = false
         }
 
     private val cameraLauncher =
         registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
             if (success && cameraImageUri != null) launchCrop(cameraImageUri!!, isPdf = false)
+            else saveNextPickedImageToChapter = false
         }
 
     /** Receives the cropped image result from UCrop. */
@@ -260,6 +279,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                             it,
                             pendingCropPdfPageNumber
                         )
+                    } else {
+                        saveNextPickedImageToChapter = false
                     }
                 }
 
@@ -270,15 +291,11 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                             it,
                             pendingCropPdfPageNumber
                         )
+                    } else {
+                        saveNextPickedImageToChapter = false
                     }
                 }
             }
-        }
-
-    private val pickPdfLauncher =
-        registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-            if (uri != null) Toast.makeText(this, "PDF support coming soon", Toast.LENGTH_SHORT)
-                .show()
         }
 
     companion object {
@@ -288,6 +305,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)
+        pdfPageManager = PdfPageManager(this)
 
         subjectName = intent.getStringExtra("subjectName") ?: "General"
         chapterName = intent.getStringExtra("chapterName") ?: "Study Session"
@@ -336,6 +354,10 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         metricsTracker = ChapterMetricsTracker(subjectName, chapterName)
 
         initializeUI()
+        initializeChapterWorkspaceDrawer()
+        if (isAutoExplainActive) {
+            Toast.makeText(this, "Blackboard mode on", Toast.LENGTH_SHORT).show()
+        }
 
         historyRepo.loadHistory(
             onMessages = { msgs ->
@@ -357,14 +379,18 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             tutorSession.currentPage = pdfPageNumber
             preloadPdfPage(File(pdfPageFilePath), pdfPageNumber)
         }
+
+        // Pre-load an image page passed from ChapterActivity (image chapters)
+        intent.getStringExtra("imagePath")?.takeIf { it.isNotBlank() }?.let { path ->
+            val uri = Uri.parse(path)
+            showImagePreview(uri)
+            messageInput.setText("Explain this page")
+            messageInput.setSelection(messageInput.text.length)
+        }
     }
 
     private fun initializeUI() {
-        toolbar = findViewById(R.id.toolbar)
-        toolbar.title = chapterName
-        toolbar.subtitle = "AI Tutor"
-        toolbar.setNavigationOnClickListener { finish() }
-        setSupportActionBar(toolbar)
+        chatDrawerLayout = findViewById(R.id.chatDrawerLayout)
 
         findViewById<TextView>(R.id.chatHeaderTitle).text = chapterName
         findViewById<TextView>(R.id.chatHeaderSubtitle).text = "$subjectName · Tutor Session"
@@ -415,7 +441,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         loadingLayout = findViewById(R.id.loadingLayout)
         voiceButton = findViewById(R.id.voiceButton)
         imageButton = findViewById(R.id.imageButton)
-        pdfButton = findViewById(R.id.pdfButton)
+
         saveNotesButton = findViewById(R.id.saveNotesButton)
         viewNotesButton = findViewById(R.id.viewNotesButton)
         formulaButton = findViewById(R.id.formulaButton)
@@ -425,6 +451,12 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         imagePreviewLabel = findViewById(R.id.imagePreviewLabel)
         removeImageButton = findViewById(R.id.removeImageButton)
         languageButton = findViewById(R.id.languageButton)
+        openPagesDrawerButton = findViewById(R.id.openPagesDrawerButton)
+        pagesDrawerCloseButton = findViewById(R.id.pagesDrawerCloseButton)
+        pagesDrawerAddPageButton = findViewById(R.id.pagesDrawerAddPageButton)
+        pagesDrawerTitle = findViewById(R.id.pagesDrawerTitle)
+        pagesDrawerHint = findViewById(R.id.pagesDrawerHint)
+        pagesDrawerList = findViewById(R.id.pagesDrawerList)
         listeningIndicator = findViewById(R.id.listeningIndicator)
         bottomDescribeButton = findViewById(R.id.bottomDescribeButton)
         voiceChatBar = findViewById(R.id.voiceChatBar)
@@ -438,6 +470,12 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         waveBar4 = findViewById(R.id.waveBar4)
 
         languageButton.setOnClickListener { showLanguagePicker() }
+        openPagesDrawerButton.setOnClickListener {
+            chatDrawerLayout.openDrawer(GravityCompat.START)
+        }
+        pagesDrawerCloseButton.setOnClickListener {
+            chatDrawerLayout.closeDrawer(GravityCompat.START)
+        }
         updateLanguageButton()
         updateLiveModeUi()
 
@@ -472,6 +510,11 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             if (!check.allowed) { showError(check.upgradeMessage); return@setOnClickListener }
             isAutoExplainActive = !isAutoExplainActive
             updateAutoExplainButton()
+            Toast.makeText(
+                this,
+                if (isAutoExplainActive) "Blackboard mode on" else "Blackboard mode off",
+                Toast.LENGTH_SHORT
+            ).show()
         }
         updateAutoExplainButton()
 
@@ -479,7 +522,6 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             if (isListening) voiceManager.stopListening() else checkPermissionAndStartListening()
         }
         imageButton.setOnClickListener { showImageSourceDialog() }
-        pdfButton.setOnClickListener { openPdfPicker() }
         saveNotesButton.setOnClickListener { saveLastAIMessageAsNotes() }
         viewNotesButton.setOnClickListener { viewSavedNotes() }
 
@@ -525,6 +567,180 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         findViewById<MaterialButton>(R.id.flashcardsButton).setOnClickListener { generateFlashcards() }
     }
 
+    private fun initializeChapterWorkspaceDrawer() {
+        chapterPagesAdapter = PageListAdapter(
+            pages = chapterPages,
+            onView = { index -> onWorkspaceViewPage(index) },
+            onAsk = { index -> onWorkspaceAskPage(index) }
+        )
+        pagesDrawerList.layoutManager = LinearLayoutManager(this)
+        pagesDrawerList.adapter = chapterPagesAdapter
+
+        pagesDrawerAddPageButton.setOnClickListener {
+            saveNextPickedImageToChapter = true
+            showImageSourceDialog()
+        }
+
+        val metaRaw = getSharedPreferences("chapters_prefs", MODE_PRIVATE)
+            .getString("meta_${subjectName}_${chapterName}", null)
+        if (metaRaw.isNullOrBlank()) {
+            isPdfChapterWorkspace = false
+            pagesDrawerTitle.text = "Pages • Image Chapter"
+            pagesDrawerHint.text = "Select or add image pages to ask AI."
+            loadImageWorkspacePages()
+            return
+        }
+
+        try {
+            val meta = org.json.JSONObject(metaRaw)
+            isPdfChapterWorkspace = meta.optBoolean("isPdf", false)
+            if (isPdfChapterWorkspace) {
+                chapterPdfAssetPath = meta.optString("pdfAssetPath", "")
+                chapterPdfId = meta.optString("pdfId", "")
+                pagesDrawerTitle.text = "Pages • PDF Chapter"
+                pagesDrawerHint.text = "View any page or attach a page to this chat."
+                pagesDrawerAddPageButton.visibility = View.VISIBLE
+                pagesDrawerAddPageButton.text = "Add Extra Image"
+                loadPdfWorkspacePages()
+            } else {
+                pagesDrawerTitle.text = "Pages • Image Chapter"
+                pagesDrawerHint.text = "Select or add image pages to ask AI."
+                pagesDrawerAddPageButton.visibility = View.VISIBLE
+                pagesDrawerAddPageButton.text = "Add Page"
+                loadImageWorkspacePages()
+            }
+        } catch (_: Exception) {
+            isPdfChapterWorkspace = false
+            pagesDrawerTitle.text = "Pages"
+            pagesDrawerHint.text = "Select or add image pages to ask AI."
+            pagesDrawerAddPageButton.visibility = View.VISIBLE
+            pagesDrawerAddPageButton.text = "Add Page"
+            loadImageWorkspacePages()
+        }
+    }
+
+    private fun loadPdfWorkspacePages() {
+        if (chapterPdfAssetPath.isBlank() || chapterPdfId.isBlank()) {
+            chapterPages.clear()
+            chapterPages.add("PDF metadata missing")
+            chapterPagesAdapter.notifyDataSetChanged()
+            return
+        }
+
+        chapterPages.clear()
+        chapterPages.add("Loading PDF pages...")
+        chapterPagesAdapter.notifyDataSetChanged()
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val count = pdfPageManager.getPageCount(chapterPdfId, chapterPdfAssetPath)
+                chapterPdfPageCount = count
+                withContext(Dispatchers.Main) {
+                    chapterPages.clear()
+                    for (i in 1..count) chapterPages.add("Page $i")
+                    chapterPagesAdapter.notifyDataSetChanged()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    chapterPages.clear()
+                    chapterPages.add("Failed to load PDF pages: ${e.message}")
+                    chapterPagesAdapter.notifyDataSetChanged()
+                }
+            }
+        }
+    }
+
+    private fun loadImageWorkspacePages() {
+        chapterImagePaths.clear()
+        chapterPages.clear()
+        val key = "imgpages_${subjectName}_${chapterName}"
+        val raw = getSharedPreferences("chapters_prefs", MODE_PRIVATE).getString(key, "[]") ?: "[]"
+        try {
+            val arr = org.json.JSONArray(raw)
+            for (i in 0 until arr.length()) {
+                val item = arr.optJSONObject(i)
+                if (item != null) {
+                    val path = item.optString("path", "")
+                    val ts = item.optString("timestamp", "")
+                    if (path.isNotBlank()) {
+                        chapterImagePaths.add(path)
+                        chapterPages.add(if (ts.isBlank()) "Image Page ${i + 1}" else "Page • $ts")
+                    }
+                }
+            }
+        } catch (_: Exception) {
+            // Keep empty state
+        }
+        if (chapterPages.isEmpty()) chapterPages.add("No pages yet. Tap Add Page.")
+        chapterPagesAdapter.notifyDataSetChanged()
+    }
+
+    private fun onWorkspaceViewPage(index: Int) {
+        if (isPdfChapterWorkspace) {
+            if (chapterPdfPageCount <= 0) return
+            startActivity(
+                Intent(this, PageViewerActivity::class.java)
+                    .putExtra("subjectName", subjectName)
+                    .putExtra("chapterName", chapterName)
+                    .putExtra("pdfId", chapterPdfId)
+                    .putExtra("pdfAssetPath", chapterPdfAssetPath)
+                    .putExtra("pageCount", chapterPdfPageCount)
+                    .putExtra("startPage", index)
+            )
+            return
+        }
+
+        if (chapterImagePaths.isEmpty() || index !in chapterImagePaths.indices) return
+        val uri = Uri.parse(chapterImagePaths[index])
+        showImagePreview(uri)
+        chatDrawerLayout.closeDrawer(GravityCompat.START)
+    }
+
+    private fun onWorkspaceAskPage(index: Int) {
+        if (isPdfChapterWorkspace) {
+            if (chapterPdfPageCount <= 0) return
+            val pageIndex = index
+            tutorSession.currentPage = pageIndex + 1
+            lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    val pageFile = pdfPageManager.getPage(chapterPdfId, chapterPdfAssetPath, pageIndex)
+                    withContext(Dispatchers.Main) {
+                        preloadPdfPage(pageFile, pageIndex + 1)
+                        chatDrawerLayout.closeDrawer(GravityCompat.START)
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@ChatActivity, "Failed to render page: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+            return
+        }
+
+        if (chapterImagePaths.isEmpty() || index !in chapterImagePaths.indices) return
+        val uri = Uri.parse(chapterImagePaths[index])
+        showImagePreview(uri)
+        messageInput.setText("Explain this page")
+        messageInput.setSelection(messageInput.text.length)
+        chatDrawerLayout.closeDrawer(GravityCompat.START)
+    }
+
+    private fun saveImagePageToChapter(uri: Uri) {
+        val key = "imgpages_${subjectName}_${chapterName}"
+        val prefs = getSharedPreferences("chapters_prefs", MODE_PRIVATE)
+        val raw = prefs.getString(key, "[]") ?: "[]"
+        val arr = try { org.json.JSONArray(raw) } catch (_: Exception) { org.json.JSONArray() }
+        val timestamp = java.text.SimpleDateFormat("dd MMM yyyy HH:mm", java.util.Locale.getDefault())
+            .format(java.util.Date())
+        arr.put(org.json.JSONObject().apply {
+            put("path", uri.toString())
+            put("timestamp", timestamp)
+        })
+        prefs.edit().putString(key, arr.toString()).apply()
+        loadImageWorkspacePages()
+        Toast.makeText(this, "Page added to chapter", Toast.LENGTH_SHORT).show()
+    }
+
     private fun checkPermissionAndStartListening() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED
@@ -562,11 +778,17 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         autoExplainButton.setTextColor(
             android.graphics.Color.parseColor(if (isAutoExplainActive) "#E65100" else "#757575")
         )
+        autoExplainButton.contentDescription =
+            if (isAutoExplainActive) "Blackboard mode on" else "Blackboard mode off"
     }
 
     private fun showImagePreview(uri: Uri) {
         selectedImageUri = uri
         pendingDisplayUri = uri
+        if (saveNextPickedImageToChapter) {
+            saveNextPickedImageToChapter = false
+            if (!isPdfChapterWorkspace) saveImagePageToChapter(uri)
+        }
         currentPageContent = null   // clear any previous analysis
         metricsTracker.recordEvent(ChapterMetricsTracker.EventType.IMAGE_UPLOADED)
         imagePreviewStrip.visibility = View.VISIBLE
@@ -731,8 +953,6 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         cameraImageUri?.let { cameraLauncher.launch(it) }
     }
 
-    private fun openPdfPicker() = pickPdfLauncher.launch("application/pdf")
-
     private fun addWelcomeMessage() {
         messageAdapter.addMessage(
             Message(
@@ -758,6 +978,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         val capturedPdfBase64 = pdfPageBase64.also { pdfPageBase64 = null }
         var capturedPageContent = currentPageContent.also { currentPageContent = null }
         val capturedDisplayUri = pendingDisplayUri.also { pendingDisplayUri = null }
+        var serverPageTranscript: String? = null
+        val hadVisualAttachment = imageUri != null || capturedPdfBase64 != null
 
         // ── Plan enforcement check ────────────────────────────────────────────
         val featureType = when {
@@ -820,6 +1042,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                 // or failed (e.g. invalid API key). PageAnalyzer.analyze() is synchronous
                 // on IO thread — it blocks until the Groq vision response is received.
                 if (capturedPageContent == null && (imageUri != null || capturedPdfBase64 != null)) {
+                    android.util.Log.d("PageContext", "Background analysis not ready — running inline Groq analysis")
                     val b64 = if (imageUri != null) mediaManager.uriToBase64(imageUri)
                     else capturedPdfBase64
                     if (b64 != null) {
@@ -833,17 +1056,22 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                             pageNumber = pNum,
                             sourceType = srcType,
                             onSuccess = { content ->
+                                android.util.Log.d("PageContext",
+                                    "Inline Groq analysis SUCCESS: transcript=${content.transcript.length} chars")
                                 capturedPageContent = content
                                 persistLatestPageContext(content)
                             },
                             onError = { err ->
-                                android.util.Log.w(
-                                    "ChatActivity",
-                                    "Inline page analysis failed: $err"
-                                )
+                                android.util.Log.e("PageContext",
+                                    "Inline Groq analysis FAILED: $err")
                             }
                         )
+                    } else {
+                        android.util.Log.e("PageContext", "Inline analysis: could not decode image to base64")
                     }
+                } else if (capturedPageContent != null) {
+                    android.util.Log.d("PageContext",
+                        "Background Groq analysis was ready: transcript=${capturedPageContent?.transcript?.length} chars")
                 }
 
                 // Build history now — capturedPageContent may have been set by inline analysis above
@@ -874,8 +1102,26 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                     // Persist token counters to Firestore (async, runs on IO thread)
                     if (totalTok > 0) PlanEnforcer.recordTokensUsed(userId, totalTok)
                     // Save page analysis to Firestore after it has been used in this response
+                    android.util.Log.d("PageContext",
+                        "onDone: capturedPageContent=${capturedPageContent != null} " +
+                        "hadVisualAttachment=$hadVisualAttachment serverTranscript=${serverPageTranscript?.length ?: 0} chars")
                     if (capturedPageContent != null) {
                         persistLatestPageContext(capturedPageContent)
+                    } else if (hadVisualAttachment && !serverPageTranscript.isNullOrBlank()) {
+                        val sourceType = if (capturedPdfBase64 != null) "pdf" else "image"
+                        val inferredPageNumber = if (sourceType == "pdf") {
+                            tutorSession.currentPage.takeIf { it > 0 } ?: 1
+                        } else 0
+                        val serverPage = PageContent(
+                            pageId = PageAnalyzer.generatePageId(subjectName, chapterName),
+                            subject = subjectName,
+                            chapter = chapterName,
+                            pageNumber = inferredPageNumber,
+                            sourceType = sourceType,
+                            transcript = serverPageTranscript.orEmpty(),
+                            analyzedAt = System.currentTimeMillis()
+                        )
+                        persistLatestPageContext(serverPage)
                     }
                     runOnUiThread {
                         // Update in-memory counter so next enforcement check uses fresh numbers
@@ -994,6 +1240,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                                 studentLevel,
                                 historyStrings,
                                 imageDataJson,
+                                b64,
+                                { transcript -> serverPageTranscript = transcript },
                                 onToken,
                                 onDone,
                                 onError
@@ -1021,6 +1269,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                                 studentLevel,
                                 historyStrings,
                                 imageDataJson,
+                                capturedPdfBase64,
+                                { transcript -> serverPageTranscript = transcript },
                                 onToken,
                                 onDone,
                                 onError
@@ -1045,6 +1295,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                                 studentLevel,
                                 historyStrings,
                                 null,
+                                null,
+                                null,
                                 onToken,
                                 onDone,
                                 onError
@@ -1060,15 +1312,33 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     }
 
     private fun persistLatestPageContext(pageContent: PageContent?) {
-        val page = pageContent ?: return
+        val page = pageContent ?: run {
+            android.util.Log.w("PageContext", "persistLatestPageContext: pageContent is null — skipping")
+            return
+        }
+        // Re-resolve userId at call time — Firebase Auth may not have been ready at onCreate
+        val resolvedUserId = SessionManager.getFirestoreUserId(this).also { uid ->
+            if (uid != userId) {
+                android.util.Log.w("PageContext", "userId changed from '$userId' to '$uid' — updating")
+                userId = uid
+            }
+        }
+        android.util.Log.d("PageContext",
+            "persistLatestPageContext: userId='$resolvedUserId' subject='${page.subject}' " +
+            "chapter='${page.chapter}' transcript=${page.transcript.length} chars")
         tutorSession.latestPageContext = page.transcript
-        FirestoreManager.savePageContent(userId, page)
         FirestoreManager.saveChapterContext(
-            userId = userId,
-            subject = page.subject,
-            chapter = page.chapter,
-            pageId = page.pageId,
-            transcript = page.transcript
+            userId = resolvedUserId,
+            page = page,
+            onSuccess = {
+                android.util.Log.d("PageContext",
+                    "saveChapterContext SUCCESS → users/$resolvedUserId/conversations/" +
+                    "${FirestoreManager.safeId(page.subject)}__${FirestoreManager.safeId(page.chapter)}")
+            },
+            onFailure = { e ->
+                android.util.Log.e("PageContext",
+                    "saveChapterContext FAILED userId='$userId': ${e?.message}")
+            }
         )
     }
 
@@ -1239,22 +1509,6 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         }
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.menu_chat, menu)
-        menu.findItem(R.id.action_language)?.title = "Language"
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
-            R.id.action_language -> {
-                showLanguagePicker(); true
-            }
-
-            else -> super.onOptionsItemSelected(item)
-        }
-    }
-
     private fun showLanguagePicker() {
         val names = LANGUAGES.keys.toTypedArray()
         val currentIdx = names.indexOf(currentLangName).coerceAtLeast(0)
@@ -1263,11 +1517,10 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             .setSingleChoiceItems(names, currentIdx) { dialog, which ->
                 currentLangName = names[which]
                 currentLang = LANGUAGES[currentLangName] ?: "en-US"
-                invalidateOptionsMenu()
                 updateLanguageButton()
                 ttsManager.setLocale(Locale.forLanguageTag(currentLang))
                 dialog.dismiss()
-                Toast.makeText(this, "Language: $currentLangName", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Lang:$currentLangName", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Cancel", null)
             .show()
@@ -1388,7 +1641,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
     private fun updateLiveModeUi() {
         val isFull = liveMicMode == LiveMicMode.FULL
-        liveModeChip.text = if (isFull) "Live: Full" else "Live: Partial"
+        liveModeChip.text = if (isFull) "Live: Full" else ""
         voiceModeBadge.text = if (isFull) "FULL" else "PARTIAL"
         val chipBg = if (isFull) "#FFF3E0" else "#EAF2FF"
         val chipText = if (isFull) "#B45309" else "#0B4AA2"

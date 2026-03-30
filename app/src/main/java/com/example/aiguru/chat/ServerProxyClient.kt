@@ -83,6 +83,7 @@ class ServerProxyClient(
      * @param history       Prior turns as ["user: ...", "assistant: ..."] strings
      * @param imageData     Optional structured data extracted from an attached image/PDF page.
      *                      Sent as `image_data` so the server can use full transcript + diagrams.
+     * @param imageBase64   Optional raw image bytes (base64) for server-side vision fallback.
      */
     fun streamChat(
         question: String,
@@ -92,6 +93,8 @@ class ServerProxyClient(
         studentLevel: Int = 5,
         history: List<String> = emptyList(),
         imageData: JSONObject? = null,
+        imageBase64: String? = null,
+        onPageTranscript: ((String) -> Unit)? = null,
         onToken: (String) -> Unit,
         onDone: (inputTokens: Int, outputTokens: Int, totalTokens: Int) -> Unit,
         onError: (String) -> Unit
@@ -106,9 +109,13 @@ class ServerProxyClient(
             put("student_level", studentLevel)
             put("history",       historyArray)
             if (imageData != null) put("image_data", imageData)
+            if (!imageBase64.isNullOrBlank()) put("image_base64", imageBase64)
         }
-        Log.d("ServerProxyClient", "streamChat → imageData=${if (imageData != null) "present (${imageData.optString("transcript", "").take(40)}…)" else "none"}")
-        executeStream(json, onToken, onDone, onError)
+        Log.d(
+            "ServerProxyClient",
+            "streamChat → imageData=${if (imageData != null) "present (${imageData.optString("transcript", "").take(40)}…)" else "none"}, imageBase64=${if (imageBase64.isNullOrBlank()) "none" else "present(${imageBase64.length})"}"
+        )
+        executeStream(json, onPageTranscript, onToken, onDone, onError)
     }
 
     override fun streamWithImage(
@@ -127,6 +134,7 @@ class ServerProxyClient(
 
     private fun executeStream(
         json: JSONObject,
+        onPageTranscript: ((String) -> Unit)? = null,
         onToken: (String) -> Unit,
         onDone: (inputTokens: Int, outputTokens: Int, totalTokens: Int) -> Unit,
         onError: (String) -> Unit
@@ -151,6 +159,8 @@ class ServerProxyClient(
                     val data = line.removePrefix("data: ").trim()
                     try {
                         val obj = JSONObject(data)
+                        val pageTranscript = obj.optString("page_transcript", "")
+                        if (pageTranscript.isNotBlank()) onPageTranscript?.invoke(pageTranscript)
                         if (obj.optBoolean("done", false)) {
                             inputTokens  = obj.optInt("inputTokens",  0)
                             outputTokens = obj.optInt("outputTokens", 0)

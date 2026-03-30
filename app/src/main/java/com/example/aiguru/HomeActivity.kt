@@ -55,8 +55,13 @@ class HomeActivity : AppCompatActivity() {
             startActivity(Intent(this, ProgressDashboardActivity::class.java))
         }
         findViewById<TextView?>(R.id.profileButton)?.setOnClickListener {
-            showProfileDialog()
+            startActivity(Intent(this, UserProfileActivity::class.java))
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        setupStudentInfo()
     }
 
     private fun applySchoolBranding() {

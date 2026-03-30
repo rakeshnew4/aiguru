@@ -31,6 +31,7 @@ class ChapterActivity : AppCompatActivity() {
 
     private lateinit var pagesRecyclerView: RecyclerView
     private val pagesListData = mutableListOf<String>()
+    private val imagePagePaths = mutableListOf<String>()
     private lateinit var pageListAdapter: PageListAdapter
     private lateinit var subjectName: String
     private lateinit var chapterName: String
@@ -376,6 +377,7 @@ class ChapterActivity : AppCompatActivity() {
             put("timestamp", timestamp)
         })
         prefs.edit().putString(key, arr.toString()).apply()
+        imagePagePaths.add(imagePath)
         pagesListData.add("Page uploaded - $timestamp")
         pageListAdapter.notifyItemInserted(pagesListData.size - 1)
         Toast.makeText(this, "Page saved!", Toast.LENGTH_SHORT).show()
@@ -386,19 +388,21 @@ class ChapterActivity : AppCompatActivity() {
         pageListAdapter = PageListAdapter(
             pages = pagesListData,
             onView = { position ->
+                if (position !in imagePagePaths.indices) return@PageListAdapter
                 startActivity(
                     Intent(this, ChatActivity::class.java)
                         .putExtra("subjectName", subjectName)
                         .putExtra("chapterName", chapterName)
-                        .putExtra("imagePath", pagesListData[position])
+                        .putExtra("imagePath", imagePagePaths[position])
                 )
             },
             onAsk = { position ->
+                if (position !in imagePagePaths.indices) return@PageListAdapter
                 startActivity(
                     Intent(this, ChatActivity::class.java)
                         .putExtra("subjectName", subjectName)
                         .putExtra("chapterName", chapterName)
-                        .putExtra("imagePath", pagesListData[position])
+                        .putExtra("imagePath", imagePagePaths[position])
                 )
             }
         )
@@ -406,11 +410,20 @@ class ChapterActivity : AppCompatActivity() {
 
         val key = "imgpages_${subjectName}_${chapterName}"
         val raw = getSharedPreferences("chapters_prefs", MODE_PRIVATE).getString(key, "[]") ?: "[]"
+        imagePagePaths.clear()
         pagesListData.clear()
         try {
             val arr = org.json.JSONArray(raw)
             for (i in 0 until arr.length()) {
-                pagesListData.add("Page - ${arr.getJSONObject(i).optString("timestamp", "")}")
+                val obj = arr.optJSONObject(i)
+                if (obj != null) {
+                    val path = obj.optString("path", "")
+                    val ts = obj.optString("timestamp", "")
+                    if (path.isNotBlank()) {
+                        imagePagePaths.add(path)
+                        pagesListData.add("Page - $ts")
+                    }
+                }
             }
         } catch (_: Exception) { }
         pageListAdapter.notifyDataSetChanged()

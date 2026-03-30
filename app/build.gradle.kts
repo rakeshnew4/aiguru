@@ -26,6 +26,8 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "GROQ_API_KEY", "\"${localProperties["GROQ_API_KEY"]}\"")
         buildConfigField("String", "GEMINI_API_KEY", "\"${localProperties["GEMINI_API_KEY"] ?: ""}\"")
+        buildConfigField("String", "PAYMENT_BASE_URL", "\"${localProperties["PAYMENT_BASE_URL"] ?: ""}\"")
+        buildConfigField("String", "RAZORPAY_KEY_ID", "\"${localProperties["RAZORPAY_KEY_ID"] ?: ""}\"")
     }
 
     buildTypes {
@@ -49,6 +51,7 @@ android {
 dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.json:json:20240303")
+    implementation("com.razorpay:checkout:1.6.40")
     implementation("com.google.firebase:firebase-auth:22.3.1")
     implementation("com.google.firebase:firebase-firestore:24.10.3")
     implementation("com.google.android.gms:play-services-auth:21.0.0")

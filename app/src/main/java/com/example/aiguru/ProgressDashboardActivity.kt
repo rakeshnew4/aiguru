@@ -92,7 +92,7 @@ class ProgressDashboardActivity : AppCompatActivity() {
             isFocusable = true
             setOnClickListener {
                 startActivity(
-                    Intent(this@ProgressDashboardActivity, ChapterActivity::class.java)
+                    Intent(this@ProgressDashboardActivity, ChatActivity::class.java)
                         .putExtra("subjectName", cs.subject)
                         .putExtra("chapterName", cs.chapter)
                 )

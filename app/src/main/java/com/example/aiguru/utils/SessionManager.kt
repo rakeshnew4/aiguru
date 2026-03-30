@@ -100,6 +100,10 @@ object SessionManager {
         prefs(context).edit().putString(KEY_GRADE, grade).apply()
     }
 
+    fun saveStudentName(context: Context, studentName: String) {
+        prefs(context).edit().putString(KEY_STUDENT_NAME, studentName.ifBlank { "Student" }).apply()
+    }
+
     fun getGrade(context: Context): String = prefs(context).getString(KEY_GRADE, "") ?: ""
 
     // ── Firebase UID ──────────────────────────────────────────────────────────
@@ -114,10 +118,17 @@ object SessionManager {
     // ── Firestore document ID ─────────────────────────────────────────────────
 
     fun getFirestoreUserId(context: Context): String {
-        // Firebase Auth users use their UID as the Firestore document ID
-        val firebaseUid = getFirebaseUid(context)
-        if (firebaseUid.isNotBlank()) return firebaseUid
-        // School-only users fall back to schoolId_studentId
+        // 1. Live Firebase Auth — most reliable; works even if prefs weren't updated
+        val liveUid = FirebaseAuth.getInstance().currentUser?.uid
+        if (!liveUid.isNullOrBlank()) {
+            // Back-fill prefs so future lookups don't need live auth
+            if (getFirebaseUid(context).isBlank()) saveFirebaseUid(context, liveUid)
+            return liveUid
+        }
+        // 2. SharedPreferences fallback (e.g. auth not yet loaded on cold start)
+        val storedUid = getFirebaseUid(context)
+        if (storedUid.isNotBlank()) return storedUid
+        // 3. School-only users fall back to schoolId_studentId
         val schoolId = getSchoolId(context)
         val studentId = getStudentId(context)
         return if (schoolId.isNotBlank() && studentId.isNotBlank())

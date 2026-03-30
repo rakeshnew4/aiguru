@@ -1,8 +1,11 @@
 package com.example.aiguru.adapters
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.BackgroundColorSpan
@@ -17,6 +20,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.example.aiguru.R
@@ -58,24 +62,6 @@ class MessageAdapter(
                 gravity = if (isUser) Gravity.END else Gravity.START
             }
 
-            // AI avatar circle
-            if (!isUser) {
-                val avatar = TextView(context).apply {
-                    text = "AI"
-                    textSize = 9f
-                    setTypeface(null, Typeface.BOLD)
-                    setTextColor(Color.WHITE)
-                    gravity = Gravity.CENTER
-                    setBackgroundResource(R.drawable.bg_avatar_circle)
-                    val sz = (32 * dp).toInt()
-                    layoutParams = LinearLayout.LayoutParams(sz, sz).apply {
-                        marginEnd = (6 * dp).toInt()
-                        topMargin = (4 * dp).toInt()
-                    }
-                }
-                row.addView(avatar)
-            }
-
             // --- Bubble ---
             val bubble = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
@@ -88,19 +74,25 @@ class MessageAdapter(
                         marginEnd   = (8 * dp).toInt()
                     }
                 } else {
-                    // Fill remaining row width (after 32dp avatar) so bot messages aren't cramped
-                    LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                        marginEnd = (8 * dp).toInt()
+                    // ChatGPT-like: AI replies use near full-width readable column
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply {
+                        marginStart = (4 * dp).toInt()
+                        marginEnd = (4 * dp).toInt()
                     }
                 }
-                setPadding(
-                    (14 * dp).toInt(), (10 * dp).toInt(),
-                    (14 * dp).toInt(), (10 * dp).toInt()
-                )
-                setBackgroundResource(
-                    if (isUser) R.drawable.bg_user_bubble
-                    else R.drawable.bg_ai_bubble
-                )
+                if (isUser) {
+                    setPadding(
+                        (14 * dp).toInt(), (10 * dp).toInt(),
+                        (14 * dp).toInt(), (10 * dp).toInt()
+                    )
+                    setBackgroundResource(R.drawable.bg_user_bubble)
+                } else {
+                    setPadding((2 * dp).toInt(), (4 * dp).toInt(), (2 * dp).toInt(), (4 * dp).toInt())
+                    setBackgroundColor(Color.TRANSPARENT)
+                }
             }
 
             // --- Image thumbnail (gallery photo, camera, or PDF page) ---
@@ -123,17 +115,17 @@ class MessageAdapter(
 
             // --- Text content ---
             if (message.content.isNotEmpty()) {
-                val textColor = if (isUser) Color.WHITE
-                    else ContextCompat.getColor(context, R.color.text_primary)
+                val textColor = Color.parseColor("#111827")
                 val msgText = TextView(context).apply {
                     text = parseMarkdown(message.content)
-                    textSize = 15f
+                    textSize = if (isUser) 16f else 17f
+                    typeface = Typeface.create("sans-serif", Typeface.NORMAL)
                     setTextColor(textColor)
                     layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        if (isUser) LinearLayout.LayoutParams.WRAP_CONTENT else LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT
                     )
-                    setLineSpacing(2f * dp, 1f)
+                    setLineSpacing(0f, 1.3f)
                 }
                 bubble.addView(msgText)
             }
@@ -142,41 +134,46 @@ class MessageAdapter(
             if (!isUser) {
                 val speakRow = LinearLayout(context).apply {
                     orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.END
+                    gravity = Gravity.START
                     layoutParams = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT
                     ).apply { topMargin = (6 * dp).toInt() }
                 }
-                val speakBtn = TextView(context).apply {
-                    text = "▶ Speak"
-                    textSize = 11f
-                    setTextColor(Color.parseColor("#6B7280"))
-                    setPadding((8 * dp).toInt(), (3 * dp).toInt(), (8 * dp).toInt(), (3 * dp).toInt())
-                    setOnClickListener { onVoiceClick(message) }
+
+                fun actionButton(label: String, onTap: () -> Unit): TextView {
+                    return TextView(context).apply {
+                        text = label
+                        textSize = 13f
+                        setTextColor(Color.parseColor("#6B7280"))
+                        setPadding((6 * dp).toInt(), (3 * dp).toInt(), (6 * dp).toInt(), (3 * dp).toInt())
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply { marginEnd = (8 * dp).toInt() }
+                        setOnClickListener { onTap() }
+                    }
                 }
-                val stopBtn = TextView(context).apply {
-                    text = "■ Stop"
-                    textSize = 11f
-                    setTextColor(Color.parseColor("#9CA3AF"))
-                    setPadding((8 * dp).toInt(), (3 * dp).toInt(), (8 * dp).toInt(), (3 * dp).toInt())
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    ).apply { marginStart = (4 * dp).toInt() }
-                    setOnClickListener { onStopClick(message) }
+
+                val copyBtn = actionButton("⧉") {
+                    val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    cm.setPrimaryClip(ClipData.newPlainText("message", message.content))
+                    Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
                 }
-                val explainBtn = TextView(context).apply {
-                    text = "👩‍🏫 Explain"
-                    textSize = 11f
-                    setTextColor(Color.parseColor("#6B7280"))
-                    setPadding((8 * dp).toInt(), (3 * dp).toInt(), (8 * dp).toInt(), (3 * dp).toInt())
-                    layoutParams = LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                    ).apply { marginStart = (4 * dp).toInt() }
-                    setOnClickListener { onExplainClick(message) }
+                val speakBtn = actionButton("🔊") { onVoiceClick(message) }
+                val stopBtn = actionButton("■") { onStopClick(message) }
+                val explainBtn = actionButton("BB") { onExplainClick(message) }.apply {
+                    setTextColor(Color.WHITE)
+                    val bg = GradientDrawable().apply {
+                        shape = GradientDrawable.RECTANGLE
+                        cornerRadius = 10f * dp
+                        setColor(Color.parseColor("#111827"))
+                    }
+                    background = bg
+                    setPadding((10 * dp).toInt(), (4 * dp).toInt(), (10 * dp).toInt(), (4 * dp).toInt())
                 }
+
+                speakRow.addView(copyBtn)
                 speakRow.addView(speakBtn)
                 speakRow.addView(stopBtn)
                 speakRow.addView(explainBtn)
@@ -199,91 +196,91 @@ class MessageAdapter(
                     bottomMargin = (4 * dp).toInt()
                     gravity      = if (isUser) Gravity.END else Gravity.START
                     if (isUser) marginEnd   = (12 * dp).toInt()
-                    else        marginStart = (44 * dp).toInt()   // align with bubble (past avatar)
+                    else        marginStart = (8 * dp).toInt()
                 }
             }
             root.addView(timeText)
         }
 
         /**
-         * Enhanced Markdown renderer supporting:
-         *  - ### / ## / # headings with color
-         *  - - / * bullets → • 
-         *  - --- divider
-         *  - **bold**, *italic*, `code`, ~~strikethrough~~
-         *  - ^2 / ^{n+1}  → SuperscriptSpan  (math: x², aⁿ)
-         *  - _{2} / chemical H_2O → SubscriptSpan  (chemistry: H₂O, CO₂)
-         *  - $$...$$ inline math block (highlighted purple box)
+         * Clean Markdown renderer with ChatGPT-like defaults:
+         * - # / ## / ### headings (no emoji prefixes)
+         * - bullet and numbered lists
+         * - fenced code blocks ```...```
+         * - **bold**, *italic*, `code`, ~~strike~~
          */
         private fun parseMarkdown(text: String): SpannableStringBuilder {
-            val ssb = SpannableStringBuilder()
+            val out = SpannableStringBuilder()
             val lines = text.lines()
+            var i = 0
 
-            for ((idx, rawLine) in lines.withIndex()) {
+            while (i < lines.size) {
+                val rawLine = lines[i]
                 val trimmed = rawLine.trim()
 
-                // Detect heading
-                val headingLevel = when {
-                    trimmed.startsWith("### ") -> 3
-                    trimmed.startsWith("## ")  -> 2
-                    trimmed.startsWith("# ")   -> 1
-                    else -> 0
-                }
-                val headingSize = when (headingLevel) {
-                    1 -> 1.22f
-                    2 -> 1.14f
-                    3 -> 1.07f
-                    else -> 1f
-                }
-                val headingColor = when (headingLevel) {
-                    1 -> Color.parseColor("#1A237E")
-                    2 -> Color.parseColor("#283593")
-                    3 -> Color.parseColor("#1565C0")
-                    else -> -1
+                // Fenced code block
+                if (trimmed.startsWith("```")) {
+                    val code = StringBuilder()
+                    i++
+                    while (i < lines.size && !lines[i].trim().startsWith("```")) {
+                        code.append(lines[i])
+                        if (i < lines.lastIndex) code.append('\n')
+                        i++
+                    }
+                    val start = out.length
+                    out.append(code.toString().trimEnd())
+                    val end = out.length
+                    if (start < end) {
+                        out.setSpan(TypefaceSpan("monospace"), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                        out.setSpan(BackgroundColorSpan(Color.parseColor("#ECEFF3")), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                        out.setSpan(ForegroundColorSpan(Color.parseColor("#111827")), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                        out.setSpan(RelativeSizeSpan(0.93f), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    }
+                    if (i < lines.lastIndex) out.append("\n\n")
+                    i++
+                    continue
                 }
 
-                // Transform line prefix
+                val headingLevel = when {
+                    trimmed.startsWith("### ") -> 3
+                    trimmed.startsWith("## ") -> 2
+                    trimmed.startsWith("# ") -> 1
+                    else -> 0
+                }
+
                 val lineText = when {
-                    headingLevel == 1 -> "🎯 " + trimmed.removePrefix("# ")
-                    headingLevel == 2 -> "📌 " + trimmed.removePrefix("## ")
-                    headingLevel == 3 -> "  📎 " + trimmed.removePrefix("### ")
-                    trimmed.startsWith("- ")  -> "  •  " + trimmed.removePrefix("- ")
-                    trimmed.startsWith("* ") && !trimmed.startsWith("**") ->
-                        "  •  " + trimmed.removePrefix("* ")
-                    trimmed.startsWith("• ")  -> "  " + trimmed
-                    trimmed.startsWith("1. ") || trimmed.matches(Regex("^\\d+\\. .*")) -> "  " + rawLine.trim()
-                    trimmed == "---" || trimmed == "___" -> "─────────────────────"
+                    headingLevel == 1 -> trimmed.removePrefix("# ")
+                    headingLevel == 2 -> trimmed.removePrefix("## ")
+                    headingLevel == 3 -> trimmed.removePrefix("### ")
+                    trimmed.startsWith("- ") -> "• " + trimmed.removePrefix("- ")
+                    trimmed.startsWith("* ") && !trimmed.startsWith("**") -> "• " + trimmed.removePrefix("* ")
+                    trimmed == "---" || trimmed == "___" -> "────────────"
                     else -> rawLine
                 }
 
-                val result = applyInlineSpans(lineText)
-
-                // Apply heading styles
+                val lineSpanned = applyInlineSpans(lineText)
                 if (headingLevel > 0) {
-                    result.setSpan(StyleSpan(Typeface.BOLD), 0, result.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    result.setSpan(RelativeSizeSpan(headingSize), 0, result.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    result.setSpan(ForegroundColorSpan(headingColor), 0, result.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    val size = when (headingLevel) {
+                        1 -> 1.18f
+                        2 -> 1.11f
+                        else -> 1.06f
+                    }
+                    lineSpanned.setSpan(StyleSpan(Typeface.BOLD), 0, lineSpanned.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    lineSpanned.setSpan(RelativeSizeSpan(size), 0, lineSpanned.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                 }
 
-                ssb.append(result)
-                if (idx < lines.size - 1) ssb.append('\n')
+                out.append(lineSpanned)
+                if (i < lines.lastIndex) out.append('\n')
+                i++
             }
-            return ssb
+
+            return out
         }
 
-        /**
-         * Applies inline spans: bold, italic, code, strikethrough,
-         * superscript (^2 / ^{expr}), subscript (_{n} / chemical H_2O),
-         * and math blocks ($$..$$).
-         */
         private fun applyInlineSpans(text: String): SpannableStringBuilder {
             data class Span(val start: Int, val end: Int, val inner: String, val type: String)
             val spans = mutableListOf<Span>()
 
-            // Math blocks: $$...$$ → purple highlighted box
-            Regex("""\$\$(.+?)\$\$""").findAll(text).forEach {
-                spans.add(Span(it.range.first, it.range.last + 1, it.groupValues[1], "math"))
-            }
             // Bold: **text**
             Regex("""\*\*(.+?)\*\*""").findAll(text).forEach {
                 spans.add(Span(it.range.first, it.range.last + 1, it.groupValues[1], "bold"))
@@ -327,25 +324,19 @@ class MessageAdapter(
                     "strike" -> result.setSpan(android.text.style.StrikethroughSpan(), sStart, sEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                     "code"   -> {
                         result.setSpan(TypefaceSpan("monospace"), sStart, sEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        result.setSpan(BackgroundColorSpan(Color.parseColor("#F1F3F4")), sStart, sEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        result.setSpan(ForegroundColorSpan(Color.parseColor("#C62828")), sStart, sEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                        result.setSpan(BackgroundColorSpan(Color.parseColor("#ECEFF3")), sStart, sEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                        result.setSpan(ForegroundColorSpan(Color.parseColor("#111827")), sStart, sEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                         result.setSpan(RelativeSizeSpan(0.92f), sStart, sEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                     }
                     "super"  -> {
                         result.setSpan(SuperscriptSpan(), sStart, sEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                         result.setSpan(RelativeSizeSpan(0.72f), sStart, sEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        result.setSpan(ForegroundColorSpan(Color.parseColor("#6A1B9A")), sStart, sEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                        result.setSpan(ForegroundColorSpan(Color.parseColor("#374151")), sStart, sEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                     }
                     "sub"    -> {
                         result.setSpan(SubscriptSpan(), sStart, sEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                         result.setSpan(RelativeSizeSpan(0.72f), sStart, sEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        result.setSpan(ForegroundColorSpan(Color.parseColor("#00695C")), sStart, sEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    }
-                    "math"   -> {
-                        result.setSpan(TypefaceSpan("monospace"), sStart, sEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        result.setSpan(BackgroundColorSpan(Color.parseColor("#F5F0FF")), sStart, sEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        result.setSpan(ForegroundColorSpan(Color.parseColor("#7B1FA2")), sStart, sEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                        result.setSpan(StyleSpan(Typeface.BOLD), sStart, sEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                        result.setSpan(ForegroundColorSpan(Color.parseColor("#374151")), sStart, sEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                     }
                 }
                 lastEnd = span.end
