@@ -1,5 +1,7 @@
 package com.example.aiguru
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.graphics.Color
 import android.graphics.Typeface
@@ -17,6 +19,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.aiguru.chat.BlackboardGenerator
 import com.example.aiguru.utils.PromptRepository
@@ -61,18 +64,21 @@ class BlackboardActivity : AppCompatActivity() {
     private lateinit var pauseBtn:        TextView
     private lateinit var replayBtn:       TextView
     private lateinit var nextBtn:         TextView
+    private lateinit var handWriter:      TextView
     private lateinit var teacherAvatar:   TeacherAvatarView
 
     // ── State ─────────────────────────────────────────────────────────────────
     private lateinit var tts: TextToSpeechManager
-    private var steps          = listOf<BlackboardGenerator.BlackboardStep>()
-    private var visibleCount   = 0        // number of cards currently shown
-    private var isPaused       = false
-    private var computedFontSp = 20f      // font size derived from longest step text
+    private var steps            = listOf<BlackboardGenerator.BlackboardStep>()
+    private var currentStepIdx   = 0
+    private var currentFrameIdx  = 0
+    private var isPaused         = false
+    private var typeAnimator:    ValueAnimator? = null
+    private var computedFontSp   = 30f
     private var preferredLanguageTag = "en-US"
 
-    /** Index of the step that is currently visible / being spoken. */
-    private val currentIndex get() = if (visibleCount > 0) visibleCount - 1 else 0
+    // Board views created once in setupBoard(), updated each frame
+    private var boardLayout: LinearLayout? = null
 
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -92,6 +98,7 @@ class BlackboardActivity : AppCompatActivity() {
         pauseBtn        = findViewById(R.id.pauseButton)
         replayBtn       = findViewById(R.id.replayButton)
         nextBtn         = findViewById(R.id.nextButton)
+        handWriter      = findViewById(R.id.handWriter)
         teacherAvatar   = findViewById(R.id.teacherAvatar)
 
         closeBtn.setOnClickListener  { finish() }
@@ -112,6 +119,7 @@ class BlackboardActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        typeAnimator?.cancel()
         tts.destroy()
         super.onDestroy()
     }
@@ -138,7 +146,8 @@ class BlackboardActivity : AppCompatActivity() {
                         loadingGroup.visibility = View.GONE
                         contentGroup.visibility = View.VISIBLE
                         buildDots()
-                        revealStep(0)
+                        setupBoard()
+                        showFrame(0, 0)
                     }
                 },
                 onError = { err ->
@@ -154,76 +163,303 @@ class BlackboardActivity : AppCompatActivity() {
     // ── Font size ─────────────────────────────────────────────────────────────
 
     private fun computeFontSize(steps: List<BlackboardGenerator.BlackboardStep>): Float {
-        val maxLen = steps.maxOfOrNull { it.text.length } ?: 80
+        val maxLen = steps.flatMap { it.frames }.maxOfOrNull { it.text.length } ?: 80
         return when {
-            maxLen <= 60  -> 24f
-            maxLen <= 120 -> 21f
-            maxLen <= 200 -> 18f
-            maxLen <= 320 -> 16f
+            maxLen <= 40  -> 28f
+            maxLen <= 80  -> 24f
+            maxLen <= 140 -> 20f
+            maxLen <= 240 -> 17f
             else          -> 14f
         }
     }
 
-    // ── Step reveal ───────────────────────────────────────────────────────────
+    // ── Board setup ───────────────────────────────────────────────────────────
 
-    /** Append a card for [index] to the scroll view, fade it in, then speak. */
-    private fun revealStep(index: Int) {
-        if (steps.isEmpty() || index >= steps.size) return
-        visibleCount = index + 1
+    /** Creates the permanent board container. Content is appended per frame via showFrame(). */
+    private fun setupBoard() {
+        val dp = resources.displayMetrics.density
+        stepsContainer.removeAllViews()
+
+        boardLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            setPadding(
+                (24 * dp).toInt(), (24 * dp).toInt(),
+                (24 * dp).toInt(), (24 * dp).toInt()
+            )
+        }
+        stepsContainer.addView(boardLayout)
+    }
+
+    // ── Frame playback ────────────────────────────────────────────────────────
+
+    /** Display frame [frameIdx] of step [stepIdx]: append to board, fade in, speak. */
+    private fun showFrame(stepIdx: Int, frameIdx: Int) {
+        val step  = steps.getOrNull(stepIdx) ?: return
+        val frame = step.frames.getOrNull(frameIdx) ?: return
+        currentStepIdx  = stepIdx
+        currentFrameIdx = frameIdx
         tts.stop()
+        typeAnimator?.cancel()
+        handWriter.visibility = View.INVISIBLE
         updateCounterAndDots()
 
-        val card = createStepCard(index)
-        stepsContainer.addView(card)
+        val board = boardLayout ?: return
+        val dp = resources.displayMetrics.density
+        val caveatFont = ResourcesCompat.getFont(this, R.font.kalam)
 
-        // Fade the card in smoothly
-        card.animate().alpha(1f).setDuration(480).start()
-
-        // Auto-scroll so the new card is visible
-        stepsScrollView.postDelayed({
-            stepsScrollView.smoothScrollTo(0, stepsContainer.bottom)
-        }, 300)
-
-        // Start speaking after the fade-in settles
-        if (!isPaused) {
-            card.postDelayed({ speakStep(index) }, 380)
+        // Clear the board only if we're restarting the entire lesson (from prev button returning to start)
+        // or starting fresh. The actual forward traversal only appends.
+        if (stepIdx == 0 && frameIdx == 0) {
+            board.removeAllViews()
         }
-    }
 
-    /** Reveal the next step if available. */
-    private fun nextStep() {
-        if (visibleCount < steps.size) revealStep(visibleCount)
-    }
+        // If this is the FIRST frame of a NEW step, append the Step Title
+        if (frameIdx == 0) {
+            val titleWrapper = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = if (stepIdx > 0) (32 * dp).toInt() else 0 }
+                alpha = 0f
+            }
 
-    /**
-     * Fade out and remove the last card, then re-speak the previous step.
-     * If only one card is visible, just replay it.
-     */
-    private fun prevStep() {
-        tts.stop()
-        if (visibleCount <= 0) return
+            val titleText = if (step.title.isNotBlank()) "${step.title}" else ""
+            val titleView = TextView(this).apply {
+                text = titleText
+                textSize = 17f
+                gravity = Gravity.CENTER
+                setTextColor(Color.parseColor("#F5E3A0"))
+                typeface = Typeface.create(caveatFont, Typeface.BOLD)
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }
+            titleWrapper.addView(titleView)
 
-        if (visibleCount == 1) {
-            reSpeakCurrent()
+            val separator = View(this).apply {
+                setBackgroundColor(Color.parseColor("#8BAB8B"))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, (1 * dp).toInt()
+                ).apply { topMargin = (10 * dp).toInt(); bottomMargin = (8 * dp).toInt() }
+            }
+            titleWrapper.addView(separator)
+
+            board.addView(titleWrapper)
+            titleWrapper.animate().alpha(1f).setDuration(400).start()
+        }
+
+        // Now append the Frame Content
+        val contentText = TextView(this).apply {
+            textSize = computedFontSp
+            gravity = Gravity.LEFT
+            setTextColor(Color.parseColor("#F0EDD0"))
+            setLineSpacing(0f, 1.6f)
+            typeface = caveatFont
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (16 * dp).toInt() }
+        }
+        board.addView(contentText)
+        moveAvatarTo(contentText)
+
+        val baseSsb = buildFrameText(frame.text, frame.highlight)
+        val textLen = baseSsb.length
+
+        if (textLen == 0) {
+            contentText.text = baseSsb
+            if (!isPaused && frame.speech.isNotBlank()) {
+                contentText.postDelayed({ speakFrame(stepIdx, frameIdx) }, 200)
+            }
             return
         }
 
-        val lastCard = stepsContainer.getChildAt(stepsContainer.childCount - 1) ?: return
-        lastCard.animate().alpha(0f).setDuration(300).withEndAction {
-            stepsContainer.removeView(lastCard)
-            visibleCount--
-            updateCounterAndDots()
-            if (!isPaused) {
-                stepsScrollView.postDelayed({
-                    speakStep(currentIndex)
-                }, 200)
+        // Setup typewriter transparent span
+        val transparentSpan = ForegroundColorSpan(Color.TRANSPARENT)
+        val initialSsb = SpannableStringBuilder(baseSsb)
+        initialSsb.setSpan(transparentSpan, 0, textLen, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        contentText.text = initialSsb
+
+        handWriter.visibility = View.VISIBLE
+        stepsScrollView.postDelayed({ stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 50)
+
+        typeAnimator = ValueAnimator.ofInt(0, textLen).apply {
+            duration = frame.durationMs
+            addUpdateListener { anim ->
+                val revealed = anim.animatedValue as Int
+                val currentSsb = SpannableStringBuilder(baseSsb)
+                if (revealed < textLen) {
+                    currentSsb.setSpan(ForegroundColorSpan(Color.TRANSPARENT), revealed, textLen, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                }
+                contentText.text = currentSsb
+
+                val layout = contentText.layout
+                if (layout != null && revealed > 0) {
+                    val charIdx = revealed - 1
+                    val line = layout.getLineForOffset(charIdx)
+                    val charX = layout.getPrimaryHorizontal(charIdx)
+                    val charY = layout.getLineBottom(line)
+
+                    val contentLoc = IntArray(2)
+                    contentText.getLocationInWindow(contentLoc)
+                    val handParentLoc = IntArray(2)
+                    (handWriter.parent as View).getLocationInWindow(handParentLoc)
+                    
+                    val relativeX = contentLoc[0] - handParentLoc[0]
+                    val relativeY = contentLoc[1] - handParentLoc[1]
+                    
+                    handWriter.translationX = relativeX + charX + contentText.paddingLeft - (handWriter.width * 0.1f)
+                    handWriter.translationY = relativeY + charY + contentText.paddingTop - (handWriter.height * 0.85f)
+                }
             }
-        }.start()
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    handWriter.visibility = View.INVISIBLE
+                    stepsScrollView.smoothScrollTo(0, stepsContainer.bottom)
+                }
+            })
+            start()
+        }
+        // Start speech in parallel with the writing animation (after a short lead-in delay)
+        if (!isPaused && frame.speech.isNotBlank()) {
+            handWriter.postDelayed({ speakFrame(stepIdx, frameIdx) }, 600)
+        }
+    }
+
+    /** Slides the teacher avatar to vertically align with [anchor] content view. */
+    private fun moveAvatarTo(anchor: View) {
+        anchor.post {
+            val anchorLoc = IntArray(2)
+            anchor.getLocationInWindow(anchorLoc)
+            val parentLoc = IntArray(2)
+            (teacherAvatar.parent as View).getLocationInWindow(parentLoc)
+            val targetY = (anchorLoc[1] - parentLoc[1]).toFloat() - teacherAvatar.height * 0.1f
+            teacherAvatar.animate()
+                .translationY(targetY.coerceAtLeast(0f))
+                .setDuration(500)
+                .start()
+        }
+    }
+
+    private fun speakFrame(stepIdx: Int, frameIdx: Int) {
+        if (currentStepIdx != stepIdx || currentFrameIdx != frameIdx) return
+        val step  = steps.getOrNull(stepIdx) ?: return
+        val frame = step.frames.getOrNull(frameIdx) ?: return
+        tts.setLocale(Locale.forLanguageTag(step.languageTag))
+        tts.speak(frame.speech, makeTtsCallback(stepIdx, frameIdx))
+    }
+
+    /** Advance to next frame in current step, or first frame of next step. */
+    private fun advanceFrame() {
+        if (isPaused) return
+        val step = steps.getOrNull(currentStepIdx) ?: return
+        when {
+            currentFrameIdx < step.frames.size - 1 ->
+                showFrame(currentStepIdx, currentFrameIdx + 1)
+            currentStepIdx < steps.size - 1 ->
+                showFrame(currentStepIdx + 1, 0)
+        }
+    }
+
+    private fun nextStep() = advanceFrame()
+
+    private fun prevStep() {
+        tts.stop()
+        typeAnimator?.cancel()
+        handWriter.visibility = View.INVISIBLE
+        when {
+            currentFrameIdx > 0 -> {
+                // To safely go back, clear the whole board and fast-forward to the previous frame
+                rebuildBoardUpTo(currentStepIdx, currentFrameIdx - 1)
+            }
+            currentStepIdx > 0 -> {
+                val prevFrames = steps[currentStepIdx - 1].frames
+                rebuildBoardUpTo(currentStepIdx - 1, prevFrames.size - 1)
+            }
+            else -> reSpeakCurrent()
+        }
+    }
+
+    /** 
+     * Rebuilds the entire visual state of the blackboard instantly up to a specific frame,
+     * then triggers the playback for that target frame. 
+     */
+    private fun rebuildBoardUpTo(targetStepIdx: Int, targetFrameIdx: Int) {
+        val board = boardLayout ?: return
+        val dp = resources.displayMetrics.density
+        val caveatFont = ResourcesCompat.getFont(this, R.font.kalam)
+        
+        board.removeAllViews()
+
+        for (s in 0..targetStepIdx) {
+            val step = steps[s]
+            val maxFrame = if (s == targetStepIdx) targetFrameIdx - 1 else step.frames.size - 1
+
+            // Append title if we're showing at least one frame of this step (which we always are if we're in the loop)
+            val titleWrapper = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = if (s > 0) (32 * dp).toInt() else 0 }
+            }
+            val titleText = if (step.title.isNotBlank()) "Step ${s + 1}  ·  ${step.title}"
+                            else "Step ${s + 1}"
+            val titleView = TextView(this).apply {
+                text = titleText
+                textSize = 17f
+                gravity = Gravity.CENTER
+                setTextColor(Color.parseColor("#F5E3A0"))
+                typeface = Typeface.create(caveatFont, Typeface.BOLD)
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }
+            titleWrapper.addView(titleView)
+
+            val separator = View(this).apply {
+                setBackgroundColor(Color.parseColor("#8BAB8B"))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, (1 * dp).toInt()
+                ).apply { topMargin = (10 * dp).toInt(); bottomMargin = (8 * dp).toInt() }
+            }
+            titleWrapper.addView(separator)
+            board.addView(titleWrapper)
+
+            // Append all previous frames instantly (no animation)
+            for (f in 0..maxFrame) {
+                val frame = step.frames[f]
+                val contentText = TextView(this).apply {
+                    text = buildFrameText(frame.text, frame.highlight)
+                    textSize = computedFontSp
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.parseColor("#F0EDD0"))
+                    setLineSpacing(0f, 1.6f)
+                    typeface = caveatFont
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply { topMargin = (16 * dp).toInt() }
+                }
+                board.addView(contentText)
+            }
+        }
+
+        // Finally run `showFrame` for the target frame so it animates in and speaks
+        showFrame(targetStepIdx, targetFrameIdx)
     }
 
     private fun reSpeakCurrent() {
         tts.stop()
-        if (!isPaused) speakStep(currentIndex)
+        if (!isPaused) speakFrame(currentStepIdx, currentFrameIdx)
     }
 
     private fun togglePause() {
@@ -233,123 +469,41 @@ class BlackboardActivity : AppCompatActivity() {
             tts.stop()
             teacherAvatar.setSpeaking(false)
         } else {
-            speakStep(currentIndex)
+            speakFrame(currentStepIdx, currentFrameIdx)
         }
-    }
-
-    private fun speakStep(index: Int) {
-        val step = steps.getOrNull(index) ?: return
-        tts.setLocale(Locale.forLanguageTag(step.languageTag))
-        tts.speak(step.speech, makeTtsCallback())
     }
 
     private fun updateCounterAndDots() {
-        stepCounter.text = "$visibleCount / ${steps.size}"
-        updateDots(currentIndex)
-        prevBtn.alpha = if (visibleCount <= 1) 0.30f else 1f
-        nextBtn.alpha = if (visibleCount >= steps.size) 0.30f else 1f
+        stepCounter.text = "${currentStepIdx + 1} / ${steps.size}"
+        updateDots(currentStepIdx)
+        val atStart = currentStepIdx == 0 && currentFrameIdx == 0
+        val atEnd   = currentStepIdx == steps.size - 1 &&
+                      currentFrameIdx == (steps.lastOrNull()?.frames?.size ?: 1) - 1
+        prevBtn.alpha = if (atStart) 0.30f else 1f
+        nextBtn.alpha = if (atEnd)   0.30f else 1f
     }
 
-    // ── Card creation ─────────────────────────────────────────────────────────
+    // ── Frame text rendering ──────────────────────────────────────────────────
 
-    // One accent colour per step (cycles for long lessons)
-    private val accentPalette = listOf(
-        "#5C6BC0", "#26A69A", "#EF5350",
-        "#AB47BC", "#FFA726", "#42A5F5"
-    )
-
-    private fun createStepCard(index: Int): View {
-        val dp = resources.displayMetrics.density
-        val accent = Color.parseColor(accentPalette[index % accentPalette.size])
-
-        // ── Outer card ──────────────────────────────────────────────────────
-        val card = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = 14f * dp
-                setColor(Color.parseColor("#161625"))
-                setStroke(
-                    (1 * dp).toInt(),
-                    Color.argb(90, Color.red(accent), Color.green(accent), Color.blue(accent))
-                )
-            }
-            setPadding(
-                (14 * dp).toInt(), (12 * dp).toInt(),
-                (14 * dp).toInt(), (14 * dp).toInt()
-            )
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = (12 * dp).toInt() }
-            alpha = 0f   // starts transparent; animated to 1f
-        }
-
-        // ── Header row: badge · "Step N ·" · accent divider ────────────────
-        val headerRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { bottomMargin = (10 * dp).toInt() }
-        }
-
-        val badge = TextView(this).apply {
-            text = "${index + 1}"
-            textSize = 10f
-            setTextColor(Color.WHITE)
-            gravity = Gravity.CENTER
-            typeface = Typeface.DEFAULT_BOLD
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(accent)
-            }
-            val sz = (22 * dp).toInt()
-            layoutParams = LinearLayout.LayoutParams(sz, sz).apply {
-                marginEnd = (8 * dp).toInt()
+    /** Parse markdown then overlay highlight spans for emphasized words/digits. */
+    private fun buildFrameText(text: String, highlights: List<String>): SpannableStringBuilder {
+        val ssb = parseMarkdownForBlackboard(text)
+        if (highlights.isEmpty()) return ssb
+        val str = ssb.toString()
+        highlights.forEach { hl ->
+            if (hl.isBlank()) return@forEach
+            var start = 0
+            while (true) {
+                val idx = str.indexOf(hl, start, ignoreCase = false)
+                if (idx < 0) break
+                val end = idx + hl.length
+                ssb.setSpan(ForegroundColorSpan(Color.parseColor("#FFEB3B")), idx, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                ssb.setSpan(StyleSpan(Typeface.BOLD), idx, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                ssb.setSpan(RelativeSizeSpan(1.2f), idx, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                start = end
             }
         }
-
-        val stepLabel = TextView(this).apply {
-            text = "Step ${index + 1}  ·"
-            textSize = 11f
-            setTextColor(Color.argb(120, 200, 200, 230))
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-        }
-
-        val divider = View(this).apply {
-            setBackgroundColor(
-                Color.argb(60, Color.red(accent), Color.green(accent), Color.blue(accent))
-            )
-            layoutParams = LinearLayout.LayoutParams(0, (1 * dp).toInt(), 1f).apply {
-                marginStart = (10 * dp).toInt()
-            }
-        }
-
-        headerRow.addView(badge)
-        headerRow.addView(stepLabel)
-        headerRow.addView(divider)
-
-        // ── Content text (markdown rendered, dark-theme palette) ────────────
-        val contentText = TextView(this).apply {
-            text = parseMarkdownForBlackboard(steps[index].text)
-            textSize = computedFontSp
-            setTextColor(Color.parseColor("#E8E8F8"))
-            setLineSpacing(0f, 1.55f)
-            typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-        }
-
-        card.addView(headerRow)
-        card.addView(contentText)
-        return card
+        return ssb
     }
 
     /**
@@ -468,7 +622,7 @@ class BlackboardActivity : AppCompatActivity() {
 
     // ── TTS ───────────────────────────────────────────────────────────────────
 
-    private fun makeTtsCallback() = object : TTSCallback {
+    private fun makeTtsCallback(stepIdx: Int, frameIdx: Int) = object : TTSCallback {
 
         private var fakeAudioAnim: ValueAnimator? = null
 
@@ -498,9 +652,9 @@ class BlackboardActivity : AppCompatActivity() {
                 fakeAudioAnim = null
                 teacherAvatar.updateAudioLevel(0f)
             }
-            if (!isPaused && visibleCount < steps.size) {
-                val delay = (500..900).random().toLong()
-                stepsScrollView.postDelayed({ nextStep() }, delay)
+            // Only auto-advance if user hasn't already navigated away
+            if (!isPaused && currentStepIdx == stepIdx && currentFrameIdx == frameIdx) {
+                stepsScrollView.postDelayed({ advanceFrame() }, 300)
             }
         }
 
@@ -535,9 +689,9 @@ class BlackboardActivity : AppCompatActivity() {
     private fun updateDots(active: Int) {
         for (i in 0 until dotsContainer.childCount) {
             val color = when {
-                i < active  -> Color.argb(136, 255, 255, 255)  // revealed (past)
-                i == active -> Color.argb(255, 255, 255, 255)  // current
-                else        -> Color.argb(51,  255, 255, 255)  // not yet shown
+                i < active  -> Color.parseColor("#9FA99F")   // revealed (past) — chalk gray
+                i == active -> Color.parseColor("#D4C060")   // current — chalk yellow
+                else        -> Color.parseColor("#4A5549")   // not yet shown — faint chalk
             }
             (dotsContainer.getChildAt(i).background as? GradientDrawable)?.setColor(color)
         }
@@ -545,7 +699,7 @@ class BlackboardActivity : AppCompatActivity() {
 
     private fun makeDotDrawable(active: Boolean) = GradientDrawable().apply {
         shape = GradientDrawable.OVAL
-        setColor(if (active) Color.argb(255, 255, 255, 255) else Color.argb(51, 255, 255, 255))
+        setColor(if (active) Color.parseColor("#D4C060") else Color.parseColor("#4A5549"))
     }
 }
 

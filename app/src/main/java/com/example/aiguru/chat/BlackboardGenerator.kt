@@ -12,12 +12,16 @@ import org.json.JSONObject
  */
 object BlackboardGenerator {
 
-    data class BlackboardStep(
-        /** Keywords / title for the screen (3–6 words, can use \\n and →). */
+    data class BlackboardFrame(
         val text: String,
-        /** Speech for TTS (1–2 short sentences). */
+        val highlight: List<String> = emptyList(),
         val speech: String,
-        /** BCP-47 language tag for step speech, e.g. en-US, hi-IN, ta-IN. */
+        val durationMs: Long = 2000
+    )
+
+    data class BlackboardStep(
+        val title: String = "",
+        val frames: List<BlackboardFrame>,
         val languageTag: String = "en-US"
     )
 
@@ -65,14 +69,26 @@ object BlackboardGenerator {
                         if (stepsJson.isNotEmpty()) {
                             val arr = JSONArray(stepsJson)
                             val steps = (0 until arr.length()).map { i ->
-                                val obj = arr.getJSONObject(i)
-                                BlackboardStep(
-                                    text   = obj.getString("text"),
-                                    speech = obj.getString("speech"),
-                                    languageTag = normalizeLanguageTag(
-                                        raw = obj.optString("lang", obj.optString("language", "")),
-                                        fallback = preferredLanguageTag ?: "en-US"
+                                val stepObj = arr.getJSONObject(i)
+                                val langTag = normalizeLanguageTag(
+                                    raw = stepObj.optString("lang", stepObj.optString("language", "")),
+                                    fallback = preferredLanguageTag ?: "en-US"
+                                )
+                                val framesArr = stepObj.getJSONArray("frames")
+                                val frames = (0 until framesArr.length()).map { j ->
+                                    val frameObj = framesArr.getJSONObject(j)
+                                    val hlArr = frameObj.optJSONArray("highlight")
+                                    BlackboardFrame(
+                                        text       = frameObj.getString("text"),
+                                        highlight  = if (hlArr != null) (0 until hlArr.length()).map { hlArr.getString(it) } else emptyList(),
+                                        speech     = frameObj.optString("speech", ""),
+                                        durationMs = frameObj.optLong("duration_ms", 2000)
                                     )
+                                }
+                                BlackboardStep(
+                                    title  = stepObj.optString("title", ""),
+                                    frames = frames,
+                                    languageTag = langTag
                                 )
                             }
                             if (steps.isNotEmpty()) cachedSteps = steps
@@ -131,14 +147,26 @@ object BlackboardGenerator {
             if (start < 0 || end <= start) { onError("Invalid response format"); return }
             val arr = JSONObject(response.substring(start, end + 1)).getJSONArray("steps")
             val result = (0 until arr.length()).map { i ->
-                val obj = arr.getJSONObject(i)
-                BlackboardStep(
-                    text   = obj.getString("text"),
-                    speech = obj.getString("speech"),
-                    languageTag = normalizeLanguageTag(
-                        raw = obj.optString("lang", obj.optString("language", "")),
-                        fallback = preferredLanguageTag ?: "en-US"
+                val stepObj = arr.getJSONObject(i)
+                val langTag = normalizeLanguageTag(
+                    raw = stepObj.optString("lang", stepObj.optString("language", "")),
+                    fallback = preferredLanguageTag ?: "en-US"
+                )
+                val framesArr = stepObj.getJSONArray("frames")
+                val frames = (0 until framesArr.length()).map { j ->
+                    val frameObj = framesArr.getJSONObject(j)
+                    val hlArr = frameObj.optJSONArray("highlight")
+                    BlackboardFrame(
+                        text       = frameObj.getString("text"),
+                        highlight  = if (hlArr != null) (0 until hlArr.length()).map { hlArr.getString(it) } else emptyList(),
+                        speech     = frameObj.optString("speech", ""),
+                        durationMs = frameObj.optLong("duration_ms", 2000)
                     )
+                }
+                BlackboardStep(
+                    title  = stepObj.optString("title", ""),
+                    frames = frames,
+                    languageTag = langTag
                 )
             }
             if (result.isEmpty()) { onError("No steps were generated"); return }
@@ -147,12 +175,19 @@ object BlackboardGenerator {
             try {
                 val stepsJson = JSONArray().apply {
                     result.forEach { step ->
-                        put(
-                            JSONObject()
-                                .put("text", step.text)
-                                .put("speech", step.speech)
-                                .put("lang", step.languageTag)
-                        )
+                        val framesJson = JSONArray().apply {
+                            step.frames.forEach { frame ->
+                                put(JSONObject()
+                                    .put("text", frame.text)
+                                    .put("highlight", JSONArray(frame.highlight))
+                                    .put("speech", frame.speech)
+                                    .put("duration_ms", frame.durationMs))
+                            }
+                        }
+                        put(JSONObject()
+                            .put("title", step.title)
+                            .put("frames", framesJson)
+                            .put("lang", step.languageTag))
                     }
                 }.toString()
                 cacheDocRef

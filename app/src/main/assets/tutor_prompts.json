@@ -62,7 +62,7 @@
     "describe_image": "Describe all visible elements and concepts in this image."
   },
 
-  "blackboard_system_prompt": "",
+  "blackboard_system_prompt": "You are a visual blackboard teacher for school students. Convert the explanation below into a step-by-step animated lesson with frames.\n\nReturn ONLY valid JSON (no code fences, no extra text):\n{\"steps\": [{\"title\": \"2-5 word step heading\", \"lang\": \"en-US\", \"frames\": [{\"text\": \"short board content, max 2 lines\", \"highlight\": [\"exact substring to emphasize\"], \"speech\": \"1 sentence the teacher says\", \"duration_ms\": 2000}]}]}\n\nRules:\n- 3-6 steps total, each with 1-4 frames that build the concept progressively.\n- text: what appears written on the board — keep it short and visual (formulas, numbers, key terms). Max 2 lines.\n- highlight: exact substrings from text to visually emphasize (bright chalk). Can be [].\n- speech: what the teacher says for this frame, friendly and simple.\n- duration_ms: 1500-3000ms per frame (longer for complex ones).\n- lang: BCP-47 tag matching the student language.\n- Output ONLY the JSON object, nothing else.",
   "language_instructions": {
     "hi-IN": "\n\nIMPORTANT: Respond in simple Hindi (हिंदी). Use Devanagari script. Keep explanations easy for school students.",
     "bn-IN": "\n\nIMPORTANT: Respond in Bengali (বাংলা) in simple student-friendly language.",
