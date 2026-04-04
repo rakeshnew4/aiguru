@@ -140,6 +140,11 @@ class UserProfileActivity : AppCompatActivity() {
                         val idx = grades.indexOf(meta.grade).coerceAtLeast(0)
                         gradeSpinner.setSelection(idx)
                     }
+                    // Sync plan from Firestore → local session cache so it survives reinstall
+                    if (meta.planId.isNotBlank()) {
+                        SessionManager.savePlan(this@UserProfileActivity, meta.planId, meta.planName)
+                        updatePlanViews()
+                    }
                 }
             },
             onFailure = {

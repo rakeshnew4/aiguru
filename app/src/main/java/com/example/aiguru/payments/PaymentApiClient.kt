@@ -13,13 +13,14 @@ data class CreateOrderRequest(
     val userId: String,
     val schoolId: String,
     val planId: String,
+    val planName: String,     // e.g. "Basic", "Premium"
     val amountInr: Int,
     val currency: String = "INR"
 )
 
 data class CreateOrderResponse(
     val orderId: String,
-    val amountPaise: Int,
+    val amountPaise: Int,      // in paise (server returns amount * 100)
     val currency: String,
     val keyId: String,
     val checkoutName: String,
@@ -65,7 +66,8 @@ class PaymentApiClient(
                 put("user_id", request.userId)
                 put("school_id", request.schoolId)
                 put("plan_id", request.planId)
-                put("amount_inr", request.amountInr)
+                put("plan_name", request.planName)
+                put("amountInr", request.amountInr)
                 put("currency", request.currency)
             }
 
@@ -88,7 +90,7 @@ class PaymentApiClient(
                 val root = JSONObject(payload)
                 CreateOrderResponse(
                     orderId = root.optString("order_id", root.optString("orderId")),
-                    amountPaise = root.optInt("amount", root.optInt("amount_paise")),
+                    amountPaise = root.optInt("amount"),
                     currency = root.optString("currency", "INR"),
                     keyId = root.optString("key_id", root.optString("keyId", BuildConfig.RAZORPAY_KEY_ID)),
                     checkoutName = root.optString("checkout_name", "AI Guru"),

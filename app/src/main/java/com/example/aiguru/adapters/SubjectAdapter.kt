@@ -1,10 +1,10 @@
 package com.example.aiguru.adapters
 
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.aiguru.R
@@ -15,27 +15,56 @@ class SubjectAdapter(
     private val onItemLongClick: (String) -> Unit
 ) : RecyclerView.Adapter<SubjectAdapter.ViewHolder>() {
 
-    private val colors = intArrayOf(
-        Color.parseColor("#1565C0"), // deep blue
-        Color.parseColor("#6A1B9A"), // purple
-        Color.parseColor("#00695C"), // teal
-        Color.parseColor("#BF360C"), // red-orange
-        Color.parseColor("#2E7D32"), // green
-        Color.parseColor("#0277BD"), // light blue
-        Color.parseColor("#AD1457"), // pink
-        Color.parseColor("#4527A0"), // deep purple
-        Color.parseColor("#00838F"), // cyan
-        Color.parseColor("#558B2F")  // lime green
+    // Neon/vivid accent colors matching the dark card aesthetic
+    private val accentColors = intArrayOf(
+        Color.parseColor("#00E5FF"), // cyan
+        Color.parseColor("#D500F9"), // vivid purple
+        Color.parseColor("#2979FF"), // bright blue
+        Color.parseColor("#FF1744"), // red
+        Color.parseColor("#FF6D00"), // deep orange
+        Color.parseColor("#00E676"), // green
+        Color.parseColor("#FFEA00"), // yellow
+        Color.parseColor("#F50057"), // pink
+        Color.parseColor("#00B0FF"), // light blue
+        Color.parseColor("#76FF03")  // lime
     )
 
-    private val emojis = arrayOf(
-        "📘", "🔢", "🌍", "⚗️", "📖",
-        "🔬", "💻", "🎨", "🎵", "🏃",
-        "🧬", "🧪", "📐", "🗺️", "📜"
-    )
+    // Subject-specific emoji mapping — falls back to index-based
+    private fun emojiFor(subject: String): String {
+        return when (subject.lowercase().trim()) {
+            "mathematics", "maths", "math"   -> "🧮"
+            "science"                         -> "⚗️"
+            "physics"                         -> "⚡"
+            "chemistry"                       -> "🧪"
+            "biology"                         -> "🧬"
+            "computer", "computers",
+            "computer science", "it",
+            "information technology"          -> "💻"
+            "english"                         -> "📖"
+            "history"                         -> "📜"
+            "geography"                       -> "🌍"
+            "economics"                       -> "📊"
+            "art", "arts", "fine arts"        -> "🎨"
+            "music"                           -> "🎵"
+            "physical education", "pe",
+            "sports", "gym"                   -> "🏃"
+            "social science", "social studies"-> "🗺️"
+            "hindi"                           -> "🪷"
+            "sanskrit"                        -> "📿"
+            "french", "german", "spanish"     -> "🌐"
+            "psychology"                      -> "🧠"
+            "philosophy"                      -> "💭"
+            "business studies", "business"    -> "💼"
+            "accountancy", "accounts"         -> "🧾"
+            else -> {
+                val fallbacks = arrayOf("📘", "🔢", "🔬", "📐", "🗺️", "🎯", "🔭", "🧩")
+                fallbacks[Math.abs(subject.hashCode()) % fallbacks.size]
+            }
+        }
+    }
 
     inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val cardHeader: LinearLayout = view.findViewById(R.id.cardHeader)
+        val accentBar: View = view.findViewById(R.id.accentBar)
         val subjectIcon: TextView = view.findViewById(R.id.subjectIcon)
         val subjectName: TextView = view.findViewById(R.id.subjectName)
     }
@@ -48,9 +77,15 @@ class SubjectAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val subject = subjects[position]
-        val idx = Math.abs(subject.lowercase().hashCode()) % colors.size
-        holder.cardHeader.setBackgroundColor(colors[idx])
-        holder.subjectIcon.text = emojis[Math.abs(subject.hashCode()) % emojis.size]
+        val colorIdx = Math.abs(subject.lowercase().hashCode()) % accentColors.size
+        val accent = accentColors[colorIdx]
+
+        // Set accent bar color
+        holder.accentBar.setBackgroundColor(accent)
+
+        // Set emoji
+        holder.subjectIcon.text = emojiFor(subject)
+
         holder.subjectName.text = subject
         holder.itemView.setOnClickListener { onItemClick(subject) }
         holder.itemView.setOnLongClickListener { onItemLongClick(subject); true }

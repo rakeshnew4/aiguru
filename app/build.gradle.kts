@@ -56,6 +56,7 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore:24.10.3")
     implementation("com.google.android.gms:play-services-auth:21.0.0")
     implementation("com.github.bumptech.glide:glide:4.16.0")
+    implementation("com.caverock:androidsvg-aar:1.4")
     
     // RecyclerView & Material Design 3
     implementation("androidx.recyclerview:recyclerview:1.3.2")

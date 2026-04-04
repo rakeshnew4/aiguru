@@ -9,7 +9,7 @@
     android:layout_marginBottom="12dp"
     app:cardCornerRadius="12dp"
     app:cardElevation="3dp"
-    app:cardBackgroundColor="#FFFFFF">
+    app:cardBackgroundColor="#161D2A">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -42,7 +42,7 @@
                 android:layout_height="wrap_content"
                 android:textSize="15sp"
                 android:textStyle="bold"
-                android:textColor="#1A237E"
+                android:textColor="#FFFFFF"
                 tools:text="iemh101" />
 
             <TextView
@@ -50,7 +50,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textSize="12sp"
-                android:textColor="#78909C"
+                android:textColor="#8899AA"
                 android:layout_marginTop="2dp"
                 tools:text="9thclass • maths" />
 
@@ -65,7 +65,7 @@
             android:textSize="12sp"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            app:backgroundTint="#1565C0"
+            app:backgroundTint="#40E0D0"
             app:cornerRadius="8dp" />
 
     </LinearLayout>

@@ -4,23 +4,24 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#FFFFFF"
+    android:background="#0D1117"
     android:fitsSystemWindows="true">
 
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="56dp"
-        android:background="#FFFFFF"
+        android:background="#0F1724"
         app:title="Model Settings"
-        app:titleTextColor="#111827"
+        app:titleTextColor="#FFFFFF"
         app:navigationIcon="@drawable/ic_arrow_back"
+        app:navigationIconTint="#FFFFFF"
         android:elevation="0dp" />
 
     <View
         android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="#E8EAED" />
+        android:layout_height="2dp"
+        android:background="#40E0D0" />
 
     <ScrollView
         android:layout_width="match_parent"
@@ -43,9 +44,9 @@
                 android:layout_height="wrap_content"
                 android:text="Backend Provider"
                 android:textSize="11sp"
-                android:textColor="#6B7280"
+                android:textColor="#40E0D0"
                 android:textAllCaps="true"
-                android:letterSpacing="0.08"
+                android:letterSpacing="0.1"
                 android:layout_marginBottom="10dp" />
 
             <RadioGroup
@@ -61,7 +62,7 @@
                     android:layout_height="52dp"
                     android:text="Groq (Built-in)"
                     android:textSize="15sp"
-                    android:textColor="#111827"
+                    android:textColor="#FFFFFF"
                     android:background="@drawable/bg_ai_bubble"
                     android:paddingStart="16dp"
                     android:paddingEnd="16dp"
@@ -76,7 +77,7 @@
                     android:layout_height="52dp"
                     android:text="Server Proxy (Custom URL)"
                     android:textSize="15sp"
-                    android:textColor="#111827"
+                    android:textColor="#FFFFFF"
                     android:background="@drawable/bg_ai_bubble"
                     android:paddingStart="16dp"
                     android:paddingEnd="16dp"
@@ -98,9 +99,9 @@
                     android:layout_height="wrap_content"
                     android:text="Groq Configuration"
                     android:textSize="11sp"
-                    android:textColor="#6B7280"
+                    android:textColor="#40E0D0"
                     android:textAllCaps="true"
-                    android:letterSpacing="0.08"
+                    android:letterSpacing="0.1"
                     android:layout_marginBottom="10dp" />
 
                 <TextView
@@ -108,7 +109,7 @@
                     android:layout_height="wrap_content"
                     android:text="Text model"
                     android:textSize="13sp"
-                    android:textColor="#374151"
+                    android:textColor="#8899AA"
                     android:layout_marginBottom="6dp" />
 
                 <Spinner
@@ -125,7 +126,7 @@
                     android:layout_height="wrap_content"
                     android:text="Vision model"
                     android:textSize="13sp"
-                    android:textColor="#374151"
+                    android:textColor="#8899AA"
                     android:layout_marginBottom="6dp" />
 
                 <Spinner
@@ -152,9 +153,9 @@
                     android:layout_height="wrap_content"
                     android:text="Server Configuration"
                     android:textSize="11sp"
-                    android:textColor="#6B7280"
+                    android:textColor="#40E0D0"
                     android:textAllCaps="true"
-                    android:letterSpacing="0.08"
+                    android:letterSpacing="0.1"
                     android:layout_marginBottom="10dp" />
 
                 <TextView
@@ -162,7 +163,7 @@
                     android:layout_height="wrap_content"
                     android:text="Server URL"
                     android:textSize="13sp"
-                    android:textColor="#374151"
+                    android:textColor="#8899AA"
                     android:layout_marginBottom="6dp" />
 
                 <EditText
@@ -172,8 +173,8 @@
                     android:background="@drawable/rounded_edittext_bg"
                     android:padding="12dp"
                     android:textSize="14sp"
-                    android:textColor="#111827"
-                    android:textColorHint="#9CA3AF"
+                    android:textColor="#FFFFFF"
+                    android:textColorHint="#8899AA"
                     android:hint="https://my-server.com"
                     android:inputType="textUri"
                     android:layout_marginBottom="16dp" />
@@ -183,7 +184,7 @@
                     android:layout_height="wrap_content"
                     android:text="Model name"
                     android:textSize="13sp"
-                    android:textColor="#374151"
+                    android:textColor="#8899AA"
                     android:layout_marginBottom="6dp" />
 
                 <EditText
@@ -193,8 +194,8 @@
                     android:background="@drawable/rounded_edittext_bg"
                     android:padding="12dp"
                     android:textSize="14sp"
-                    android:textColor="#111827"
-                    android:textColorHint="#9CA3AF"
+                    android:textColor="#FFFFFF"
+                    android:textColorHint="#8899AA"
                     android:hint="e.g. llama3, gpt-4o, mistral"
                     android:inputType="text"
                     android:layout_marginBottom="16dp" />
@@ -204,7 +205,7 @@
                     android:layout_height="wrap_content"
                     android:text="API key (optional)"
                     android:textSize="13sp"
-                    android:textColor="#374151"
+                    android:textColor="#8899AA"
                     android:layout_marginBottom="6dp" />
 
                 <EditText
@@ -214,8 +215,8 @@
                     android:background="@drawable/rounded_edittext_bg"
                     android:padding="12dp"
                     android:textSize="14sp"
-                    android:textColor="#111827"
-                    android:textColorHint="#9CA3AF"
+                    android:textColor="#FFFFFF"
+                    android:textColorHint="#8899AA"
                     android:hint="sk-..."
                     android:inputType="textPassword" />
 
@@ -224,7 +225,7 @@
                     android:layout_height="wrap_content"
                     android:text="The server must expose an OpenAI-compatible /v1/chat/completions endpoint with SSE streaming support."
                     android:textSize="12sp"
-                    android:textColor="#9CA3AF"
+                    android:textColor="#8899AA"
                     android:layout_marginTop="8dp" />
 
             </LinearLayout>
@@ -236,9 +237,10 @@
                 android:layout_height="52dp"
                 android:text="Save"
                 android:textSize="15sp"
-                android:textColor="#FFFFFF"
-                app:backgroundTint="#1565C0"
-                app:cornerRadius="12dp" />
+                android:textStyle="bold"
+                android:textColor="#0D1117"
+                app:backgroundTint="#40E0D0"
+                app:cornerRadius="14dp" />
 
         </LinearLayout>
     </ScrollView>

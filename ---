@@ -9,7 +9,7 @@
     android:layout_marginEnd="10dp"
     android:layout_marginTop="4dp"
     android:layout_marginBottom="4dp"
-    android:background="#161D2A"
+    android:background="#EAF3FF"
     android:paddingStart="14dp"
     android:paddingEnd="12dp"
     android:paddingTop="10dp"
@@ -23,7 +23,7 @@
         android:layout_weight="1"
         android:textSize="15sp"
         android:textStyle="bold"
-        android:textColor="#FFFFFF"
+        android:textColor="#0E3A72"
         android:text="Page 1" />
 
     <com.google.android.material.button.MaterialButton

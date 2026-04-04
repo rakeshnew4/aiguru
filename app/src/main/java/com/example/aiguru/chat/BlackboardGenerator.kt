@@ -22,7 +22,9 @@ object BlackboardGenerator {
     data class BlackboardStep(
         val title: String = "",
         val frames: List<BlackboardFrame>,
-        val languageTag: String = "en-US"
+        val languageTag: String = "en-US",
+        val image_description: String = "",
+        val imageConfidenceScore: Float = 0f
     )
 
     // System prompt is loaded from assets/tutor_prompts.json → "blackboard_system_prompt"
@@ -86,9 +88,11 @@ object BlackboardGenerator {
                                     )
                                 }
                                 BlackboardStep(
-                                    title  = stepObj.optString("title", ""),
-                                    frames = frames,
-                                    languageTag = langTag
+                                    title                = stepObj.optString("title", ""),
+                                    frames               = frames,
+                                    languageTag          = langTag,
+                                    image_description    = stepObj.optString("image_description", ""),
+                                    imageConfidenceScore = stepObj.optDouble("image_show_confidencescore", 0.0).toFloat()
                                 )
                             }
                             if (steps.isNotEmpty()) cachedSteps = steps
@@ -164,9 +168,11 @@ object BlackboardGenerator {
                     )
                 }
                 BlackboardStep(
-                    title  = stepObj.optString("title", ""),
-                    frames = frames,
-                    languageTag = langTag
+                    title                = stepObj.optString("title", ""),
+                    frames               = frames,
+                    languageTag          = langTag,
+                    image_description    = stepObj.optString("image_description", ""),
+                    imageConfidenceScore = stepObj.optDouble("image_show_confidencescore", 0.0).toFloat()
                 )
             }
             if (result.isEmpty()) { onError("No steps were generated"); return }
@@ -187,7 +193,10 @@ object BlackboardGenerator {
                         put(JSONObject()
                             .put("title", step.title)
                             .put("frames", framesJson)
-                            .put("lang", step.languageTag))
+                            .put("lang", step.languageTag)
+                            .put("image_description", step.image_description)
+                            .put("image_show_confidencescore", step.imageConfidenceScore.toDouble())
+                        )
                     }
                 }.toString()
                 cacheDocRef

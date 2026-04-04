@@ -112,12 +112,16 @@ class PageViewerActivity : AppCompatActivity() {
             Toast.makeText(this, "Page not rendered yet — wait a moment", Toast.LENGTH_SHORT).show()
             return
         }
+        // Use CLEAR_TOP so the existing ChatActivity is reused (not stacked on top).
+        // Then finish this PageViewerActivity so back from ChatActivity goes to ChapterActivity.
         startActivity(
             Intent(this, ChatActivity::class.java)
                 .putExtra("subjectName", subjectName)
                 .putExtra("chapterName", chapterName)
                 .putExtra("pdfPageFilePath", file.absolutePath)
                 .putExtra("pdfPageNumber", currentPage + 1)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         )
+        finish()
     }
 }

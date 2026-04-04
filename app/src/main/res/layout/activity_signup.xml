@@ -2,44 +2,73 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
+    android:fitsSystemWindows="true"
     android:layout_height="match_parent"
-    android:padding="24dp"
+    android:background="#0D1117"
     android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:paddingStart="28dp"
+        android:paddingEnd="28dp"
+        android:paddingBottom="40dp">
 
         <TextView
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="👤"
+            android:textSize="56sp"
+            android:layout_marginTop="40dp"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Complete Your Profile"
-            android:textSize="28sp"
+            android:textSize="26sp"
             android:textStyle="bold"
+            android:textColor="#FFFFFF"
             android:gravity="center"
-            android:layout_marginBottom="32dp"
-            android:textColor="?attr/colorPrimary" />
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Let's personalise your experience"
+            android:textSize="14sp"
+            android:textColor="#8899AA"
+            android:gravity="center"
+            android:layout_marginBottom="36dp" />
 
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="Full Name"
-            app:boxStrokeColor="?attr/colorPrimary"
-            android:layout_marginBottom="24dp">
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            app:boxStrokeColor="#40E0D0"
+            app:hintTextColor="#40E0D0"
+            app:boxBackgroundColor="#161D2A"
+            app:boxBackgroundMode="outline"
+            android:layout_marginBottom="20dp">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/etStudentName"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
+                android:layout_height="wrap_content"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#8899AA" />
 
         </com.google.android.material.textfield.TextInputLayout>
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Grade/Class"
-            android:textSize="16sp"
+            android:text="Grade / Class"
+            android:textSize="13sp"
+            android:textColor="#8899AA"
             android:textStyle="bold"
             android:layout_marginBottom="8dp" />
 
@@ -48,16 +77,20 @@
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:layout_marginBottom="32dp"
-            android:background="@drawable/rounded_edittext_bg" />
+            android:background="@drawable/rounded_edittext_bg"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSubmit"
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:text="Get Started"
-            android:textSize="18sp"
-            android:textAllCaps="false"
-            app:backgroundTint="?attr/colorPrimary" />
+            android:text="Get Started →"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#0D1117"
+            app:backgroundTint="#40E0D0"
+            app:cornerRadius="16dp" />
 
         <ProgressBar
             android:id="@+id/progressBar"
@@ -65,6 +98,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
+            android:indeterminateTint="#40E0D0"
             android:visibility="gone"
             android:layout_marginTop="16dp" />
 

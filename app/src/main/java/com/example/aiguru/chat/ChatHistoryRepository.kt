@@ -61,5 +61,9 @@ class ChatHistoryRepository(
             tokens    = tokens
         )
     }
+
+    fun clearHistory(onSuccess: () -> Unit = {}, onFailure: (Exception?) -> Unit = {}) {
+        FirestoreManager.deleteAllMessages(userId, subject, chapter, onSuccess, onFailure)
+    }
 }
 

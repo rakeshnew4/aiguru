@@ -112,6 +112,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private lateinit var pdfPageManager: PdfPageManager
 
     // ── Auto Explain Mode ──────────────────────────────────────────────────────
+    // Global default: on. State is persisted in SharedPreferences so it stays
+    // consistent across all chats and app restarts.
     private var isAutoExplainActive = true
     private lateinit var autoExplainButton: MaterialButton
 
@@ -306,6 +308,10 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)
         pdfPageManager = PdfPageManager(this)
+
+        // Load global blackboard-mode preference (defaults to ON)
+        isAutoExplainActive = getSharedPreferences("user_prefs", MODE_PRIVATE)
+            .getBoolean("blackboard_mode_on", true)
 
         subjectName = intent.getStringExtra("subjectName") ?: "General"
         chapterName = intent.getStringExtra("chapterName") ?: "Study Session"
@@ -509,6 +515,9 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             val check = PlanEnforcer.check(cachedMetadata, limits, PlanEnforcer.FeatureType.BLACKBOARD)
             if (!check.allowed) { showError(check.upgradeMessage); return@setOnClickListener }
             isAutoExplainActive = !isAutoExplainActive
+            // Persist globally so all future chats open with the same setting
+            getSharedPreferences("user_prefs", MODE_PRIVATE)
+                .edit().putBoolean("blackboard_mode_on", isAutoExplainActive).apply()
             updateAutoExplainButton()
             Toast.makeText(
                 this,
@@ -549,7 +558,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             messageInput.setText("")
         }
 
-
+        findViewById<com.google.android.material.button.MaterialButton>(R.id.clearChatButton)
+            .setOnClickListener { showClearChatConfirmation() }
 
     }
 
@@ -962,6 +972,26 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                 messageType = Message.MessageType.TEXT
             )
         )
+    }
+
+    private fun showClearChatConfirmation() {
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Clear Chat")
+            .setMessage("Delete all messages in this chat? This cannot be undone.")
+            .setPositiveButton("Clear") { _, _ ->
+                historyRepo.clearHistory(
+                    onSuccess = {
+                        messageAdapter.clear()
+                        addWelcomeMessage()
+                        Toast.makeText(this, "Chat cleared", Toast.LENGTH_SHORT).show()
+                    },
+                    onFailure = {
+                        Toast.makeText(this, "Failed to clear chat", Toast.LENGTH_SHORT).show()
+                    }
+                )
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun buildAiClient(): AiClient {
@@ -1552,6 +1582,26 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         if (isVoiceModeActive && isAutoExplainActive && !isListening) {
             setVoiceModeStatus("🎙️ Listening… speak now", "#2E7D32")
             startVoiceLoopListening()
+        }
+    }
+
+    /**
+     * Called when this ChatActivity is brought to front via FLAG_ACTIVITY_CLEAR_TOP
+     * (e.g. from PageViewerActivity's "Ask AI" button). Loads the new page into the chat.
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val pdfPath = intent.getStringExtra("pdfPageFilePath")
+        if (pdfPath != null) {
+            val pageNum = intent.getIntExtra("pdfPageNumber", 1)
+            tutorSession.currentPage = pageNum
+            preloadPdfPage(java.io.File(pdfPath), pageNum)
+        }
+        intent.getStringExtra("imagePath")?.takeIf { it.isNotBlank() }?.let { path ->
+            showImagePreview(android.net.Uri.parse(path))
+            messageInput.setText("Explain this page")
+            messageInput.setSelection(messageInput.text.length)
         }
     }
 

@@ -2,8 +2,9 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
+    android:fitsSystemWindows="true"
     android:layout_height="match_parent"
-    android:background="#F0F4F8"
+    android:background="#0D1117"
     android:fillViewport="true">
 
     <LinearLayout
@@ -27,7 +28,7 @@
             android:text="Sign In"
             android:textSize="28sp"
             android:textStyle="bold"
-            android:textColor="#1A73E8"
+            android:textColor="#40E0D0"
             android:layout_marginBottom="8dp" />
 
         <TextView
@@ -36,7 +37,7 @@
             android:layout_height="wrap_content"
             android:text="Welcome back to AI Guru"
             android:textSize="14sp"
-            android:textColor="#666666"
+            android:textColor="#8899AA"
             android:layout_marginBottom="32dp" />
 
         <com.google.android.material.textfield.TextInputLayout
@@ -122,7 +123,7 @@
                 android:layout_height="wrap_content"
                 android:text="Don't have an account? "
                 android:textSize="14sp"
-                android:textColor="#666666" />
+                android:textColor="#8899AA" />
 
             <TextView
                 android:id="@+id/tvToggleAction"
@@ -130,7 +131,7 @@
                 android:layout_height="wrap_content"
                 android:text="Create Account"
                 android:textSize="14sp"
-                android:textColor="#1A73E8"
+                android:textColor="#40E0D0"
                 android:textStyle="bold"
                 android:clickable="true"
                 android:focusable="true" />
@@ -143,7 +144,7 @@
             android:layout_height="wrap_content"
             android:text="Forgot Password?"
             android:textSize="13sp"
-            android:textColor="#1A73E8"
+            android:textColor="#40E0D0"
             android:clickable="true"
             android:focusable="true"
             android:paddingTop="4dp"

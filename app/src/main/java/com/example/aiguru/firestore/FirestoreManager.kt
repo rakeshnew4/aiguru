@@ -281,6 +281,33 @@ object FirestoreManager {
             .addOnFailureListener { onFailure(it) }
     }
 
+    /**
+     * Delete all messages in a conversation and reset its lastMessage field.
+     */
+    fun deleteAllMessages(
+        userId: String,
+        subject: String,
+        chapter: String,
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") { onFailure(null); return }
+        val cid = convId(subject, chapter)
+        val convRef = convsRef(userId).document(cid)
+        convRef.collection("messages").get()
+            .addOnSuccessListener { snap ->
+                val batch = db.batch()
+                snap.documents.forEach { batch.delete(it.reference) }
+                batch.set(convRef,
+                    mapOf("lastMessage" to "", "updatedAt" to System.currentTimeMillis()),
+                    SetOptions.merge())
+                batch.commit()
+                    .addOnSuccessListener { onSuccess() }
+                    .addOnFailureListener { onFailure(it) }
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
     // ── Conversation Context (latest analyzed page for chapter chat) ─────────
 
     /**

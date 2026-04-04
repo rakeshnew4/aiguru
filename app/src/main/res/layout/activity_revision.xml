@@ -2,15 +2,16 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
+    android:fitsSystemWindows="true"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#EEF2FF">
+    android:background="#0D1117">
 
     <!-- Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#1565C0"
+        android:background="#0F1724"
         android:gravity="center_vertical"
         android:paddingStart="4dp"
         android:paddingEnd="16dp"
@@ -46,10 +47,15 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Card 1 of 5"
-                android:textColor="#B3C5FF"
+                android:textColor="#8899AA"
                 android:textSize="13sp" />
 
         </LinearLayout>
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="2dp"
+        android:background="#40E0D0" />
+
 
     </LinearLayout>
 
@@ -86,7 +92,7 @@
                 android:orientation="vertical"
                 android:gravity="center"
                 android:padding="28dp"
-                android:background="#FFFFFF">
+                android:background="#161D2A">
 
                 <!-- QUESTION / ANSWER pill label -->
                 <TextView
@@ -95,7 +101,7 @@
                     android:layout_height="wrap_content"
                     android:text="QUESTION"
                     android:textSize="11sp"
-                    android:textColor="#546E7A"
+                    android:textColor="#8899AA"
                     android:letterSpacing="0.15"
                     android:textStyle="bold"
                     android:background="@drawable/bg_flash_pill"
@@ -113,7 +119,7 @@
                     android:gravity="center"
                     android:text="What is photosynthesis?"
                     android:textSize="20sp"
-                    android:textColor="#1A237E"
+                    android:textColor="#FFFFFF"
                     android:textStyle="bold"
                     android:lineSpacingExtra="4dp" />
 
@@ -123,7 +129,7 @@
                     android:layout_height="wrap_content"
                     android:text="👆 Tap card to reveal answer"
                     android:textSize="12sp"
-                    android:textColor="#90A4AE"
+                    android:textColor="#8899AA"
                     android:layout_marginTop="32dp" />
 
             </LinearLayout>
@@ -145,9 +151,9 @@
             android:layout_height="52dp"
             android:layout_weight="1"
             android:text="← Prev"
-            android:textColor="#1565C0"
+            android:textColor="#40E0D0"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            app:strokeColor="#1565C0"
+            app:strokeColor="#40E0D0"
             app:cornerRadius="12dp"
             android:layout_marginEnd="8dp" />
 
@@ -158,7 +164,7 @@
             android:layout_weight="1"
             android:text="Next →"
             android:textColor="#FFFFFF"
-            app:backgroundTint="#1565C0"
+            app:backgroundTint="#40E0D0"
             app:cornerRadius="12dp"
             android:layout_marginStart="8dp" />
 

@@ -3,52 +3,62 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="160dp"
     android:layout_margin="6dp"
     android:clickable="true"
     android:focusable="true"
     app:cardCornerRadius="16dp"
-    app:cardElevation="4dp">
+    app:cardElevation="8dp"
+    app:cardBackgroundColor="#001225">
 
-    <LinearLayout
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:layout_height="match_parent">
 
-        <!-- Colored header strip with emoji icon -->
-        <LinearLayout
-            android:id="@+id/cardHeader"
-            android:layout_width="match_parent"
-            android:layout_height="88dp"
-            android:gravity="center"
-            android:background="#1565C0">
+        <!-- Subtle radial glow in top-right corner -->
+        <View
+            android:layout_width="130dp"
+            android:layout_height="130dp"
+            android:layout_gravity="top|end"
+            android:background="@drawable/bg_card_glow"
+            android:alpha="0.35" />
 
-            <TextView
-                android:id="@+id/subjectIcon"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="📚"
-                android:textSize="38sp" />
+        <!-- Left accent bar -->
+        <View
+            android:id="@+id/accentBar"
+            android:layout_width="4dp"
+            android:layout_height="match_parent"
+            android:background="#00BCD4" />
 
-        </LinearLayout>
+        <!-- Large subject emoji -->
+        <TextView
+            android:id="@+id/subjectIcon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical|end"
+            android:layout_marginEnd="14dp"
+            android:text="🔬"
+            android:textSize="66sp" />
 
-        <!-- Subject name and subtitle -->
+        <!-- Bottom text -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
             android:orientation="vertical"
-            android:padding="12dp"
-            android:background="#FFFFFF">
+            android:paddingStart="16dp"
+            android:paddingEnd="90dp"
+            android:paddingBottom="14dp">
 
             <TextView
                 android:id="@+id/subjectName"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Subject Name"
-                android:textSize="14sp"
+                android:text="Science"
+                android:textSize="17sp"
                 android:textStyle="bold"
-                android:textColor="#1A237E"
-                android:maxLines="2"
+                android:textColor="#FFFFFF"
+                android:maxLines="1"
                 android:ellipsize="end" />
 
             <TextView
@@ -56,11 +66,11 @@
                 android:layout_height="wrap_content"
                 android:text="Tap to explore →"
                 android:textSize="11sp"
-                android:textColor="#90A4AE"
-                android:layout_marginTop="2dp" />
+                android:textColor="#80FFFFFF"
+                android:layout_marginTop="3dp" />
 
         </LinearLayout>
 
-    </LinearLayout>
+    </FrameLayout>
 
 </com.google.android.material.card.MaterialCardView>

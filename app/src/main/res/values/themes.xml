@@ -1,22 +1,37 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.AIGuru" parent="Theme.MaterialComponents.Light.NoActionBar">
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorPrimaryDark">@color/primary_dark</item>
-        <item name="colorAccent">@color/accent_amber</item>
-        <item name="android:windowBackground">@color/background</item>
-        <item name="android:statusBarColor">@color/primary_dark</item>
+    <style name="Theme.AIGuru" parent="Theme.Material3.Dark.NoActionBar">
+
+
+        <!-- Background system -->
+        <item name="android:windowBackground">@drawable/ssw</item>
+
+        <!-- Status bar -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+
+        <!-- Navigation bar -->
+        <item name="android:navigationBarColor">#020617</item>
+
+        <!-- Dialog -->
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.AIGuru.MaterialAlertDialog</item>
+
     </style>
 
+
+    <!-- Dialog Theme -->
     <style name="ThemeOverlay.AIGuru.MaterialAlertDialog"
-        parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        parent="ThemeOverlay.Material3.MaterialAlertDialog">
+
         <item name="buttonBarPositiveButtonStyle">@style/Widget.AIGuru.Button</item>
+
     </style>
 
-    <style name="Widget.AIGuru.Button" parent="Widget.MaterialComponents.Button">
-        <item name="backgroundTint">@color/primary</item>
+
+    <!-- Button -->
+    <style name="Widget.AIGuru.Button" parent="Widget.Material3.Button">
+        <item name="backgroundTint">#1B2A3A</item>
+        <item name="cornerRadius">14dp</item>
     </style>
 
 </resources>

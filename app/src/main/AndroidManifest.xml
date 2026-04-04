@@ -46,8 +46,10 @@
         <activity android:name=".PageViewerActivity" android:exported="false"/>
         <activity android:name=".ProgressDashboardActivity" android:exported="false"/>
         <!-- Blackboard step-by-step audio-visual lesson mode -->
+        <!-- singleTop: prevents multiple BB instances stacking up when back is pressed -->
         <activity android:name=".BlackboardActivity" android:exported="false"
-            android:screenOrientation="portrait"/>
+            android:screenOrientation="portrait"
+            android:launchMode="singleTop"/>
         <activity android:name=".GeminiLiveActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"/>

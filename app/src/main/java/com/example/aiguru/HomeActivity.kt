@@ -17,6 +17,7 @@ import com.example.aiguru.utils.ConfigManager
 import com.example.aiguru.utils.SessionManager
 import com.google.android.material.button.MaterialButton
 import android.util.Log
+import androidx.core.view.WindowCompat
 import java.util.Calendar
 
 class HomeActivity : AppCompatActivity() {
@@ -28,7 +29,8 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.statusBarColor = Color.TRANSPARENT
         // Redirect to login if no session
         if (!SessionManager.isLoggedIn(this)) {
             startActivity(Intent(this, LoginActivity::class.java))
@@ -48,6 +50,13 @@ class HomeActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.addSubjectButton).setOnClickListener {
             showAddSubjectDialog()
         }
+        findViewById<MaterialButton>(R.id.generalChatButton).setOnClickListener {
+            startActivity(
+                Intent(this, ChatActivity::class.java)
+                    .putExtra("subjectName", "General")
+                    .putExtra("chapterName", "General Chat")
+            )
+        }
         findViewById<MaterialButton>(R.id.libraryButton).setOnClickListener {
             startActivity(Intent(this, LibraryActivity::class.java))
         }
@@ -56,6 +65,12 @@ class HomeActivity : AppCompatActivity() {
         }
         findViewById<TextView?>(R.id.profileButton)?.setOnClickListener {
             startActivity(Intent(this, UserProfileActivity::class.java))
+        }
+        findViewById<TextView?>(R.id.planBadgeText)?.setOnClickListener {
+            startActivity(
+                Intent(this, SubscriptionActivity::class.java)
+                    .putExtra("schoolId", SessionManager.getSchoolId(this))
+            )
         }
     }
 

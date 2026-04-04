@@ -53,7 +53,12 @@ class SubscriptionActivity : AppCompatActivity(), PaymentResultWithDataListener 
             ?: SessionManager.getSchoolId(this)
 
         school = ConfigManager.getSchool(this, schoolId)
-            ?: run { navigateHome(); return }
+            ?: ConfigManager.getSchools(this).firstOrNull()
+            ?: run {
+                Toast.makeText(this, "No school configuration found. Please contact support.", Toast.LENGTH_LONG).show()
+                finish()
+                return
+            }
 
         paymentClient = PaymentApiClient(resolvePaymentBaseUrl())
 
@@ -107,12 +112,12 @@ class SubscriptionActivity : AppCompatActivity(), PaymentResultWithDataListener 
 
         view.findViewById<TextView>(R.id.planName).apply {
             text = plan.name
-            setTextColor(primaryColor)
+            setTextColor(Color.parseColor("#1A2332"))
         }
         view.findViewById<TextView>(R.id.planDuration).text = plan.duration
         view.findViewById<TextView>(R.id.planPrice).apply {
             text = plan.displayPrice
-            setTextColor(if (plan.isFree) Color.parseColor("#2E7D32") else primaryColor)
+            setTextColor(if (plan.isFree) Color.parseColor("#10B981") else Color.parseColor("#0891B2"))
         }
 
         // Features as bullet list
@@ -136,16 +141,10 @@ class SubscriptionActivity : AppCompatActivity(), PaymentResultWithDataListener 
 
         // CTA button
         val btn = view.findViewById<MaterialButton>(R.id.selectPlanButton)
-        btn.text = if (plan.isFree) "Start Free Trial" else "Subscribe - ${plan.displayPrice}"
-        btn.backgroundTintList = ColorStateList.valueOf(primaryColor)
+        btn.text = if (plan.isFree) "Start Free →" else "Subscribe  ${plan.displayPrice} →"
+        val btnColor = if (isRecommended) Color.parseColor("#0F1724") else Color.parseColor("#374151")
+        btn.backgroundTintList = ColorStateList.valueOf(btnColor)
         btn.setOnClickListener { startPlanSelection(plan, btn) }
-
-        // Highlight recommended card with border tint
-        if (isRecommended) {
-            // Slightly elevate the recommended card — done via cardElevation if accessible
-            // For now just color the button accent
-            btn.backgroundTintList = ColorStateList.valueOf(accentColor)
-        }
     }
 
     private fun startPlanSelection(plan: SchoolPlan, ctaButton: MaterialButton) {
@@ -176,6 +175,7 @@ class SubscriptionActivity : AppCompatActivity(), PaymentResultWithDataListener 
                     userId = userId,
                     schoolId = schoolId,
                     planId = plan.id,
+                    planName = plan.name,
                     amountInr = plan.priceINR,
                     currency = "INR"
                 )
@@ -208,7 +208,7 @@ class SubscriptionActivity : AppCompatActivity(), PaymentResultWithDataListener 
             put("description", order.checkoutDescription.ifBlank { "${plan.name} plan" })
             put("order_id", order.orderId)
             put("currency", order.currency.ifBlank { "INR" })
-            put("amount", order.amountPaise)
+            put("amount", order.amountPaise)   // paise — required by Razorpay SDK
 
             put("retry", JSONObject().apply {
                 put("enabled", true)

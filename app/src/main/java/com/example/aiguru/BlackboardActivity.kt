@@ -3,6 +3,7 @@ package com.example.aiguru
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
+import android.app.AlertDialog
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -15,9 +16,15 @@ import android.text.style.StyleSpan
 import android.text.style.TypefaceSpan
 import android.view.Gravity
 import android.view.View
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.webkit.WebView
+import android.webkit.WebSettings
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.bitmap.RoundedCorners
+import com.example.aiguru.utils.WikimediaUtils
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.lifecycleScope
@@ -65,7 +72,6 @@ class BlackboardActivity : AppCompatActivity() {
     private lateinit var replayBtn:       TextView
     private lateinit var nextBtn:         TextView
     private lateinit var handWriter:      TextView
-    private lateinit var teacherAvatar:   TeacherAvatarView
 
     // ── State ─────────────────────────────────────────────────────────────────
     private lateinit var tts: TextToSpeechManager
@@ -99,7 +105,6 @@ class BlackboardActivity : AppCompatActivity() {
         replayBtn       = findViewById(R.id.replayButton)
         nextBtn         = findViewById(R.id.nextButton)
         handWriter      = findViewById(R.id.handWriter)
-        teacherAvatar   = findViewById(R.id.teacherAvatar)
 
         closeBtn.setOnClickListener  { finish() }
         prevBtn.setOnClickListener   { prevStep() }
@@ -253,6 +258,20 @@ class BlackboardActivity : AppCompatActivity() {
 
             board.addView(titleWrapper)
             titleWrapper.animate().alpha(1f).setDuration(400).start()
+
+            // Placeholder inserted synchronously so the image/icon appears between
+            // the step title and the first frame's text, even though the fetch is async.
+            val imagePlaceholder = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }
+            board.addView(imagePlaceholder)
+
+            val imageQuery = step.image_description.ifBlank { step.title }
+            if (imageQuery.isNotBlank()) fetchAndShowStepImage(imageQuery, step.imageConfidenceScore, imagePlaceholder)
         }
 
         // Now append the Frame Content
@@ -268,7 +287,6 @@ class BlackboardActivity : AppCompatActivity() {
             ).apply { topMargin = (16 * dp).toInt() }
         }
         board.addView(contentText)
-        moveAvatarTo(contentText)
 
         val baseSsb = buildFrameText(frame.text, frame.highlight)
         val textLen = baseSsb.length
@@ -333,19 +351,144 @@ class BlackboardActivity : AppCompatActivity() {
         }
     }
 
-    /** Slides the teacher avatar to vertically align with [anchor] content view. */
-    private fun moveAvatarTo(anchor: View) {
-        anchor.post {
-            val anchorLoc = IntArray(2)
-            anchor.getLocationInWindow(anchorLoc)
-            val parentLoc = IntArray(2)
-            (teacherAvatar.parent as View).getLocationInWindow(parentLoc)
-            val targetY = (anchorLoc[1] - parentLoc[1]).toFloat() - teacherAvatar.height * 0.1f
-            teacherAvatar.animate()
-                .translationY(targetY.coerceAtLeast(0f))
-                .setDuration(500)
-                .start()
+    /**
+     * Fetches a Wikimedia Commons image for [query] and populates [placeholder].
+     *  - serverScore ≥ 0.9  → show inline (full 180 dp image)
+     *  - serverScore  < 0.9  → show a small tap-to-view icon button; image opens in a dialog
+     *  - if no image found on Wikimedia → show nothing
+     */
+    private fun fetchAndShowStepImage(query: String, serverScore: Float, placeholder: LinearLayout) {
+        if (query.isBlank()) return
+        lifecycleScope.launch {
+            val url = WikimediaUtils.firstImageUrl(query) ?: return@launch
+            val dp = resources.displayMetrics.density
+
+            if (serverScore >= 0.7f) {
+                // ── High confidence: show inline ──────────────────────────────────
+                val caption = TextView(this@BlackboardActivity).apply {
+                    text = "📷 ${query.take(50)}"
+                    textSize = 10f
+                    setTextColor(android.graphics.Color.parseColor("#88857070"))
+                    gravity = Gravity.CENTER
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply { bottomMargin = (8 * dp).toInt() }
+                    alpha = 0f
+                }
+                if (url.lowercase().endsWith(".svg")) {
+                    val webView = WebView(this@BlackboardActivity).apply {
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT, (180 * dp).toInt()
+                        ).apply { topMargin = (10 * dp).toInt(); bottomMargin = (4 * dp).toInt() }
+                        settings.loadWithOverviewMode = true
+                        settings.useWideViewPort = true
+                        settings.builtInZoomControls = false
+                        setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                        alpha = 0f
+                    }
+                    placeholder.addView(webView)
+                    placeholder.addView(caption)
+                    webView.loadUrl(url)
+                    webView.animate().alpha(1f).setDuration(700).start()
+                    caption.animate().alpha(1f).setDuration(700).start()
+                } else {
+                    val imageView = ImageView(this@BlackboardActivity).apply {
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT, (180 * dp).toInt()
+                        ).apply { topMargin = (10 * dp).toInt(); bottomMargin = (4 * dp).toInt() }
+                        scaleType = ImageView.ScaleType.CENTER_CROP
+                        alpha = 0f
+                    }
+                    placeholder.addView(imageView)
+                    placeholder.addView(caption)
+                    Glide.with(this@BlackboardActivity)
+                        .load(url)
+                        .transform(RoundedCorners((12 * dp).toInt()))
+                        .into(imageView)
+                    imageView.animate().alpha(1f).setDuration(700).start()
+                    caption.animate().alpha(1f).setDuration(700).start()
+                }
+                stepsScrollView.postDelayed(
+                    { stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 400
+                )
+            } else {
+                // ── Low confidence: icon button only ──────────────────────────────
+                val refBtn = TextView(this@BlackboardActivity).apply {
+                    text = "🖼  For your reference  •  tap to view"
+                    textSize = 12f
+                    setTextColor(android.graphics.Color.parseColor("#70C8E8"))
+                    gravity = Gravity.CENTER
+                    setPadding(
+                        (16 * dp).toInt(), (7 * dp).toInt(),
+                        (16 * dp).toInt(), (7 * dp).toInt()
+                    )
+                    background = GradientDrawable().apply {
+                        shape = GradientDrawable.RECTANGLE
+                        cornerRadius = 20 * dp
+                        setColor(Color.parseColor("#1A2E3A"))
+                        setStroke((1 * dp).toInt(), Color.parseColor("#3040E0D0"))
+                    }
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply {
+                        gravity = Gravity.CENTER_HORIZONTAL
+                        topMargin = (10 * dp).toInt()
+                        bottomMargin = (8 * dp).toInt()
+                    }
+                    alpha = 0f
+                    setOnClickListener { showImageDialog(url, query) }
+                }
+                placeholder.addView(refBtn)
+                refBtn.animate().alpha(1f).setDuration(500).start()
+            }
         }
+    }
+
+    /** Opens [url] in a simple AlertDialog so the user can inspect the reference image. */
+    private fun showImageDialog(url: String, caption: String) {
+        val dp = resources.displayMetrics.density
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding((8 * dp).toInt(), (8 * dp).toInt(), (8 * dp).toInt(), (4 * dp).toInt())
+        }
+        if (url.lowercase().endsWith(".svg")) {
+            val webView = WebView(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, (300 * dp).toInt()
+                )
+                settings.loadWithOverviewMode = true
+                settings.useWideViewPort = true
+                settings.builtInZoomControls = false
+            }
+            container.addView(webView)
+            webView.loadUrl(url)
+        } else {
+            val imageView = ImageView(this).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, (300 * dp).toInt()
+                )
+                scaleType = ImageView.ScaleType.FIT_CENTER
+            }
+            Glide.with(this).load(url).into(imageView)
+            container.addView(imageView)
+        }
+        val captionView = TextView(this).apply {
+            text = "📷 ${caption.take(80)}"
+            textSize = 11f
+            gravity = Gravity.CENTER
+            setTextColor(android.graphics.Color.parseColor("#888888"))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (6 * dp).toInt() }
+        }
+        container.addView(captionView)
+        AlertDialog.Builder(this)
+            .setView(container)
+            .setPositiveButton("Close", null)
+            .show()
     }
 
     private fun speakFrame(stepIdx: Int, frameIdx: Int) {
@@ -467,7 +610,6 @@ class BlackboardActivity : AppCompatActivity() {
         pauseBtn.text = if (isPaused) "▶" else "⏸"
         if (isPaused) {
             tts.stop()
-            teacherAvatar.setSpeaking(false)
         } else {
             speakFrame(currentStepIdx, currentFrameIdx)
         }
@@ -624,34 +766,9 @@ class BlackboardActivity : AppCompatActivity() {
 
     private fun makeTtsCallback(stepIdx: Int, frameIdx: Int) = object : TTSCallback {
 
-        private var fakeAudioAnim: ValueAnimator? = null
-
-        override fun onStart() {
-            runOnUiThread {
-                teacherAvatar.setSpeaking(true)
-                fakeAudioAnim = ValueAnimator.ofFloat(0f, 1f).apply {
-                    duration = 120
-                    repeatCount = ValueAnimator.INFINITE
-                    repeatMode = ValueAnimator.REVERSE
-                    var t = 0f
-                    addUpdateListener {
-                        t += 0.15f
-                        val base = ((Math.sin(t.toDouble()) + 1.0) / 2.0).toFloat()
-                        val level = base * (0.3f + Math.random().toFloat() * 0.7f)
-                        teacherAvatar.updateAudioLevel(level)
-                    }
-                    start()
-                }
-            }
-        }
+        override fun onStart() { /* no-op */ }
 
         override fun onComplete() {
-            runOnUiThread {
-                teacherAvatar.setSpeaking(false)
-                fakeAudioAnim?.cancel()
-                fakeAudioAnim = null
-                teacherAvatar.updateAudioLevel(0f)
-            }
             // Only auto-advance if user hasn't already navigated away
             if (!isPaused && currentStepIdx == stepIdx && currentFrameIdx == frameIdx) {
                 stepsScrollView.postDelayed({ advanceFrame() }, 300)
@@ -659,12 +776,6 @@ class BlackboardActivity : AppCompatActivity() {
         }
 
         override fun onError(error: String) {
-            runOnUiThread {
-                teacherAvatar.setSpeaking(false)
-                fakeAudioAnim?.cancel()
-                fakeAudioAnim = null
-                teacherAvatar.updateAudioLevel(0f)
-            }
             android.util.Log.w("Blackboard", "TTS: $error")
         }
     }

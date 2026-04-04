@@ -10,8 +10,8 @@
     <color name="white">#FFFFFFFF</color>
 
     <!-- AI Guru Educational Theme -->
-    <color name="primary">#1565C0</color>
-    <color name="primary_dark">#003C8F</color>
+    <color name="primary">#00776B</color>
+    <color name="primary_dark">#00776B</color>
     <color name="primary_light">#5E92F3</color>
     <color name="accent_amber">#FF8F00</color>
     <color name="background">#EEF2FF</color>
