@@ -43,6 +43,19 @@
         <item name="cornerRadius">14dp</item>
     </style>
 
+    <!--
+        Splash theme: solid dark background with no window animation,
+        preventing any white flash before SplashActivity's layout inflates.
+    -->
+    <style name="Theme.AIGuru.Splash" parent="Theme.AIGuru">
+        <item name="android:windowBackground">@color/colorPrimary</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:statusBarColor">@color/colorPrimary</item>
+        <item name="android:navigationBarColor">@color/colorPrimary</item>
+    </style>
+
     <!-- Outlined chip style used for quick-action chips on home -->
     <style name="Widget.AIGuru.Chip.Filled" parent="Widget.Material3.Chip.Assist">
         <item name="chipBackgroundColor">@color/colorPrimaryLight</item>

@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Splash screen matching the app's dark navy brand (#1A1A2E).
+    Uses a vertical LinearLayout to keep ConstraintLayout dependency optional.
+    The spinner at the bottom communicates that work is happening (update check).
+-->
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/colorPrimary"
+    android:fitsSystemWindows="false">
+
+    <!-- ── Brand block (vertically centred, biased slightly upward) ──── -->
+    <LinearLayout
+        android:id="@+id/splashBrandBlock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_centerInParent="true"
+        android:layout_marginBottom="60dp">
+
+        <!-- App icon -->
+        <ImageView
+            android:id="@+id/splashLogo"
+            android:layout_width="96dp"
+            android:layout_height="96dp"
+            android:src="@mipmap/ic_launcher_round"
+            android:layout_gravity="center"
+            android:contentDescription="AI Guru logo" />
+
+        <!-- App name -->
+        <TextView
+            android:id="@+id/splashAppName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="AI Guru"
+            android:textColor="#FFFFFF"
+            android:textSize="36sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.03"
+            android:layout_gravity="center"
+            android:layout_marginTop="20dp" />
+
+        <!-- Tagline -->
+        <TextView
+            android:id="@+id/splashTagline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Your AI Study Companion"
+            android:textColor="#99AACCFF"
+            android:textSize="15sp"
+            android:layout_gravity="center"
+            android:layout_marginTop="6dp" />
+
+    </LinearLayout>
+
+    <!-- ── Loading indicator (bottom) ─────────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/splashFooter"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="48dp">
+
+        <ProgressBar
+            android:id="@+id/splashProgressBar"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            style="?android:attr/progressBarStyle"
+            android:indeterminateTint="#AACCFF"
+            android:layout_gravity="center" />
+
+        <TextView
+            android:id="@+id/splashCheckingText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Checking for updates…"
+            android:textColor="#66AACCFF"
+            android:textSize="12sp"
+            android:layout_gravity="center"
+            android:layout_marginTop="8dp" />
+
+    </LinearLayout>
+
+</RelativeLayout>
