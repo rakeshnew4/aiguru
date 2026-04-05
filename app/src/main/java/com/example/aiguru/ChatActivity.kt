@@ -179,6 +179,10 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
     // Pre-loaded PDF page (base64 encoded) passed from ChapterActivity
     private var pdfPageBase64: String? = null
 
+    // Base64 of the currently-attached gallery/camera image, stored at attach time
+    // so sendMessage never needs to re-decode the URI (mirrors pdfPageBase64 for images).
+    private var pendingImageBase64: String? = null
+
     // When set, the AI response from the next auto-send is also saved as notes
     private var saveNotesType: String? = null
 
@@ -543,6 +547,7 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         removeImageButton.setOnClickListener {
             selectedImageUri = null
             pdfPageBase64 = null
+            pendingImageBase64 = null
             pendingDisplayUri = null
             currentPageContent = null
             imagePreviewStrip.visibility = View.GONE
@@ -827,6 +832,7 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
     private fun showImagePreview(uri: Uri) {
         selectedImageUri = uri
         pendingDisplayUri = uri
+        pendingImageBase64 = null   // will be set once base64 is decoded below
         if (saveNextPickedImageToChapter) {
             saveNextPickedImageToChapter = false
             if (!isPdfChapterWorkspace) saveImagePageToChapter(uri)
@@ -844,6 +850,8 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         // Kick off background page analysis using Groq vision
         lifecycleScope.launch(Dispatchers.IO) {
             val b64 = mediaManager.uriToBase64(uri) ?: return@launch
+            // Pre-store base64 so sendMessage never re-decodes the URI
+            pendingImageBase64 = b64
             PageAnalyzer.analyze(
                 base64Image = b64,
                 subject = subjectName,
@@ -1039,6 +1047,10 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
     private fun sendMessage(userText: String, autoSaveNotes: Boolean = false) {
         val imageUri = selectedImageUri.also { selectedImageUri = null }
         val capturedPdfBase64 = pdfPageBase64.also { pdfPageBase64 = null }
+        // Capture pre-stored image base64 — avoids re-decoding the URI at send time.
+        // For PDF, the bytes were already in capturedPdfBase64. For gallery/camera,
+        // they were stored in pendingImageBase64 at attach time (analogous to PDF).
+        val capturedImageBase64 = pendingImageBase64.also { pendingImageBase64 = null }
         var capturedPageContent = currentPageContent.also { currentPageContent = null }
         val capturedDisplayUri = pendingDisplayUri.also { pendingDisplayUri = null }
         var serverPageTranscript: String? = null
@@ -1115,7 +1127,8 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
                 // on IO thread — it blocks until the Groq vision response is received.
                 if (capturedPageContent == null && (imageUri != null || capturedPdfBase64 != null)) {
                     android.util.Log.d("PageContext", "Background analysis not ready — running inline Groq analysis")
-                    val b64 = if (imageUri != null) mediaManager.uriToBase64(imageUri)
+                    // Use pre-stored base64 for images (never re-decode the URI)
+                    val b64 = if (imageUri != null) capturedImageBase64 ?: mediaManager.uriToBase64(imageUri)
                     else capturedPdfBase64
                     if (b64 != null) {
                         val srcType = if (capturedPdfBase64 != null) "pdf" else "image"
@@ -1304,7 +1317,8 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
                 val imageDataJson = capturedPageContent?.toImageDataJson()
                 when {
                     imageUri != null -> {
-                        val b64 = mediaManager.uriToBase64(imageUri)
+                        // Use pre-stored base64 (encoded at attach time) — same pattern as PDF.
+                        val b64 = capturedImageBase64 ?: mediaManager.uriToBase64(imageUri)
                         if (client is ServerProxyClient) {
                             client.streamChat(
                                 ctxMessage,
