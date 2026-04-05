@@ -13,7 +13,7 @@ import com.example.aiguru.models.ModelConfig
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 
-class ModelSettingsActivity : AppCompatActivity() {
+class ModelSettingsActivity : BaseActivity() {
 
     companion object {
         val GROQ_TEXT_MODELS = listOf(

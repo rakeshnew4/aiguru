@@ -20,6 +20,7 @@ object SessionManager {
     private const val KEY_STUDENT_NAME = "student_name"
     private const val KEY_PLAN_ID = "plan_id"
     private const val KEY_PLAN_NAME = "plan_name"
+    private const val KEY_PLAN_EXPIRY_MS = "plan_expiry_ms"
     private const val KEY_LOGIN_TIME = "login_time"
     private const val KEY_GRADE = "grade"
     private const val KEY_SIGNUP_COMPLETE = "signup_complete"
@@ -94,6 +95,27 @@ object SessionManager {
             putString(KEY_PLAN_NAME, planName)
             apply()
         }
+    }
+
+    /** Cache the plan expiry epoch-ms locally so we don't always need Firestore. */
+    fun savePlanExpiry(context: Context, expiryMs: Long) {
+        prefs(context).edit().putLong(KEY_PLAN_EXPIRY_MS, expiryMs).apply()
+    }
+
+    /** Returns 0L if no expiry is stored (free / lifetime plan). */
+    fun getPlanExpiryMs(context: Context): Long =
+        prefs(context).getLong(KEY_PLAN_EXPIRY_MS, 0L)
+
+    /**
+     * Returns true when the user holds a non-free paid plan whose stored expiry
+     * is in the future.  Use this as a quick local check before making Firestore calls.
+     */
+    fun isPlanCurrentlyActive(context: Context): Boolean {
+        val planId = getPlanId(context)
+        if (planId.isBlank() || planId == "free") return false
+        val expiryMs = getPlanExpiryMs(context)
+        if (expiryMs <= 0L) return false          // 0 = no expiry stored → unknown
+        return System.currentTimeMillis() < expiryMs
     }
 
     fun saveGrade(context: Context, grade: String) {

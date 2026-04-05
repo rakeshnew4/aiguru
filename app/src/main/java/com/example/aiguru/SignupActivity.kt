@@ -8,7 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.aiguru.utils.SessionManager
 import com.example.aiguru.firestore.FirestoreManager
 
-class SignupActivity : AppCompatActivity() {
+class SignupActivity : BaseActivity() {
 
     private lateinit var nameEditText: EditText
     private lateinit var gradeSpinner: Spinner

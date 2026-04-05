@@ -133,7 +133,7 @@ object ConfigManager {
                 primaryColor = t.optString("primaryColor", "#1565C0"),
                 primaryDarkColor = t.optString("primaryDarkColor", "#003C8F"),
                 primaryLightColor = t.optString("primaryLightColor", "#5E92F3"),
-                accentColor = t.optString("accentColor", "#FF8F00"),
+                accentColor = t.optString("accentColor", "#1A1A2E"),
                 backgroundColor = t.optString("backgroundColor", "#EEF2FF"),
                 headerTextColor = t.optString("headerTextColor", "#FFFFFF"),
                 headerSubtextColor = t.optString("headerSubtextColor", "#B3C5FF"),
@@ -142,7 +142,7 @@ object ConfigManager {
                 cardBackgroundColor = t.optString("cardBackgroundColor", "#FFFFFF"),
                 buttonPrimaryColor = t.optString("buttonPrimaryColor", "#1565C0"),
                 buttonSecondaryColor = t.optString("buttonSecondaryColor", "#2E7D32"),
-                buttonAccentColor = t.optString("buttonAccentColor", "#FF8F00"),
+                buttonAccentColor = t.optString("buttonAccentColor", "#1A1A2E"),
                 successColor = t.optString("successColor", "#2E7D32"),
                 warningColor = t.optString("warningColor", "#F57F17")
             )
@@ -201,12 +201,12 @@ object ConfigManager {
         appVersion = "1.0.0",
         defaultTheme = ThemeConfig(
             primaryColor = "#1565C0", primaryDarkColor = "#003C8F",
-            primaryLightColor = "#5E92F3", accentColor = "#FF8F00",
+            primaryLightColor = "#5E92F3", accentColor = "#1A1A2E",
             backgroundColor = "#EEF2FF", headerTextColor = "#FFFFFF",
             headerSubtextColor = "#B3C5FF", bodyTextPrimaryColor = "#1A237E",
             bodyTextSecondaryColor = "#546E7A", cardBackgroundColor = "#FFFFFF",
             buttonPrimaryColor = "#1565C0", buttonSecondaryColor = "#2E7D32",
-            buttonAccentColor = "#FF8F00", successColor = "#2E7D32",
+            buttonAccentColor = "#1A1A2E", successColor = "#2E7D32",
             warningColor = "#F57F17"
         ),
         features = FeaturesConfig(true, true, true, true, true, true, false),

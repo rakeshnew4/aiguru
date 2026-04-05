@@ -1,33 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:fitsSystemWindows="true"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#0D1117"
-    tools:context=".LibraryActivity">
+    android:background="@color/colorBackground"
+    android:fitsSystemWindows="true">
 
     <!-- Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#0F1724"
+        android:background="#FFFFFF"
         android:orientation="horizontal"
-        android:paddingStart="8dp"
+        android:gravity="center_vertical"
+        android:paddingStart="4dp"
         android:paddingEnd="16dp"
-        android:paddingTop="12dp"
+        android:paddingTop="8dp"
         android:paddingBottom="12dp"
-        android:gravity="center_vertical">
+        android:elevation="2dp">
 
         <ImageButton
             android:id="@+id/backButton"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:src="@drawable/ic_arrow_back"
+            app:tint="@null"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:tint="#FFFFFF"
             android:contentDescription="Back" />
 
         <LinearLayout
@@ -35,13 +34,13 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:layout_marginStart="4dp">
+            android:paddingStart="8dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="📖 PDF Library"
-                android:textColor="#FFFFFF"
+                android:text="Library"
+                android:textColor="@color/colorTextPrimary"
                 android:textSize="20sp"
                 android:textStyle="bold" />
 
@@ -49,20 +48,28 @@
                 android:id="@+id/librarySubtitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Browse and add chapters to your subjects"
-                android:textColor="#8899AA"
-                android:textSize="12sp" />
+                android:text="Your books and materials"
+                android:textColor="@color/colorTextSecondary"
+                android:textSize="13sp" />
 
         </LinearLayout>
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="2dp"
-        android:background="#40E0D0" />
-
 
     </LinearLayout>
 
-    <!-- Book list -->
+    <View android:layout_width="match_parent" android:layout_height="3dp" android:background="@color/colorPrimary" />
+
+    <TextView
+        android:id="@+id/emptyText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="No books in your library yet.
+Add books from the chapter pages."
+        android:textColor="@color/colorTextSecondary"
+        android:textSize="15sp"
+        android:gravity="center"
+        android:padding="32dp"
+        android:visibility="gone" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/libraryRecyclerView"
         android:layout_width="match_parent"
@@ -71,18 +78,5 @@
         android:paddingTop="12dp"
         android:paddingBottom="8dp"
         android:clipToPadding="false" />
-
-    <!-- Empty state -->
-    <TextView
-        android:id="@+id/emptyText"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center"
-        android:padding="32dp"
-        android:text="📂 No PDFs found\n\nAdd PDFs to:\nassets/library/{grade}/{subject}/file.pdf"
-        android:textColor="#8899AA"
-        android:textSize="14sp"
-        android:visibility="gone" />
 
 </LinearLayout>

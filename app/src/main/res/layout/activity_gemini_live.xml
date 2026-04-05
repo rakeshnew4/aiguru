@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:fitsSystemWindows="true"
     android:layout_height="match_parent"
-    android:background="#0D1117"
+    android:background="#1E1E3A"
     tools:context=".GeminiLiveActivity">
 
     <!-- Toolbar -->
@@ -14,7 +14,7 @@
         android:id="@+id/liveToolbar"
         android:layout_width="0dp"
         android:layout_height="56dp"
-        android:background="#0F1724"
+        android:background="#252847"
         android:elevation="0dp"
         app:title="🔴 AI Guru Live"
         app:titleTextColor="#FFFFFF"
@@ -30,7 +30,7 @@
         android:id="@+id/accentLine"
         android:layout_width="0dp"
         android:layout_height="2dp"
-        android:background="#40E0D0"
+        android:background="#5C5BD4"
         app:layout_constraintTop_toBottomOf="@id/liveToolbar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
@@ -43,7 +43,7 @@
         android:orientation="horizontal"
         android:gravity="center"
         android:padding="10dp"
-        android:background="#0F1724"
+        android:background="#252847"
         android:elevation="0dp"
         app:layout_constraintTop_toBottomOf="@id/accentLine"
         app:layout_constraintStart_toStartOf="parent"
@@ -59,7 +59,7 @@
             android:textColor="#0D1117"
             android:paddingHorizontal="20dp"
             app:cornerRadius="20dp"
-            app:backgroundTint="#40E0D0" />
+            app:backgroundTint="#5C5BD4" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/modeTextBtn"
@@ -67,7 +67,7 @@
             android:layout_height="40dp"
             android:text="⌨️ Text"
             android:textSize="13sp"
-            android:textColor="#40E0D0"
+            android:textColor="#A8A6FF"
             android:paddingHorizontal="20dp"
             android:layout_marginStart="10dp"
             app:cornerRadius="20dp"
@@ -83,7 +83,7 @@
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:padding="16dp"
-        android:background="#0D1117"
+        android:background="#1E1E3A"
         android:clipToPadding="false"
         app:layout_constraintTop_toBottomOf="@id/modeSwitchRow"
         app:layout_constraintBottom_toTopOf="@id/bottomCard"
@@ -115,7 +115,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:background="#0F1724"
+            android:background="#252847"
             android:padding="16dp">
 
             <!-- Voice panel -->
@@ -140,31 +140,31 @@
                         android:id="@+id/liveWave1"
                         android:layout_width="6dp"
                         android:layout_height="10dp"
-                        android:background="#40E0D0"
+                        android:background="#5C5BD4"
                         android:layout_marginEnd="4dp" />
                     <View
                         android:id="@+id/liveWave2"
                         android:layout_width="6dp"
                         android:layout_height="22dp"
-                        android:background="#40E0D0"
+                        android:background="#5C5BD4"
                         android:layout_marginEnd="4dp" />
                     <View
                         android:id="@+id/liveWave3"
                         android:layout_width="6dp"
                         android:layout_height="36dp"
-                        android:background="#40E0D0"
+                        android:background="#5C5BD4"
                         android:layout_marginEnd="4dp" />
                     <View
                         android:id="@+id/liveWave4"
                         android:layout_width="6dp"
                         android:layout_height="22dp"
-                        android:background="#40E0D0"
+                        android:background="#5C5BD4"
                         android:layout_marginEnd="4dp" />
                     <View
                         android:id="@+id/liveWave5"
                         android:layout_width="6dp"
                         android:layout_height="10dp"
-                        android:background="#40E0D0" />
+                        android:background="#5C5BD4" />
 
                 </LinearLayout>
 
@@ -188,7 +188,7 @@
                     android:textSize="28sp"
                     android:textColor="#0D1117"
                     app:cornerRadius="36dp"
-                    app:backgroundTint="#40E0D0" />
+                    app:backgroundTint="#5C5BD4" />
 
             </LinearLayout>
 
@@ -225,7 +225,7 @@
                     android:textSize="18sp"
                     android:textColor="#0D1117"
                     app:cornerRadius="24dp"
-                    app:backgroundTint="#40E0D0" />
+                    app:backgroundTint="#5C5BD4" />
 
             </LinearLayout>
 

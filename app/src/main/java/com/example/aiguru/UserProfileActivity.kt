@@ -20,7 +20,7 @@ import com.example.aiguru.utils.SessionManager
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.auth.FirebaseAuth
 
-class UserProfileActivity : AppCompatActivity() {
+class UserProfileActivity : BaseActivity() {
 
     private lateinit var userId: String
     private var loadedMetadata: UserMetadata? = null
@@ -87,7 +87,7 @@ class UserProfileActivity : AppCompatActivity() {
 
         runCatching {
             val primaryColor = Color.parseColor(branding?.primaryColor ?: "#1565C0")
-            val accentColor = Color.parseColor(branding?.accentColor ?: "#FF8F00")
+            val accentColor = Color.parseColor(branding?.accentColor ?: "#1A1A2E")
             profileHeader.setBackgroundColor(primaryColor)
             saveProfileButton.backgroundTintList = ColorStateList.valueOf(primaryColor)
             managePlanButton.backgroundTintList = ColorStateList.valueOf(accentColor)

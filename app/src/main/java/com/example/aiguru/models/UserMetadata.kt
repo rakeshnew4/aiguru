@@ -25,6 +25,18 @@ data class UserMetadata(
 
     val planName: String = "Free",
 
+    /** Epoch-ms when the current paid plan was activated (0 = never subscribed). */
+    @field:PropertyName("plan_start_date")
+    val planStartDate: Long = 0L,
+
+    /**
+     * Epoch-ms when the current plan expires.
+     * 0 = no expiry (free tier or a lifetime plan).
+     * When `System.currentTimeMillis() > planExpiryDate`, the plan is treated as expired.
+     */
+    @field:PropertyName("plan_expiry_date")
+    val planExpiryDate: Long = 0L,
+
     /**
      * Per-user limit overrides set by admins.
      * null = use the plan-level limits from admin_config/plans/{planId}.
@@ -38,9 +50,25 @@ data class UserMetadata(
     @field:PropertyName("tokens_today")
     val tokensToday: Int = 0,
 
+    /** Input (prompt) tokens consumed today. */
+    @field:PropertyName("input_tokens_today")
+    val inputTokensToday: Int = 0,
+
+    /** Output (completion) tokens consumed today. */
+    @field:PropertyName("output_tokens_today")
+    val outputTokensToday: Int = 0,
+
     /** Total tokens consumed this calendar month. */
     @field:PropertyName("tokens_this_month")
     val tokensThisMonth: Int = 0,
+
+    /** Input (prompt) tokens consumed this month. */
+    @field:PropertyName("input_tokens_this_month")
+    val inputTokensThisMonth: Int = 0,
+
+    /** Output (completion) tokens consumed this month. */
+    @field:PropertyName("output_tokens_this_month")
+    val outputTokensThisMonth: Int = 0,
 
     /** Epoch-ms of last token counter update — used to detect day/month rollover. */
     @field:PropertyName("tokens_updated_at")

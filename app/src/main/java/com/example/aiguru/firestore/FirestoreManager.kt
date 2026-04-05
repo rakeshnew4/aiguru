@@ -1,10 +1,14 @@
 package com.example.aiguru.firestore
 
 import android.util.Log
+import com.example.aiguru.models.FirestoreOffer
+import com.example.aiguru.models.FirestorePlan
 import com.example.aiguru.models.PageContent
 import com.example.aiguru.models.UserMetadata
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreSettings
+import com.google.firebase.firestore.PersistentCacheSettings
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
 
@@ -20,8 +24,23 @@ import com.google.firebase.firestore.SetOptions
  *   users/{userId}/conversations/{conversationId}/messages/{messageId}  ← {role, text, timestamp, tokens?}
  */
 object FirestoreManager {
-    
-    private val db = FirebaseFirestore.getInstance()
+
+    private val db: FirebaseFirestore = FirebaseFirestore.getInstance().also { firestore ->
+        // Enable offline disk persistence so Firestore data (including blackboard
+        // cache) is available instantly from local disk on repeat opens.
+        try {
+            val settings = FirebaseFirestoreSettings.Builder()
+                .setLocalCacheSettings(
+                    PersistentCacheSettings.newBuilder()
+                        .setSizeBytes(50L * 1024 * 1024) // 50 MB cache
+                        .build()
+                )
+                .build()
+            firestore.firestoreSettings = settings
+        } catch (_: Exception) {
+            // Already configured — safe to ignore
+        }
+    }
 
     // ── ID sanitization ────────────────────────────────────────────────────────
     // Firestore document IDs must not contain '/'
@@ -92,11 +111,16 @@ object FirestoreManager {
 
     /**
      * Update subscription plan fields for a user after successful payment verification.
+     *
+     * @param planStartDate  Epoch-ms when the plan was activated (0 = unchanged).
+     * @param planExpiryDate Epoch-ms when the plan expires (0 = unchanged / no expiry).
      */
     fun updateUserPlan(
         userId: String,
         planId: String,
         planName: String,
+        planStartDate: Long = 0L,
+        planExpiryDate: Long = 0L,
         onSuccess: () -> Unit = {},
         onFailure: (Exception?) -> Unit = {}
     ) {
@@ -104,14 +128,67 @@ object FirestoreManager {
             onFailure(null)
             return
         }
-        val updates = mapOf(
-            "planId" to planId,
-            "planName" to planName,
+        val updates = mutableMapOf<String, Any>(
+            "planId"    to planId,
+            "planName"  to planName,
             "updatedAt" to System.currentTimeMillis()
         )
+        if (planStartDate > 0) updates["plan_start_date"]  = planStartDate
+        if (planExpiryDate > 0) updates["plan_expiry_date"] = planExpiryDate
         db.collection("users").document(userId)
             .set(updates, SetOptions.merge())
             .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    // ── App-level plans & offers (Firestore-managed) ───────────────────────────
+
+    /**
+     * Fetch active plans from [plans] collection, sorted by display_order.
+     * YOU must create and manage this collection manually in Firestore.
+     *
+     * Document structure:
+     *   name, badge, price_inr, duration, validity_days, features[],
+     *   display_order, is_active, accent_color
+     */
+    fun fetchPlans(
+        onSuccess: (List<FirestorePlan>) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        db.collection("plans")
+            .whereEqualTo("is_active", true)
+            .orderBy("display_order")
+            .get()
+            .addOnSuccessListener { snap ->
+                val plans = snap.documents.mapNotNull { doc ->
+                    doc.toObject(FirestorePlan::class.java)?.copy(id = doc.id)
+                }
+                onSuccess(plans)
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * Fetch active offer/announcement cards from [app_offers] collection.
+     * YOU must create and manage this collection manually in Firestore.
+     *
+     * Document structure:
+     *   title, subtitle, emoji, background_color, display_order, is_active
+     */
+    fun fetchOffers(
+        onSuccess: (List<FirestoreOffer>) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        db.collection("app_offers")
+            .whereEqualTo("is_active", true)
+            .orderBy("display_order")
+            .get()
+            .addOnSuccessListener { snap ->
+                val offers = snap.documents.mapNotNull { doc ->
+                    doc.toObject(FirestoreOffer::class.java)?.copy(id = doc.id)
+                }
+                onSuccess(offers)
+            }
             .addOnFailureListener { onFailure(it) }
     }
 
@@ -212,12 +289,14 @@ object FirestoreManager {
         text: String,
         role: String,          // "user" or "model"
         timestamp: Long,
-        tokens: Int? = null
+        tokens: Int? = null,
+        inputTokens: Int? = null,
+        outputTokens: Int? = null
     ) {
         if (userId.isBlank() || userId == "guest_user") return
         val cid = convId(subject, chapter)
         val convRef = convsRef(userId).document(cid)
-        Log.d("TokenDebug", "[Firestore] saveMessage uid=$userId cid=$cid role=$role tokens=$tokens")
+        Log.d("TokenDebug", "[Firestore] saveMessage uid=$userId cid=$cid role=$role tokens=$tokens in=$inputTokens out=$outputTokens")
 
         // Upsert conversation header — token increment is merged atomically in the same write
         // so it works even on a brand-new document (update() would fail if doc doesn't exist yet)
@@ -231,16 +310,25 @@ object FirestoreManager {
         if (tokens != null && tokens > 0) {
             convMeta["totalTokens"] = FieldValue.increment(tokens.toLong())
         }
+        if (inputTokens != null && inputTokens > 0) {
+            convMeta["totalInputTokens"] = FieldValue.increment(inputTokens.toLong())
+        }
+        if (outputTokens != null && outputTokens > 0) {
+            convMeta["totalOutputTokens"] = FieldValue.increment(outputTokens.toLong())
+        }
         convRef.set(convMeta, SetOptions.merge())
             .addOnFailureListener { Log.e("Firestore", "saveMessage header failed uid=$userId cid=$cid: ${it.message}") }
 
         // Save message
         val msgDoc = mutableMapOf<String, Any>(
+            "messageId" to messageId,
             "role"      to role,
             "text"      to text,
             "timestamp" to timestamp
         )
         if (tokens != null) msgDoc["tokens"] = tokens
+        if (inputTokens != null) msgDoc["inputTokens"] = inputTokens
+        if (outputTokens != null) msgDoc["outputTokens"] = outputTokens
         convRef.collection("messages").document(messageId).set(msgDoc)
             .addOnFailureListener { Log.e("Firestore", "saveMessage msg failed uid=$userId msgId=$messageId: ${it.message}") }
     }
@@ -276,7 +364,12 @@ object FirestoreManager {
             .orderBy("timestamp", Query.Direction.ASCENDING)
             .get()
             .addOnSuccessListener { snap ->
-                onSuccess(snap.documents.mapNotNull { it.data })
+                onSuccess(snap.documents.mapNotNull { doc ->
+                    // Always include the Firestore doc ID as "_docId" so callers
+                    // can use it as a stable message ID even for pre-migration docs
+                    // that don't yet have a "messageId" field in their body.
+                    doc.data?.toMutableMap()?.also { it["_docId"] = doc.id }
+                })
             }
             .addOnFailureListener { onFailure(it) }
     }

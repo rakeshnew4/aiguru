@@ -1,55 +1,66 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:gravity="center_vertical"
     android:layout_marginStart="10dp"
     android:layout_marginEnd="10dp"
     android:layout_marginTop="4dp"
     android:layout_marginBottom="4dp"
-    android:background="#161D2A"
-    android:paddingStart="14dp"
-    android:paddingEnd="12dp"
-    android:paddingTop="10dp"
-    android:paddingBottom="10dp"
-    android:minHeight="52dp">
+    app:cardCornerRadius="12dp"
+    app:cardElevation="1dp"
+    app:cardBackgroundColor="#FFFFFF"
+    app:strokeColor="@color/colorDivider"
+    app:strokeWidth="1dp">
 
-    <TextView
-        android:id="@+id/pageLabel"
-        android:layout_width="0dp"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:textSize="15sp"
-        android:textStyle="bold"
-        android:textColor="#FFFFFF"
-        android:text="Page 1" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="14dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:minHeight="52dp">
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/viewPageButton"
-        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:text="👁"
-        android:textSize="12sp"
-        android:paddingStart="10dp"
-        android:paddingEnd="10dp"
-        app:strokeColor="#1E88E5"
-        app:backgroundTint="#FFFFFF"
-        app:cornerRadius="8dp"
-        android:layout_marginEnd="6dp" />
+        <TextView
+            android:id="@+id/pageLabel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:textColor="@color/colorTextPrimary"
+            android:text="Page 1" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/askPageButton"
-        android:layout_width="wrap_content"
-        android:layout_height="36dp"
-        android:text="Ask"
-        android:textColor="#FFFFFF"
-        android:textSize="12sp"
-        android:paddingStart="10dp"
-        android:paddingEnd="10dp"
-        app:backgroundTint="#FB8C00"
-        app:cornerRadius="8dp" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/viewPageButton"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:text="👁"
+            android:textSize="12sp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            app:backgroundTint="@color/colorPrimaryLight"
+            app:cornerRadius="10dp"
+            android:layout_marginEnd="6dp" />
 
-</LinearLayout>
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/askPageButton"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="Ask AI"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:minHeight="0dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            app:backgroundTint="@color/colorPrimary"
+            app:cornerRadius="10dp" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

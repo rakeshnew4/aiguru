@@ -16,7 +16,7 @@ import com.example.aiguru.utils.SessionManager
 import com.google.android.material.button.MaterialButton
 import org.json.JSONObject
 
-class SubjectActivity : AppCompatActivity() {
+class SubjectActivity : BaseActivity() {
 
     private lateinit var chaptersRecyclerView: RecyclerView
     private val chaptersListData = mutableListOf<String>()
@@ -129,38 +129,88 @@ class SubjectActivity : AppCompatActivity() {
             .show()
     }
 
+    // ── Class → Subject → Book 3-level picker ──────────────────────────
+
     private fun showLibraryPickerDialog() {
-        val books = scanLibraryBooks()
-        if (books.isEmpty()) {
+        val tree = buildLibraryTree()
+        if (tree.isEmpty()) {
             Toast.makeText(this, "No library PDFs found.", Toast.LENGTH_SHORT).show()
             return
         }
-        val labels = books.map { it.label }.toTypedArray()
+        val grades = tree.keys.sorted().toTypedArray()
+        val gradeLabels = grades.map { g ->
+            val count = tree[g]?.values?.sumOf { it.size } ?: 0
+            "🎓 ${formatGradeLabel(g)}  ($count chapters)"
+        }.toTypedArray()
+
         AlertDialog.Builder(this)
-            .setTitle("📚 Pick from Library")
-            .setItems(labels) { _, idx -> addChapterFromLibrary(books[idx]) }
+            .setTitle("📚 Pick Class")
+            .setItems(gradeLabels) { _, gi ->
+                val grade = grades[gi]
+                pickSubject(grade, tree[grade] ?: return@setItems)
+            }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
-    /** Scans assets/library and returns a flat list of all PDF books. */
-    private fun scanLibraryBooks(): List<LibItem> {
-        val result = mutableListOf<LibItem>()
+    private fun pickSubject(grade: String, subjectMap: Map<String, List<LibItem>>) {
+        val subjects = subjectMap.keys.sorted().toTypedArray()
+        val subjectLabels = subjects.map { s ->
+            val count = subjectMap[s]?.size ?: 0
+            "📚 ${s.replaceFirstChar { it.uppercaseChar() }}  ($count books)"
+        }.toTypedArray()
+
+        AlertDialog.Builder(this)
+            .setTitle("📚 ${formatGradeLabel(grade)} — Pick Subject")
+            .setItems(subjectLabels) { _, si ->
+                val subject = subjects[si]
+                pickBook(grade, subject, subjectMap[subject] ?: return@setItems)
+            }
+            .setNegativeButton("← Back") { _, _ -> showLibraryPickerDialog() }
+            .show()
+    }
+
+    private fun pickBook(grade: String, subject: String, books: List<LibItem>) {
+        val labels = books.sortedBy { it.title }.map { b ->
+            "📄 ${b.title.replace("_", " ").replace("-", " ")
+                .split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.uppercaseChar() } }}"
+        }.toTypedArray()
+        val sorted = books.sortedBy { it.title }
+
+        AlertDialog.Builder(this)
+            .setTitle("📗 ${subject.replaceFirstChar { it.uppercaseChar() }} · ${formatGradeLabel(grade)}")
+            .setItems(labels) { _, idx -> addChapterFromLibrary(sorted[idx]) }
+            .setNegativeButton("← Back") { _, _ -> pickSubject(grade,
+                buildLibraryTree()[grade] ?: return@setNegativeButton) }
+            .show()
+    }
+
+    private fun formatGradeLabel(grade: String): String =
+        grade.replaceFirstChar { it.uppercaseChar() }
+            .replace("class", " Class", ignoreCase = true)
+            .replace("grade", " Grade", ignoreCase = true)
+            .trim()
+
+    /** Builds grade → subject → books tree from assets/library */
+    private fun buildLibraryTree(): LinkedHashMap<String, LinkedHashMap<String, MutableList<LibItem>>> {
+        val tree = LinkedHashMap<String, LinkedHashMap<String, MutableList<LibItem>>>()
         try {
             for (grade in (assets.list("library") ?: emptyArray()).sorted()) {
                 for (subject in (assets.list("library/$grade") ?: emptyArray()).sorted()) {
                     for (file in (assets.list("library/$grade/$subject") ?: emptyArray())
-                        .filter { it.endsWith(".pdf", ignoreCase = true) }.sorted()) {
+                            .filter { it.endsWith(".pdf", ignoreCase = true) }.sorted()) {
                         val title = file.removeSuffix(".pdf")
                         val pdfId = "${grade}_${subject}_$title".replace(" ", "_")
                         val assetPath = "library/$grade/$subject/$file"
-                        val label = "$title  ($subject · $grade)"
-                        result.add(LibItem(title, assetPath, pdfId, label))
+                        val label = "$title ($subject · $grade)"
+                        tree.getOrPut(grade) { linkedMapOf() }
+                            .getOrPut(subject) { mutableListOf() }
+                            .add(LibItem(title, assetPath, pdfId, label))
                     }
                 }
             }
         } catch (_: Exception) { }
-        return result
+        return tree
     }
 
     // ─── Chapter persistence ───────────────────────────────────────────────────

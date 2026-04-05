@@ -7,7 +7,7 @@
     app:cardCornerRadius="16dp"
     app:cardElevation="4dp"
     app:cardBackgroundColor="#FFFFFF"
-    app:strokeColor="#E5E7EB"
+    app:strokeColor="@color/colorDivider"
     app:strokeWidth="1dp">
 
     <LinearLayout
@@ -71,10 +71,10 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:text="₹99"
+            android:text="₹29"
             android:textSize="36sp"
             android:textStyle="bold"
-            android:textColor="#40E0D0" />
+            android:textColor="@color/colorPrimary" />
 
         <!-- Divider -->
         <View
@@ -82,7 +82,7 @@
             android:layout_height="1dp"
             android:layout_marginTop="14dp"
             android:layout_marginBottom="14dp"
-            android:background="#E5E7EB" />
+            android:background="@color/colorDivider" />
 
         <!-- Features list -->
         <TextView
@@ -104,7 +104,7 @@
             android:textSize="15sp"
             android:textStyle="bold"
             android:textColor="#FFFFFF"
-            app:backgroundTint="#0F1724"
+            app:backgroundTint="@color/colorPrimary"
             app:cornerRadius="10dp" />
 
     </LinearLayout>

@@ -1,37 +1,52 @@
 <resources>
 
-    <style name="Theme.AIGuru" parent="Theme.Material3.Dark.NoActionBar">
+    <style name="Theme.AIGuru" parent="Theme.Material3.Light.NoActionBar">
 
+        <!-- ── Material3 brand color roles ────────────────────────────── -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorOnPrimary">@color/colorOnPrimary</item>
+        <item name="colorPrimaryContainer">@color/colorPrimaryLight</item>
+        <item name="colorOnPrimaryContainer">@color/colorPrimaryDark</item>
 
-        <!-- Background system -->
-        <item name="android:windowBackground">@drawable/ssw</item>
+        <item name="colorSecondary">@color/colorSecondary</item>
+        <item name="colorOnSecondary">@color/colorOnSecondary</item>
+        <item name="colorSecondaryContainer">@color/colorSecondaryLight</item>
 
-        <!-- Status bar -->
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <!-- ── Surface / background ─────────────────────────────────── -->
+        <item name="android:colorBackground">@color/colorBackground</item>
+        <item name="colorSurface">@color/colorSurface</item>
+        <item name="colorOnSurface">@color/colorTextPrimary</item>
+        <item name="colorOnSurfaceVariant">@color/colorTextSecondary</item>
 
-        <!-- Navigation bar -->
-        <item name="android:navigationBarColor">#020617</item>
+        <!-- ── System bars ───────────────────────────────────────────── -->
+        <item name="android:statusBarColor">@color/colorPrimary</item>
+        <!-- Icon mode is set at runtime by SchoolTheme.applyStatusBar()
+             which uses luminance to auto-switch between dark/light icons. -->
+        <item name="android:navigationBarColor">@color/colorSurface</item>
 
-        <!-- Dialog -->
+        <!-- ── Dialogs ──────────────────────────────────────────────── -->
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.AIGuru.MaterialAlertDialog</item>
 
     </style>
 
 
-    <!-- Dialog Theme -->
+    <!-- Dialog theme -->
     <style name="ThemeOverlay.AIGuru.MaterialAlertDialog"
         parent="ThemeOverlay.Material3.MaterialAlertDialog">
-
         <item name="buttonBarPositiveButtonStyle">@style/Widget.AIGuru.Button</item>
-
     </style>
 
 
-    <!-- Button -->
+    <!-- Default button style -->
     <style name="Widget.AIGuru.Button" parent="Widget.Material3.Button">
-        <item name="backgroundTint">#1B2A3A</item>
+        <item name="backgroundTint">@color/colorPrimary</item>
         <item name="cornerRadius">14dp</item>
+    </style>
+
+    <!-- Outlined chip style used for quick-action chips on home -->
+    <style name="Widget.AIGuru.Chip.Filled" parent="Widget.Material3.Chip.Assist">
+        <item name="chipBackgroundColor">@color/colorPrimaryLight</item>
+        <item name="android:textColor">@color/colorPrimary</item>
     </style>
 
 </resources>

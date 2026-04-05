@@ -15,7 +15,11 @@ data class CreateOrderRequest(
     val planId: String,
     val planName: String,     // e.g. "Basic", "Premium"
     val amountInr: Int,
-    val currency: String = "INR"
+    val currency: String = "INR",
+    // User identity — used for Razorpay prefill and Firestore audit
+    val customerName: String = "",
+    val customerEmail: String = "",
+    val customerPhone: String = ""
 )
 
 data class CreateOrderResponse(
@@ -36,7 +40,9 @@ data class VerifyPaymentRequest(
     val planId: String,
     val razorpayPaymentId: String,
     val razorpayOrderId: String,
-    val razorpaySignature: String
+    val razorpaySignature: String,
+    /** Calendar days the plan stays active after purchase. 0 = no expiry (free plan). */
+    val validityDays: Int = 0
 )
 
 data class VerifyPaymentResponse(
@@ -69,6 +75,9 @@ class PaymentApiClient(
                 put("plan_name", request.planName)
                 put("amountInr", request.amountInr)
                 put("currency", request.currency)
+                if (request.customerName.isNotBlank())  put("customer_name",  request.customerName)
+                if (request.customerEmail.isNotBlank()) put("customer_email", request.customerEmail)
+                if (request.customerPhone.isNotBlank()) put("customer_phone", request.customerPhone)
             }
 
             val endpoint = baseUrl.trimEnd('/') + "/payments/razorpay/create-order"
@@ -117,6 +126,7 @@ class PaymentApiClient(
                 put("razorpay_payment_id", request.razorpayPaymentId)
                 put("razorpay_order_id", request.razorpayOrderId)
                 put("razorpay_signature", request.razorpaySignature)
+                put("validity_days", request.validityDays)
             }
 
             val endpoint = baseUrl.trimEnd('/') + "/payments/razorpay/verify"

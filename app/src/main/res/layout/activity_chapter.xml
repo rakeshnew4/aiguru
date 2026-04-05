@@ -1,172 +1,102 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:fitsSystemWindows="true"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#0D1117"
-    tools:context=".ChapterActivity">
+    android:background="@color/colorBackground"
+    android:fitsSystemWindows="true">
 
     <!-- Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#0F1724"
+        android:background="#FFFFFF"
+        android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingStart="4dp"
-        android:paddingEnd="16dp"
+        android:paddingEnd="12dp"
         android:paddingTop="8dp"
-        android:paddingBottom="16dp">
+        android:paddingBottom="12dp"
+        android:elevation="2dp">
 
         <ImageButton
             android:id="@+id/backButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:src="@drawable/ic_arrow_back"
+            app:tint="@null"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Back"
-            app:tint="@null" />
+            android:contentDescription="Back" />
 
-        <LinearLayout
+        <TextView
+            android:id="@+id/chapterTitle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="vertical"
-            android:paddingStart="8dp">
-
-            <TextView
-                android:id="@+id/chapterTitle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Chapter"
-                android:textColor="#FFFFFF"
-                android:textSize="20sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Upload pages &amp; study with AI"
-                android:textColor="#8899AA"
-                android:textSize="13sp" />
-
-        </LinearLayout>
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="2dp"
-        android:background="#40E0D0" />
-
+            android:text="Chapter"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/colorTextPrimary"
+            android:paddingStart="8dp"
+            android:maxLines="1"
+            android:ellipsize="end" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/notesButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="wrap_content"
-            android:layout_height="38dp"
-            android:text="📝 Notes"
-            android:textSize="12sp"
-            android:textColor="#FFFFFF"
-            app:strokeColor="#FFFFFF"
-            app:cornerRadius="8dp" />
+            android:layout_height="36dp"
+            android:text="Notes"
+            android:textSize="13sp"
+            android:textColor="@color/colorPrimary"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            app:backgroundTint="@color/colorPrimaryLight"
+            app:cornerRadius="18dp"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp" />
 
     </LinearLayout>
 
-    <!-- Mastery progress bar -->
+    <!-- Indigo accent line -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="3dp"
+        android:background="@color/colorPrimary" />
+
+    <!-- Mastery card (always GONE - kept for compat) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/masteryCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginTop="10dp"
+        android:layout_margin="16dp"
         android:visibility="gone"
-        app:cardCornerRadius="12dp"
+        app:cardCornerRadius="16dp"
         app:cardElevation="2dp"
-        app:cardBackgroundColor="#161D2A">
+        app:cardBackgroundColor="#FFFFFF">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
+            android:padding="16dp">
 
-            <LinearLayout
-                android:layout_width="match_parent"
+            <TextView
+                android:id="@+id/masteryScoreText"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="📊 Mastery"
-                    android:textSize="13sp"
-                    android:textColor="#40E0D0"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/masteryScoreText"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0%"
-                    android:textSize="13sp"
-                    android:textColor="#40E0D0"
-                    android:textStyle="bold" />
-
-            </LinearLayout>
+                android:text="0%"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:textColor="@color/colorPrimary" />
 
             <ProgressBar
                 android:id="@+id/masteryProgressBar"
-                style="?android:attr/progressBarStyleHorizontal"
+                style="@style/Widget.AppCompat.ProgressBar.Horizontal"
                 android:layout_width="match_parent"
                 android:layout_height="8dp"
-                android:layout_marginTop="6dp"
-                android:max="100"
-                android:progress="0"
-                android:progressTint="#40E0D0"
-                android:progressBackgroundTint="#E3F2FD" />
-
-        </LinearLayout>
-
-    </com.google.android.material.card.MaterialCardView>
-
-    <!-- Info hint card -->
-    <com.google.android.material.card.MaterialCardView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginTop="12dp"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="2dp"
-        app:cardBackgroundColor="#E8EAF6">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="14dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="📷"
-                android:textSize="22sp"
-                android:layout_marginEnd="12dp" />
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Upload images of your textbook pages, then let AI Guru explain anything!"
-                android:textSize="13sp"
-                android:textColor="#40E0D0" />
+                android:layout_marginTop="8dp"
+                android:progress="0" />
 
         </LinearLayout>
 
@@ -178,44 +108,45 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:paddingTop="4dp"
+        android:paddingTop="12dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="8dp"
         android:clipToPadding="false" />
 
-    <!-- Action Buttons -->
+    <!-- Bottom action buttons -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="8dp">
+        android:background="#FFFFFF"
+        android:elevation="4dp"
+        android:padding="12dp">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/uploadImageButton"
             android:layout_width="0dp"
-            android:layout_height="52dp"
+            android:layout_height="48dp"
             android:layout_weight="1"
-            android:text="📷 Add Page"
+            android:text="Upload Image"
             android:textSize="13sp"
-            android:textColor="#40E0D0"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            app:strokeColor="#40E0D0"
-            app:cornerRadius="12dp"
-            android:layout_marginEnd="6dp" />
-
-
+            android:textColor="@color/colorPrimary"
+            android:minHeight="0dp"
+            app:backgroundTint="@color/colorPrimaryLight"
+            app:cornerRadius="14dp"
+            android:layout_marginEnd="8dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/askAIButton"
             android:layout_width="0dp"
-            android:layout_height="52dp"
+            android:layout_height="48dp"
             android:layout_weight="1"
-            android:text="🤖  Ask AI"
+            android:text="Ask AI Guru"
             android:textSize="13sp"
             android:textColor="#FFFFFF"
-            app:backgroundTint="#FF8F00"
-            app:cornerRadius="12dp"
-            android:layout_marginStart="6dp" />
+            android:minHeight="0dp"
+            app:backgroundTint="@color/colorPrimary"
+            app:cornerRadius="14dp" />
 
     </LinearLayout>
 

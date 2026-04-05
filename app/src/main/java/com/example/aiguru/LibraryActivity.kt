@@ -15,8 +15,9 @@ import com.example.aiguru.models.LibraryBook
 import com.example.aiguru.utils.SessionManager
 import com.google.android.material.button.MaterialButton
 import org.json.JSONObject
+import com.example.aiguru.utils.SchoolTheme
 
-class LibraryActivity : AppCompatActivity() {
+class LibraryActivity : BaseActivity() {
 
     private lateinit var recyclerView: RecyclerView
     private lateinit var emptyText: TextView
@@ -190,7 +191,7 @@ class LibraryActivity : AppCompatActivity() {
                         orientation = LinearLayout.HORIZONTAL
                         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                         setPadding((16*dp).toInt(), (14*dp).toInt(), (16*dp).toInt(), (14*dp).toInt())
-                        setBackgroundColor(0xFF1A237E.toInt())
+                        setBackgroundColor(SchoolTheme.primaryColor)
                     }
                 ) {}
                 TYPE_SUBJECT -> object : RecyclerView.ViewHolder(
@@ -198,7 +199,7 @@ class LibraryActivity : AppCompatActivity() {
                         orientation = LinearLayout.HORIZONTAL
                         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
                         setPadding((28*dp).toInt(), (12*dp).toInt(), (16*dp).toInt(), (12*dp).toInt())
-                        setBackgroundColor(0xFF3949AB.toInt())
+                        setBackgroundColor(SchoolTheme.primaryDarkColor)
                     }
                 ) {}
                 else -> BookVH(parent)
@@ -223,7 +224,7 @@ class LibraryActivity : AppCompatActivity() {
                     row.addView(TextView(this@LibraryActivity).apply {
                         text = "$count subject${if (count != 1) "s" else ""}"
                         textSize = 12f
-                        setTextColor(0xFFB3C5FF.toInt())
+                        setTextColor(android.graphics.Color.argb(0x99, 0xFF, 0xFF, 0xFF))
                     })
                     row.setOnClickListener { onGradeClick(item.grade) }
                 }
@@ -243,7 +244,7 @@ class LibraryActivity : AppCompatActivity() {
                     row.addView(TextView(this@LibraryActivity).apply {
                         text = "$count chapter${if (count != 1) "s" else ""}"
                         textSize = 12f
-                        setTextColor(0xFFCFD8DC.toInt())
+                        setTextColor(android.graphics.Color.argb(0x99, 0xFF, 0xFF, 0xFF))
                     })
                     row.setOnClickListener { onSubjectClick(item.grade, item.subject) }
                 }
@@ -261,7 +262,7 @@ class LibraryActivity : AppCompatActivity() {
                            (10*parent.resources.displayMetrics.density).toInt(),
                            (12*parent.resources.displayMetrics.density).toInt(),
                            (10*parent.resources.displayMetrics.density).toInt())
-                setBackgroundColor(0xFFF5F5F5.toInt())
+                setBackgroundColor(SchoolTheme.bgColor)
                 layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
             }
         ) {
@@ -277,7 +278,7 @@ class LibraryActivity : AppCompatActivity() {
                     text = book.title.replace("_", " ").replace("-", " ")
                         .split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.uppercaseChar() } }
                     textSize = 14f
-                    setTextColor(0xFF212121.toInt())
+                    setTextColor(SchoolTheme.textPrimary)
                     layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                 })
                 root.addView(MaterialButton(this@LibraryActivity).apply {

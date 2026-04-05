@@ -1,39 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginStart="16dp"
     android:layout_marginEnd="16dp"
-    android:layout_marginBottom="12dp"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="3dp"
-    app:cardBackgroundColor="#161D2A">
+    android:layout_marginBottom="10dp"
+    app:cardCornerRadius="14dp"
+    app:cardElevation="2dp"
+    app:cardBackgroundColor="#FFFFFF"
+    app:strokeColor="@color/colorDivider"
+    app:strokeWidth="1dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="16dp"
+        android:padding="14dp"
         android:gravity="center_vertical">
 
-        <!-- PDF icon -->
         <TextView
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:gravity="center"
             android:text="📄"
-            android:textSize="26sp"
-            android:background="@drawable/bg_chapter_number" />
+            android:textSize="22sp"
+            android:background="@drawable/bg_chapter_number"
+            android:layout_marginEnd="12dp" />
 
-        <!-- Title and meta -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:layout_marginStart="12dp"
             android:layout_marginEnd="8dp">
 
             <TextView
@@ -42,7 +42,7 @@
                 android:layout_height="wrap_content"
                 android:textSize="15sp"
                 android:textStyle="bold"
-                android:textColor="#FFFFFF"
+                android:textColor="@color/colorTextPrimary"
                 tools:text="iemh101" />
 
             <TextView
@@ -50,24 +50,26 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textSize="12sp"
-                android:textColor="#8899AA"
+                android:textColor="@color/colorTextSecondary"
                 android:layout_marginTop="2dp"
-                tools:text="9thclass • maths" />
+                tools:text="9th class • maths" />
 
         </LinearLayout>
 
-        <!-- Add to subject button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/addToSubjectButton"
             android:layout_width="wrap_content"
             android:layout_height="36dp"
             android:text="+ Add"
             android:textSize="12sp"
+            android:textColor="@color/colorPrimary"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            app:backgroundTint="#40E0D0"
-            app:cornerRadius="8dp" />
+            app:backgroundTint="@color/colorPrimaryLight"
+            app:cornerRadius="10dp" />
 
     </LinearLayout>
 
-</androidx.cardview.widget.CardView>
+</com.google.android.material.card.MaterialCardView>

@@ -10,7 +10,7 @@ import com.example.aiguru.models.Flashcard
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 
-class RevisionActivity : AppCompatActivity() {
+class RevisionActivity : BaseActivity() {
 
     private lateinit var flashcards: ArrayList<Flashcard>
     private var currentIndex = 0

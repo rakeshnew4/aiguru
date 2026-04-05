@@ -71,6 +71,9 @@ class CreateOrderResponse(BaseModel):
     amount: int
     currency: str
     key_id: str
+    prefill_name: str = ""
+    prefill_email: str = ""
+    prefill_contact: str = ""
 
 
 
@@ -85,6 +88,10 @@ class CreateOrderRequest(BaseModel):
     plan_name: str            # e.g. "Basic", "Premium"
     amountInr: int            # rupees — multiply ×100 for Razorpay
     currency: str = "INR"
+    # User identity — forwarded to Razorpay prefill and stored for audit
+    customer_name: Optional[str] = None
+    customer_email: Optional[str] = None
+    customer_phone: Optional[str] = None
 
 class VerifyPaymentRequest(BaseModel):
     user_id: str
@@ -93,6 +100,8 @@ class VerifyPaymentRequest(BaseModel):
     razorpay_payment_id: str
     razorpay_order_id: str
     razorpay_signature: str
+    # Number of days the plan remains active after purchase (0 = no expiry).
+    validity_days: int = 0
 
 # ── Endpoints ────────────────────────────────────────────────────────────────────
 @router.post("/create-order", response_model=CreateOrderResponse)
@@ -114,6 +123,9 @@ async def create_order(
                 "school_id": req.school_id,
                 "plan_id": req.plan_id,
                 "plan_name": req.plan_name,   # readable name for webhook reconcile
+                "customer_name": req.customer_name or "",
+                "customer_email": req.customer_email or "",
+                "customer_phone": req.customer_phone or "",
             },
         })
     except Exception as e:
@@ -134,10 +146,9 @@ async def create_order(
         "amount_inr": req.amountInr,
         "currency": req.currency,
         "status": "pending",
-        # "description": req.description,
-        # "customer_name": req.customer_name,
-        # "customer_email": req.customer_email,
-        # "customer_phone": req.customer_phone,
+        "customer_name": req.customer_name or "",
+        "customer_email": req.customer_email or "",
+        "customer_phone": req.customer_phone or "",
         "created_at": now,
         "updated_at": now,
     })
@@ -147,6 +158,9 @@ async def create_order(
         amount=req.amountInr * 100,   # return paise — Razorpay SDK expects paise
         currency=req.currency,
         key_id=settings.RAZORPAY_KEY_ID,
+        prefill_name=req.customer_name or "",
+        prefill_email=req.customer_email or "",
+        prefill_contact=req.customer_phone or "",
     )
 
 
@@ -212,10 +226,17 @@ async def verify_payment(
 
     # 5. Firestore: activate plan — merge=True preserves name/grade/etc.
     # Collection: users/{userId}  ← Android FirestoreManager reads this
+    plan_start_date = now
+    plan_expiry_date = (
+        now + req.validity_days * 86_400_000  # ms
+        if req.validity_days > 0 else 0
+    )
     db.collection("users").document(req.user_id).set(
         {
             "planId": req.plan_id,
             "planName": plan_name,
+            "plan_start_date": plan_start_date,
+            "plan_expiry_date": plan_expiry_date,
             "updatedAt": now,
         },
         merge=True,

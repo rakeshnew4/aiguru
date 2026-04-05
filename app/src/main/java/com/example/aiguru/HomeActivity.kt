@@ -13,14 +13,16 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.aiguru.adapters.SubjectAdapter
 import com.example.aiguru.firestore.FirestoreManager
+import com.example.aiguru.models.FirestoreOffer
 import com.example.aiguru.utils.ConfigManager
+import com.example.aiguru.utils.SchoolTheme
 import com.example.aiguru.utils.SessionManager
 import com.google.android.material.button.MaterialButton
 import android.util.Log
 import androidx.core.view.WindowCompat
 import java.util.Calendar
 
-class HomeActivity : AppCompatActivity() {
+class HomeActivity : BaseActivity() {
 
     private lateinit var subjectsRecyclerView: RecyclerView
     private val subjectsList = mutableListOf<String>()
@@ -30,7 +32,6 @@ class HomeActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        window.statusBarColor = Color.TRANSPARENT
         // Redirect to login if no session
         if (!SessionManager.isLoggedIn(this)) {
             startActivity(Intent(this, LoginActivity::class.java))
@@ -46,6 +47,7 @@ class HomeActivity : AppCompatActivity() {
         userId = SessionManager.getFirestoreUserId(this)
         setupRecyclerView()
         loadSubjects()
+        loadOffersFromFirestore()
 
         findViewById<MaterialButton>(R.id.addSubjectButton).setOnClickListener {
             showAddSubjectDialog()
@@ -82,25 +84,29 @@ class HomeActivity : AppCompatActivity() {
     private fun applySchoolBranding() {
         val schoolId = SessionManager.getSchoolId(this)
         val school = ConfigManager.getSchool(this, schoolId)
-        val branding = school?.branding
 
-        runCatching {
-            val primaryColor = Color.parseColor(branding?.primaryColor ?: "#1565C0")
-            val accentColor = Color.parseColor(branding?.accentColor ?: "#FF8F00")
+        // Load school colors into the centralized SchoolTheme singleton
+        SchoolTheme.load(school?.branding)
+        SchoolTheme.applyStatusBar(window)
 
-            // Header background
-            findViewById<LinearLayout?>(R.id.homeHeader)?.setBackgroundColor(primaryColor)
+        // Header background (LinearLayout — set color directly)
+        SchoolTheme.setBackground(findViewById(R.id.homeHeader))
 
-            // Buttons
-            findViewById<MaterialButton?>(R.id.libraryButton)?.backgroundTintList =
-                ColorStateList.valueOf(primaryColor)
-            findViewById<MaterialButton?>(R.id.addSubjectButton)?.backgroundTintList =
-                ColorStateList.valueOf(accentColor)
+        // Quick-action chips
+        SchoolTheme.tintLight(findViewById(R.id.generalChatButton))
+        SchoolTheme.tint(findViewById(R.id.addSubjectButton))
 
-            // Header subtext color
-            val subtextColor = Color.parseColor(branding?.headerSubtextColor ?: "#B3C5FF")
-            findViewById<TextView?>(R.id.greetingText)?.setTextColor(subtextColor)
-        }
+        // Chip text colors to match school primary
+        val primary = SchoolTheme.primaryColor
+        findViewById<MaterialButton?>(R.id.generalChatButton)?.setTextColor(primary)
+
+        // Header text: use white if primary is dark enough, else use primaryDark
+        val headerTextColor = android.graphics.Color.WHITE
+        findViewById<TextView?>(R.id.greetingText)?.setTextColor(headerTextColor)
+        findViewById<TextView?>(R.id.userNameText)?.setTextColor(headerTextColor)
+        findViewById<TextView?>(R.id.schoolNameSubtitle)?.setTextColor(
+            android.graphics.Color.parseColor("#FFFFFFCC"))
+        findViewById<TextView?>(R.id.planBadgeText)?.setTextColor(headerTextColor)
     }
 
     private fun setupStudentInfo() {
@@ -136,27 +142,63 @@ class HomeActivity : AppCompatActivity() {
         val studentId = SessionManager.getStudentId(this)
         val schoolName = SessionManager.getSchoolName(this)
         val planName = SessionManager.getPlanName(this).ifBlank { "No plan selected" }
+        val userId = SessionManager.getStudentId(this)
 
-        AlertDialog.Builder(this)
-            .setTitle("👤 $studentName")
-            .setMessage(
-                "School: $schoolName\n" +
-                "Student ID: $studentId\n" +
-                "Plan: $planName"
-            )
-            .setPositiveButton("Change Plan") { _, _ ->
-                startActivity(
-                    Intent(this, SubscriptionActivity::class.java)
-                        .putExtra("schoolId", SessionManager.getSchoolId(this))
-                )
+        // Load fresh token breakdown from Firestore
+        FirestoreManager.getUserMetadata(userId, onSuccess = { meta ->
+            val totalToday  = meta?.tokensToday ?: 0
+            val inToday     = meta?.inputTokensToday ?: 0
+            val outToday    = meta?.outputTokensToday ?: 0
+            val totalMonth  = meta?.tokensThisMonth ?: 0
+            val inMonth     = meta?.inputTokensThisMonth ?: 0
+            val outMonth    = meta?.outputTokensThisMonth ?: 0
+
+            val tokenInfo = buildString {
+                append("\nToday:  $totalToday tokens")
+                if (inToday > 0 || outToday > 0) append(" (in $inToday / out $outToday)")
+                append("\nMonth: $totalMonth tokens")
+                if (inMonth > 0 || outMonth > 0) append(" (in $inMonth / out $outMonth)")
             }
-            .setNeutralButton("Logout") { _, _ -> confirmLogout() }
-            .setNegativeButton("Close", null)
-            .show()
+
+            AlertDialog.Builder(this)
+                .setTitle("👤 $studentName")
+                .setMessage(
+                    "School: $schoolName\n" +
+                    "Student ID: $studentId\n" +
+                    "Plan: $planName\n" +
+                    tokenInfo
+                )
+                .setPositiveButton("Change Plan") { _, _ ->
+                    startActivity(
+                        Intent(this, SubscriptionActivity::class.java)
+                            .putExtra("schoolId", SessionManager.getSchoolId(this))
+                    )
+                }
+                .setNeutralButton("Logout") { _, _ -> confirmLogout() }
+                .setNegativeButton("Close", null)
+                .show()
+        }, onFailure = {
+            // Fallback: show dialog without token info
+            AlertDialog.Builder(this)
+                .setTitle("👤 $studentName")
+                .setMessage(
+                    "School: $schoolName\n" +
+                    "Student ID: $studentId\n" +
+                    "Plan: $planName"
+                )
+                .setPositiveButton("Change Plan") { _, _ ->
+                    startActivity(
+                        Intent(this, SubscriptionActivity::class.java)
+                            .putExtra("schoolId", SessionManager.getSchoolId(this))
+                    )
+                }
+                .setNeutralButton("Logout") { _, _ -> confirmLogout() }
+                .setNegativeButton("Close", null)
+                .show()
+        })
     }
 
-    private fun confirmLogout() {
-        AlertDialog.Builder(this)
+    private fun confirmLogout() {        AlertDialog.Builder(this)
             .setTitle("Logout")
             .setMessage("Are you sure you want to logout?")
             .setPositiveButton("Logout") { _, _ ->
@@ -171,6 +213,92 @@ class HomeActivity : AppCompatActivity() {
             .show()
     }
 
+    // ── Offers banner (Firestore-backed) ───────────────────────────────────────
+
+    /**
+     * Fetches active offers from Firestore [app_offers] collection and populates
+     * the horizontal banner.  Falls back silently to the static XML cards on failure.
+     *
+     * Firestore document fields: title, subtitle, emoji, background_color,
+     * display_order, is_active. See [FirestoreOffer] for full schema.
+     */
+    private fun loadOffersFromFirestore() {
+        FirestoreManager.fetchOffers(
+            onSuccess = { offers ->
+                if (offers.isEmpty()) return@fetchOffers   // keep static placeholder cards
+                val container = findViewById<android.widget.LinearLayout>(R.id.offersBannerContainer)
+                container.removeAllViews()
+                offers.forEach { offer -> container.addView(buildOfferCard(offer)) }
+            },
+            onFailure = { /* silent — static XML card remain */ }
+        )
+    }
+
+    private fun buildOfferCard(offer: FirestoreOffer): android.view.View {
+        val ctx = this
+        val bgColor = runCatching { android.graphics.Color.parseColor(offer.backgroundColor) }
+            .getOrDefault(android.graphics.Color.parseColor("#1A1A2E"))
+
+        // Card
+        val card = com.google.android.material.card.MaterialCardView(ctx).apply {
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                (260 * resources.displayMetrics.density).toInt(),
+                (96 * resources.displayMetrics.density).toInt()
+            ).also { it.marginEnd = (10 * resources.displayMetrics.density).toInt() }
+            radius = 14 * resources.displayMetrics.density
+            cardElevation = 3 * resources.displayMetrics.density
+            setCardBackgroundColor(bgColor)
+        }
+
+        // Inner row
+        val row = android.widget.LinearLayout(ctx).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            val p = (16 * resources.displayMetrics.density).toInt()
+            val pe = (12 * resources.displayMetrics.density).toInt()
+            setPadding(p, 0, pe, 0)
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        }
+
+        // Title + subtitle column
+        val textCol = android.widget.LinearLayout(ctx).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            layoutParams = android.widget.LinearLayout.LayoutParams(0,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        val title = android.widget.TextView(ctx).apply {
+            text = offer.title
+            setTextColor(android.graphics.Color.WHITE)
+            textSize = 13f
+            setTypeface(null, android.graphics.Typeface.BOLD)
+//            lineSpacingExtra = 2 * resources.displayMetrics.density
+        }
+        textCol.addView(title)
+        if (offer.subtitle.isNotBlank()) {
+            val sub = android.widget.TextView(ctx).apply {
+                text = offer.subtitle
+                setTextColor(android.graphics.Color.parseColor("#FFFFFFCC"))
+                textSize = 11f
+                setPadding(0, (2 * resources.displayMetrics.density).toInt(), 0, 0)
+            }
+            textCol.addView(sub)
+        }
+
+        // Emoji icon
+        val icon = android.widget.TextView(ctx).apply {
+            text = offer.emoji
+            textSize = 36f
+        }
+
+        row.addView(textCol)
+        row.addView(icon)
+        card.addView(row)
+        return card
+    }
+
     private fun setupRecyclerView() {
         subjectsRecyclerView = findViewById(R.id.subjectsRecyclerView)
         subjectAdapter = SubjectAdapter(
@@ -183,7 +311,7 @@ class HomeActivity : AppCompatActivity() {
             },
             onItemLongClick = { subject -> showDeleteSubjectDialog(subject) }
         )
-        subjectsRecyclerView.layoutManager = GridLayoutManager(this, 2)
+        subjectsRecyclerView.layoutManager = GridLayoutManager(this, 4)
         subjectsRecyclerView.adapter = subjectAdapter
     }
 

@@ -1,76 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- GoIbibo-style compact subject tile: icon circle + name, 4-per-row -->
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="160dp"
-    android:layout_margin="6dp"
+    android:layout_height="wrap_content"
+    android:layout_margin="5dp"
     android:clickable="true"
     android:focusable="true"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="8dp"
-    app:cardBackgroundColor="#001225">
+    app:cardCornerRadius="14dp"
+    app:cardElevation="2dp"
+    app:strokeWidth="1dp"
+    app:strokeColor="@color/colorDivider"
+    app:cardBackgroundColor="#FFFFFF">
 
-    <FrameLayout
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingTop="14dp"
+        android:paddingBottom="12dp"
+        android:paddingStart="6dp"
+        android:paddingEnd="6dp">
 
-        <!-- Subtle radial glow in top-right corner -->
-        <View
-            android:layout_width="130dp"
-            android:layout_height="130dp"
-            android:layout_gravity="top|end"
-            android:background="@drawable/bg_card_glow"
-            android:alpha="0.35" />
+        <!-- Icon circle with tinted background -->
+        <FrameLayout
+            android:layout_width="48dp"
+            android:layout_height="48dp">
 
-        <!-- Left accent bar -->
-        <View
-            android:id="@+id/accentBar"
-            android:layout_width="4dp"
-            android:layout_height="match_parent"
-            android:background="#00BCD4" />
+            <!-- Circle background — color set programmatically (accentBar id) -->
+            <View
+                android:id="@+id/accentBar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_subject_icon_circle" />
 
-        <!-- Large subject emoji -->
+            <TextView
+                android:id="@+id/subjectIcon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="📘"
+                android:textSize="22sp" />
+
+        </FrameLayout>
+
         <TextView
-            android:id="@+id/subjectIcon"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_vertical|end"
-            android:layout_marginEnd="14dp"
-            android:text="🔬"
-            android:textSize="66sp" />
-
-        <!-- Bottom text -->
-        <LinearLayout
+            android:id="@+id/subjectName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:orientation="vertical"
-            android:paddingStart="16dp"
-            android:paddingEnd="90dp"
-            android:paddingBottom="14dp">
+            android:layout_marginTop="8dp"
+            android:text="Science"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="@color/colorTextPrimary"
+            android:gravity="center"
+            android:maxLines="2"
+            android:ellipsize="end" />
 
-            <TextView
-                android:id="@+id/subjectName"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Science"
-                android:textSize="17sp"
-                android:textStyle="bold"
-                android:textColor="#FFFFFF"
-                android:maxLines="1"
-                android:ellipsize="end" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Tap to explore →"
-                android:textSize="11sp"
-                android:textColor="#80FFFFFF"
-                android:layout_marginTop="3dp" />
-
-        </LinearLayout>
-
-    </FrameLayout>
+    </LinearLayout>
 
 </com.google.android.material.card.MaterialCardView>

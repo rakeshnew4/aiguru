@@ -2,72 +2,59 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:fitsSystemWindows="true"
     android:layout_height="match_parent"
-    android:background="#0D1117"
-    android:fillViewport="true">
+    android:background="@color/colorBackground"
+    android:fillViewport="true"
+    android:fitsSystemWindows="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- Header -->
         <LinearLayout
             android:id="@+id/loginHeader"
             android:layout_width="match_parent"
-            android:layout_height="200dp"
-            android:background="#0F1724"
-            android:gravity="center"
+            android:layout_height="160dp"
             android:orientation="vertical"
-            android:paddingTop="32dp"
-            android:paddingBottom="32dp">
+            android:gravity="center"
+            android:background="@color/colorPrimary">
 
             <TextView
                 android:id="@+id/appLogoEmoji"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="🎓"
-                android:textSize="52sp" />
+                android:text="🏫"
+                android:textSize="48sp" />
 
             <TextView
                 android:id="@+id/appNameText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="AI Guru"
+                android:text="School Login"
                 android:textColor="#FFFFFF"
-                android:textSize="28sp"
-                android:textStyle="bold" />
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:layout_marginTop="8dp" />
 
             <TextView
                 android:id="@+id/appTaglineText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="Your Smart Study Companion"
-                android:textColor="#8899AA"
-                android:textSize="14sp" />
+                android:text="Login with your school credentials"
+                android:textColor="#CCE0FF"
+                android:textSize="13sp"
+                android:layout_marginTop="4dp" />
+
         </LinearLayout>
 
-        <!-- Accent line -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="2dp"
-            android:background="#40E0D0" />
-
-        <!-- Login Card -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="20dp"
-            android:layout_marginEnd="20dp"
-            android:layout_marginTop="24dp"
+            android:layout_margin="20dp"
             app:cardCornerRadius="20dp"
-            app:cardElevation="0dp"
-            app:cardBackgroundColor="#161D2A"
-            app:strokeColor="#FFFFFF18"
-            app:strokeWidth="1dp">
+            app:cardElevation="4dp"
+            app:cardBackgroundColor="#FFFFFF">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -75,168 +62,93 @@
                 android:orientation="vertical"
                 android:padding="24dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Student Login"
-                    android:textColor="#FFFFFF"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="Select your school and enter your student ID"
-                    android:textColor="#8899AA"
-                    android:textSize="13sp" />
-
-                <!-- School Dropdown -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="20dp"
-                    android:layout_marginBottom="6dp"
-                    android:text="Your School"
-                    android:textColor="#FFFFFF"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/schoolDropdownLayout"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Search and select school"
-                    app:boxStrokeColor="#40E0D0"
-                    app:hintTextColor="#40E0D0"
-                    app:boxBackgroundColor="#0D1117">
+                    android:hint="Select School"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_marginBottom="16dp">
 
                     <AutoCompleteTextView
                         android:id="@+id/schoolAutoComplete"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textColor="#FFFFFF"
-                        android:inputType="text"
-                        android:imeOptions="actionNext"
-                        android:paddingStart="16dp"
-                        android:paddingEnd="16dp" />
-                </com.google.android.material.textfield.TextInputLayout>
+                        android:inputType="textFilter" />
 
-                <!-- Student ID -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:layout_marginBottom="6dp"
-                    android:text="Student ID"
-                    android:textColor="#FFFFFF"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
+                </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/studentIdLayout"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="e.g. DPS001, KV002"
-                    app:boxStrokeColor="#40E0D0"
-                    app:hintTextColor="#40E0D0"
-                    app:boxBackgroundColor="#0D1117">
+                    android:hint="Student ID"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_marginBottom="16dp">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/studentIdInput"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textColor="#FFFFFF"
-                        android:inputType="textCapCharacters"
-                        android:imeOptions="actionNext" />
-                </com.google.android.material.textfield.TextInputLayout>
+                        android:inputType="text" />
 
-                <!-- Student Name (optional) -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
-                    android:layout_marginBottom="6dp"
-                    android:text="Your Name  (optional)"
-                    android:textColor="#FFFFFF"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
+                </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/studentNameLayout"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="e.g. Rahul Sharma"
-                    app:boxStrokeColor="#40E0D0"
-                    app:hintTextColor="#40E0D0"
-                    app:boxBackgroundColor="#0D1117">
+                    android:hint="Your Name"
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_marginBottom="24dp">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/studentNameInput"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textColor="#FFFFFF"
-                        android:inputType="textPersonName|textCapWords"
-                        android:imeOptions="actionDone" />
+                        android:inputType="textPersonName" />
+
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- Login Button -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/loginButton"
                     android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:layout_marginTop="24dp"
-                    android:text="Continue →"
-                    android:textSize="16sp"
+                    android:layout_height="52dp"
+                    android:text="Login"
+                    android:textSize="15sp"
                     android:textStyle="bold"
-                    android:textColor="#0D1117"
-                    app:backgroundTint="#40E0D0"
+                    android:textColor="#FFFFFF"
+                    app:backgroundTint="@color/colorPrimary"
                     app:cornerRadius="14dp" />
 
             </LinearLayout>
+
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Test hint card -->
+        <!-- Test hint -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/testHintCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="20dp"
             android:layout_marginEnd="20dp"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="20dp"
             app:cardCornerRadius="14dp"
             app:cardElevation="0dp"
-            app:cardBackgroundColor="#1A2000"
-            app:strokeColor="#FFE04040"
+            app:cardBackgroundColor="@color/colorPrimaryLight"
+            app:strokeColor="@color/colorPrimary"
             app:strokeWidth="1dp">
 
-            <LinearLayout
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="14dp"
+                android:text="💡 Tip: Use your school-issued student ID and the name registered with school."
+                android:textColor="@color/colorPrimary"
+                android:textSize="13sp" />
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="🧪 Testing? Use any school + ID: STUDENT1"
-                    android:textColor="#FFE040"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="Each school also has specific test IDs shown in schools_config.json"
-                    android:textColor="#8899AA"
-                    android:textSize="12sp" />
-            </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>
+
 </ScrollView>

@@ -14,7 +14,7 @@ import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.auth.FirebaseAuth
 
-class EmailAuthActivity : AppCompatActivity() {
+class EmailAuthActivity : BaseActivity() {
 
     private lateinit var auth: FirebaseAuth
     private lateinit var etEmail: TextInputEditText

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Light tinted circle behind subject emoji icon — color overridden programmatically -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="oval">
-    <solid android:color="@color/colorPrimaryLight" />
+    <solid android:color="#FFEEE6" />
 </shape>

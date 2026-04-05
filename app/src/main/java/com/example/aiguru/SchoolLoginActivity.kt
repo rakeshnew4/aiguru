@@ -14,7 +14,7 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.FirebaseAuth
 
-class SchoolLoginActivity : AppCompatActivity() {
+class SchoolLoginActivity : BaseActivity() {
 
     private lateinit var schoolAutoComplete: AutoCompleteTextView
     private lateinit var studentIdInput: TextInputEditText

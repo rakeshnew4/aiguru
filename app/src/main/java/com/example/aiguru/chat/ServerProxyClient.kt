@@ -37,7 +37,8 @@ import java.util.concurrent.TimeUnit
 class ServerProxyClient(
     private val serverUrl: String,
     private val modelName: String,   // kept for API compatibility, not sent to this server
-    private val apiKey: String = ""
+    private val apiKey: String = "",
+    private val userId: String = ""
 ) : AiClient {
 
     private val client = OkHttpClient.Builder()
@@ -108,6 +109,7 @@ class ServerProxyClient(
             put("language_tag",  languageTag)
             put("student_level", studentLevel)
             put("history",       historyArray)
+            if (userId.isNotBlank()) put("user_id", userId)
             if (imageData != null) put("image_data", imageData)
             if (!imageBase64.isNullOrBlank()) put("image_base64", imageBase64)
         }

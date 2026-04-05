@@ -5,13 +5,13 @@
     android:fitsSystemWindows="true"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#0D1117">
+    android:background="@color/colorBackground">
 
     <!-- Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#0F1724"
+        android:background="#FFFFFF"
         android:gravity="center_vertical"
         android:paddingStart="4dp"
         android:paddingEnd="16dp"
@@ -38,7 +38,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="🃏 Revision Cards"
-                android:textColor="#FFFFFF"
+                android:textColor="@color/colorTextPrimary"
                 android:textSize="20sp"
                 android:textStyle="bold" />
 
@@ -47,14 +47,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Card 1 of 5"
-                android:textColor="#8899AA"
+                android:textColor="@color/colorTextSecondary"
                 android:textSize="13sp" />
 
         </LinearLayout>
     <View
         android:layout_width="match_parent"
         android:layout_height="2dp"
-        android:background="#40E0D0" />
+        android:background="@color/colorPrimary" />
 
 
     </LinearLayout>
@@ -65,7 +65,7 @@
         style="@style/Widget.AppCompat.ProgressBar.Horizontal"
         android:layout_width="match_parent"
         android:layout_height="8dp"
-        android:progressTint="#FF8F00"
+        android:progressTint="#1A1A2E"
         android:progressBackgroundTint="#C5CAE9"
         android:progress="20"
         android:max="100" />
@@ -92,7 +92,7 @@
                 android:orientation="vertical"
                 android:gravity="center"
                 android:padding="28dp"
-                android:background="#161D2A">
+                android:background="#FFFFFF">
 
                 <!-- QUESTION / ANSWER pill label -->
                 <TextView
@@ -101,7 +101,7 @@
                     android:layout_height="wrap_content"
                     android:text="QUESTION"
                     android:textSize="11sp"
-                    android:textColor="#8899AA"
+                    android:textColor="@color/colorTextSecondary"
                     android:letterSpacing="0.15"
                     android:textStyle="bold"
                     android:background="@drawable/bg_flash_pill"
@@ -119,7 +119,7 @@
                     android:gravity="center"
                     android:text="What is photosynthesis?"
                     android:textSize="20sp"
-                    android:textColor="#FFFFFF"
+                    android:textColor="@color/colorTextPrimary"
                     android:textStyle="bold"
                     android:lineSpacingExtra="4dp" />
 
@@ -129,7 +129,7 @@
                     android:layout_height="wrap_content"
                     android:text="👆 Tap card to reveal answer"
                     android:textSize="12sp"
-                    android:textColor="#8899AA"
+                    android:textColor="@color/colorTextSecondary"
                     android:layout_marginTop="32dp" />
 
             </LinearLayout>
@@ -151,7 +151,7 @@
             android:layout_height="52dp"
             android:layout_weight="1"
             android:text="← Prev"
-            android:textColor="#40E0D0"
+            android:textColor="@color/colorPrimary"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             app:strokeColor="#40E0D0"
             app:cornerRadius="12dp"
@@ -163,8 +163,8 @@
             android:layout_height="52dp"
             android:layout_weight="1"
             android:text="Next →"
-            android:textColor="#FFFFFF"
-            app:backgroundTint="#40E0D0"
+            android:textColor="@color/colorTextPrimary"
+            app:backgroundTint="@color/colorPrimary"
             app:cornerRadius="12dp"
             android:layout_marginStart="8dp" />
 

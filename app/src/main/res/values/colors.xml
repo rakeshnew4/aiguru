@@ -1,6 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Legacy colors (kept for compatibility) -->
+    <!-- ═══════════════════════════════════════════════════════════════
+         SCHOOL THEME — Centralized color config
+         ─────────────────────────────────────────────────────────────
+         These are COMPILE-TIME defaults (GoIbibo-inspired warm orange).
+         At RUNTIME, SchoolTheme.kt overrides them per school branding.
+         To change the default look everywhere: edit only this file.
+         ═══════════════════════════════════════════════════════════════ -->
+
+    <!-- ── Primary brand color ─────────────────────────────────────── -->
+    <color name="colorPrimary">#1A1A2E</color>
+    <color name="colorPrimaryDark">#0A0A1A</color>
+    <color name="colorPrimaryLight">#EBEBF0</color>
+
+    <!-- ── Secondary / accent ──────────────────────────────────────── -->
+    <color name="colorSecondary">#1565C0</color>
+    <color name="colorSecondaryLight">#E3F2FD</color>
+    <color name="colorOnPrimary">#FFFFFF</color>
+    <color name="colorOnSecondary">#FFFFFF</color>
+
+    <!-- ── Backgrounds ─────────────────────────────────────────────── -->
+    <color name="colorBackground">#F5F7FA</color>
+    <color name="colorSurface">#FFFFFF</color>
+    <color name="colorSurface2">#F9FAFB</color>
+
+    <!-- ── Text ────────────────────────────────────────────────────── -->
+    <color name="colorTextPrimary">#1A1A2E</color>
+    <color name="colorTextSecondary">#666B8A</color>
+    <color name="colorTextHint">#9CA3AF</color>
+    <color name="colorTextOnPrimary">#FFFFFF</color>
+
+    <!-- ── Dividers / strokes ───────────────────────────────────────── -->
+    <color name="colorDivider">#E0E4F0</color>
+
+    <!-- ── Status (not school-branded) ────────────────────────────── -->
+    <color name="colorSuccess">#1E9B6B</color>
+    <color name="colorSuccessLight">#E6FAF4</color>
+    <color name="colorError">#E05050</color>
+    <color name="colorErrorLight">#FFEEEE</color>
+    <color name="colorWarning">#F57F17</color>
+    <color name="colorWarningLight">#FFF8E1</color>
+
+    <!-- ── Chat UI ──────────────────────────────────────────────────── -->
+    <color name="chat_bg">#FFFFFF</color>
+    <color name="user_bubble">#1A1A2E</color>
+    <color name="ai_bubble">#F4F4F5</color>
+    <color name="ai_avatar_bg">#EBEBF0</color>
+    <color name="mic_active">#E53935</color>
+    <color name="mic_idle">#EBEBF0</color>
+    <color name="mic_idle_icon">#1A1A2E</color>
+
+    <!-- ── Text rendering (Markdown) ──────────────────────────────── -->
+    <color name="heading_h1">#1A1A2E</color>
+    <color name="heading_h2">#2D2D44</color>
+    <color name="heading_h3">#1A1A2E</color>
+    <color name="superscript_math">#6A1B9A</color>
+    <color name="subscript_chem">#00695C</color>
+    <color name="code_bg">#F1F3F4</color>
+
+    <!-- ── Legacy aliases (kept for code/XML back-compat) ──────────── -->
     <color name="purple_200">#FFBB86FC</color>
     <color name="purple_500">#FF6200EE</color>
     <color name="purple_700">#FF3700B3</color>
@@ -8,37 +66,21 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-
-    <!-- AI Guru Educational Theme -->
-    <color name="primary">#00776B</color>
-    <color name="primary_dark">#00776B</color>
-    <color name="primary_light">#5E92F3</color>
-    <color name="accent_amber">#FF8F00</color>
-    <color name="background">#EEF2FF</color>
+    <color name="primary">#1A1A2E</color>
+    <color name="primary_dark">#0A0A1A</color>
+    <color name="primary_light">#EBEBF0</color>
+    <color name="accent_amber">#1A1A2E</color>
+    <color name="background">#F5F7FA</color>
     <color name="surface_white">#FFFFFF</color>
-    <color name="text_primary">#1A237E</color>
-    <color name="text_secondary">#546E7A</color>
-    <color name="text_hint">#90A4AE</color>
-    <color name="user_bubble">#1565C0</color>
-    <color name="ai_bubble">#F4F4F5</color>
-    <color name="success_green">#2E7D32</color>
+    <color name="text_primary">#1A1A2E</color>
+    <color name="text_secondary">#666B8A</color>
+    <color name="text_hint">#9CA3AF</color>
+    <color name="success_green">#1E9B6B</color>
     <color name="warning_amber">#F57F17</color>
-    <color name="chip_label">#B3C5FF</color>
-
-    <!-- Chat UI Modern Theme -->
-    <color name="mic_active">#E53935</color>
-    <color name="mic_idle">#E3F2FD</color>
-    <color name="mic_idle_icon">#1565C0</color>
+    <color name="chip_label">#1A1A2E</color>
     <color name="formula_purple">#7B1FA2</color>
     <color name="practice_pink">#880E4F</color>
-    <color name="send_gradient_start">#1565C0</color>
-    <color name="send_gradient_end">#303F9F</color>
-    <color name="chat_bg">#FFFFFF</color>
-    <color name="ai_avatar_bg">#E8EAF6</color>
-    <color name="heading_h1">#1A237E</color>
-    <color name="heading_h2">#283593</color>
-    <color name="heading_h3">#1565C0</color>
-    <color name="superscript_math">#6A1B9A</color>
-    <color name="subscript_chem">#00695C</color>
-    <color name="code_bg">#F1F3F4</color>
+    <color name="send_gradient_start">#1A1A2E</color>
+    <color name="send_gradient_end">#0A0A1A</color>
+
 </resources>

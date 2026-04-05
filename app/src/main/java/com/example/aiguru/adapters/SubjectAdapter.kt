@@ -15,18 +15,18 @@ class SubjectAdapter(
     private val onItemLongClick: (String) -> Unit
 ) : RecyclerView.Adapter<SubjectAdapter.ViewHolder>() {
 
-    // Neon/vivid accent colors matching the dark card aesthetic
-    private val accentColors = intArrayOf(
-        Color.parseColor("#00E5FF"), // cyan
-        Color.parseColor("#D500F9"), // vivid purple
-        Color.parseColor("#2979FF"), // bright blue
-        Color.parseColor("#FF1744"), // red
-        Color.parseColor("#FF6D00"), // deep orange
-        Color.parseColor("#00E676"), // green
-        Color.parseColor("#FFEA00"), // yellow
-        Color.parseColor("#F50057"), // pink
-        Color.parseColor("#00B0FF"), // light blue
-        Color.parseColor("#76FF03")  // lime
+    // Soft pastel tints for the icon circle — looks good on light theme
+    private val circleTints = intArrayOf(
+        Color.parseColor("#FFE8D6"), // warm orange-peach
+        Color.parseColor("#D6EEFF"), // sky blue
+        Color.parseColor("#D6F5E8"), // mint green
+        Color.parseColor("#F0D6FF"), // soft purple
+        Color.parseColor("#FFD6D6"), // light red
+        Color.parseColor("#FFF5D6"), // warm yellow
+        Color.parseColor("#D6F5FF"), // cyan
+        Color.parseColor("#FFD6F0"), // pink
+        Color.parseColor("#E8FFD6"), // lime
+        Color.parseColor("#D6D6FF")  // periwinkle
     )
 
     // Subject-specific emoji mapping — falls back to index-based
@@ -77,15 +77,14 @@ class SubjectAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val subject = subjects[position]
-        val colorIdx = Math.abs(subject.lowercase().hashCode()) % accentColors.size
-        val accent = accentColors[colorIdx]
+        val colorIdx = Math.abs(subject.lowercase().hashCode()) % circleTints.size
+        val tint = circleTints[colorIdx]
 
-        // Set accent bar color
-        holder.accentBar.setBackgroundColor(accent)
+        // Tint the circle background behind the emoji
+        (holder.accentBar.background as? GradientDrawable)?.setColor(tint)
+            ?: holder.accentBar.setBackgroundColor(tint)
 
-        // Set emoji
         holder.subjectIcon.text = emojiFor(subject)
-
         holder.subjectName.text = subject
         holder.itemView.setOnClickListener { onItemClick(subject) }
         holder.itemView.setOnLongClickListener { onItemLongClick(subject); true }

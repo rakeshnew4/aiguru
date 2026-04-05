@@ -1,39 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:fitsSystemWindows="true"
     android:layout_height="match_parent"
-    android:background="@drawable/blackboard"
-    android:keepScreenOn="true">
+    android:background="#1E2235"
+    android:keepScreenOn="true"
+    android:fitsSystemWindows="true">
 
-    <!-- ── LOADING STATE ───────────────────────────────────────────── -->
+    <!-- Loading state -->
     <LinearLayout
         android:id="@+id/loadingGroup"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:gravity="center"
-        android:padding="32dp">
+        android:visibility="visible">
 
         <ProgressBar
-            android:id="@+id/loadingSpinner"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:indeterminateTint="#D4C9A8" />
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:indeterminateTint="#5C5BD4" />
 
         <TextView
             android:id="@+id/loadingText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:text="Building your lesson…"
-            android:textColor="#BCAB8A"
-            android:textSize="16sp"
-            android:gravity="center" />
+            android:text="Preparing lesson..."
+            android:textColor="#AABBCC"
+            android:textSize="15sp"
+            android:layout_marginTop="16dp" />
 
     </LinearLayout>
 
-    <!-- ── CONTENT STATE ───────────────────────────────────────────── -->
+    <!-- Content -->
     <LinearLayout
         android:id="@+id/contentGroup"
         android:layout_width="match_parent"
@@ -41,44 +39,46 @@
         android:orientation="vertical"
         android:visibility="gone">
 
-        <!-- Header: close btn + step counter -->
+        <!-- Top bar -->
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:paddingLeft="4dp"
-            android:paddingRight="16dp">
-
-            <TextView
-                android:id="@+id/closeButton"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
-                android:text="✕"
-                android:textColor="#D4C9A8"
-                android:textSize="20sp"
-                android:gravity="center"
-                android:layout_centerVertical="true"
-                android:alpha="0.6" />
+            android:background="#252840"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp">
 
             <TextView
                 android:id="@+id/stepCounter"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_centerInParent="true"
-                android:text="1 / 4"
-                android:textColor="#C8B87C"
+                android:layout_centerVertical="true"
+                android:layout_centerHorizontal="true"
+                android:text="Step 1 / 5"
+                android:textColor="#CCDDEE"
                 android:textSize="14sp"
-                android:letterSpacing="0.08" />
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/closeButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:gravity="center"
+                android:text="✕"
+                android:textColor="#AABBCC"
+                android:textSize="18sp"
+                android:background="?attr/selectableItemBackgroundBorderless" />
 
         </RelativeLayout>
 
-        <!-- Steps scroll view — cards fade in one by one as lesson progresses -->
+        <!-- Lesson content -->
         <ScrollView
             android:id="@+id/stepsScrollView"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:overScrollMode="never"
-            android:scrollbars="none">
+            android:padding="5dp">
 
             <LinearLayout
                 android:id="@+id/stepsContainer"
@@ -88,74 +88,78 @@
 
         </ScrollView>
 
-        <!-- Progress dots -->
+        <!-- Dot indicators -->
         <LinearLayout
             android:id="@+id/dotsContainer"
             android:layout_width="match_parent"
             android:layout_height="20dp"
             android:orientation="horizontal"
-            android:gravity="center"
-            android:layout_marginBottom="16dp" />
+            android:gravity="center" />
 
-        <!-- Controls: Prev | Pause | Replay | Next -->
+        <!-- Controls -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="72dp"
             android:orientation="horizontal"
             android:gravity="center"
-            android:paddingBottom="16dp">
+            android:background="#252840"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp">
 
             <TextView
                 android:id="@+id/prevButton"
-                android:layout_width="64dp"
-                android:layout_height="56dp"
-                android:text="◀"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:gravity="center"
+                android:text="◀"
                 android:textSize="22sp"
-                android:textColor="#D4C9A8" />
+                android:textColor="#AABBCC"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:layout_marginEnd="12dp" />
 
             <TextView
                 android:id="@+id/pauseButton"
-                android:layout_width="64dp"
+                android:layout_width="56dp"
                 android:layout_height="56dp"
-                android:text="⏸"
                 android:gravity="center"
-                android:textSize="28sp"
-                android:textColor="#D4C9A8" />
+                android:text="⏸"
+                android:textSize="26sp"
+                android:textColor="#5C5BD4"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:layout_marginEnd="8dp" />
 
             <TextView
                 android:id="@+id/replayButton"
-                android:layout_width="64dp"
+                android:layout_width="56dp"
                 android:layout_height="56dp"
-                android:text="↺"
                 android:gravity="center"
+                android:text="↺"
                 android:textSize="26sp"
-                android:textColor="#D4C9A8" />
+                android:textColor="#AABBCC"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:layout_marginEnd="8dp" />
 
             <TextView
                 android:id="@+id/nextButton"
-                android:layout_width="64dp"
-                android:layout_height="56dp"
-                android:text="▶"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:gravity="center"
+                android:text="▶"
                 android:textSize="22sp"
-                android:textColor="#D4C9A8" />
+                android:textColor="#5C5BD4"
+                android:background="?attr/selectableItemBackgroundBorderless" />
 
         </LinearLayout>
 
     </LinearLayout>
 
-    <!-- ── FLOATING HAND-WRITER EMOJI (typewriter cursor) ──────────── -->
+    <!-- Hand writer indicator -->
     <TextView
         android:id="@+id/handWriter"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:text="✍🏽"
-        android:textSize="30sp"
-        android:gravity="center"
-        android:visibility="invisible"
-        android:elevation="10dp"
-        android:layout_gravity="top|start" />
-
+        android:textSize="28sp"
+        android:visibility="invisible" />
 
 </FrameLayout>

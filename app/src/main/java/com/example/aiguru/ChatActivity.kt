@@ -70,7 +70,7 @@ import java.io.File
 import java.util.Locale
 import java.util.UUID
 
-class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
+class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
 
     private enum class LiveMicMode { PARTIAL, FULL }
 
@@ -92,6 +92,9 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
     private lateinit var languageButton: MaterialButton
     private lateinit var listeningIndicator: TextView
     private lateinit var bottomDescribeButton: MaterialButton
+    private lateinit var plusButton: MaterialButton
+    private lateinit var quickActionsPanel: android.view.View
+    private var isQuickActionsOpen = false
 
     // ── Chapter Workspace Drawer ─────────────────────────────────────────────
     private lateinit var chatDrawerLayout: DrawerLayout
@@ -465,6 +468,9 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         pagesDrawerList = findViewById(R.id.pagesDrawerList)
         listeningIndicator = findViewById(R.id.listeningIndicator)
         bottomDescribeButton = findViewById(R.id.bottomDescribeButton)
+        plusButton = findViewById(R.id.plusButton)
+        quickActionsPanel = findViewById(R.id.quickActionsPanel)
+        plusButton.setOnClickListener { toggleQuickActions() }
         voiceChatBar = findViewById(R.id.voiceChatBar)
         voiceChatStatus = findViewById(R.id.voiceChatStatus)
         voiceModeBadge = findViewById(R.id.voiceModeBadge)
@@ -547,15 +553,18 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         formulaButton.setOnClickListener {
             metricsTracker.recordEvent(ChapterMetricsTracker.EventType.FORMULA_USED)
             sendMessage(PromptRepository.getQuickAction("formula", subjectName, chapterName))
+            closeQuickActions()
         }
         practiceButton.setOnClickListener {
             metricsTracker.recordEvent(ChapterMetricsTracker.EventType.PRACTICE_USED)
             sendMessage(PromptRepository.getQuickAction("practice", subjectName, chapterName))
+            closeQuickActions()
         }
         bottomDescribeButton.setOnClickListener {
             metricsTracker.recordEvent(ChapterMetricsTracker.EventType.EXPLAIN_USED)
             sendMessage(PromptRepository.getQuickAction("describe_image", subjectName, chapterName))
             messageInput.setText("")
+            closeQuickActions()
         }
 
         findViewById<com.google.android.material.button.MaterialButton>(R.id.clearChatButton)
@@ -565,16 +574,39 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
 
     private fun setupQuickActions() {
         mapOf(
-
             R.id.explainButton to "explain",
             R.id.quizButton to "quiz",
             R.id.notesButton to "notes"
         ).forEach { (id, key) ->
             findViewById<MaterialButton>(id).setOnClickListener {
                 sendMessage(PromptRepository.getQuickAction(key, subjectName, chapterName))
+                closeQuickActions()
             }
         }
-        findViewById<MaterialButton>(R.id.flashcardsButton).setOnClickListener { generateFlashcards() }
+        findViewById<MaterialButton>(R.id.flashcardsButton).setOnClickListener {
+            generateFlashcards()
+            closeQuickActions()
+        }
+    }
+
+    private fun toggleQuickActions() {
+        if (isQuickActionsOpen) {
+            closeQuickActions()
+        } else {
+            openQuickActions()
+        }
+    }
+
+    private fun openQuickActions() {
+        quickActionsPanel.visibility = android.view.View.VISIBLE
+        plusButton.text = "✕"
+        isQuickActionsOpen = true
+    }
+
+    private fun closeQuickActions() {
+        quickActionsPanel.visibility = android.view.View.GONE
+        plusButton.text = "+"
+        isQuickActionsOpen = false
     }
 
     private fun initializeChapterWorkspaceDrawer() {
@@ -999,7 +1031,8 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
         return ServerProxyClient(
             serverUrl = cfg.serverUrl.ifBlank { "http://108.181.187.227:8003" },
             modelName = "",
-            apiKey = cfg.serverApiKey
+            apiKey = cfg.serverApiKey,
+            userId = userId
         )
     }
 
@@ -1026,6 +1059,15 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
             if (capturedPdfBase64 != null) pdfPageBase64 = capturedPdfBase64
             if (capturedDisplayUri != null) pendingDisplayUri = capturedDisplayUri
             showError(planCheck.upgradeMessage)
+            // Navigate to subscription screen directly when the plan has expired
+            if (planCheck.limitType == PlanEnforcer.LimitType.PLAN_EXPIRED) {
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    startActivity(
+                        android.content.Intent(this, SubscriptionActivity::class.java)
+                            .putExtra("schoolId", com.example.aiguru.utils.SessionManager.getSchoolId(this))
+                    )
+                }, 1500)
+            }
             return
         }
 
@@ -1130,7 +1172,7 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                         "[ChatActivity] onDone received in=$inputTok out=$outputTok total=$totalTok"
                     )
                     // Persist token counters to Firestore (async, runs on IO thread)
-                    if (totalTok > 0) PlanEnforcer.recordTokensUsed(userId, totalTok)
+                    if (totalTok > 0) PlanEnforcer.recordTokensUsed(userId, totalTok, inputTok, outputTok)
                     // Save page analysis to Firestore after it has been used in this response
                     android.util.Log.d("PageContext",
                         "onDone: capturedPageContent=${capturedPageContent != null} " +
@@ -1172,9 +1214,11 @@ class ChatActivity : AppCompatActivity(), VoiceRecognitionCallback {
                             val tokensToSave = totalTok.takeIf { it > 0 }
                             android.util.Log.d(
                                 "TokenDebug",
-                                "[ChatActivity] saving AI msg tokens=$tokensToSave"
+                                "[ChatActivity] saving AI msg tokens=$tokensToSave in=$inputTok out=$outputTok"
                             )
-                            historyRepo.saveMessage(finalMsg, tokens = tokensToSave)
+                            historyRepo.saveMessage(finalMsg, tokens = tokensToSave,
+                                inputTokens = inputTok.takeIf { it > 0 },
+                                outputTokens = outputTok.takeIf { it > 0 })
                             messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
                             if ((lastInputWasVoice || isVoiceModeActive) && !isAutoExplainActive) {
                                 lastInputWasVoice = false

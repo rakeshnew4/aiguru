@@ -14,7 +14,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.aiguru.utils.SessionManager
 import java.util.concurrent.TimeUnit
 
-class ProgressDashboardActivity : AppCompatActivity() {
+class ProgressDashboardActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -140,7 +140,7 @@ class ProgressDashboardActivity : AppCompatActivity() {
             layoutParams = lp
             val tint = when {
                 cs.masteryScore >= 75 -> "#2E7D32"
-                cs.masteryScore >= 40 -> "#FF8F00"
+                cs.masteryScore >= 40 -> "#616161"
                 else -> "#E53935"
             }
             progressTintList = android.content.res.ColorStateList.valueOf(Color.parseColor(tint))

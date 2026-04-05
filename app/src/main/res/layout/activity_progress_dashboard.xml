@@ -2,30 +2,32 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:fitsSystemWindows="true"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#0D1117">
+    android:background="@color/colorBackground"
+    android:fitsSystemWindows="true">
 
     <!-- Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#0F1724"
+        android:background="#FFFFFF"
+        android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingStart="4dp"
         android:paddingEnd="16dp"
         android:paddingTop="8dp"
-        android:paddingBottom="16dp">
+        android:paddingBottom="12dp"
+        android:elevation="2dp">
 
         <ImageButton
             android:id="@+id/backButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:src="@drawable/ic_arrow_back"
+            app:tint="@null"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Back"
-            app:tint="@null" />
+            android:contentDescription="Back" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -35,212 +37,192 @@
             android:paddingStart="8dp">
 
             <TextView
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="📊 Progress Dashboard"
-                android:textColor="#FFFFFF"
+                android:text="Progress"
+                android:textColor="@color/colorTextPrimary"
                 android:textSize="20sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/dashboardSubtitle"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Your learning journey"
-                android:textColor="#8899AA"
+                android:textColor="@color/colorTextSecondary"
                 android:textSize="13sp" />
 
         </LinearLayout>
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="2dp"
-        android:background="#40E0D0" />
-
 
     </LinearLayout>
 
-    <!-- Summary stats row -->
+    <View android:layout_width="match_parent" android:layout_height="3dp" android:background="@color/colorPrimary" />
+
+    <!-- Stats row -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingTop="12dp"
-        android:paddingBottom="4dp">
+        android:padding="16dp">
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginEnd="6dp"
-            app:cardCornerRadius="10dp"
+            android:layout_marginEnd="8dp"
+            app:cardCornerRadius="14dp"
             app:cardElevation="2dp"
-            app:cardBackgroundColor="#161D2A">
+            app:cardBackgroundColor="#FFFFFF">
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="12dp"
-                android:gravity="center">
+                android:gravity="center"
+                android:padding="16dp">
+
                 <TextView
                     android:id="@+id/totalChaptersCount"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="0"
-                    android:textSize="22sp"
-                    android:textColor="#40E0D0"
-                    android:textStyle="bold" />
+                    android:textSize="28sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorPrimary" />
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Chapters"
-                    android:textSize="11sp"
-                    android:textColor="#8899AA" />
+                    android:textSize="12sp"
+                    android:textColor="@color/colorTextSecondary" />
+
             </LinearLayout>
+
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="3dp"
-            android:layout_marginEnd="3dp"
-            app:cardCornerRadius="10dp"
+            android:layout_marginEnd="8dp"
+            app:cardCornerRadius="14dp"
             app:cardElevation="2dp"
-            app:cardBackgroundColor="#161D2A">
+            app:cardBackgroundColor="#FFFFFF">
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="12dp"
-                android:gravity="center">
+                android:gravity="center"
+                android:padding="16dp">
+
                 <TextView
                     android:id="@+id/avgMasteryScore"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="0%"
-                    android:textSize="22sp"
-                    android:textColor="#4ADE80"
-                    android:textStyle="bold" />
+                    android:textSize="28sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorSuccess" />
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Avg Mastery"
-                    android:textSize="11sp"
-                    android:textColor="#8899AA" />
+                    android:text="Mastery"
+                    android:textSize="12sp"
+                    android:textColor="@color/colorTextSecondary" />
+
             </LinearLayout>
+
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="6dp"
-            app:cardCornerRadius="10dp"
+            app:cardCornerRadius="14dp"
             app:cardElevation="2dp"
-            app:cardBackgroundColor="#161D2A">
+            app:cardBackgroundColor="#FFFFFF">
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="12dp"
-                android:gravity="center">
+                android:gravity="center"
+                android:padding="16dp">
+
                 <TextView
                     android:id="@+id/totalTimeText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="0m"
-                    android:textSize="22sp"
-                    android:textColor="#FFE040"
-                    android:textStyle="bold" />
+                    android:textSize="28sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorError" />
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Study Time"
-                    android:textSize="11sp"
-                    android:textColor="#8899AA" />
+                    android:text="Time"
+                    android:textSize="12sp"
+                    android:textColor="@color/colorTextSecondary" />
+
             </LinearLayout>
+
         </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>
 
-    <!-- Loading indicator -->
+    <!-- Loading / empty / content -->
     <LinearLayout
         android:id="@+id/loadingLayout"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center"
+        android:layout_height="wrap_content"
         android:orientation="vertical"
+        android:gravity="center"
+        android:padding="32dp"
         android:visibility="visible">
 
         <ProgressBar
             android:layout_width="48dp"
-            android:layout_height="48dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Loading your progress…"
-            android:textColor="#8899AA"
-            android:textSize="14sp" />
+            android:layout_height="48dp"
+            android:indeterminateTint="@color/colorPrimary" />
 
     </LinearLayout>
 
-    <!-- Empty state -->
     <LinearLayout
         android:id="@+id/emptyLayout"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center"
+        android:layout_height="wrap_content"
         android:orientation="vertical"
+        android:gravity="center"
+        android:padding="32dp"
         android:visibility="gone">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="📚"
-            android:textSize="48sp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
             android:text="No progress yet"
-            android:textColor="#FFFFFF"
-            android:textSize="18sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:gravity="center"
-            android:text="Study some chapters to see\nyour progress here!"
-            android:textColor="#8899AA"
-            android:textSize="14sp" />
+            android:textSize="16sp"
+            android:textColor="@color/colorTextSecondary" />
 
     </LinearLayout>
 
-    <!-- Chapter list -->
     <ScrollView
         android:id="@+id/chapterScrollView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:visibility="gone"
-        android:paddingBottom="16dp"
-        android:clipToPadding="false">
+        android:layout_weight="1">
 
         <LinearLayout
             android:id="@+id/chapterListContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingTop="8dp" />
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="16dp" />
 
     </ScrollView>
 

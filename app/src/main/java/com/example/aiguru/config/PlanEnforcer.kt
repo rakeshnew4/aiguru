@@ -39,6 +39,7 @@ object PlanEnforcer {
     enum class LimitType {
         NONE,
         MAINTENANCE,
+        PLAN_EXPIRED,
         DAILY_TOKENS,
         MONTHLY_TOKENS,
         MESSAGES_PER_HOUR,
@@ -77,6 +78,21 @@ object PlanEnforcer {
                 upgradeMessage = adminCfg.maintenanceMessage,
                 limitType      = LimitType.MAINTENANCE
             )
+        }
+
+        // ── Plan expiry check ───────────────────────────────────────────────
+        // If the user is on a paid plan but its expiry has passed, block access.
+        // planExpiryDate == 0L means no expiry stored (free / lifetime plan).
+        if (metadata.planId.isNotBlank() && metadata.planId != "free") {
+            val expiry = metadata.planExpiryDate
+            if (expiry > 0L && System.currentTimeMillis() > expiry) {
+                return CheckResult(
+                    allowed        = false,
+                    reason         = "${metadata.planName} plan has expired",
+                    upgradeMessage = "Your ${metadata.planName} plan has expired. 📄 Renew to keep learning — tap here to upgrade!",
+                    limitType      = LimitType.PLAN_EXPIRED
+                )
+            }
         }
 
         // ── Daily token budget ────────────────────────────────────────────────
@@ -188,7 +204,7 @@ object PlanEnforcer {
      * Increments both daily and monthly counters in the user's Firestore doc.
      * Also increments the in-memory hourly rate counter.
      */
-    fun recordTokensUsed(userId: String, tokens: Int) {
+    fun recordTokensUsed(userId: String, tokens: Int, inputTokens: Int = 0, outputTokens: Int = 0) {
         if (tokens <= 0 || userId.isBlank() || userId == "guest_user") return
 
         // Increment hourly counter
@@ -197,11 +213,19 @@ object PlanEnforcer {
         hourlyCounters[userId] = Pair((if (hour == prevHour) count else 0) + 1, hour)
 
         val now = System.currentTimeMillis()
-        val updates = mapOf(
+        val updates = mutableMapOf<String, Any>(
             "tokens_today"      to FieldValue.increment(tokens.toLong()),
             "tokens_this_month" to FieldValue.increment(tokens.toLong()),
             "tokens_updated_at" to now
         )
+        if (inputTokens > 0) {
+            updates["input_tokens_today"]        = FieldValue.increment(inputTokens.toLong())
+            updates["input_tokens_this_month"]   = FieldValue.increment(inputTokens.toLong())
+        }
+        if (outputTokens > 0) {
+            updates["output_tokens_today"]       = FieldValue.increment(outputTokens.toLong())
+            updates["output_tokens_this_month"]  = FieldValue.increment(outputTokens.toLong())
+        }
         db.collection("users").document(userId)
             .set(updates, SetOptions.merge())
             .addOnFailureListener { Log.e(TAG, "recordTokensUsed failed uid=$userId: ${it.message}") }

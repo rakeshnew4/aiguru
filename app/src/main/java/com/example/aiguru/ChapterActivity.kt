@@ -27,7 +27,7 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 
-class ChapterActivity : AppCompatActivity() {
+class ChapterActivity : BaseActivity() {
 
     private lateinit var pagesRecyclerView: RecyclerView
     private val pagesListData = mutableListOf<String>()

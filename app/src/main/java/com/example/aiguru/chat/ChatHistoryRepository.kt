@@ -2,7 +2,6 @@ package com.example.aiguru.chat
 
 import com.example.aiguru.firestore.FirestoreManager
 import com.example.aiguru.models.Message
-import java.util.UUID
 
 /**
  * Handles loading and persisting chat messages for one subject+chapter session.
@@ -33,8 +32,15 @@ class ChatHistoryRepository(
                     val messages = list.mapNotNull { map ->
                         try {
                             val role = map["role"] as? String ?: "user"
+                            // Prefer the explicit messageId field (written since the last migration).
+                            // Fall back to the Firestore doc ID (_docId injected by loadMessages).
+                            // Never generate a random UUID — messageId must be stable and
+                            // match the blackboard cache key.
+                            val id = (map["messageId"] as? String)
+                                ?: (map["_docId"] as? String)
+                                ?: return@mapNotNull null
                             Message(
-                                id        = (map["messageId"] as? String) ?: UUID.randomUUID().toString(),
+                                id        = id,
                                 content   = map["text"] as? String ?: "",
                                 isUser    = role == "user",
                                 timestamp = (map["timestamp"] as? Long) ?: 0L
@@ -48,17 +54,23 @@ class ChatHistoryRepository(
         )
     }
 
-    fun saveMessage(message: Message, tokens: Int? = null) {
+    fun saveMessage(message: Message, tokens: Int? = null, inputTokens: Int? = null, outputTokens: Int? = null) {
         val role = if (message.isUser) "user" else "model"
+        // messageId must always be the real message ID — never generate a new UUID here.
+        // If message.id is blank the message wasn't given an ID at creation time,
+        // which is a caller bug; skip saving rather than creating an orphaned doc.
+        if (message.id.isBlank()) return
         FirestoreManager.saveMessage(
-            userId    = userId,
-            subject   = subject,
-            chapter   = chapter,
-            messageId = message.id.ifBlank { UUID.randomUUID().toString() },
-            text      = message.content,
-            role      = role,
-            timestamp = message.timestamp,
-            tokens    = tokens
+            userId       = userId,
+            subject      = subject,
+            chapter      = chapter,
+            messageId    = message.id,
+            text         = message.content,
+            role         = role,
+            timestamp    = message.timestamp,
+            tokens       = tokens,
+            inputTokens  = inputTokens,
+            outputTokens = outputTokens
         )
     }
 

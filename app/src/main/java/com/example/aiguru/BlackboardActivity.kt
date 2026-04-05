@@ -271,7 +271,7 @@ class BlackboardActivity : AppCompatActivity() {
             board.addView(imagePlaceholder)
 
             val imageQuery = step.image_description.ifBlank { step.title }
-            if (imageQuery.isNotBlank()) fetchAndShowStepImage(imageQuery, step.imageConfidenceScore, imagePlaceholder)
+            if (imageQuery.isNotBlank()) fetchAndShowStepImage(imageQuery, 1.0f, imagePlaceholder)
         }
 
         // Now append the Frame Content
