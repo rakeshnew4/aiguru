@@ -75,7 +75,19 @@ class ChapterActivity : BaseActivity() {
             showNotesOptions()
         }
 
-      
+        // Quiz button — launches AI-powered quiz for this chapter
+        findViewById<MaterialButton>(R.id.startQuizButton).setOnClickListener {
+            val chapterId = "${subjectName}_${chapterName}"
+                .replace(" ", "_")
+                .lowercase()
+                .take(64)
+            startActivity(
+                Intent(this, QuizSetupActivity::class.java)
+                    .putExtra("subjectName",  subjectName)
+                    .putExtra("chapterId",    chapterId)
+                    .putExtra("chapterTitle", chapterName)
+            )
+        }
 
         // Set up RecyclerView with PageListAdapter
         pagesRecyclerView = findViewById(R.id.pagesList)

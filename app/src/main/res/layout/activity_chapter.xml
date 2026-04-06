@@ -118,10 +118,31 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:background="#FFFFFF"
-        android:elevation="4dp"
-        android:padding="12dp">
+        android:elevation="4dp">
+
+        <!-- Quiz button row -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/startQuizButton"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="6dp"
+            android:text="🧠  Take AI Quiz"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            app:backgroundTint="@color/colorSecondary"
+            app:cornerRadius="14dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="12dp">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/uploadImageButton"
@@ -148,6 +169,7 @@
             app:backgroundTint="@color/colorPrimary"
             app:cornerRadius="14dp" />
 
+        </LinearLayout>
     </LinearLayout>
 
 </LinearLayout>

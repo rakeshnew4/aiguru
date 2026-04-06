@@ -17,6 +17,7 @@ local.properties
 # API Keys and sensitive files
 app/google-services.json
 google-services.json
+*firebase_serviceaccount*.json
 *.keystore
 *.jks
 *.p12

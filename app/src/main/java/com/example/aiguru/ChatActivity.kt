@@ -48,6 +48,7 @@ import com.example.aiguru.utils.ChapterMetricsTracker
 import com.example.aiguru.utils.MediaManager
 import com.example.aiguru.utils.PdfPageManager
 import com.example.aiguru.utils.PromptRepository
+import com.example.aiguru.QuizSetupActivity
 import com.example.aiguru.utils.SessionManager
 import com.example.aiguru.utils.TTSCallback
 import com.example.aiguru.utils.TextToSpeechManager
@@ -421,7 +422,14 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
                 })
             },
             onStopClick = { ttsManager.stop() },
-            onImageClick = { },
+            onImageClick = { msg ->
+                msg.imageUrl?.let { uri ->
+                    startActivity(
+                        Intent(this, FullscreenImageActivity::class.java)
+                            .putExtra(FullscreenImageActivity.EXTRA_IMAGE_URI, uri)
+                    )
+                }
+            },
             onExplainClick = { msg ->
                 val bbLimits = AdminConfigRepository.resolveEffectiveLimits(
                     cachedMetadata.planId, cachedMetadata.planLimits
@@ -544,6 +552,15 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         saveNotesButton.setOnClickListener { saveLastAIMessageAsNotes() }
         viewNotesButton.setOnClickListener { viewSavedNotes() }
 
+        imagePreviewThumbnail.setOnClickListener {
+            pendingDisplayUri?.let { uri ->
+                startActivity(
+                    Intent(this, FullscreenImageActivity::class.java)
+                        .putExtra(FullscreenImageActivity.EXTRA_IMAGE_URI, uri.toString())
+                )
+            }
+        }
+
         removeImageButton.setOnClickListener {
             selectedImageUri = null
             pdfPageBase64 = null
@@ -580,13 +597,24 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
     private fun setupQuickActions() {
         mapOf(
             R.id.explainButton to "explain",
-            R.id.quizButton to "quiz",
             R.id.notesButton to "notes"
         ).forEach { (id, key) ->
             findViewById<MaterialButton>(id).setOnClickListener {
                 sendMessage(PromptRepository.getQuickAction(key, subjectName, chapterName))
                 closeQuickActions()
             }
+        }
+
+        findViewById<MaterialButton>(R.id.quizButton).setOnClickListener {
+            closeQuickActions()
+            val chapterId = "${subjectName}_${chapterName}"
+                .replace(" ", "_").lowercase().take(64)
+            startActivity(
+                Intent(this, QuizSetupActivity::class.java)
+                    .putExtra("subjectName", subjectName)
+                    .putExtra("chapterId", chapterId)
+                    .putExtra("chapterTitle", chapterName)
+            )
         }
         findViewById<MaterialButton>(R.id.flashcardsButton).setOnClickListener {
             generateFlashcards()
@@ -943,7 +971,9 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         pendingCropPdfPageNumber = pdfPageNumber
         pendingCropPdfFile = pdfFile
 
-        val destFile = File(cacheDir, "crop_${System.currentTimeMillis()}.jpg")
+        // Save to permanent filesDir (not cacheDir) so the image survives app restarts
+        val imagesDir = File(filesDir, "chat_images").also { it.mkdirs() }
+        val destFile = File(imagesDir, "crop_${System.currentTimeMillis()}.jpg")
         val options = UCrop.Options().apply {
             setToolbarTitle(if (isPdf) "Select Region to Ask About" else "Crop Image")
             setToolbarColor(getColor(android.R.color.white))
@@ -1119,7 +1149,7 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                historyRepo.saveMessage(userMessage.copy(imageUrl = null))
+                historyRepo.saveMessage(userMessage)
 
                 // ── Inline page analysis at send time ─────────────────────────────
                 // Runs if the background analysis (triggered on attach) wasn't completed
@@ -1162,8 +1192,21 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
                 // Build history now — capturedPageContent may have been set by inline analysis above
                 val recentHistory =
                     recentMsgs.map { if (it.isUser) "user: ${it.content}" else "assistant: ${it.content}" }
-                val pageContextEntry = capturedPageContent?.toContextSummary()
-                    ?.let { listOf("system_context: $it") } ?: emptyList()
+
+                // ── Page context for history ───────────────────────────────────────
+                // First message with an image: use the freshly-analyzed PageContent.
+                // Follow-up messages (no new image): inject the saved transcript so the
+                // LLM always knows what page the student is referring to.
+                val pageContextEntry: List<String> = when {
+                    capturedPageContent != null ->
+                        listOf("system_context: ${capturedPageContent!!.toContextSummary()}")
+                    tutorSession.latestPageContext.isNotBlank() ->
+                        listOf("system_context: Page transcript: ${
+                            tutorSession.latestPageContext.take(500)
+                                .let { if (tutorSession.latestPageContext.length > 500) "$it…" else it }
+                        }")
+                    else -> emptyList()
+                }
                 val historyStrings = pageContextEntry + recentHistory
 
                 val onToken: (String) -> Unit = { token ->

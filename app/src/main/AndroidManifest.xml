@@ -33,7 +33,7 @@
     </queries>
 
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="AI Guru"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -89,7 +89,15 @@
         <activity android:name=".ModelSettingsActivity" android:exported="false"/>
         <activity android:name=".LibraryActivity" android:exported="false"/>
         <activity android:name=".PageViewerActivity" android:exported="false"/>
+        <activity android:name=".FullscreenImageActivity" android:exported="false"
+            android:theme="@style/Theme.AIGuru.Fullscreen"/>
         <activity android:name=".ProgressDashboardActivity" android:exported="false"/>
+        <!-- Quiz system -->
+        <activity android:name=".QuizSetupActivity" android:exported="false"/>
+        <activity android:name=".QuizActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".QuizResultActivity" android:exported="false"/>
         <!-- Blackboard step-by-step audio-visual lesson mode -->
         <!-- singleTop: prevents multiple BB instances stacking up when back is pressed -->
         <activity android:name=".BlackboardActivity" android:exported="false"

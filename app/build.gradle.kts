@@ -21,19 +21,29 @@ android {
         applicationId = "com.example.aiguru"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "GROQ_API_KEY", "\"${localProperties["GROQ_API_KEY"]}\"")
+        // GROQ_API_KEY removed — Groq is called server-side only; key never ships in APK
         buildConfigField("String", "GEMINI_API_KEY", "\"${localProperties["GEMINI_API_KEY"] ?: ""}\"")
         buildConfigField("String", "PAYMENT_BASE_URL", "\"${localProperties["PAYMENT_BASE_URL"] ?: ""}\"")
         buildConfigField("String", "RAZORPAY_KEY_ID", "\"${localProperties["RAZORPAY_KEY_ID"] ?: ""}\"")
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file(localProperties["RELEASE_STORE_FILE"] as? String ?: "keystore.jks")
+            storePassword = localProperties["RELEASE_STORE_PASSWORD"] as? String ?: ""
+            keyAlias = localProperties["RELEASE_KEY_ALIAS"] as? String ?: ""
+            keyPassword = localProperties["RELEASE_KEY_PASSWORD"] as? String ?: ""
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

@@ -291,7 +291,8 @@ object FirestoreManager {
         timestamp: Long,
         tokens: Int? = null,
         inputTokens: Int? = null,
-        outputTokens: Int? = null
+        outputTokens: Int? = null,
+        imageUrl: String? = null
     ) {
         if (userId.isBlank() || userId == "guest_user") return
         val cid = convId(subject, chapter)
@@ -329,6 +330,7 @@ object FirestoreManager {
         if (tokens != null) msgDoc["tokens"] = tokens
         if (inputTokens != null) msgDoc["inputTokens"] = inputTokens
         if (outputTokens != null) msgDoc["outputTokens"] = outputTokens
+        if (imageUrl != null) msgDoc["imageUrl"] = imageUrl
         convRef.collection("messages").document(messageId).set(msgDoc)
             .addOnFailureListener { Log.e("Firestore", "saveMessage msg failed uid=$userId msgId=$messageId: ${it.message}") }
     }

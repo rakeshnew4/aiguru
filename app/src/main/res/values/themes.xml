@@ -56,6 +56,17 @@
         <item name="android:navigationBarColor">@color/colorPrimary</item>
     </style>
 
+    <!-- Full-screen immersive theme for FullscreenImageActivity -->
+    <style name="Theme.AIGuru.Fullscreen" parent="Theme.AIGuru">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:statusBarColor">@android:color/black</item>
+        <item name="android:navigationBarColor">@android:color/black</item>
+        <item name="android:colorBackground">@android:color/black</item>
+    </style>
+
     <!-- Outlined chip style used for quick-action chips on home -->
     <style name="Widget.AIGuru.Chip.Filled" parent="Widget.Material3.Chip.Assist">
         <item name="chipBackgroundColor">@color/colorPrimaryLight</item>

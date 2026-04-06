@@ -39,11 +39,15 @@ class ChatHistoryRepository(
                             val id = (map["messageId"] as? String)
                                 ?: (map["_docId"] as? String)
                                 ?: return@mapNotNull null
+                            val storedImageUrl = map["imageUrl"] as? String
                             Message(
-                                id        = id,
-                                content   = map["text"] as? String ?: "",
-                                isUser    = role == "user",
-                                timestamp = (map["timestamp"] as? Long) ?: 0L
+                                id          = id,
+                                content     = map["text"] as? String ?: "",
+                                isUser      = role == "user",
+                                timestamp   = (map["timestamp"] as? Long) ?: 0L,
+                                imageUrl    = storedImageUrl,
+                                messageType = if (storedImageUrl != null) Message.MessageType.IMAGE
+                                              else Message.MessageType.TEXT
                             )
                         } catch (_: Exception) { null }
                     }
@@ -70,7 +74,8 @@ class ChatHistoryRepository(
             timestamp    = message.timestamp,
             tokens       = tokens,
             inputTokens  = inputTokens,
-            outputTokens = outputTokens
+            outputTokens = outputTokens,
+            imageUrl     = message.imageUrl
         )
     }
 
