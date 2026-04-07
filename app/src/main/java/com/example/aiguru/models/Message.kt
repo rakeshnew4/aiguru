@@ -14,7 +14,11 @@ data class Message(
     val imageBase64: String? = null,
     val voiceUrl: String? = null,
     val pdfUrl: String? = null,
-    val messageType: MessageType = MessageType.TEXT // TEXT, IMAGE, VOICE, PDF
+    val messageType: MessageType = MessageType.TEXT, // TEXT, IMAGE, VOICE, PDF
+    /** Full transcription of any attached image/PDF — stored for LLM context, not shown in UI */
+    val transcription: String = "",
+    /** Extra details/summary field from LLM JSON — stored for LLM context */
+    val extraSummary: String = ""
 ) : Serializable {
     enum class MessageType {
         TEXT, IMAGE, VOICE, PDF, MIXED

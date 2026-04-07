@@ -103,11 +103,22 @@ def _extract_page_transcript(
     persist the image analysis into the Firestore chapter system context.
 
     Priority:
-      1. result["page_transcript"] — if generate_response() extracts it from vision
-      2. result["transcript"]      — alternate key
-      3. image_data["transcript"]  — client already analysed; echo it back
-      4. None                      — no image attached, skip the frame
+      1. LLM JSON "user_attachment_transcription" — parsed from the LLM response
+      2. result["page_transcript"] — if generate_response() extracts it from vision
+      3. result["transcript"]      — alternate key
+      4. image_data["transcript"]  — client already analysed; echo it back
+      5. None                      — no image attached, skip the frame
     """
+    # Try to extract transcription from the LLM's own JSON response
+    text = result.get("text", "")
+    try:
+        parsed = extract_json_safe(text)
+        transcription = parsed.get("user_attachment_transcription", "").strip()
+        if transcription:
+            return transcription
+    except Exception:
+        pass
+
     if not images and not image_data:
         return None
 
@@ -191,12 +202,12 @@ async def chat_stream(req: ChatRequest):
                     yield f"data: {json.dumps({'error': str(e)})}\n\n"
                     return
             
-            # 4b) Async image title matching (runs in parallel for speed)
-            try:
-                result['text'] = await get_titles(result['text'])
-            except Exception as e:
-                logger.warning(f"Image title matching failed: {e}. Continuing with original text.")
-                # Continue with original text if image title matching fails
+            # 4b) Async image title matching — only for blackboard mode (steps-based output)
+            if req.mode == "blackboard":
+                try:
+                    result['text'] = await get_titles(result['text'])
+                except Exception as e:
+                    logger.warning(f"Image title matching failed: {e}. Continuing with original text.")
             # 5) Emit page_transcript BEFORE the answer so Android can persist
             #    it to Firestore system-context as early as possible.
             try:

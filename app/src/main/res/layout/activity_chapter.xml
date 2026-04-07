@@ -64,112 +64,144 @@
         android:layout_height="3dp"
         android:background="@color/colorPrimary" />
 
-    <!-- Mastery card (always GONE - kept for compat) -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/masteryCard"
+    <!-- Tab strip: Pages | Chat -->
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:visibility="gone"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="2dp"
-        app:cardBackgroundColor="#FFFFFF">
+        android:background="#FFFFFF"
+        app:tabIndicatorColor="@color/colorPrimary"
+        app:tabSelectedTextColor="@color/colorPrimary"
+        app:tabTextColor="#888888"
+        app:tabMode="fixed"
+        app:tabGravity="fill"
+        android:elevation="2dp" />
 
+    <!-- ── Pages tab content (Tab 0) ──────────────────────── -->
+    <LinearLayout
+        android:id="@+id/pagesContent"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <!-- NCERT attribution — shown only for NCERT chapters -->
+        <TextView
+            android:id="@+id/ncertAttributionText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="📚 Source: NCERT (ncert.nic.in) — Free textbooks by Government of India"
+            android:textSize="11sp"
+            android:textColor="#555555"
+            android:gravity="center"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:background="#EEF2FF"
+            android:visibility="gone" />
+
+        <!-- Mastery card (always GONE - kept for compat) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/masteryCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:visibility="gone"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="#FFFFFF">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/masteryScoreText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0%"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorPrimary" />
+
+                <ProgressBar
+                    android:id="@+id/masteryProgressBar"
+                    style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="8dp"
+                    android:layout_marginTop="8dp"
+                    android:progress="0" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Pages list -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/pagesList"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:paddingTop="12dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="8dp"
+            android:clipToPadding="false" />
+
+        <!-- Bottom action buttons -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:background="#FFFFFF"
+            android:elevation="4dp">
 
-            <TextView
-                android:id="@+id/masteryScoreText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0%"
-                android:textSize="24sp"
-                android:textStyle="bold"
-                android:textColor="@color/colorPrimary" />
-
-            <ProgressBar
-                android:id="@+id/masteryProgressBar"
-                style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/startQuizButton"
                 android:layout_width="match_parent"
-                android:layout_height="8dp"
-                android:layout_marginTop="8dp"
-                android:progress="0" />
+                android:layout_height="48dp"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="6dp"
+                android:text="🧠  Take AI Quiz"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFF"
+                app:backgroundTint="@color/colorSecondary"
+                app:cornerRadius="14dp" />
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="12dp">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/uploadImageButton"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:text="Create a Page"
+                    android:textSize="13sp"
+                    android:textColor="@color/colorPrimary"
+                    android:minHeight="0dp"
+                    app:backgroundTint="@color/colorPrimaryLight"
+                    app:cornerRadius="14dp"
+                    android:layout_marginEnd="8dp" />
+
+            </LinearLayout>
         </LinearLayout>
 
-    </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
 
-    <!-- Pages list -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/pagesList"
+    <!-- ── Chat tab content (Tab 1) — loaded lazily ──────── -->
+    <FrameLayout
+        android:id="@+id/chatTabContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:paddingTop="12dp"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="8dp"
-        android:clipToPadding="false" />
-
-    <!-- Bottom action buttons -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:background="#FFFFFF"
-        android:elevation="4dp">
-
-        <!-- Quiz button row -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/startQuizButton"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="10dp"
-            android:layout_marginBottom="6dp"
-            android:text="🧠  Take AI Quiz"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"
-            app:backgroundTint="@color/colorSecondary"
-            app:cornerRadius="14dp" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="12dp">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/uploadImageButton"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1"
-            android:text="Upload Image"
-            android:textSize="13sp"
-            android:textColor="@color/colorPrimary"
-            android:minHeight="0dp"
-            app:backgroundTint="@color/colorPrimaryLight"
-            app:cornerRadius="14dp"
-            android:layout_marginEnd="8dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/askAIButton"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1"
-            android:text="Ask AI Guru"
-            android:textSize="13sp"
-            android:textColor="#FFFFFF"
-            android:minHeight="0dp"
-            app:backgroundTint="@color/colorPrimary"
-            app:cornerRadius="14dp" />
-
-        </LinearLayout>
-    </LinearLayout>
+        android:visibility="gone" />
 
 </LinearLayout>

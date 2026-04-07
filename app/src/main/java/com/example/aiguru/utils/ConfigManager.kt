@@ -1,24 +1,30 @@
 package com.example.aiguru.utils
 
 import android.content.Context
+import com.example.aiguru.config.AppStartRepository
 import com.example.aiguru.models.*
 import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Loads and caches school and app configuration from local assets JSON files.
- * Later, replace loadFromAssets() calls with Firebase/API fetches without changing callers.
+ * Loads and caches school and app configuration.
+ * Primary source: Firestore (via AppStartRepository, fetched during SplashActivity).
+ * Fallback: bundled assets/schools_config.json (always available offline).
  */
 object ConfigManager {
 
-    private var schools: List<School>? = null
+    private var schoolsJson: List<School>? = null  // JSON fallback cache
     private var appConfig: AppConfig? = null
 
     // ── Schools ──────────────────────────────────────────────────────────────
 
     fun getSchools(context: Context): List<School> {
-        if (schools == null) schools = loadSchools(context)
-        return schools!!
+        // Prefer Firestore-fetched schools (loaded during SplashActivity splash)
+        val remote = AppStartRepository.schools
+        if (remote.isNotEmpty()) return remote
+        // Fall back to bundled JSON
+        if (schoolsJson == null) schoolsJson = loadSchools(context)
+        return schoolsJson!!
     }
 
     fun getSchool(context: Context, schoolId: String): School? =
@@ -45,7 +51,7 @@ object ConfigManager {
     // ── Cache invalidation (call when switching to remote source) ─────────────
 
     fun clearCache() {
-        schools = null
+        schoolsJson = null
         appConfig = null
     }
 

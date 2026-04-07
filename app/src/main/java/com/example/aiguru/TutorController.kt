@@ -20,7 +20,9 @@ object TutorController {
 
     data class TutorResponse(
         val intent: TutorIntent,
-        val response: String
+        val response: String,
+        val transcription: String = "",
+        val extraSummary: String = ""
     )
 
     // ── 1. Prompt Builder ────────────────────────────────────────────────────
@@ -84,13 +86,27 @@ $footer"""
         return try {
             val jsonStr = extractJson(raw)
             val obj = JSONObject(jsonStr)
+
+            // New format: {user_question, answer, user_attachment_transcription, extra_details_or_summary}
+            val answer = obj.optString("answer", "").trim()
+            if (answer.isNotEmpty()) {
+                val extra = obj.optString("extra_details_or_summary", "").trim()
+                val transcription = obj.optString("user_attachment_transcription", "").trim()
+                // Display answer only (extra is stored for context, not necessarily shown separately)
+                val display = if (extra.isNotBlank()) "$answer\n\n$extra" else answer
+                val intentStr = obj.optString("intent", "GENERAL").trim().uppercase()
+                val intent = try { TutorIntent.valueOf(intentStr) } catch (_: Exception) { TutorIntent.GENERAL }
+                return TutorResponse(intent, applyBehaviorRules(intent, display), transcription, extra)
+            }
+
+            // Legacy format: {intent, response}
             val intentStr = obj.optString("intent", "GENERAL").trim().uppercase()
             val intent = try { TutorIntent.valueOf(intentStr) } catch (_: Exception) { TutorIntent.GENERAL }
-            val text = obj.getString("response").trim()
-            TutorResponse(intent, applyBehaviorRules(intent, text))
+            val text = obj.optString("response", "").trim().ifEmpty { raw.trim() }
+            TutorResponse(intent, applyBehaviorRules(intent, text), "")
         } catch (_: Exception) {
             // Graceful fallback: treat the whole raw text as the reply
-            TutorResponse(TutorIntent.GENERAL, raw.trim())
+            TutorResponse(TutorIntent.GENERAL, raw.trim(), "")
         }
     }
 

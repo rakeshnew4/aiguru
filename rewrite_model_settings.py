@@ -1,4 +1,4 @@
-package com.example.aiguru
+content = """package com.example.aiguru
 
 import android.os.Bundle
 import android.widget.EditText
@@ -43,3 +43,9 @@ class ModelSettingsActivity : BaseActivity() {
         }
     }
 }
+"""
+
+target = r"C:\Users\rakes\OneDrive\Desktop\aiguru\app\src\main\java\com\example\aiguru\ModelSettingsActivity.kt"
+with open(target, "w", encoding="utf-8") as f:
+    f.write(content)
+print("ModelSettingsActivity.kt rewritten")

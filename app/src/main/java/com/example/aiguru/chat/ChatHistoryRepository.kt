@@ -47,7 +47,9 @@ class ChatHistoryRepository(
                                 timestamp   = (map["timestamp"] as? Long) ?: 0L,
                                 imageUrl    = storedImageUrl,
                                 messageType = if (storedImageUrl != null) Message.MessageType.IMAGE
-                                              else Message.MessageType.TEXT
+                                              else Message.MessageType.TEXT,
+                                transcription = map["transcription"] as? String ?: "",
+                                extraSummary  = map["extraSummary"] as? String ?: ""
                             )
                         } catch (_: Exception) { null }
                     }
@@ -60,9 +62,6 @@ class ChatHistoryRepository(
 
     fun saveMessage(message: Message, tokens: Int? = null, inputTokens: Int? = null, outputTokens: Int? = null) {
         val role = if (message.isUser) "user" else "model"
-        // messageId must always be the real message ID — never generate a new UUID here.
-        // If message.id is blank the message wasn't given an ID at creation time,
-        // which is a caller bug; skip saving rather than creating an orphaned doc.
         if (message.id.isBlank()) return
         FirestoreManager.saveMessage(
             userId       = userId,
@@ -75,7 +74,9 @@ class ChatHistoryRepository(
             tokens       = tokens,
             inputTokens  = inputTokens,
             outputTokens = outputTokens,
-            imageUrl     = message.imageUrl
+            imageUrl     = message.imageUrl,
+            transcription = message.transcription,
+            extraSummary  = message.extraSummary
         )
     }
 

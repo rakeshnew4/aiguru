@@ -11,27 +11,35 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.aiguru.adapters.ChapterAdapter
+import com.example.aiguru.adapters.ChapterItem
 import com.example.aiguru.firestore.FirestoreManager
 import com.example.aiguru.utils.SessionManager
 import com.google.android.material.button.MaterialButton
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
 import org.json.JSONObject
 
 class SubjectActivity : BaseActivity() {
 
     private lateinit var chaptersRecyclerView: RecyclerView
-    private val chaptersListData = mutableListOf<String>()
+    private val chaptersListData = mutableListOf<ChapterItem>()
     private lateinit var chapterAdapter: ChapterAdapter
     private lateinit var subjectName: String
+    private lateinit var subjectId: String    // Firestore subject_id (e.g. "math_9th")
     private lateinit var userId: String
 
-    // Simple data holder for a scanned library book
-    private data class LibItem(val title: String, val assetPath: String, val pdfId: String, val label: String)
+    // ncertUrlMap: chapter order (1-based) → direct PDF URL from Firestore
+    private val ncertUrlMap = mutableMapOf<Int, String>()
+
+    // Data holder for an NCERT chapter fetched from Firestore
+    private data class NcertChapterItem(val title: String, val order: Int, val ncertUrl: String, val subjectId: String)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_subject)
 
         subjectName = intent.getStringExtra("subjectName") ?: "Subject"
+        subjectId   = intent.getStringExtra("subjectId") ?: ""
         userId = SessionManager.getFirestoreUserId(this)
 
         findViewById<TextView>(R.id.subjectTitle).text = subjectName
@@ -39,6 +47,7 @@ class SubjectActivity : BaseActivity() {
 
         setupRecyclerView()
         loadChapters()
+        fetchNcertUrls()      // async — updates buttons as data arrives
 
         findViewById<MaterialButton>(R.id.addChapterButton).setOnClickListener {
             showAddChapterOptions()
@@ -49,14 +58,21 @@ class SubjectActivity : BaseActivity() {
         chaptersRecyclerView = findViewById(R.id.chaptersRecyclerView)
         chapterAdapter = ChapterAdapter(
             chapters = chaptersListData,
-            onItemClick = { chapter ->
+            onItemClick = { item ->
                 startActivity(
-                    Intent(this, ChatActivity::class.java)
+                    Intent(this, ChapterActivity::class.java)
                         .putExtra("subjectName", subjectName)
-                        .putExtra("chapterName", chapter)
+                        .putExtra("chapterName", item.name)
                 )
             },
-            onItemLongClick = { chapter -> showDeleteChapterDialog(chapter) }
+            onItemLongClick = { item -> showDeleteChapterDialog(item.name) },
+            onNcertClick = { item ->
+                startActivity(
+                    Intent(this, NcertViewerActivity::class.java)
+                        .putExtra(NcertViewerActivity.EXTRA_TITLE, item.name)
+                        .putExtra(NcertViewerActivity.EXTRA_URL, item.ncertPdfUrl)
+                )
+            }
         )
         chaptersRecyclerView.layoutManager = LinearLayoutManager(this)
         chaptersRecyclerView.adapter = chapterAdapter
@@ -64,7 +80,60 @@ class SubjectActivity : BaseActivity() {
 
     private fun loadChapters() {
         chaptersListData.clear()
-        chaptersListData.addAll(loadChaptersLocally())
+        chaptersListData.addAll(loadChaptersLocally().mapIndexed { idx, name ->
+            ChapterItem(name = name, ncertPdfUrl = ncertUrlMap[idx + 1])
+        })
+        chapterAdapter.notifyDataSetChanged()
+    }
+
+    /**
+     * Fetches ncert_pdf_url for every chapter in this subject from Firestore's
+     * root `chapters/` collection (seeded by ncert_scraper.py).
+     * Runs in parallel with the UI — quietly updates cards when data arrives.
+     */
+    private fun fetchNcertUrls() {
+        if (subjectId.isEmpty()) return
+        FirebaseFirestore.getInstance()
+            .collection("chapters")
+            .whereEqualTo("subject_id", subjectId)
+            .get(Source.CACHE)                       // prefer cache for speed
+            .addOnSuccessListener { snap ->
+                var changed = false
+                for (doc in snap.documents) {
+                    val url = doc.getString("ncert_pdf_url") ?: continue
+                    val order = (doc.getLong("order") ?: 0L).toInt()
+                    if (url.isNotEmpty() && order > 0) {
+                        ncertUrlMap[order] = url
+                        changed = true
+                    }
+                }
+                if (changed) refreshNcertButtons()
+            }
+            .addOnFailureListener {
+                // Fall back to network if cache missed
+                FirebaseFirestore.getInstance()
+                    .collection("chapters")
+                    .whereEqualTo("subject_id", subjectId)
+                    .get(Source.SERVER)
+                    .addOnSuccessListener { snap ->
+                        for (doc in snap.documents) {
+                            val url = doc.getString("ncert_pdf_url") ?: continue
+                            val order = (doc.getLong("order") ?: 0L).toInt()
+                            if (url.isNotEmpty() && order > 0) ncertUrlMap[order] = url
+                        }
+                        refreshNcertButtons()
+                    }
+            }
+    }
+
+    /** Re-maps NCERT URLs into existing list items and notifies adapter. */
+    private fun refreshNcertButtons() {
+        chaptersListData.forEachIndexed { idx, item ->
+            val url = ncertUrlMap[idx + 1]
+            if (item.ncertPdfUrl != url) {
+                chaptersListData[idx] = item.copy(ncertPdfUrl = url)
+            }
+        }
         chapterAdapter.notifyDataSetChanged()
     }
 
@@ -89,6 +158,17 @@ class SubjectActivity : BaseActivity() {
                 put("isPdf", isPdf)
                 put("pdfAssetPath", pdfAssetPath)
                 put("pdfId", pdfId)
+            }.toString()
+        ).apply()
+    }
+
+    private fun saveChapterMetaNcert(name: String, ncertUrl: String) {
+        chaptersPrefs().edit().putString(
+            "meta_${subjectName}_$name",
+            JSONObject().apply {
+                put("isPdf", false)
+                put("isNcert", true)
+                put("ncertUrl", ncertUrl)
             }.toString()
         ).apply()
     }
@@ -129,88 +209,78 @@ class SubjectActivity : BaseActivity() {
             .show()
     }
 
-    // ── Class → Subject → Book 3-level picker ──────────────────────────
+    // ── Class → Subject → Chapter 3-level Firestore picker ──────────────
+
+    /**
+     * Hard-coded grade list. Matching values stored as Firestore `subjects.grade` field
+     * (e.g. "6th", "9th"). Labels shown to the user include the ordinal suffix.
+     */
+    private val pickerGrades = listOf("6th", "7th", "8th", "9th", "10th")
 
     private fun showLibraryPickerDialog() {
-        val tree = buildLibraryTree()
-        if (tree.isEmpty()) {
-            Toast.makeText(this, "No library PDFs found.", Toast.LENGTH_SHORT).show()
-            return
-        }
-        val grades = tree.keys.sorted().toTypedArray()
-        val gradeLabels = grades.map { g ->
-            val count = tree[g]?.values?.sumOf { it.size } ?: 0
-            "🎓 ${formatGradeLabel(g)}  ($count chapters)"
-        }.toTypedArray()
-
+        val gradeLabels = pickerGrades.map { "🎓 Class $it" }.toTypedArray()
         AlertDialog.Builder(this)
             .setTitle("📚 Pick Class")
-            .setItems(gradeLabels) { _, gi ->
-                val grade = grades[gi]
-                pickSubject(grade, tree[grade] ?: return@setItems)
-            }
+            .setItems(gradeLabels) { _, gi -> pickFirestoreSubject(pickerGrades[gi]) }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
-    private fun pickSubject(grade: String, subjectMap: Map<String, List<LibItem>>) {
-        val subjects = subjectMap.keys.sorted().toTypedArray()
-        val subjectLabels = subjects.map { s ->
-            val count = subjectMap[s]?.size ?: 0
-            "📚 ${s.replaceFirstChar { it.uppercaseChar() }}  ($count books)"
-        }.toTypedArray()
-
-        AlertDialog.Builder(this)
-            .setTitle("📚 ${formatGradeLabel(grade)} — Pick Subject")
-            .setItems(subjectLabels) { _, si ->
-                val subject = subjects[si]
-                pickBook(grade, subject, subjectMap[subject] ?: return@setItems)
-            }
-            .setNegativeButton("← Back") { _, _ -> showLibraryPickerDialog() }
-            .show()
-    }
-
-    private fun pickBook(grade: String, subject: String, books: List<LibItem>) {
-        val labels = books.sortedBy { it.title }.map { b ->
-            "📄 ${b.title.replace("_", " ").replace("-", " ")
-                .split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.uppercaseChar() } }}"
-        }.toTypedArray()
-        val sorted = books.sortedBy { it.title }
-
-        AlertDialog.Builder(this)
-            .setTitle("📗 ${subject.replaceFirstChar { it.uppercaseChar() }} · ${formatGradeLabel(grade)}")
-            .setItems(labels) { _, idx -> addChapterFromLibrary(sorted[idx]) }
-            .setNegativeButton("← Back") { _, _ -> pickSubject(grade,
-                buildLibraryTree()[grade] ?: return@setNegativeButton) }
-            .show()
-    }
-
-    private fun formatGradeLabel(grade: String): String =
-        grade.replaceFirstChar { it.uppercaseChar() }
-            .replace("class", " Class", ignoreCase = true)
-            .replace("grade", " Grade", ignoreCase = true)
-            .trim()
-
-    /** Builds grade → subject → books tree from assets/library */
-    private fun buildLibraryTree(): LinkedHashMap<String, LinkedHashMap<String, MutableList<LibItem>>> {
-        val tree = LinkedHashMap<String, LinkedHashMap<String, MutableList<LibItem>>>()
-        try {
-            for (grade in (assets.list("library") ?: emptyArray()).sorted()) {
-                for (subject in (assets.list("library/$grade") ?: emptyArray()).sorted()) {
-                    for (file in (assets.list("library/$grade/$subject") ?: emptyArray())
-                            .filter { it.endsWith(".pdf", ignoreCase = true) }.sorted()) {
-                        val title = file.removeSuffix(".pdf")
-                        val pdfId = "${grade}_${subject}_$title".replace(" ", "_")
-                        val assetPath = "library/$grade/$subject/$file"
-                        val label = "$title ($subject · $grade)"
-                        tree.getOrPut(grade) { linkedMapOf() }
-                            .getOrPut(subject) { mutableListOf() }
-                            .add(LibItem(title, assetPath, pdfId, label))
-                    }
+    private fun pickFirestoreSubject(grade: String) {
+        val db = FirebaseFirestore.getInstance()
+        db.collection("subjects")
+            .whereEqualTo("grade", grade)
+            .get()
+            .addOnSuccessListener { snap ->
+                val docs = snap.documents
+                if (docs.isEmpty()) {
+                    Toast.makeText(this, "No subjects found for Class $grade", Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
                 }
+                val labels = docs.map { "📘 ${it.getString("name") ?: it.id}" }.toTypedArray()
+                AlertDialog.Builder(this)
+                    .setTitle("📚 Class $grade — Pick Subject")
+                    .setItems(labels) { _, si ->
+                        val doc = docs[si]
+                        val sid = doc.getString("subject_id") ?: doc.id
+                        val sName = doc.getString("name") ?: sid
+                        pickFirestoreChapter(grade, sName, sid)
+                    }
+                    .setNegativeButton("← Back") { _, _ -> showLibraryPickerDialog() }
+                    .show()
             }
-        } catch (_: Exception) { }
-        return tree
+            .addOnFailureListener {
+                Toast.makeText(this, "Failed to load subjects: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun pickFirestoreChapter(grade: String, subjectLabel: String, sid: String) {
+        val db = FirebaseFirestore.getInstance()
+        db.collection("chapters")
+            .whereEqualTo("subject_id", sid)
+            .get()                             // no .orderBy() — sort client-side to avoid needing a composite index
+            .addOnSuccessListener { snap ->
+                val docs = snap.documents
+                if (docs.isEmpty()) {
+                    Toast.makeText(this, "No chapters found for $subjectLabel", Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
+                }
+                val items = docs.mapNotNull { doc ->
+                    val title  = doc.getString("title") ?: return@mapNotNull null
+                    val order  = (doc.getLong("order") ?: 0L).toInt()
+                    val url    = doc.getString("ncert_pdf_url") ?: ""
+                    NcertChapterItem(title, order, url, sid)
+                }.sortedBy { it.order }        // sort by chapter order client-side
+                val labels = items.map { "📄 Ch ${it.order}: ${it.title}" }.toTypedArray()
+                AlertDialog.Builder(this)
+                    .setTitle("📗 $subjectLabel · Class $grade")
+                    .setItems(labels) { _, idx -> addNcertChapter(items[idx]) }
+                    .setNegativeButton("← Back") { _, _ -> pickFirestoreSubject(grade) }
+                    .show()
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "Failed to load chapters: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
     }
 
     // ─── Chapter persistence ───────────────────────────────────────────────────
@@ -222,20 +292,29 @@ class SubjectActivity : BaseActivity() {
         saveChapterMeta(name, isPdf = false)
         FirestoreManager.saveChapter(userId, subjectName, name, isPdf = false)
         chaptersListData.clear()
-        chaptersListData.addAll(chapters)
+        chaptersListData.addAll(chapters.mapIndexed { idx, n ->
+            ChapterItem(name = n, ncertPdfUrl = ncertUrlMap[idx + 1])
+        })
         chapterAdapter.notifyDataSetChanged()
     }
 
-    private fun addChapterFromLibrary(book: LibItem) {
+    private fun addNcertChapter(item: NcertChapterItem) {
         val chapters = loadChaptersLocally()
-        if (!chapters.contains(book.title)) chapters.add(book.title)
+        if (!chapters.contains(item.title)) chapters.add(item.title)
         saveChaptersLocally(chapters)
-        saveChapterMeta(book.title, isPdf = true, pdfAssetPath = book.assetPath, pdfId = book.pdfId)
-        FirestoreManager.saveChapter(userId, subjectName, book.title, isPdf = true, pdfAssetPath = book.assetPath)
+        saveChapterMetaNcert(item.title, item.ncertUrl)
+        FirestoreManager.saveChapter(userId, subjectName, item.title, ncertUrl = item.ncertUrl)
         chaptersListData.clear()
-        chaptersListData.addAll(chapters)
+        chaptersListData.addAll(chapters.mapIndexed { idx, n ->
+            ChapterItem(name = n, ncertPdfUrl = ncertUrlMap[idx + 1])
+        })
         chapterAdapter.notifyDataSetChanged()
-        Toast.makeText(this, "\"${book.title}\" added ✓", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "\"${item.title}\" added ✓", Toast.LENGTH_SHORT).show()
+        if (item.ncertUrl.isNotBlank()) {
+            Toast.makeText(this,
+                "📖 Open the chapter to download and read the PDF.",
+                Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun showDeleteChapterDialog(name: String) {
@@ -253,7 +332,7 @@ class SubjectActivity : BaseActivity() {
         saveChaptersLocally(chapters)
         deleteChapterMeta(name)
         FirestoreManager.deleteChapter(userId, subjectName, name)
-        val idx = chaptersListData.indexOf(name)
+        val idx = chaptersListData.indexOfFirst { it.name == name }
         if (idx >= 0) {
             chaptersListData.removeAt(idx)
             chapterAdapter.notifyItemRemoved(idx)

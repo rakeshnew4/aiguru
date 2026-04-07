@@ -16,91 +16,6 @@
         android:background="@color/colorBackground">
 
         <!-- ── Header ──────────────────────────────────────────────── -->
-        <LinearLayout
-            android:id="@+id/chatHeaderRow"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:background="#FFFFFF"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp"
-            android:elevation="2dp">
-
-            <TextView
-                android:id="@+id/chapterIconBadge"
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:layout_marginEnd="8dp"
-                android:gravity="center"
-                android:text="📘"
-                android:textSize="17sp"
-                android:background="@drawable/bg_chapter_number" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/chatHeaderTitle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Chapter"
-                    android:textColor="@color/colorTextPrimary"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
-                    android:maxLines="1"
-                    android:ellipsize="end" />
-
-                <TextView
-                    android:id="@+id/chatHeaderSubtitle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Subject · Tutor Session"
-                    android:textColor="@color/colorTextSecondary"
-                    android:textSize="11sp"
-                    android:maxLines="1"
-                    android:ellipsize="end" />
-
-            </LinearLayout>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/languageButton"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:minHeight="0dp"
-                android:text="Language ▾"
-                android:textAllCaps="false"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:textColor="@color/colorTextSecondary"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                app:backgroundTint="@color/colorBackground"
-                app:strokeColor="@color/colorDivider"
-                app:strokeWidth="1dp"
-                app:cornerRadius="18dp"
-                android:layout_marginEnd="6dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/openPagesDrawerButton"
-                android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:text="Pages"
-                android:textSize="12sp"
-                android:textColor="@color/colorPrimary"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                app:backgroundTint="@color/colorPrimaryLight"
-                app:cornerRadius="17dp"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp" />
-
-        </LinearLayout>
 
         <!-- Thin divider under header -->
         <View
@@ -558,7 +473,34 @@
 
             </LinearLayout>
             <!-- END quickActionsPanel -->
+            <LinearLayout
+                android:layout_width="100dp"
+                android:layout_height="40dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="12dp">
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/languageButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:minHeight="0dp"
+                    android:text="Language ▾"
+                    android:textAllCaps="false"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorTextSecondary"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    app:backgroundTint="@color/colorBackground"
+                    app:strokeColor="@color/colorDivider"
+                    app:strokeWidth="1dp"
+                    app:cornerRadius="18dp"
+                    android:layout_marginEnd="6dp" />
+            </LinearLayout>
             <!-- ── Input row ──────────────────────────────────────── -->
             <LinearLayout
                 android:layout_width="match_parent"
@@ -569,6 +511,7 @@
                 android:paddingEnd="10dp"
                 android:paddingTop="8dp"
                 android:paddingBottom="12dp">
+
 
                 <!-- Plus button (toggle quick actions) -->
                 <com.google.android.material.button.MaterialButton

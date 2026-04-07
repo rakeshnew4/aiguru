@@ -1,7 +1,4 @@
 {
-  "version": "1.0",
-  "lastUpdated": "2026-03-19",
-  "note": "Test data — will be replaced by Firebase fetch in production",
   "schools": [
     {
       "id": "SCH001",
@@ -29,12 +26,7 @@
           "badge": "",
           "priceINR": 0,
           "duration": "7 days",
-          "features": [
-            "AI Chat (10 messages/day)",
-            "Up to 2 Subjects",
-            "Basic Library Access",
-            "Voice Input"
-          ]
+          "features": ["AI Chat (10 messages/day)", "Up to 2 Subjects", "Basic Library Access", "Voice Input"]
         },
         {
           "id": "BASIC",
@@ -42,13 +34,7 @@
           "badge": "Popular",
           "priceINR": 99,
           "duration": "per month",
-          "features": [
-            "AI Chat (unlimited)",
-            "Up to 5 Subjects",
-            "Full Library Access",
-            "Voice Teacher",
-            "Chapter Notes"
-          ]
+          "features": ["AI Chat (unlimited)", "Up to 5 Subjects", "Full Library Access", "Voice Teacher", "Chapter Notes"]
         },
         {
           "id": "PREMIUM",
@@ -56,14 +42,7 @@
           "badge": "Best Value",
           "priceINR": 249,
           "duration": "per month",
-          "features": [
-            "Everything in Basic",
-            
-            "PDF Analysis & Upload",
-            "Revision Tests",
-            "Flashcards",
-            "Priority Support"
-          ]
+          "features": ["Everything in Basic", "PDF Analysis & Upload", "Revision Tests", "Flashcards", "Priority Support"]
         }
       ],
       "testStudentIds": ["DPS001", "DPS002", "DPS003", "STUDENT1"]
@@ -94,11 +73,7 @@
           "badge": "",
           "priceINR": 0,
           "duration": "7 days",
-          "features": [
-            "AI Chat (10 messages/day)",
-            "Up to 2 Subjects",
-            "Basic Library Access"
-          ]
+          "features": ["AI Chat (10 messages/day)", "Up to 2 Subjects", "Basic Library Access"]
         },
         {
           "id": "BASIC",
@@ -106,12 +81,7 @@
           "badge": "Popular",
           "priceINR": 79,
           "duration": "per month",
-          "features": [
-            "AI Chat (unlimited)",
-            "Up to 5 Subjects",
-            "Full Library Access",
-            "Voice Teacher"
-          ]
+          "features": ["AI Chat (unlimited)", "Up to 5 Subjects", "Full Library Access", "Voice Teacher"]
         },
         {
           "id": "PREMIUM",
@@ -119,13 +89,7 @@
           "badge": "Best Value",
           "priceINR": 199,
           "duration": "per month",
-          "features": [
-            "Everything in Standard",
-           
-            "PDF Analysis",
-            "Revision Tests",
-            "Analytics Dashboard"
-          ]
+          "features": ["Everything in Standard", "PDF Analysis", "Revision Tests", "Analytics Dashboard"]
         }
       ],
       "testStudentIds": ["KV001", "KV002", "STUDENT1"]
@@ -156,12 +120,7 @@
           "badge": "",
           "priceINR": 0,
           "duration": "14 days",
-          "features": [
-            "AI Chat (10 messages/day)",
-            "Up to 2 Subjects",
-            "Basic Library Access",
-            "Voice Input"
-          ]
+          "features": ["AI Chat (10 messages/day)", "Up to 2 Subjects", "Basic Library Access", "Voice Input"]
         },
         {
           "id": "BASIC",
@@ -169,13 +128,7 @@
           "badge": "Popular",
           "priceINR": 129,
           "duration": "per month",
-          "features": [
-            "AI Chat (unlimited)",
-            "All Subjects",
-            "Full Library Access",
-            "Voice Teacher",
-            "Chapter Notes"
-          ]
+          "features": ["AI Chat (unlimited)", "All Subjects", "Full Library Access", "Voice Teacher", "Chapter Notes"]
         },
         {
           "id": "PREMIUM",
@@ -183,14 +136,7 @@
           "badge": "Best Value",
           "priceINR": 299,
           "duration": "per month",
-          "features": [
-            "Everything in Standard",
-         
-            "PDF Analysis",
-            "Tests & Flashcards",
-            "Performance Analytics",
-            "Parent Reports"
-          ]
+          "features": ["Everything in Standard", "PDF Analysis", "Tests & Flashcards", "Performance Analytics", "Parent Reports"]
         }
       ],
       "testStudentIds": ["DAV001", "DAV002", "STUDENT1"]
@@ -221,11 +167,7 @@
           "badge": "",
           "priceINR": 0,
           "duration": "7 days",
-          "features": [
-            "AI Chat (10 messages/day)",
-            "Up to 2 Subjects",
-            "Basic Library Access"
-          ]
+          "features": ["AI Chat (10 messages/day)", "Up to 2 Subjects", "Basic Library Access"]
         },
         {
           "id": "BASIC",
@@ -233,13 +175,7 @@
           "badge": "Popular",
           "priceINR": 149,
           "duration": "per month",
-          "features": [
-            "AI Chat (unlimited)",
-            "Up to 6 Subjects",
-            "Full Library",
-            "Voice Teacher",
-            "Notes"
-          ]
+          "features": ["AI Chat (unlimited)", "Up to 6 Subjects", "Full Library", "Voice Teacher", "Notes"]
         },
         {
           "id": "PREMIUM",
@@ -247,14 +183,7 @@
           "badge": "Best Value",
           "priceINR": 349,
           "duration": "per month",
-          "features": [
-            "Everything in Scholar",
-           
-            "PDF Analysis",
-            "Mock Tests",
-            "Doubt Clearing Sessions",
-            "Priority Support"
-          ]
+          "features": ["Everything in Scholar", "PDF Analysis", "Mock Tests", "Doubt Clearing Sessions", "Priority Support"]
         }
       ],
       "testStudentIds": ["RYAN001", "RYAN002", "STUDENT1"]
@@ -285,11 +214,7 @@
           "badge": "",
           "priceINR": 0,
           "duration": "7 days",
-          "features": [
-            "AI Chat (10 messages/day)",
-            "Up to 2 Subjects",
-            "Basic Library"
-          ]
+          "features": ["AI Chat (10 messages/day)", "Up to 2 Subjects", "Basic Library"]
         },
         {
           "id": "BASIC",
@@ -297,12 +222,7 @@
           "badge": "Popular",
           "priceINR": 89,
           "duration": "per month",
-          "features": [
-            "AI Chat (unlimited)",
-            "5 Subjects",
-            "Full Library",
-            "Voice Teacher"
-          ]
+          "features": ["AI Chat (unlimited)", "5 Subjects", "Full Library", "Voice Teacher"]
         },
         {
           "id": "PREMIUM",
@@ -310,17 +230,10 @@
           "badge": "Best Value",
           "priceINR": 229,
           "duration": "per month",
-          "features": [
-            "Everything in Basic",
- 
-            "PDF Upload & Analysis",
-            "Revision Tests",
-            "Performance Reports"
-          ]
+          "features": ["Everything in Basic", "PDF Upload & Analysis", "Revision Tests", "Performance Reports"]
         }
       ],
       "testStudentIds": ["SXS001", "SXS002", "STUDENT1"]
     }
-  ],
-  "defaultSchoolId": "SCH001"
+  ]
 }

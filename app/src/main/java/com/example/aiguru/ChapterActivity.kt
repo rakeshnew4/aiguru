@@ -21,6 +21,7 @@ import com.example.aiguru.utils.ChapterMetricsTracker
 import com.example.aiguru.utils.PdfPageManager
 import com.example.aiguru.utils.SessionManager
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -45,6 +46,12 @@ class ChapterActivity : BaseActivity() {
     private var pdfPageCount = 0
     private lateinit var pdfPageManager: PdfPageManager
     private lateinit var metricsTracker: ChapterMetricsTracker
+
+    // NCERT download-and-render state
+    private var ncertUrl = ""
+    private val ncertPdfId
+        get() = "ncert_${subjectName}_${chapterName}"
+            .replace(" ", "_").replace("/", "_").take(60)
 
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -101,6 +108,48 @@ class ChapterActivity : BaseActivity() {
 
         loadChapterType()
         loadMasteryScore()
+        setupTabs()
+    }
+
+    private fun setupTabs() {
+        val tabLayout   = findViewById<TabLayout>(R.id.tabLayout)
+        val pagesContent  = findViewById<View>(R.id.pagesContent)
+        val chatContainer = findViewById<View>(R.id.chatTabContainer)
+
+        tabLayout.addTab(tabLayout.newTab().setText("📄  Pages"))
+        tabLayout.addTab(tabLayout.newTab().setText("💬  Chat"))
+
+        tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                if (tab.position == 0) {
+                    pagesContent.visibility  = View.VISIBLE
+                    chatContainer.visibility = View.GONE
+                } else {
+                    pagesContent.visibility  = View.GONE
+                    chatContainer.visibility = View.VISIBLE
+                    getOrCreateChatFragment()
+                }
+            }
+            override fun onTabUnselected(tab: TabLayout.Tab) {}
+            override fun onTabReselected(tab: TabLayout.Tab) {}
+        })
+    }
+
+    /** Switch programmatically to the Chat tab (called by Ask AI buttons in the pages view). */
+    fun switchToChat() {
+        val tabLayout = findViewById<TabLayout>(R.id.tabLayout)
+        tabLayout.getTabAt(1)?.select()
+    }
+
+    /** Returns the existing FullChatFragment or creates it synchronously if not yet loaded. */
+    private fun getOrCreateChatFragment(): FullChatFragment {
+        val existing = supportFragmentManager.findFragmentByTag("chat_tab") as? FullChatFragment
+        if (existing != null) return existing
+        val fragment = FullChatFragment.newInstance(subjectName, chapterName)
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.chatTabContainer, fragment, "chat_tab")
+            .commitNow()
+        return fragment
     }
 
     override fun onStop() {
@@ -138,19 +187,16 @@ class ChapterActivity : BaseActivity() {
     }
 
     private fun generateChapterNotes() {
-        startActivity(
-            Intent(this, ChatActivity::class.java)
-                .putExtra("subjectName", subjectName)
-                .putExtra("chapterName", chapterName)
-                .putExtra("saveNotesType", "chapter")
-                .putExtra("autoPrompt",
-                    "Create comprehensive study notes for \"$chapterName\" with:\n" +
-                    "• Key concepts and definitions\n" +
-                    "• Important facts to remember\n" +
-                    "• Summary of main points\n" +
-                    "• Any formulas or rules to know\n\n" +
-                    "Format clearly with ## headings and bullet points."
-                )
+        val fragment = getOrCreateChatFragment()
+        switchToChat()
+        fragment.sendAutoPrompt(
+            "Create comprehensive study notes for \"$chapterName\" with:\n" +
+            "• Key concepts and definitions\n" +
+            "• Important facts to remember\n" +
+            "• Summary of main points\n" +
+            "• Any formulas or rules to know\n\n" +
+            "Format clearly with ## headings and bullet points.",
+            notesType = "chapter"
         )
     }
 
@@ -164,35 +210,29 @@ class ChapterActivity : BaseActivity() {
     }
 
     private fun generateNotesForPage(pageNum: Int) {
-        startActivity(
-            Intent(this, ChatActivity::class.java)
-                .putExtra("subjectName", subjectName)
-                .putExtra("chapterName", chapterName)
-                .putExtra("saveNotesType", "page_$pageNum")
-                .putExtra("autoPrompt",
-                    "Create detailed study notes for Page $pageNum of \"$chapterName\":\n" +
-                    "• Key concepts and definitions on this page\n" +
-                    "• Any formulas, rules, or special points\n" +
-                    "• Summary of content on this page\n\n" +
-                    "Use ## Page $pageNum Notes as the heading and format with bullet points."
-                )
+        val fragment = getOrCreateChatFragment()
+        switchToChat()
+        fragment.sendAutoPrompt(
+            "Create detailed study notes for Page $pageNum of \"$chapterName\":\n" +
+            "• Key concepts and definitions on this page\n" +
+            "• Any formulas, rules, or special points\n" +
+            "• Summary of content on this page\n\n" +
+            "Use ## Page $pageNum Notes as the heading and format with bullet points.",
+            notesType = "page_$pageNum"
         )
     }
 
     private fun generateExerciseNotes() {
-        startActivity(
-            Intent(this, ChatActivity::class.java)
-                .putExtra("subjectName", subjectName)
-                .putExtra("chapterName", chapterName)
-                .putExtra("saveNotesType", "exercises")
-                .putExtra("autoPrompt",
-                    "For the exercises in \"$chapterName\":\n" +
-                    "• List the types of exercises/problems in this chapter\n" +
-                    "• Provide step-by-step problem-solving strategies\n" +
-                    "• Show worked examples for typical questions\n" +
-                    "• Highlight common mistakes to avoid\n\n" +
-                    "Use ## Exercise Notes as the heading."
-                )
+        val fragment = getOrCreateChatFragment()
+        switchToChat()
+        fragment.sendAutoPrompt(
+            "For the exercises in \"$chapterName\":\n" +
+            "• List the types of exercises/problems in this chapter\n" +
+            "• Provide step-by-step problem-solving strategies\n" +
+            "• Show worked examples for typical questions\n" +
+            "• Highlight common mistakes to avoid\n\n" +
+            "Use ## Exercise Notes as the heading.",
+            notesType = "exercises"
         )
     }
 
@@ -220,6 +260,14 @@ class ChapterActivity : BaseActivity() {
         if (meta != null) {
             try {
                 val json = org.json.JSONObject(meta)
+
+                // NCERT chapter — open via NcertViewerActivity
+                if (json.optBoolean("isNcert", false)) {
+                    val ncertUrl = json.optString("ncertUrl", "")
+                    setupNcertChapter(ncertUrl)
+                    return
+                }
+
                 isPdfChapter = json.optBoolean("isPdf", false)
                 if (isPdfChapter) {
                     pdfAssetPath = json.optString("pdfAssetPath", "")
@@ -229,13 +277,139 @@ class ChapterActivity : BaseActivity() {
                 }
             } catch (_: Exception) { }
         }
-        setupImageChapter()
+//        setupImageChapter()
     }
 
-    // ─── PDF chapter ──────────────────────────────────────────────────────────
+    // ─── NCERT chapter ────────────────────────────────────────────────────────
+
+    private fun setupNcertChapter(url: String) {
+        ncertUrl = url
+
+        // Show attribution banner
+        findViewById<TextView>(R.id.ncertAttributionText).visibility = View.VISIBLE
+
+        // If already cached from a previous session — show pages directly
+        val cachedPdf = java.io.File(cacheDir, "pdf_cache/$ncertPdfId.pdf")
+        if (cachedPdf.exists()) {
+            loadNcertPagesFromCache()
+            return
+        }
+
+        if (url.isBlank()) {
+            pagesListData.clear()
+            pagesListData.add("⚠️ No NCERT URL available for this chapter.")
+            pageListAdapter.notifyDataSetChanged()
+            return
+        }
+
+        val pdfFileName = url.substringAfterLast("/")
+        pagesListData.clear()
+        pagesListData.add("⬇️  Tap to download \"$pdfFileName\" into the app")
+        pageListAdapter.notifyDataSetChanged()
+
+        pageListAdapter.onItemClickOverride = { pos ->
+            if (pos == 0) downloadNcertToCache()
+        }
+
+        // Ask AI → switch to Chat tab
+//        findViewById<MaterialButton>(R.id.askAIButton).apply {
+//            text = "💬 Ask AI about this Chapter"
+//            setOnClickListener { switchToChat() }
+//        }
+    }
+
+    /** Downloads the NCERT PDF directly into the app's private cache, then renders it. */
+    private fun downloadNcertToCache() {
+        if (ncertUrl.isBlank()) return
+        val pdfFileName = ncertUrl.substringAfterLast("/")
+
+        pagesListData.clear()
+        pagesListData.add("⏳  Downloading \"$pdfFileName\" — please wait…")
+        pageListAdapter.notifyDataSetChanged()
+        pageListAdapter.onItemClickOverride = null
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val destDir = java.io.File(cacheDir, "pdf_cache").also { it.mkdirs() }
+                val destFile = java.io.File(destDir, "$ncertPdfId.pdf")
+
+                val connection = java.net.URL(ncertUrl).openConnection()
+                    as java.net.HttpURLConnection
+                connection.connectTimeout = 15_000
+                connection.readTimeout    = 60_000
+                connection.connect()
+
+                if (connection.responseCode != java.net.HttpURLConnection.HTTP_OK) {
+                    throw Exception("Server returned ${connection.responseCode}")
+                }
+
+                connection.inputStream.use { input ->
+                    destFile.outputStream().use { output -> input.copyTo(output) }
+                }
+                connection.disconnect()
+
+                withContext(Dispatchers.Main) { loadNcertPagesFromCache() }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    val fn = ncertUrl.substringAfterLast("/")
+                    pagesListData.clear()
+                    pagesListData.add("⬇️  Tap to retry downloading \"$fn\"")
+                    pageListAdapter.notifyDataSetChanged()
+                    pageListAdapter.onItemClickOverride = { pos ->
+                        if (pos == 0) downloadNcertToCache()
+                    }
+                    Toast.makeText(this@ChapterActivity,
+                        "Download failed: ${e.message}. Check your connection.",
+                        Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    /**
+     * Called once the PDF is in our cache dir. Sets up isPdfChapter state
+     * and renders the page list exactly like a regular PDF chapter.
+     */
+    private fun loadNcertPagesFromCache() {
+        isPdfChapter = true
+        pdfId        = ncertPdfId
+        pdfAssetPath = ""          // cache already exists; PdfPageManager skips asset-open
+        pageListAdapter.onItemClickOverride = null
+
+        pagesListData.clear()
+        pagesListData.add("⏳ Loading pages…")
+        pageListAdapter.notifyDataSetChanged()
+
+        // Wire Ask AI button → switch to Chat tab
+//        findViewById<MaterialButton>(R.id.askAIButton).apply {
+//            text = "💬 Ask AI about this Chapter"
+//            setOnClickListener { switchToChat() }
+//        }
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val count = pdfPageManager.getPageCount(pdfId, pdfAssetPath)
+                pdfPageCount = count
+                withContext(Dispatchers.Main) {
+                    pagesListData.clear()
+                    for (i in 1..count) pagesListData.add("📄  Page $i")
+                    pageListAdapter.notifyDataSetChanged()
+                    Toast.makeText(this@ChapterActivity, "✅ $count pages ready!", Toast.LENGTH_SHORT).show()
+                    switchToChat()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    pagesListData.clear()
+                    pagesListData.add("⚠️ Could not read PDF: ${e.message}")
+                    pageListAdapter.notifyDataSetChanged()
+                }
+            }
+        }
+    }
 
     private fun setupPdfChapter() {
-        if (pdfAssetPath.isBlank() || pdfId.isBlank()) {
+        val cachedPdf = java.io.File(cacheDir, "pdf_cache/$pdfId.pdf")
+        if (pdfId.isBlank() || (pdfAssetPath.isBlank() && !cachedPdf.exists())) {
             pagesListData.clear()
             pagesListData.add("⚠️ PDF data missing. Re-add this chapter from the Library.")
             pageListAdapter.notifyDataSetChanged()
@@ -246,16 +420,11 @@ class ChapterActivity : BaseActivity() {
             visibility = View.VISIBLE
             setOnClickListener { showImageSourceDialog() }
         }
-        findViewById<MaterialButton>(R.id.askAIButton).apply {
-            text = "💬 Ask AI about this Chapter"
-            setOnClickListener {
-                startActivity(
-                    Intent(this@ChapterActivity, ChatActivity::class.java)
-                        .putExtra("subjectName", subjectName)
-                        .putExtra("chapterName", chapterName)
-                )
-            }
-        }
+        // Ask AI → switch to Chat tab
+//        findViewById<MaterialButton>(R.id.askAIButton).apply {
+//            text = "💬 Ask AI about this Chapter"
+//            setOnClickListener { switchToChat() }
+//        }
 
         pagesListData.clear()
         pagesListData.add("⏳ Loading PDF pages…")
@@ -271,6 +440,7 @@ class ChapterActivity : BaseActivity() {
                     pagesListData.clear()
                     for (i in 1..count) pagesListData.add("📄  Page $i")
                     pageListAdapter.notifyDataSetChanged()
+                    switchToChat()
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -314,13 +484,9 @@ class ChapterActivity : BaseActivity() {
             try {
                 val pageFile = pdfPageManager.getPage(pdfId, pdfAssetPath, position)
                 withContext(Dispatchers.Main) {
-                    startActivity(
-                        Intent(this@ChapterActivity, ChatActivity::class.java)
-                            .putExtra("subjectName", subjectName)
-                            .putExtra("chapterName", chapterName)
-                            .putExtra("pdfPageFilePath", pageFile.absolutePath)
-                            .putExtra("pdfPageNumber", position + 1)
-                    )
+                    val fragment = getOrCreateChatFragment()
+                    switchToChat()
+                    fragment.attachPdfPage(pageFile.absolutePath, position + 1)
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -332,19 +498,14 @@ class ChapterActivity : BaseActivity() {
 
     // ─── Image chapter (plain photo uploads) ──────────────────────────────────
 
-    private fun setupImageChapter() {
-        findViewById<MaterialButton>(R.id.uploadImageButton).setOnClickListener { showImageSourceDialog() }
-        findViewById<MaterialButton>(R.id.askAIButton).setOnClickListener {
-            startActivity(
-                Intent(this, ChatActivity::class.java)
-                    .putExtra("subjectName", subjectName)
-                    .putExtra("chapterName", chapterName)
-            )
-        }
-        // For image chapters the View button opens the image in ChatActivity;
-        // Ask does the same — both open ChatActivity with the image path
-        loadImagePages()
-    }
+//    private fun setupImageChapter() {
+//        findViewById<MaterialButton>(R.id.uploadImageButton).setOnClickListener { showImageSourceDialog() }
+//        // Ask AI → switch to Chat tab
+//        findViewById<MaterialButton>(R.id.askAIButton).setOnClickListener { switchToChat() }
+//        // For image chapters the View button opens the image in ChatActivity;
+//        // Ask does the same — both open ChatActivity with the image path
+//        loadImagePages()
+//    }
 
     private fun showImageSourceDialog() {
         AlertDialog.Builder(this)
@@ -401,21 +562,15 @@ class ChapterActivity : BaseActivity() {
             pages = pagesListData,
             onView = { position ->
                 if (position !in imagePagePaths.indices) return@PageListAdapter
-                startActivity(
-                    Intent(this, ChatActivity::class.java)
-                        .putExtra("subjectName", subjectName)
-                        .putExtra("chapterName", chapterName)
-                        .putExtra("imagePath", imagePagePaths[position])
-                )
+                val fragment = getOrCreateChatFragment()
+                switchToChat()
+                fragment.attachImage(imagePagePaths[position])
             },
             onAsk = { position ->
                 if (position !in imagePagePaths.indices) return@PageListAdapter
-                startActivity(
-                    Intent(this, ChatActivity::class.java)
-                        .putExtra("subjectName", subjectName)
-                        .putExtra("chapterName", chapterName)
-                        .putExtra("imagePath", imagePagePaths[position])
-                )
+                val fragment = getOrCreateChatFragment()
+                switchToChat()
+                fragment.attachImage(imagePagePaths[position])
             }
         )
         pagesRecyclerView.adapter = pageListAdapter

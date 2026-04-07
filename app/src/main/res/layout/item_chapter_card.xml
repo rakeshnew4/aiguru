@@ -61,13 +61,36 @@
 
         </LinearLayout>
 
-        <TextView
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="›"
-            android:textSize="28sp"
-            android:textColor="@color/colorDivider"
-            android:paddingStart="8dp" />
+            android:orientation="vertical"
+            android:gravity="center"
+            android:paddingStart="8dp">
+
+            <!-- NCERT textbook link — hidden when no URL is available -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/ncertButton"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text="📖 NCERT"
+                android:textSize="10sp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:visibility="gone"
+                app:strokeColor="@color/colorPrimary"
+                app:strokeWidth="1dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="›"
+                android:textSize="28sp"
+                android:textColor="@color/colorDivider"
+                android:layout_marginTop="4dp" />
+
+        </LinearLayout>
 
     </LinearLayout>
 

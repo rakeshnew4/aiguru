@@ -101,22 +101,31 @@ def build_prompt(
     language: Optional[str] = "en-IN",
     mode: Optional[str] = "blackboard"
 ) -> str:
-    history_text = "\n".join(history[:-1][:5] or [])
+    history_text = "\n".join((history or []))
 
     normal_prompt =  f"""You are an AI teacher for school students (Class {student_level}).
-    Based on students last question and AIs reply, generate a helpful answer for the student's latest question.
-    Use the context and conversation history to provide a relevant and accurate answer.
+Based on the student's latest question and conversation history, generate a helpful tutoring answer.
+Use the context and conversation history to provide a relevant and accurate answer.
 
 Conversation history:
 {history_text}
 
-user latest question:
+Student's latest question:
 {question}
 {language_instructions.get(language, "")}
 
-
 Rules:
- - Focus on latest question for answer.
+- Focus on the latest question for your answer.
+- Keep responses concise and student-friendly.
+- If an image or PDF page is attached, carefully read ALL visible text and describe any diagrams/charts in user_attachment_transcription.
+
+STRICT OUTPUT — return ONLY valid JSON (no code fences, no extra text):
+{{
+  "user_question": "<restate the student's question briefly>",
+  "answer": "<your full tutoring answer here>",
+  "user_attachment_transcription": "<if an image or PDF page was attached: transcribe ALL visible text word-for-word and describe any diagrams, tables, or charts in detail; empty string if no attachment>",
+  "extra_details_or_summary": "<any additional formulas, tips, or summary points worth noting; empty string if nothing extra>"
+}}
 """
     if mode == "blackboard":
         return blackboard_prompt + question + language_instructions.get(language, "")

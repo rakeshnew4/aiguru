@@ -2,45 +2,49 @@ package com.example.aiguru
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
 import com.example.aiguru.utils.SessionManager
-import com.example.aiguru.SchoolLoginActivity
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.ConnectionResult
-import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
+
 class LoginActivity : BaseActivity() {
+
+    companion object {
+        private const val TAG = "LoginActivity"
+        // Web client (type 3) from Google Cloud Console / Firebase Auth → Google Sign-In
+        private const val WEB_CLIENT_ID =
+            "162570108156-u53umd4n0se88sp5dumhg8ugu1uco89j.apps.googleusercontent.com"
+    }
 
     private lateinit var googleSignInClient: GoogleSignInClient
     private lateinit var signInButton: Button
     private lateinit var loadingBar: ProgressBar
+    private val auth = FirebaseAuth.getInstance()
 
     private val signInLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             try {
                 val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
                 val account = task.getResult(ApiException::class.java)
-                val displayName = account.displayName ?: "Student"
-                val email = account.email ?: account.id ?: "google_user"
-                bridgeFirebaseUser(displayName, email) {
+                val idToken = account.idToken ?: run {
                     setLoading(false)
-                    goHome()
+                    Toast.makeText(this, "Google sign in failed: no ID token", Toast.LENGTH_LONG).show()
+                    return@registerForActivityResult
                 }
+                firebaseSignIn(idToken)
             } catch (e: ApiException) {
+                Log.e(TAG, "Google sign-in failed, code=${e.statusCode}", e)
                 setLoading(false)
                 Toast.makeText(this, "Google sign in failed (code ${e.statusCode})", Toast.LENGTH_SHORT).show()
-            } catch (e: Exception) {
-                // SecurityException thrown when Google Play Services broker is unavailable
-                setLoading(false)
-                Toast.makeText(this, "Google services unavailable. Use School or Email login.", Toast.LENGTH_LONG).show()
             }
         }
 
@@ -56,34 +60,36 @@ class LoginActivity : BaseActivity() {
             goHome(); return
         }
 
-        // Check if Google account is already signed in (guard against missing GMS)
-        val lastAccount = try { GoogleSignIn.getLastSignedInAccount(this) } catch (_: Exception) { null }
-        if (lastAccount != null) {
-            bridgeFirebaseUser(lastAccount.displayName ?: "Student", lastAccount.email ?: lastAccount.id ?: "google_user") {
-                goHome()
-            }
+        // If Firebase already has a real (non-anonymous) Google user, restore session
+        val currentUser = auth.currentUser
+        if (currentUser != null && !currentUser.isAnonymous) {
+            Log.d(TAG, "Restoring existing Firebase session: uid=${currentUser.uid}")
+            SessionManager.login(
+                context     = this,
+                schoolId    = "google",
+                schoolName  = "Google Account",
+                studentId   = currentUser.email ?: currentUser.uid,
+                studentName = currentUser.displayName ?: "Student"
+            )
+            SessionManager.saveFirebaseUid(this, currentUser.uid)
+            goHome()
             return
         }
 
-        // Use basic Google Sign-In (no idToken needed — we don't use Firebase Auth backend)
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(WEB_CLIENT_ID)
             .requestEmail()
-            .requestProfile()
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
         signInButton.setOnClickListener {
-            val availability = GoogleApiAvailability.getInstance()
-                .isGooglePlayServicesAvailable(this)
-            if (availability != ConnectionResult.SUCCESS) {
-                Toast.makeText(this, "Google Play Services not available. Use School or Email login.", Toast.LENGTH_LONG).show()
-                return@setOnClickListener
-            }
             setLoading(true)
-            signInLauncher.launch(googleSignInClient.signInIntent)
+            googleSignInClient.signOut().addOnCompleteListener {
+                signInLauncher.launch(googleSignInClient.signInIntent)
+            }
         }
 
-        // School login is always available
+        // School login
         findViewById<Button>(R.id.schoolLoginButton).setOnClickListener {
             startActivity(Intent(this, SchoolLoginActivity::class.java))
         }
@@ -94,32 +100,32 @@ class LoginActivity : BaseActivity() {
         }
     }
 
-
-
-    /**
-     * Creates a SessionManager session from a Firebase Auth user so that
-     * HomeActivity's SessionManager.isLoggedIn() check passes.
-     */
-    private fun bridgeFirebaseUser(displayName: String, email: String, onDone: () -> Unit = {}) {
-        SessionManager.login(
-            context     = this,
-            schoolId    = "google",
-            schoolName  = "Google Account",
-            studentId   = email,
-            studentName = displayName
-        )
-        val auth = FirebaseAuth.getInstance()
-        if (auth.currentUser != null) {
-            SessionManager.saveFirebaseUid(this, auth.currentUser!!.uid)
-            onDone()
-        } else {
-            auth.signInAnonymously()
-                .addOnSuccessListener { result ->
-                    result.user?.uid?.let { uid -> SessionManager.saveFirebaseUid(this, uid) }
-                    onDone()
+    private fun firebaseSignIn(idToken: String) {
+        val credential = GoogleAuthProvider.getCredential(idToken, null)
+        auth.signInWithCredential(credential)
+            .addOnSuccessListener { authResult ->
+                val user = authResult.user ?: run {
+                    setLoading(false)
+                    Toast.makeText(this, "Sign in failed. Please try again.", Toast.LENGTH_SHORT).show()
+                    return@addOnSuccessListener
                 }
-                .addOnFailureListener { onDone() }
-        }
+                Log.d(TAG, "Firebase sign-in success: uid=${user.uid}")
+                SessionManager.login(
+                    context     = this,
+                    schoolId    = "google",
+                    schoolName  = "Google Account",
+                    studentId   = user.email ?: user.uid,
+                    studentName = user.displayName ?: "Student"
+                )
+                SessionManager.saveFirebaseUid(this, user.uid)
+                setLoading(false)
+                goHome()
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Firebase credential sign-in failed", e)
+                setLoading(false)
+                Toast.makeText(this, "Sign in failed: ${e.message}", Toast.LENGTH_LONG).show()
+            }
     }
 
     private fun goHome() {

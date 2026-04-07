@@ -9,11 +9,18 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.example.aiguru.R
+import com.google.android.material.button.MaterialButton
+
+data class ChapterItem(
+    val name: String,
+    val ncertPdfUrl: String? = null   // null = no NCERT link for this chapter
+)
 
 class ChapterAdapter(
-    private val chapters: MutableList<String>,
-    private val onItemClick: (String) -> Unit,
-    private val onItemLongClick: (String) -> Unit
+    private val chapters: MutableList<ChapterItem>,
+    private val onItemClick: (ChapterItem) -> Unit,
+    private val onItemLongClick: (ChapterItem) -> Unit,
+    private val onNcertClick: (ChapterItem) -> Unit
 ) : RecyclerView.Adapter<ChapterAdapter.ViewHolder>() {
 
     private val colors = intArrayOf(
@@ -30,6 +37,7 @@ class ChapterAdapter(
     inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val numberView: TextView = view.findViewById(R.id.chapterNumber)
         val nameView: TextView = view.findViewById(R.id.chapterName)
+        val ncertButton: MaterialButton = view.findViewById(R.id.ncertButton)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -49,9 +57,17 @@ class ChapterAdapter(
         holder.numberView.background = tinted
         holder.numberView.text = (position + 1).toString()
 
-        holder.nameView.text = chapter
+        holder.nameView.text = chapter.name
         holder.itemView.setOnClickListener { onItemClick(chapter) }
         holder.itemView.setOnLongClickListener { onItemLongClick(chapter); true }
+
+        // Show/hide NCERT button
+        if (!chapter.ncertPdfUrl.isNullOrEmpty()) {
+            holder.ncertButton.visibility = View.VISIBLE
+            holder.ncertButton.setOnClickListener { onNcertClick(chapter) }
+        } else {
+            holder.ncertButton.visibility = View.GONE
+        }
     }
 
     override fun getItemCount() = chapters.size

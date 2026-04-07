@@ -40,7 +40,7 @@
                 android:id="@+id/userNameText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Student"
+                android:text="👨‍🎤  Student"
                 android:textSize="21sp"
                 android:textStyle="bold"
                 android:textColor="@color/colorTextPrimary" />
@@ -49,7 +49,7 @@
                 android:id="@+id/schoolNameSubtitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text=""
+                android:text="School"
                 android:textSize="11sp"
                 android:textColor="@color/colorTextSecondary"
                 android:layout_marginTop="1dp" />
@@ -77,7 +77,7 @@
             android:layout_width="42dp"
             android:layout_height="42dp"
             android:gravity="center"
-            android:text="S"
+            android:text="👨‍🎤"
             android:textSize="17sp"
             android:textStyle="bold"
             android:textColor="#FFFFFF"
@@ -105,25 +105,12 @@
             android:paddingStart="16dp"
             android:paddingEnd="16dp">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/generalChatButton"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:text="Chat"
-                android:textSize="13sp"
-                android:textColor="@color/colorPrimary"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                app:backgroundTint="@color/colorPrimaryLight"
-                app:cornerRadius="18dp"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:layout_marginEnd="8dp" />
+
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/libraryButton"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
                 android:text="Library"
                 android:textSize="13sp"
                 android:textColor="@color/colorError"
@@ -340,14 +327,14 @@
             android:layout_weight="1"
             android:paddingStart="10dp"
             android:paddingEnd="10dp"
+            android:background="#FFFFFF"
             android:paddingBottom="8dp"
             android:clipToPadding="false" />
 
     </LinearLayout>
-
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="72dp"
+        android:layout_height="40dp"
         android:orientation="horizontal"
         android:background="#FFFFFF"
         android:elevation="12dp"
@@ -355,15 +342,37 @@
         android:paddingStart="20dp"
         android:paddingEnd="20dp">
 
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="AI Guru"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            android:textColor="@color/colorTextPrimary" />
 
+
+
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:orientation="horizontal"
+        android:background="#FFFFFF"
+        android:elevation="12dp"
+        android:gravity="center_vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/generalChatButton"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:text=" 🤖 Quick Chat"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            app:backgroundTint="@color/practice_pink"
+            app:cornerRadius="22dp"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:layout_marginStart="1dp"
+            android:layout_marginEnd="80dp"
+            />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/addSubjectButton"
             android:layout_width="wrap_content"

@@ -271,6 +271,7 @@ class BlackboardActivity : AppCompatActivity() {
             board.addView(imagePlaceholder)
 
             val imageQuery = step.image_description.ifBlank { step.title }
+//            val imageConfidence = step.image_confidence_score.ifBlank { step.title }
             if (imageQuery.isNotBlank()) fetchAndShowStepImage(imageQuery, 1.0f, imagePlaceholder)
         }
 
@@ -359,6 +360,7 @@ class BlackboardActivity : AppCompatActivity() {
      */
     private fun fetchAndShowStepImage(query: String, serverScore: Float, placeholder: LinearLayout) {
         if (query.isBlank()) return
+        if (query=="null") return
         lifecycleScope.launch {
             val url = WikimediaUtils.firstImageUrl(query) ?: return@launch
             val dp = resources.displayMetrics.density

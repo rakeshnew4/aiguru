@@ -12,7 +12,9 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
 import android.util.Base64
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.view.animation.Animation
 import android.view.animation.ScaleAnimation
 import android.widget.EditText
@@ -21,47 +23,43 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.example.aiguru.BuildConfig
-import com.example.aiguru.adapters.PageListAdapter
 import com.example.aiguru.adapters.MessageAdapter
-import com.example.aiguru.chat.ChatHistoryRepository
+import com.example.aiguru.adapters.PageListAdapter
 import com.example.aiguru.chat.AiClient
-import com.example.aiguru.chat.ConversationSummarizer
+import com.example.aiguru.chat.ChatHistoryRepository
 import com.example.aiguru.chat.NotesRepository
+import com.example.aiguru.chat.PageAnalyzer
 import com.example.aiguru.chat.ServerProxyClient
-import com.example.aiguru.models.ModelConfig
+import com.example.aiguru.config.AdminConfigRepository
+import com.example.aiguru.config.PlanEnforcer
+import com.example.aiguru.firestore.FirestoreManager
 import com.example.aiguru.models.Flashcard
 import com.example.aiguru.models.Message
+import com.example.aiguru.models.PageContent
 import com.example.aiguru.models.TutorMode
 import com.example.aiguru.models.TutorSession
+import com.example.aiguru.models.UserMetadata
 import com.example.aiguru.utils.ChapterMetricsTracker
 import com.example.aiguru.utils.MediaManager
 import com.example.aiguru.utils.PdfPageManager
 import com.example.aiguru.utils.PromptRepository
-import com.example.aiguru.QuizSetupActivity
 import com.example.aiguru.utils.SessionManager
 import com.example.aiguru.utils.TTSCallback
 import com.example.aiguru.utils.TextToSpeechManager
 import com.example.aiguru.utils.VoiceManager
 import com.example.aiguru.utils.VoiceRecognitionCallback
-import com.example.aiguru.chat.PageAnalyzer
-import com.example.aiguru.config.AdminConfigRepository
-import com.example.aiguru.config.PlanEnforcer
-import com.example.aiguru.firestore.FirestoreManager
-import com.example.aiguru.models.PageContent
-import com.example.aiguru.models.UserMetadata
 import com.google.android.material.button.MaterialButton
 import com.yalantis.ucrop.UCrop
-import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -70,10 +68,15 @@ import java.io.File
 import java.util.Locale
 import java.util.UUID
 
-class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
+/**
+ * Full-featured chat tab embedded inside ChapterActivity.
+ * Contains all the functionality of ChatActivity: voice, images, quiz, blackboard, etc.
+ */
+class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
     private enum class LiveMicMode { PARTIAL, FULL }
 
+    // ── UI Views ──────────────────────────────────────────────────────────────
     private lateinit var messagesRecyclerView: RecyclerView
     private lateinit var messageAdapter: MessageAdapter
     private lateinit var messageInput: EditText
@@ -93,10 +96,10 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
     private lateinit var listeningIndicator: TextView
     private lateinit var bottomDescribeButton: MaterialButton
     private lateinit var plusButton: MaterialButton
-    private lateinit var quickActionsPanel: android.view.View
+    private lateinit var quickActionsPanel: View
     private var isQuickActionsOpen = false
 
-    // ── Chapter Workspace Drawer ─────────────────────────────────────────────
+    // ── Chapter Workspace Drawer ──────────────────────────────────────────────
     private lateinit var chatDrawerLayout: DrawerLayout
     private lateinit var openPagesDrawerButton: MaterialButton
     private lateinit var pagesDrawerCloseButton: MaterialButton
@@ -114,9 +117,7 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
     private var saveNextPickedImageToChapter = false
     private lateinit var pdfPageManager: PdfPageManager
 
-    // ── Auto Explain Mode ──────────────────────────────────────────────────────
-    // Global default: on. State is persisted in SharedPreferences so it stays
-    // consistent across all chats and app restarts.
+    // ── Auto Explain / Blackboard Mode ────────────────────────────────────────
     private var isAutoExplainActive = true
     private lateinit var autoExplainButton: MaterialButton
 
@@ -153,16 +154,13 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
 
     private var selectedImageUri: Uri? = null
     private var cameraImageUri: Uri? = null
-    /** URI used only for displaying a thumbnail in the user's message bubble (not sent to LLM). */
     private var pendingDisplayUri: Uri? = null
     private var isListening = false
 
     // ── Page Analysis ─────────────────────────────────────────────────────────
-    /** Holds the analysis result for the currently-attached image/PDF page. */
     private var currentPageContent: PageContent? = null
 
     // ── Language ───────────────────────────────────────────────────────────────
-    // Language for voice recognition, TTS, and LLM responses
     private var currentLang = "en-US"
     private var currentLangName = "English"
     private val LANGUAGES = linkedMapOf(
@@ -176,28 +174,25 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         "ગુજરાતી (Gujarati)" to "gu-IN"
     )
 
-    // Pre-loaded PDF page (base64 encoded) passed from ChapterActivity
     private var pdfPageBase64: String? = null
-
-    // Base64 of the currently-attached gallery/camera image, stored at attach time
-    // so sendMessage never needs to re-decode the URI (mirrors pdfPageBase64 for images).
     private var pendingImageBase64: String? = null
-
-    // When set, the AI response from the next auto-send is also saved as notes
     private var saveNotesType: String? = null
 
     // ── Crop state ────────────────────────────────────────────────────────────
-    /** true when UCrop was launched for a PDF page (vs gallery/camera image) */
     private var pendingCropIsPdf = false
     private var pendingCropPdfPageNumber = 0
-
-    /** Kept so we can fall back to the full page if user cancels crop */
     private var pendingCropPdfFile: File? = null
 
     // ── Tutor System ──────────────────────────────────────────────────────────
     private lateinit var tutorSession: TutorSession
     private var lastInputWasVoice = false
 
+    // ── Pending actions (set before views are ready) ──────────────────────────
+    private var pendingAutoPrompt: Pair<String, String?>? = null
+    private var pendingPdfPage: Pair<String, Int>? = null
+    private var pendingImagePath: String? = null
+
+    // ── Activity Result Launchers ─────────────────────────────────────────────
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
             if (uri != null) launchCrop(uri, isPdf = false)
@@ -210,20 +205,19 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
             else saveNextPickedImageToChapter = false
         }
 
-    /** Receives the cropped image result from UCrop. */
     private val cropLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             val data = result.data
             when (result.resultCode) {
-                RESULT_OK -> {
+                android.app.Activity.RESULT_OK -> {
                     val croppedUri =
                         data?.let { UCrop.getOutput(it) } ?: return@registerForActivityResult
                     if (pendingCropIsPdf) {
-                        // Read cropped region → base64 → show preview + run analysis
-                        lifecycleScope.launch(Dispatchers.IO) {
+                        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                             try {
                                 val stream =
-                                    contentResolver.openInputStream(croppedUri) ?: return@launch
+                                    requireContext().contentResolver.openInputStream(croppedUri)
+                                        ?: return@launch
                                 val bmp = android.graphics.BitmapFactory.decodeStream(stream)
                                 stream.close()
                                 if (bmp == null) return@launch
@@ -232,13 +226,14 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
                                 bmp.recycle()
                                 val b64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
                                 val pageLabel = if (pendingCropPdfPageNumber > 0)
-                                    "Page $pendingCropPdfPageNumber \u2702\ufe0f cropped" else "\u2702\ufe0f Cropped region"
+                                    "Page $pendingCropPdfPageNumber \u2702\ufe0f cropped"
+                                else "\u2702\ufe0f Cropped region"
                                 withContext(Dispatchers.Main) {
                                     pdfPageBase64 = b64
                                     pendingDisplayUri = croppedUri
                                     currentPageContent = null
                                     imagePreviewStrip.visibility = View.VISIBLE
-                                    Glide.with(this@ChatActivity).load(croppedUri).centerCrop()
+                                    Glide.with(requireContext()).load(croppedUri).centerCrop()
                                         .into(imagePreviewThumbnail)
                                     imagePreviewLabel.text = pageLabel
                                     messageInput.setText("Explain this")
@@ -246,40 +241,28 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
                                     bottomDescribeButton.visibility = View.VISIBLE
                                 }
                             } catch (e: Exception) {
-                                android.util.Log.e(
-                                    "ChatActivity",
-                                    "Crop result processing failed: ${e.message}"
-                                )
+                                android.util.Log.e("FullChatFragment",
+                                    "Crop result processing failed: ${e.message}")
                             }
                         }
                     } else {
-                        // Gallery / camera image — run normal image preview + analysis
                         showImagePreview(croppedUri)
                     }
                 }
 
                 UCrop.RESULT_ERROR -> {
-                    android.util.Log.w(
-                        "ChatActivity",
-                        "UCrop error: ${data?.let { UCrop.getError(it)?.message }}"
-                    )
+                    android.util.Log.w("FullChatFragment",
+                        "UCrop error: ${data?.let { UCrop.getError(it)?.message }}")
                     if (pendingCropIsPdf) pendingCropPdfFile?.let {
-                        applyFullPdfPage(
-                            it,
-                            pendingCropPdfPageNumber
-                        )
+                        applyFullPdfPage(it, pendingCropPdfPageNumber)
                     } else {
                         saveNextPickedImageToChapter = false
                     }
                 }
 
                 else -> {
-                    // User pressed back — fall back to full page (PDF) or do nothing (gallery)
                     if (pendingCropIsPdf) pendingCropPdfFile?.let {
-                        applyFullPdfPage(
-                            it,
-                            pendingCropPdfPageNumber
-                        )
+                        applyFullPdfPage(it, pendingCropPdfPageNumber)
                     } else {
                         saveNextPickedImageToChapter = false
                     }
@@ -289,42 +272,49 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
 
     companion object {
         private const val PERMISSION_REQUEST_CODE = 100
+
+        fun newInstance(subjectName: String, chapterName: String) = FullChatFragment().apply {
+            arguments = Bundle().apply {
+                putString("subjectName", subjectName)
+                putString("chapterName", chapterName)
+            }
+        }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_chat)
-        pdfPageManager = PdfPageManager(this)
+    // ── Fragment Lifecycle ────────────────────────────────────────────────────
 
-        // Load global blackboard-mode preference (defaults to ON)
-        isAutoExplainActive = getSharedPreferences("user_prefs", MODE_PRIVATE)
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View = inflater.inflate(R.layout.activity_chat, container, false)
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        pdfPageManager = PdfPageManager(requireContext())
+
+        isAutoExplainActive = requireContext()
+            .getSharedPreferences("user_prefs", android.content.Context.MODE_PRIVATE)
             .getBoolean("blackboard_mode_on", true)
 
-        subjectName = intent.getStringExtra("subjectName") ?: "General"
-        chapterName = intent.getStringExtra("chapterName") ?: "Study Session"
-        saveNotesType = intent.getStringExtra("saveNotesType")
+        subjectName = arguments?.getString("subjectName") ?: "General"
+        chapterName = arguments?.getString("chapterName") ?: "Study Session"
 
-        // Init prompt repository (reads tutor_prompts.json from assets once)
-        PromptRepository.init(this)
+        PromptRepository.init(requireContext())
 
-        userId = SessionManager.getFirestoreUserId(this)
+        userId = SessionManager.getFirestoreUserId(requireContext())
         cachedMetadata = cachedMetadata.copy(userId = userId)
 
-        // Prime admin config + plans from Firestore (non-blocking, cached 1 h)
         AdminConfigRepository.fetchIfStale()
-
-        // Load user plan metadata for enforcement
         FirestoreManager.getUserMetadata(userId, onSuccess = { meta ->
             if (meta != null) cachedMetadata = meta
         })
 
-        tutorSession =
-            TutorSession(
-                studentId = userId,
-                subject = subjectName,
-                chapter = chapterName,
-                mode = TutorMode.EXPLAIN
-            )
+        tutorSession = TutorSession(
+            studentId = userId,
+            subject = subjectName,
+            chapter = chapterName,
+            mode = TutorMode.EXPLAIN
+        )
 
         FirestoreManager.loadChapterContext(
             userId = userId,
@@ -335,21 +325,23 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
                 tutorSession.latestPageContext = systemContext.orEmpty()
             },
             onFailure = {
-                android.util.Log.w("ChatActivity", "Failed to load chapter context: ${it?.message}")
+                android.util.Log.w("FullChatFragment",
+                    "Failed to load chapter context: ${it?.message}")
             }
         )
 
         historyRepo = ChatHistoryRepository(userId, subjectName, chapterName)
-        notesRepo = NotesRepository(this, userId, subjectName, chapterName)
-        voiceManager = VoiceManager(this)
-        ttsManager = TextToSpeechManager(this)
-        mediaManager = MediaManager(this)
+        notesRepo = NotesRepository(requireContext(), userId, subjectName, chapterName)
+        voiceManager = VoiceManager(requireActivity())
+        ttsManager = TextToSpeechManager(requireContext())
+        mediaManager = MediaManager(requireContext())
         metricsTracker = ChapterMetricsTracker(subjectName, chapterName)
 
-        initializeUI()
+        initializeUI(view)
         initializeChapterWorkspaceDrawer()
+
         if (isAutoExplainActive) {
-            Toast.makeText(this, "Blackboard mode on", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "Blackboard mode on", Toast.LENGTH_SHORT).show()
         }
 
         historyRepo.loadHistory(
@@ -360,41 +352,90 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
             onEmpty = { addWelcomeMessage() }
         )
 
-        // Auto-prompt (e.g. from Notes button in ChapterActivity)
-        intent.getStringExtra("autoPrompt")?.let { prompt ->
-            messagesRecyclerView.post { sendMessage(prompt, autoSaveNotes = saveNotesType != null) }
+        // Drain any pending actions queued before views were ready
+        pendingAutoPrompt?.let { (prompt, notesType) ->
+            saveNotesType = notesType
+            messagesRecyclerView.post { sendMessage(prompt, autoSaveNotes = notesType != null) }
+            pendingAutoPrompt = null
         }
-
-        // Pre-load PDF page passed from ChapterActivity (if any)
-        val pdfPageFilePath = intent.getStringExtra("pdfPageFilePath")
-        val pdfPageNumber = intent.getIntExtra("pdfPageNumber", 1)
-        if (pdfPageFilePath != null) {
-            tutorSession.currentPage = pdfPageNumber
-            preloadPdfPage(File(pdfPageFilePath), pdfPageNumber)
+        pendingPdfPage?.let { (filePath, pageNum) ->
+            tutorSession.currentPage = pageNum
+            preloadPdfPage(File(filePath), pageNum)
+            pendingPdfPage = null
         }
-
-        // Pre-load an image page passed from ChapterActivity (image chapters)
-        intent.getStringExtra("imagePath")?.takeIf { it.isNotBlank() }?.let { path ->
-            val uri = Uri.parse(path)
-            showImagePreview(uri)
+        pendingImagePath?.let { path ->
+            showImagePreview(Uri.parse(path))
             messageInput.setText("Explain this page")
             messageInput.setSelection(messageInput.text.length)
+            pendingImagePath = null
         }
     }
 
-    private fun initializeUI() {
-        chatDrawerLayout = findViewById(R.id.chatDrawerLayout)
+    // ── Public action API (called from ChapterActivity) ───────────────────────
 
-//        findViewById<TextView>(R.id.chatHeaderTitle).text = chapterName
-//        findViewById<TextView>(R.id.chatHeaderSubtitle).text = "$subjectName · Tutor Session"
+    fun sendAutoPrompt(prompt: String, notesType: String? = null) {
+        if (isAdded && view != null) {
+            saveNotesType = notesType
+            messagesRecyclerView.post { sendMessage(prompt, autoSaveNotes = notesType != null) }
+        } else {
+            pendingAutoPrompt = Pair(prompt, notesType)
+        }
+    }
 
-        messagesRecyclerView = findViewById(R.id.messagesRecyclerView)
+    fun attachPdfPage(pdfPageFilePath: String, pageNumber: Int) {
+        if (isAdded && view != null) {
+            tutorSession.currentPage = pageNumber
+            preloadPdfPage(File(pdfPageFilePath), pageNumber)
+        } else {
+            pendingPdfPage = Pair(pdfPageFilePath, pageNumber)
+        }
+    }
+
+    fun attachImage(imagePath: String) {
+        if (isAdded && view != null) {
+            showImagePreview(Uri.parse(imagePath))
+            messageInput.setText("Explain this page")
+            messageInput.setSelection(messageInput.text.length)
+        } else {
+            pendingImagePath = imagePath
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (isVoiceModeActive && isAutoExplainActive && !isListening) {
+            setVoiceModeStatus("🎙️ Listening… speak now", "#2E7D32")
+            startVoiceLoopListening()
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        context?.let { metricsTracker.endSession(it, 0) }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        if (isListening) voiceManager.stopListening()
+        voiceManager.stopInterruptListening()
+        ttsManager.destroy()
+    }
+
+    // ── UI Initialization ─────────────────────────────────────────────────────
+
+    private fun initializeUI(view: View) {
+        chatDrawerLayout = view.findViewById(R.id.chatDrawerLayout)
+
+//        view.findViewById<TextView>(R.id.chatHeaderTitle).text = chapterName
+//        view.findViewById<TextView>(R.id.chatHeaderSubtitle).text = "$subjectName · Tutor Session"
+
+        messagesRecyclerView = view.findViewById(R.id.messagesRecyclerView)
         messageAdapter = MessageAdapter(
-            context = this,
+            context = requireContext(),
             onVoiceClick = { msg ->
                 ttsManager.setLocale(Locale.forLanguageTag(currentLang))
                 val speechText = TutorController.prepareSpeechText(msg.content)
-                ttsManager.speak(speechText, object : com.example.aiguru.utils.TTSCallback {
+                ttsManager.speak(speechText, object : TTSCallback {
                     override fun onStart() {}
                     override fun onComplete() {}
                     override fun onError(error: String) {}
@@ -404,7 +445,7 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
             onImageClick = { msg ->
                 msg.imageUrl?.let { uri ->
                     startActivity(
-                        Intent(this, FullscreenImageActivity::class.java)
+                        Intent(requireContext(), FullscreenImageActivity::class.java)
                             .putExtra(FullscreenImageActivity.EXTRA_IMAGE_URI, uri)
                     )
                 }
@@ -419,9 +460,10 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
                 if (!bbCheck.allowed) {
                     showError(bbCheck.upgradeMessage)
                 } else {
-                    val convId = "${FirestoreManager.safeId(subjectName)}__${FirestoreManager.safeId(chapterName)}"
+                    val convId =
+                        "${FirestoreManager.safeId(subjectName)}__${FirestoreManager.safeId(chapterName)}"
                     startActivity(
-                        android.content.Intent(this, BlackboardActivity::class.java)
+                        Intent(requireContext(), BlackboardActivity::class.java)
                             .putExtra(BlackboardActivity.EXTRA_MESSAGE, msg.content)
                             .putExtra(BlackboardActivity.EXTRA_MESSAGE_ID, msg.id)
                             .putExtra(BlackboardActivity.EXTRA_USER_ID, userId)
@@ -431,56 +473,52 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
                 }
             }
         )
-        messagesRecyclerView.layoutManager = LinearLayoutManager(this).apply {
+        messagesRecyclerView.layoutManager = LinearLayoutManager(requireContext()).apply {
             stackFromEnd = true
         }
         messagesRecyclerView.adapter = messageAdapter
 
-        messageInput = findViewById(R.id.messageInput)
-        sendButton = findViewById(R.id.sendButton)
-        loadingLayout = findViewById(R.id.loadingLayout)
-        voiceButton = findViewById(R.id.voiceButton)
-        imageButton = findViewById(R.id.imageButton)
+        messageInput = view.findViewById(R.id.messageInput)
+        sendButton = view.findViewById(R.id.sendButton)
+        loadingLayout = view.findViewById(R.id.loadingLayout)
+        voiceButton = view.findViewById(R.id.voiceButton)
+        imageButton = view.findViewById(R.id.imageButton)
+        saveNotesButton = view.findViewById(R.id.saveNotesButton)
+        viewNotesButton = view.findViewById(R.id.viewNotesButton)
+        formulaButton = view.findViewById(R.id.formulaButton)
+        practiceButton = view.findViewById(R.id.practiceButton)
+        imagePreviewStrip = view.findViewById(R.id.imagePreviewStrip)
+        imagePreviewThumbnail = view.findViewById(R.id.imagePreviewThumbnail)
+        imagePreviewLabel = view.findViewById(R.id.imagePreviewLabel)
+        removeImageButton = view.findViewById(R.id.removeImageButton)
+        languageButton = view.findViewById(R.id.languageButton)
+        pagesDrawerCloseButton = view.findViewById(R.id.pagesDrawerCloseButton)
+        pagesDrawerAddPageButton = view.findViewById(R.id.pagesDrawerAddPageButton)
+        pagesDrawerTitle = view.findViewById(R.id.pagesDrawerTitle)
+        pagesDrawerHint = view.findViewById(R.id.pagesDrawerHint)
+        pagesDrawerList = view.findViewById(R.id.pagesDrawerList)
+        listeningIndicator = view.findViewById(R.id.listeningIndicator)
+        bottomDescribeButton = view.findViewById(R.id.bottomDescribeButton)
+        plusButton = view.findViewById(R.id.plusButton)
+        quickActionsPanel = view.findViewById(R.id.quickActionsPanel)
+        voiceChatBar = view.findViewById(R.id.voiceChatBar)
+        voiceChatStatus = view.findViewById(R.id.voiceChatStatus)
+        voiceModeBadge = view.findViewById(R.id.voiceModeBadge)
+        liveModeChip = view.findViewById(R.id.liveModeChip)
+        waveBarContainer = view.findViewById(R.id.waveBarContainer)
+        waveBar1 = view.findViewById(R.id.waveBar1)
+        waveBar2 = view.findViewById(R.id.waveBar2)
+        waveBar3 = view.findViewById(R.id.waveBar3)
+        waveBar4 = view.findViewById(R.id.waveBar4)
 
-        saveNotesButton = findViewById(R.id.saveNotesButton)
-        viewNotesButton = findViewById(R.id.viewNotesButton)
-        formulaButton = findViewById(R.id.formulaButton)
-        practiceButton = findViewById(R.id.practiceButton)
-        imagePreviewStrip = findViewById(R.id.imagePreviewStrip)
-        imagePreviewThumbnail = findViewById(R.id.imagePreviewThumbnail)
-        imagePreviewLabel = findViewById(R.id.imagePreviewLabel)
-        removeImageButton = findViewById(R.id.removeImageButton)
-        languageButton = findViewById(R.id.languageButton)
-//        openPagesDrawerButton = findViewById(R.id.openPagesDrawerButton)
-        pagesDrawerCloseButton = findViewById(R.id.pagesDrawerCloseButton)
-        pagesDrawerAddPageButton = findViewById(R.id.pagesDrawerAddPageButton)
-        pagesDrawerTitle = findViewById(R.id.pagesDrawerTitle)
-        pagesDrawerHint = findViewById(R.id.pagesDrawerHint)
-        pagesDrawerList = findViewById(R.id.pagesDrawerList)
-        listeningIndicator = findViewById(R.id.listeningIndicator)
-        bottomDescribeButton = findViewById(R.id.bottomDescribeButton)
-        plusButton = findViewById(R.id.plusButton)
-        quickActionsPanel = findViewById(R.id.quickActionsPanel)
         plusButton.setOnClickListener { toggleQuickActions() }
-        voiceChatBar = findViewById(R.id.voiceChatBar)
-        voiceChatStatus = findViewById(R.id.voiceChatStatus)
-        voiceModeBadge = findViewById(R.id.voiceModeBadge)
-        liveModeChip = findViewById(R.id.liveModeChip)
-        waveBarContainer = findViewById(R.id.waveBarContainer)
-        waveBar1 = findViewById(R.id.waveBar1)
-        waveBar2 = findViewById(R.id.waveBar2)
-        waveBar3 = findViewById(R.id.waveBar3)
-        waveBar4 = findViewById(R.id.waveBar4)
-
         languageButton.setOnClickListener { showLanguagePicker() }
-        pagesDrawerCloseButton.setOnClickListener {
-            chatDrawerLayout.closeDrawer(GravityCompat.START)
-        }
+        pagesDrawerCloseButton.setOnClickListener { chatDrawerLayout.closeDrawer(GravityCompat.START) }
+
         updateLanguageButton()
         updateLiveModeUi()
-
-        setupButtons()
-        setupQuickActions()
+        setupButtons(view)
+        setupQuickActions(view)
 
         sendButton.setOnClickListener {
             val text = messageInput.text.toString().trim()
@@ -495,26 +533,26 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         }
     }
 
-    private fun setupButtons() {
-        voiceChatButton = findViewById(R.id.voiceChatButton)
+    private fun setupButtons(view: View) {
+        voiceChatButton = view.findViewById(R.id.voiceChatButton)
         voiceChatButton.setOnClickListener {
             if (isVoiceModeActive) stopVoiceMode() else showLiveModePickerAndStart()
         }
 
-        autoExplainButton = findViewById(R.id.autoExplainButton)
+        autoExplainButton = view.findViewById(R.id.autoExplainButton)
         autoExplainButton.setOnClickListener {
             val limits = AdminConfigRepository.resolveEffectiveLimits(
                 cachedMetadata.planId, cachedMetadata.planLimits
             )
-            val check = PlanEnforcer.check(cachedMetadata, limits, PlanEnforcer.FeatureType.BLACKBOARD)
+            val check =
+                PlanEnforcer.check(cachedMetadata, limits, PlanEnforcer.FeatureType.BLACKBOARD)
             if (!check.allowed) { showError(check.upgradeMessage); return@setOnClickListener }
             isAutoExplainActive = !isAutoExplainActive
-            // Persist globally so all future chats open with the same setting
-            getSharedPreferences("user_prefs", MODE_PRIVATE)
+            requireContext().getSharedPreferences("user_prefs", android.content.Context.MODE_PRIVATE)
                 .edit().putBoolean("blackboard_mode_on", isAutoExplainActive).apply()
             updateAutoExplainButton()
             Toast.makeText(
-                this,
+                requireContext(),
                 if (isAutoExplainActive) "Blackboard mode on" else "Blackboard mode off",
                 Toast.LENGTH_SHORT
             ).show()
@@ -531,7 +569,7 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         imagePreviewThumbnail.setOnClickListener {
             pendingDisplayUri?.let { uri ->
                 startActivity(
-                    Intent(this, FullscreenImageActivity::class.java)
+                    Intent(requireContext(), FullscreenImageActivity::class.java)
                         .putExtra(FullscreenImageActivity.EXTRA_IMAGE_URI, uri.toString())
                 )
             }
@@ -565,58 +603,58 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
             closeQuickActions()
         }
 
-        findViewById<com.google.android.material.button.MaterialButton>(R.id.clearChatButton)
-            .setOnClickListener { showClearChatConfirmation() }
-
+        view.findViewById<MaterialButton>(R.id.clearChatButton).setOnClickListener {
+            showClearChatConfirmation()
+        }
     }
 
-    private fun setupQuickActions() {
+    private fun setupQuickActions(view: View) {
         mapOf(
             R.id.explainButton to "explain",
             R.id.notesButton to "notes"
         ).forEach { (id, key) ->
-            findViewById<MaterialButton>(id).setOnClickListener {
+            view.findViewById<MaterialButton>(id).setOnClickListener {
                 sendMessage(PromptRepository.getQuickAction(key, subjectName, chapterName))
                 closeQuickActions()
             }
         }
 
-        findViewById<MaterialButton>(R.id.quizButton).setOnClickListener {
+        view.findViewById<MaterialButton>(R.id.quizButton).setOnClickListener {
             closeQuickActions()
-            val chapterId = "${subjectName}_${chapterName}"
-                .replace(" ", "_").lowercase().take(64)
+            val chapterId =
+                "${subjectName}_${chapterName}".replace(" ", "_").lowercase().take(64)
             startActivity(
-                Intent(this, QuizSetupActivity::class.java)
+                Intent(requireContext(), QuizSetupActivity::class.java)
                     .putExtra("subjectName", subjectName)
                     .putExtra("chapterId", chapterId)
                     .putExtra("chapterTitle", chapterName)
             )
         }
-        findViewById<MaterialButton>(R.id.flashcardsButton).setOnClickListener {
+        view.findViewById<MaterialButton>(R.id.flashcardsButton).setOnClickListener {
             generateFlashcards()
             closeQuickActions()
         }
     }
 
+    // ── Quick Actions Panel ───────────────────────────────────────────────────
+
     private fun toggleQuickActions() {
-        if (isQuickActionsOpen) {
-            closeQuickActions()
-        } else {
-            openQuickActions()
-        }
+        if (isQuickActionsOpen) closeQuickActions() else openQuickActions()
     }
 
     private fun openQuickActions() {
-        quickActionsPanel.visibility = android.view.View.VISIBLE
+        quickActionsPanel.visibility = View.VISIBLE
         plusButton.text = "✕"
         isQuickActionsOpen = true
     }
 
     private fun closeQuickActions() {
-        quickActionsPanel.visibility = android.view.View.GONE
+        quickActionsPanel.visibility = View.GONE
         plusButton.text = "+"
         isQuickActionsOpen = false
     }
+
+    // ── Chapter Workspace Drawer ──────────────────────────────────────────────
 
     private fun initializeChapterWorkspaceDrawer() {
         chapterPagesAdapter = PageListAdapter(
@@ -624,7 +662,7 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
             onView = { index -> onWorkspaceViewPage(index) },
             onAsk = { index -> onWorkspaceAskPage(index) }
         )
-        pagesDrawerList.layoutManager = LinearLayoutManager(this)
+        pagesDrawerList.layoutManager = LinearLayoutManager(requireContext())
         pagesDrawerList.adapter = chapterPagesAdapter
 
         pagesDrawerAddPageButton.setOnClickListener {
@@ -632,8 +670,10 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
             showImageSourceDialog()
         }
 
-        val metaRaw = getSharedPreferences("chapters_prefs", MODE_PRIVATE)
+        val metaRaw = requireContext()
+            .getSharedPreferences("chapters_prefs", android.content.Context.MODE_PRIVATE)
             .getString("meta_${subjectName}_${chapterName}", null)
+
         if (metaRaw.isNullOrBlank()) {
             isPdfChapterWorkspace = false
             pagesDrawerTitle.text = "Pages • Image Chapter"
@@ -682,7 +722,7 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         chapterPages.add("Loading PDF pages...")
         chapterPagesAdapter.notifyDataSetChanged()
 
-        lifecycleScope.launch(Dispatchers.IO) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val count = pdfPageManager.getPageCount(chapterPdfId, chapterPdfAssetPath)
                 chapterPdfPageCount = count
@@ -705,7 +745,9 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         chapterImagePaths.clear()
         chapterPages.clear()
         val key = "imgpages_${subjectName}_${chapterName}"
-        val raw = getSharedPreferences("chapters_prefs", MODE_PRIVATE).getString(key, "[]") ?: "[]"
+        val raw = requireContext()
+            .getSharedPreferences("chapters_prefs", android.content.Context.MODE_PRIVATE)
+            .getString(key, "[]") ?: "[]"
         try {
             val arr = org.json.JSONArray(raw)
             for (i in 0 until arr.length()) {
@@ -719,9 +761,7 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
                     }
                 }
             }
-        } catch (_: Exception) {
-            // Keep empty state
-        }
+        } catch (_: Exception) { }
         if (chapterPages.isEmpty()) chapterPages.add("No pages yet. Tap Add Page.")
         chapterPagesAdapter.notifyDataSetChanged()
     }
@@ -730,7 +770,7 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         if (isPdfChapterWorkspace) {
             if (chapterPdfPageCount <= 0) return
             startActivity(
-                Intent(this, PageViewerActivity::class.java)
+                Intent(requireContext(), PageViewerActivity::class.java)
                     .putExtra("subjectName", subjectName)
                     .putExtra("chapterName", chapterName)
                     .putExtra("pdfId", chapterPdfId)
@@ -740,7 +780,6 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
             )
             return
         }
-
         if (chapterImagePaths.isEmpty() || index !in chapterImagePaths.indices) return
         val uri = Uri.parse(chapterImagePaths[index])
         showImagePreview(uri)
@@ -750,24 +789,24 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
     private fun onWorkspaceAskPage(index: Int) {
         if (isPdfChapterWorkspace) {
             if (chapterPdfPageCount <= 0) return
-            val pageIndex = index
-            tutorSession.currentPage = pageIndex + 1
-            lifecycleScope.launch(Dispatchers.IO) {
+            tutorSession.currentPage = index + 1
+            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                 try {
-                    val pageFile = pdfPageManager.getPage(chapterPdfId, chapterPdfAssetPath, pageIndex)
+                    val pageFile =
+                        pdfPageManager.getPage(chapterPdfId, chapterPdfAssetPath, index)
                     withContext(Dispatchers.Main) {
-                        preloadPdfPage(pageFile, pageIndex + 1)
+                        preloadPdfPage(pageFile, index + 1)
                         chatDrawerLayout.closeDrawer(GravityCompat.START)
                     }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(this@ChatActivity, "Failed to render page: ${e.message}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(requireContext(),
+                            "Failed to render page: ${e.message}", Toast.LENGTH_LONG).show()
                     }
                 }
             }
             return
         }
-
         if (chapterImagePaths.isEmpty() || index !in chapterImagePaths.indices) return
         val uri = Uri.parse(chapterImagePaths[index])
         showImagePreview(uri)
@@ -778,7 +817,8 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
 
     private fun saveImagePageToChapter(uri: Uri) {
         val key = "imgpages_${subjectName}_${chapterName}"
-        val prefs = getSharedPreferences("chapters_prefs", MODE_PRIVATE)
+        val prefs = requireContext()
+            .getSharedPreferences("chapters_prefs", android.content.Context.MODE_PRIVATE)
         val raw = prefs.getString(key, "[]") ?: "[]"
         val arr = try { org.json.JSONArray(raw) } catch (_: Exception) { org.json.JSONArray() }
         val timestamp = java.text.SimpleDateFormat("dd MMM yyyy HH:mm", java.util.Locale.getDefault())
@@ -789,15 +829,18 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         })
         prefs.edit().putString(key, arr.toString()).apply()
         loadImageWorkspacePages()
-        Toast.makeText(this, "Page added to chapter", Toast.LENGTH_SHORT).show()
+        Toast.makeText(requireContext(), "Page added to chapter", Toast.LENGTH_SHORT).show()
     }
 
+    // ── Voice Input ───────────────────────────────────────────────────────────
+
     private fun checkPermissionAndStartListening() {
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
-            != PackageManager.PERMISSION_GRANTED
+        if (ContextCompat.checkSelfPermission(
+                requireContext(), android.Manifest.permission.RECORD_AUDIO
+            ) != PackageManager.PERMISSION_GRANTED
         ) {
             ActivityCompat.requestPermissions(
-                this,
+                requireActivity(),
                 arrayOf(android.Manifest.permission.RECORD_AUDIO),
                 PERMISSION_REQUEST_CODE
             )
@@ -833,51 +876,40 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
             if (isAutoExplainActive) "Blackboard mode on" else "Blackboard mode off"
     }
 
+    // ── Image Preview & PDF Page ──────────────────────────────────────────────
+
     private fun showImagePreview(uri: Uri) {
         selectedImageUri = uri
         pendingDisplayUri = uri
-        pendingImageBase64 = null   // will be set once base64 is decoded below
+        pendingImageBase64 = null
         if (saveNextPickedImageToChapter) {
             saveNextPickedImageToChapter = false
             if (!isPdfChapterWorkspace) saveImagePageToChapter(uri)
         }
-        currentPageContent = null   // clear any previous analysis
+        currentPageContent = null
         metricsTracker.recordEvent(ChapterMetricsTracker.EventType.IMAGE_UPLOADED)
         imagePreviewStrip.visibility = View.VISIBLE
-        Glide.with(this).load(uri).centerCrop().into(imagePreviewThumbnail)
+        Glide.with(requireContext()).load(uri).centerCrop().into(imagePreviewThumbnail)
         imagePreviewLabel.text = mediaManager.getFileInfo(uri)
-        // Auto-populate input with "Explain" and show image-specific chip
         messageInput.setText("Explain this")
         messageInput.setSelection(messageInput.text.length)
         bottomDescribeButton.visibility = View.VISIBLE
 
-        // Kick off base64 encoding in background (no pre-analysis — LLM will transcribe on send)
-        lifecycleScope.launch(Dispatchers.IO) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             pendingImageBase64 = mediaManager.uriToBase64(uri)
         }
     }
 
-    /**
-     * Loads a rendered PDF page file as Base64 and shows it in the image preview strip
-     * so the user can immediately ask questions about that page.
-     */
-    /**
-     * Opens UCrop so the student can select a specific region of the PDF page to ask about.
-     * Falls back to [applyFullPdfPage] if the user cancels or UCrop fails.
-     */
     private fun preloadPdfPage(pageFile: File, pageNumber: Int) {
         if (!pageFile.exists()) return
-        val sourceUri = FileProvider.getUriForFile(this, "${packageName}.fileprovider", pageFile)
-        // Post so the activity window is fully attached before UCrop launches
+        val sourceUri =
+            FileProvider.getUriForFile(requireContext(),
+                "${requireContext().packageName}.fileprovider", pageFile)
         messagesRecyclerView.post {
             launchCrop(sourceUri, isPdf = true, pdfPageNumber = pageNumber, pdfFile = pageFile)
         }
     }
 
-    /**
-     * Loads the entire (uncropped) PDF page into the preview strip and kicks off background
-     * analysis. Used when the student cancels the crop UI or UCrop fails.
-     */
     private fun applyFullPdfPage(pageFile: File, pageNumber: Int) {
         if (!pageFile.exists()) return
         val bmp = BitmapFactory.decodeFile(pageFile.absolutePath) ?: return
@@ -890,21 +922,14 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         currentPageContent = null
 
         imagePreviewStrip.visibility = View.VISIBLE
-        Glide.with(this).load(pageFile).centerCrop().into(imagePreviewThumbnail)
+        Glide.with(requireContext()).load(pageFile).centerCrop().into(imagePreviewThumbnail)
         imagePreviewLabel.text = "Page $pageNumber"
         messageInput.setText("Explain this page")
         messageInput.setSelection(messageInput.text.length)
         bottomDescribeButton.visibility = View.VISIBLE
 
-        lifecycleScope.launch(Dispatchers.IO) {
-            // base64 is already stored in pdfPageBase64 — nothing more to do
-        }
     }
 
-    /**
-     * Launches UCrop for [sourceUri].
-     * For PDF pages, saves state so the result handler knows which page to update.
-     */
     private fun launchCrop(
         sourceUri: Uri,
         isPdf: Boolean,
@@ -915,13 +940,12 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         pendingCropPdfPageNumber = pdfPageNumber
         pendingCropPdfFile = pdfFile
 
-        // Save to permanent filesDir (not cacheDir) so the image survives app restarts
-        val imagesDir = File(filesDir, "chat_images").also { it.mkdirs() }
+        val imagesDir = File(requireContext().filesDir, "chat_images").also { it.mkdirs() }
         val destFile = File(imagesDir, "crop_${System.currentTimeMillis()}.jpg")
         val options = UCrop.Options().apply {
             setToolbarTitle(if (isPdf) "Select Region to Ask About" else "Crop Image")
-            setToolbarColor(getColor(android.R.color.white))
-            setToolbarWidgetColor(getColor(android.R.color.black))
+            setToolbarColor(ContextCompat.getColor(requireContext(), android.R.color.white))
+            setToolbarWidgetColor(ContextCompat.getColor(requireContext(), android.R.color.black))
             setActiveControlsWidgetColor(android.graphics.Color.parseColor("#1565C0"))
             setFreeStyleCropEnabled(true)
             setShowCropGrid(true)
@@ -930,25 +954,24 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
             withMaxResultSize(1920, 1920)
             setCompressionFormat(android.graphics.Bitmap.CompressFormat.JPEG)
             setCompressionQuality(90)
-            // Make the overlay outside crop area a semi-transparent black
             setDimmedLayerColor(android.graphics.Color.parseColor("#88000000"))
         }
         try {
-            // Decode image size to set a large initial crop window
             val uCrop = UCrop.of(sourceUri, Uri.fromFile(destFile))
                 .withOptions(options)
                 .withAspectRatio(0f, 0f)
                 .withMaxResultSize(1920, 1920)
-            cropLauncher.launch(uCrop.getIntent(this))
+            cropLauncher.launch(uCrop.getIntent(requireContext()))
         } catch (e: Exception) {
-            android.util.Log.w("ChatActivity", "UCrop launch failed: ${e.message}")
+            android.util.Log.w("FullChatFragment", "UCrop launch failed: ${e.message}")
             if (isPdf) pdfFile?.let { applyFullPdfPage(it, pdfPageNumber) }
-            else showImagePreview(sourceUri)
         }
     }
 
+    // ── Image Source Dialog & Camera ──────────────────────────────────────────
+
     private fun showImageSourceDialog() {
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(requireContext())
             .setTitle("Add Image")
             .setItems(arrayOf("📷  Take Photo", "🖼️  Choose from Gallery")) { _, which ->
                 when (which) {
@@ -960,11 +983,14 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
     }
 
     private fun openCamera() {
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
-            != PackageManager.PERMISSION_GRANTED
+        if (ContextCompat.checkSelfPermission(
+                requireContext(), android.Manifest.permission.CAMERA
+            ) != PackageManager.PERMISSION_GRANTED
         ) {
             ActivityCompat.requestPermissions(
-                this, arrayOf(android.Manifest.permission.CAMERA), PERMISSION_REQUEST_CODE
+                requireActivity(),
+                arrayOf(android.Manifest.permission.CAMERA),
+                PERMISSION_REQUEST_CODE
             )
             return
         }
@@ -973,9 +999,13 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
             put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
         }
         cameraImageUri =
-            contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+            requireContext().contentResolver.insert(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values
+            )
         cameraImageUri?.let { cameraLauncher.launch(it) }
     }
+
+    // ── Chat Helpers ──────────────────────────────────────────────────────────
 
     private fun addWelcomeMessage() {
         messageAdapter.addMessage(
@@ -989,7 +1019,7 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
     }
 
     private fun showClearChatConfirmation() {
-        android.app.AlertDialog.Builder(this)
+        AlertDialog.Builder(requireContext())
             .setTitle("Clear Chat")
             .setMessage("Delete all messages in this chat? This cannot be undone.")
             .setPositiveButton("Clear") { _, _ ->
@@ -997,10 +1027,11 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
                     onSuccess = {
                         messageAdapter.clear()
                         addWelcomeMessage()
-                        Toast.makeText(this, "Chat cleared", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(requireContext(), "Chat cleared", Toast.LENGTH_SHORT).show()
                     },
                     onFailure = {
-                        Toast.makeText(this, "Failed to clear chat", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(requireContext(), "Failed to clear chat", Toast.LENGTH_SHORT)
+                            .show()
                     }
                 )
             }
@@ -1018,19 +1049,20 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         )
     }
 
+    // ── Send Message ──────────────────────────────────────────────────────────
+
     private fun sendMessage(userText: String, autoSaveNotes: Boolean = false) {
+        val act = requireActivity()
+        val ctx = requireContext()
+
         val imageUri = selectedImageUri.also { selectedImageUri = null }
         val capturedPdfBase64 = pdfPageBase64.also { pdfPageBase64 = null }
-        // Capture pre-stored image base64 — avoids re-decoding the URI at send time.
-        // For PDF, the bytes were already in capturedPdfBase64. For gallery/camera,
-        // they were stored in pendingImageBase64 at attach time (analogous to PDF).
         val capturedImageBase64 = pendingImageBase64.also { pendingImageBase64 = null }
         currentPageContent = null
         val capturedDisplayUri = pendingDisplayUri.also { pendingDisplayUri = null }
         var serverPageTranscript: String? = null
         val hadVisualAttachment = imageUri != null || capturedPdfBase64 != null
 
-        // ── Plan enforcement check ────────────────────────────────────────────
         val featureType = when {
             imageUri != null -> PlanEnforcer.FeatureType.IMAGE_UPLOAD
             capturedPdfBase64 != null -> PlanEnforcer.FeatureType.PDF_UPLOAD
@@ -1045,12 +1077,11 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
             if (capturedPdfBase64 != null) pdfPageBase64 = capturedPdfBase64
             if (capturedDisplayUri != null) pendingDisplayUri = capturedDisplayUri
             showError(planCheck.upgradeMessage)
-            // Navigate to subscription screen directly when the plan has expired
             if (planCheck.limitType == PlanEnforcer.LimitType.PLAN_EXPIRED) {
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                Handler(Looper.getMainLooper()).postDelayed({
                     startActivity(
-                        android.content.Intent(this, SubscriptionActivity::class.java)
-                            .putExtra("schoolId", com.example.aiguru.utils.SessionManager.getSchoolId(this))
+                        Intent(ctx, SubscriptionActivity::class.java)
+                            .putExtra("schoolId", SessionManager.getSchoolId(ctx))
                     )
                 }, 1500)
             }
@@ -1074,36 +1105,37 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
 
         val sysPrompt = TutorController.buildSystemPrompt(tutorSession) +
                 PromptRepository.getLanguageInstruction(currentLang)
-        val ctxMessage = userText   // plain question — context is conveyed via history + page_id
+        val ctxMessage = userText
 
-        // Snapshot messages on main thread — adapter must not be read from IO thread
         val recentMsgs = messageAdapter.getMessages()
             .filter { it.content.isNotBlank() && it.id != userMessage.id }
             .takeLast(10)
-        // historyStrings is built inside the coroutine after optional inline page analysis
         val pageId =
             "${FirestoreManager.safeId(subjectName)}__${FirestoreManager.safeId(chapterName)}"
         val studentLevel = cachedMetadata.grade.filter { it.isDigit() }.toIntOrNull() ?: 5
 
-        // Streaming state — mutated only from runOnUiThread
         val streamingId = UUID.randomUUID().toString()
         val streamingMsg = Message(id = streamingId, content = "", isUser = false)
         val accumulated = StringBuilder()
         var loadingHidden = false
 
-        lifecycleScope.launch(Dispatchers.IO) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
                 historyRepo.saveMessage(userMessage)
 
                 val recentHistory =
                     recentMsgs.map { msg ->
-                        if (msg.isUser) "user: ${msg.content}"
-                        else buildString {
-                            append("assistant: ${msg.content}")
-                            if (msg.transcription.isNotBlank())
-                                append("\n[attachment_transcription: ${msg.transcription.take(600)}]")
-                            if (msg.extraSummary.isNotBlank())
-                                append("\n[extra_summary: ${msg.extraSummary.take(300)}]")
+                        if (msg.isUser) {
+                            "user: ${msg.content}"
+                        } else {
+                            // Include transcription and extra summary so the LLM has full context
+                            buildString {
+                                append("assistant: ${msg.content}")
+                                if (msg.transcription.isNotBlank())
+                                    append("\n[attachment_transcription: ${msg.transcription.take(600)}]")
+                                if (msg.extraSummary.isNotBlank())
+                                    append("\n[extra_summary: ${msg.extraSummary.take(300)}]")
+                            }
                         }
                     }
 
@@ -1117,7 +1149,7 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
 
                 val onToken: (String) -> Unit = { token ->
                     accumulated.append(token)
-                    runOnUiThread {
+                    act.runOnUiThread {
                         if (!loadingHidden) {
                             loadingHidden = true
                             showLoading(false)
@@ -1129,11 +1161,6 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
                 }
 
                 val onDone: (Int, Int, Int) -> Unit = { inputTok, outputTok, totalTok ->
-                    android.util.Log.d(
-                        "TokenDebug",
-                        "[ChatActivity] onDone received in=$inputTok out=$outputTok total=$totalTok"
-                    )
-                    // Persist token counters to Firestore (async, runs on IO thread)
                     if (totalTok > 0) PlanEnforcer.recordTokensUsed(userId, totalTok, inputTok, outputTok)
                     if (hadVisualAttachment && !serverPageTranscript.isNullOrBlank()) {
                         val sourceType = if (capturedPdfBase64 != null) "pdf" else "image"
@@ -1151,8 +1178,7 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
                         )
                         persistLatestPageContext(serverPage)
                     }
-                    runOnUiThread {
-                        // Update in-memory counter so next enforcement check uses fresh numbers
+                    act.runOnUiThread {
                         if (totalTok > 0) {
                             cachedMetadata = cachedMetadata.copy(
                                 tokensToday = cachedMetadata.tokensToday + totalTok,
@@ -1180,14 +1206,11 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
                             val msgIdx = messageAdapter.getMessages().indexOfFirst { it.id == streamingId }
                             if (msgIdx >= 0) messageAdapter.updateMessage(msgIdx, finalMsg)
                             val tokensToSave = totalTok.takeIf { it > 0 }
-                            android.util.Log.d(
-                                "TokenDebug",
-                                "[ChatActivity] saving AI msg tokens=$tokensToSave in=$inputTok out=$outputTok"
-                            )
                             historyRepo.saveMessage(finalMsg, tokens = tokensToSave,
                                 inputTokens = inputTok.takeIf { it > 0 },
                                 outputTokens = outputTok.takeIf { it > 0 })
                             messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
+
                             if ((lastInputWasVoice || isVoiceModeActive) && !isAutoExplainActive) {
                                 lastInputWasVoice = false
                                 val voiceText = if (isVoiceModeActive && liveMicMode == LiveMicMode.FULL)
@@ -1196,33 +1219,30 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
                                     TutorController.prepareSpeechTextBrief(reply.response)
                                 if (isVoiceModeActive) {
                                     currentTTSText = voiceText
-                                    val speakingLabel = if (liveMicMode == LiveMicMode.FULL) {
+                                    val speakingLabel = if (liveMicMode == LiveMicMode.FULL)
                                         "🔊 AI is speaking (Full Live)…"
-                                    } else {
-                                        "🔊 AI is speaking (Partial Live)…"
-                                    }
+                                    else "🔊 AI is speaking (Partial Live)…"
                                     setVoiceModeStatus(speakingLabel, "#1565C0")
                                 }
                                 ttsManager.setLocale(Locale.forLanguageTag(currentLang))
                                 ttsManager.speak(voiceText, object : TTSCallback {
                                     override fun onStart() {
                                         if (isVoiceModeActive && liveMicMode == LiveMicMode.FULL) {
-                                            android.os.Handler(android.os.Looper.getMainLooper())
-                                                .postDelayed({
-                                                    if (isVoiceModeActive &&
-                                                        liveMicMode == LiveMicMode.FULL &&
-                                                        ttsManager.isSpeaking()) {
-                                                        voiceManager.startInterruptListening(
-                                                            interruptCallback,
-                                                            currentLang
-                                                        )
-                                                    }
-                                                }, 700)
+                                            Handler(Looper.getMainLooper()).postDelayed({
+                                                if (isVoiceModeActive &&
+                                                    liveMicMode == LiveMicMode.FULL &&
+                                                    ttsManager.isSpeaking()
+                                                ) {
+                                                    voiceManager.startInterruptListening(
+                                                        interruptCallback, currentLang
+                                                    )
+                                                }
+                                            }, 700)
                                         }
                                     }
 
                                     override fun onComplete() {
-                                        runOnUiThread {
+                                        act.runOnUiThread {
                                             voiceManager.stopInterruptListening()
                                             if (isVoiceModeActive && !isInterrupted) startVoiceLoopListening()
                                             isInterrupted = false
@@ -1230,7 +1250,7 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
                                     }
 
                                     override fun onError(error: String) {
-                                        runOnUiThread {
+                                        act.runOnUiThread {
                                             voiceManager.stopInterruptListening()
                                             if (isVoiceModeActive) startVoiceLoopListening()
                                         }
@@ -1240,17 +1260,16 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
                             if (autoSaveNotes && saveNotesType != null) {
                                 notesRepo.save(reply.response, saveNotesType!!)
                             }
-                            // ── Auto Explain Mode ──────────────────────────────────────────────
                             if (isAutoExplainActive) {
-                                // Skip TTS — blackboard handles audio; clean up voice state
                                 lastInputWasVoice = false
                                 if (isVoiceModeActive) {
                                     setVoiceModeStatus("🎯 Blackboard open…", "#6A1B9A")
                                     voiceManager.stopInterruptListening()
                                 }
-                                val convId = "${FirestoreManager.safeId(subjectName)}__${FirestoreManager.safeId(chapterName)}"
+                                val convId =
+                                    "${FirestoreManager.safeId(subjectName)}__${FirestoreManager.safeId(chapterName)}"
                                 startActivity(
-                                    android.content.Intent(this@ChatActivity, BlackboardActivity::class.java)
+                                    Intent(ctx, BlackboardActivity::class.java)
                                         .putExtra(BlackboardActivity.EXTRA_MESSAGE, reply.response)
                                         .putExtra(BlackboardActivity.EXTRA_MESSAGE_ID, streamingId)
                                         .putExtra(BlackboardActivity.EXTRA_USER_ID, userId)
@@ -1265,119 +1284,59 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
                 }
 
                 val onError: (String) -> Unit = { err ->
-                    runOnUiThread { showLoading(false); showError("Error: $err") }
+                    act.runOnUiThread { showLoading(false); showError("Error: $err") }
                 }
 
                 val client = buildAiClient()
                 val imageDataJson = null
                 when {
                     imageUri != null -> {
-                        // Use pre-stored base64 (encoded at attach time) — same pattern as PDF.
                         val b64 = capturedImageBase64 ?: mediaManager.uriToBase64(imageUri)
                         if (client is ServerProxyClient) {
-                            client.streamChat(
-                                ctxMessage,
-                                pageId,
-                                "normal",
-                                currentLang,
-                                studentLevel,
-                                historyStrings,
-                                imageDataJson,
-                                b64,
+                            client.streamChat(ctxMessage, pageId, "normal", currentLang,
+                                studentLevel, historyStrings, imageDataJson, b64,
                                 { transcript -> serverPageTranscript = transcript },
-                                onToken,
-                                onDone,
-                                onError
-                            )
+                                onToken, onDone, onError)
                         } else {
-                            if (b64 != null) client.streamWithImage(
-                                sysPrompt,
-                                ctxMessage,
-                                b64,
-                                onToken,
-                                onDone,
-                                onError
-                            )
+                            if (b64 != null) client.streamWithImage(sysPrompt, ctxMessage, b64,
+                                onToken, onDone, onError)
                             else client.streamText(sysPrompt, ctxMessage, onToken, onDone, onError)
                         }
                     }
-
                     capturedPdfBase64 != null ->
                         if (client is ServerProxyClient)
-                            client.streamChat(
-                                ctxMessage,
-                                pageId,
-                                "normal",
-                                currentLang,
-                                studentLevel,
-                                historyStrings,
-                                imageDataJson,
-                                capturedPdfBase64,
+                            client.streamChat(ctxMessage, pageId, "normal", currentLang,
+                                studentLevel, historyStrings, imageDataJson, capturedPdfBase64,
                                 { transcript -> serverPageTranscript = transcript },
-                                onToken,
-                                onDone,
-                                onError
-                            )
+                                onToken, onDone, onError)
                         else
-                            client.streamWithImage(
-                                sysPrompt,
-                                ctxMessage,
-                                capturedPdfBase64,
-                                onToken,
-                                onDone,
-                                onError
-                            )
-
+                            client.streamWithImage(sysPrompt, ctxMessage, capturedPdfBase64,
+                                onToken, onDone, onError)
                     else ->
                         if (client is ServerProxyClient)
-                            client.streamChat(
-                                ctxMessage,
-                                pageId,
-                                "normal",
-                                currentLang,
-                                studentLevel,
-                                historyStrings,
-                                null,
-                                null,
-                                null,
-                                onToken,
-                                onDone,
-                                onError
-                            )
+                            client.streamChat(ctxMessage, pageId, "normal", currentLang,
+                                studentLevel, historyStrings, null, null, null,
+                                onToken, onDone, onError)
                         else
                             client.streamText(sysPrompt, ctxMessage, onToken, onDone, onError)
                 }
             } catch (e: Exception) {
-                android.util.Log.e("ChatActivity", "sendMessage crash: ${e.message}", e)
-                runOnUiThread { showLoading(false); showError("Error: ${e.message}") }
+                android.util.Log.e("FullChatFragment", "sendMessage crash: ${e.message}", e)
+                act.runOnUiThread { showLoading(false); showError("Error: ${e.message}") }
             }
         }
     }
 
     private fun persistLatestPageContext(pageContent: PageContent?) {
-        val page = pageContent ?: run {
-            android.util.Log.w("PageContext", "persistLatestPageContext: pageContent is null — skipping")
-            return
+        val page = pageContent ?: return
+        val resolvedUserId = SessionManager.getFirestoreUserId(requireContext()).also { uid ->
+            if (uid != userId) userId = uid
         }
-        // Re-resolve userId at call time — Firebase Auth may not have been ready at onCreate
-        val resolvedUserId = SessionManager.getFirestoreUserId(this).also { uid ->
-            if (uid != userId) {
-                android.util.Log.w("PageContext", "userId changed from '$userId' to '$uid' — updating")
-                userId = uid
-            }
-        }
-        android.util.Log.d("PageContext",
-            "persistLatestPageContext: userId='$resolvedUserId' subject='${page.subject}' " +
-            "chapter='${page.chapter}' transcript=${page.transcript.length} chars")
         tutorSession.latestPageContext = page.transcript
         FirestoreManager.saveChapterContext(
             userId = resolvedUserId,
             page = page,
-            onSuccess = {
-                android.util.Log.d("PageContext",
-                    "saveChapterContext SUCCESS → users/$resolvedUserId/conversations/" +
-                    "${FirestoreManager.safeId(page.subject)}__${FirestoreManager.safeId(page.chapter)}")
-            },
+            onSuccess = { },
             onFailure = { e ->
                 android.util.Log.e("PageContext",
                     "saveChapterContext FAILED userId='$userId': ${e?.message}")
@@ -1385,47 +1344,43 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         )
     }
 
+    // ── Flashcards ────────────────────────────────────────────────────────────
+
     private fun generateFlashcards() {
         val prompt = PromptRepository.getQuickAction("flashcards", subjectName, chapterName)
         messageAdapter.addMessage(
-            Message(
-                UUID.randomUUID().toString(),
-                "🃏 Generating revision flashcards for $chapterName…",
-                true
-            )
+            Message(UUID.randomUUID().toString(),
+                "🃏 Generating revision flashcards for $chapterName…", true)
         )
         showLoading(true)
 
         val sysPrompt = TutorController.buildSystemPrompt(tutorSession)
         val fullResponse = StringBuilder()
-        lifecycleScope.launch(Dispatchers.IO) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             buildAiClient().streamText(
                 systemPrompt = sysPrompt,
                 userText = prompt,
                 onToken = { token -> fullResponse.append(token) },
                 onDone = { _, _, _ ->
-                    runOnUiThread {
+                    requireActivity().runOnUiThread {
                         showLoading(false)
                         val cards = parseFlashcards(fullResponse.toString())
                         if (cards.isNotEmpty()) {
                             messageAdapter.addMessage(
-                                Message(
-                                    UUID.randomUUID().toString(),
-                                    "✅ ${cards.size} flashcards ready! Opening revision mode…",
-                                    false
-                                )
+                                Message(UUID.randomUUID().toString(),
+                                    "✅ ${cards.size} flashcards ready! Opening revision mode…", false)
                             )
                             startActivity(
-                                Intent(
-                                    this@ChatActivity,
-                                    RevisionActivity::class.java
-                                ).putExtra("flashcards", ArrayList(cards))
+                                Intent(requireContext(), RevisionActivity::class.java)
+                                    .putExtra("flashcards", ArrayList(cards))
                             )
                         } else showError("Could not parse flashcards. Please try again.")
                     }
                 },
                 onError = { err ->
-                    runOnUiThread { showLoading(false); showError("Failed to generate flashcards: $err") }
+                    requireActivity().runOnUiThread {
+                        showLoading(false); showError("Failed to generate flashcards: $err")
+                    }
                 }
             )
         }
@@ -1447,12 +1402,12 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         return cards
     }
 
-    // ─── Notes: save & view ─────────────────────────────────────────────────
+    // ── Notes ─────────────────────────────────────────────────────────────────
 
     private fun saveLastAIMessageAsNotes() {
         val lastAi = messageAdapter.getLastAIMessage() ?: run {
-            Toast.makeText(this, "Generate notes first, then tap 💾 Save Notes.", Toast.LENGTH_SHORT)
-                .show()
+            Toast.makeText(requireContext(),
+                "Generate notes first, then tap 💾 Save Notes.", Toast.LENGTH_SHORT).show()
             return
         }
         notesRepo.save(
@@ -1460,11 +1415,14 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
             type = saveNotesType ?: "chapter",
             onSuccess = {
                 metricsTracker.recordEvent(ChapterMetricsTracker.EventType.NOTES_SAVED)
-                runOnUiThread { Toast.makeText(this, "✅ Notes saved!", Toast.LENGTH_SHORT).show() }
+                requireActivity().runOnUiThread {
+                    Toast.makeText(requireContext(), "✅ Notes saved!", Toast.LENGTH_SHORT).show()
+                }
             },
             onFailure = {
-                runOnUiThread {
-                    Toast.makeText(this, "Failed to save notes.", Toast.LENGTH_SHORT).show()
+                requireActivity().runOnUiThread {
+                    Toast.makeText(requireContext(), "Failed to save notes.", Toast.LENGTH_SHORT)
+                        .show()
                 }
             }
         )
@@ -1473,34 +1431,36 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
     private fun viewSavedNotes() {
         notesRepo.loadAll(
             onResult = { text ->
-                AlertDialog.Builder(this)
+                AlertDialog.Builder(requireContext())
                     .setTitle("📋 Saved Notes — $chapterName")
                     .setMessage(text)
                     .setPositiveButton("OK", null)
                     .show()
             },
             onEmpty = {
-                Toast.makeText(
-                    this,
-                    "No saved notes yet — generate and save notes first!",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(requireContext(),
+                    "No saved notes yet — generate and save notes first!", Toast.LENGTH_SHORT).show()
             },
-            onFailure = { Toast.makeText(this, "Couldn't load notes.", Toast.LENGTH_SHORT).show() }
+            onFailure = {
+                Toast.makeText(requireContext(), "Couldn't load notes.", Toast.LENGTH_SHORT).show()
+            }
         )
     }
+
+    // ── Loading / Error ───────────────────────────────────────────────────────
 
     private fun showLoading(show: Boolean) {
         loadingLayout.visibility = if (show) View.VISIBLE else View.GONE
     }
 
     private fun showError(msg: String) {
-        Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+        Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
     }
 
-    // VoiceRecognitionCallback
+    // ── VoiceRecognitionCallback ──────────────────────────────────────────────
+
     override fun onResults(text: String) {
-        runOnUiThread {
+        requireActivity().runOnUiThread {
             isListening = false
             if (!isVoiceModeActive) resetVoiceButton()
             if (text.isNotEmpty()) {
@@ -1516,14 +1476,14 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
     }
 
     override fun onPartialResults(text: String) {
-        runOnUiThread {
+        requireActivity().runOnUiThread {
             messageInput.setText(text)
             messageInput.setSelection(text.length)
         }
     }
 
     override fun onError(error: String) {
-        runOnUiThread {
+        requireActivity().runOnUiThread {
             if (isVoiceModeActive) startVoiceLoopListening()
             else resetVoiceButton()
         }
@@ -1532,7 +1492,7 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
     override fun onListeningStarted() {}
 
     override fun onListeningFinished() {
-        runOnUiThread {
+        requireActivity().runOnUiThread {
             isListening = false
             if (!isVoiceModeActive) resetVoiceButton()
         }
@@ -1545,17 +1505,18 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         if (requestCode == PERMISSION_REQUEST_CODE &&
             grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED
         ) {
-            // Re-try whichever permission was just granted
             val perm = permissions.firstOrNull()
             if (perm == android.Manifest.permission.RECORD_AUDIO) startVoiceInput()
             else if (perm == android.Manifest.permission.CAMERA) openCamera()
         }
     }
 
+    // ── Language ──────────────────────────────────────────────────────────────
+
     private fun showLanguagePicker() {
         val names = LANGUAGES.keys.toTypedArray()
         val currentIdx = names.indexOf(currentLangName).coerceAtLeast(0)
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(requireContext())
             .setTitle("🌐 Select Response Language")
             .setSingleChoiceItems(names, currentIdx) { dialog, which ->
                 currentLangName = names[which]
@@ -1563,7 +1524,7 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
                 updateLanguageButton()
                 ttsManager.setLocale(Locale.forLanguageTag(currentLang))
                 dialog.dismiss()
-                Toast.makeText(this, "Lang:$currentLangName", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Lang:$currentLangName", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Cancel", null)
             .show()
@@ -1584,59 +1545,25 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         languageButton.text = "Language: $label ▾"
     }
 
-    // ── Interactive Voice Chat Mode (single-shot mic only) ──────────────────
-
-    /**
-     * When returning from BlackboardActivity (auto explain mode), resume voice loop
-     * listening if voice mode was still active while the blackboard was open.
-     */
-    override fun onResume() {
-        super.onResume()
-        if (isVoiceModeActive && isAutoExplainActive && !isListening) {
-            setVoiceModeStatus("🎙️ Listening… speak now", "#2E7D32")
-            startVoiceLoopListening()
-        }
-    }
-
-    /**
-     * Called when this ChatActivity is brought to front via FLAG_ACTIVITY_CLEAR_TOP
-     * (e.g. from PageViewerActivity's "Ask AI" button). Loads the new page into the chat.
-     */
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        val pdfPath = intent.getStringExtra("pdfPageFilePath")
-        if (pdfPath != null) {
-            val pageNum = intent.getIntExtra("pdfPageNumber", 1)
-            tutorSession.currentPage = pageNum
-            preloadPdfPage(java.io.File(pdfPath), pageNum)
-        }
-        intent.getStringExtra("imagePath")?.takeIf { it.isNotBlank() }?.let { path ->
-            showImagePreview(android.net.Uri.parse(path))
-            messageInput.setText("Explain this page")
-            messageInput.setSelection(messageInput.text.length)
-        }
-    }
+    // ── Interactive Voice Chat Mode ───────────────────────────────────────────
 
     private fun showLiveModePickerAndStart() {
-        val options = arrayOf(
-            "Full Live (stop-words can interrupt)",
-            "Partial Live (no interruptions)"
-        )
-        AlertDialog.Builder(this)
+        AlertDialog.Builder(requireContext())
             .setTitle("Select Live Mic Mode")
-            .setItems(options) { _, which ->
+            .setItems(arrayOf(
+                "Full Live (stop-words can interrupt)",
+                "Partial Live (no interruptions)"
+            )) { _, which ->
                 liveMicMode = if (which == 0) LiveMicMode.FULL else LiveMicMode.PARTIAL
                 updateLiveModeUi()
                 if (liveMicMode == LiveMicMode.FULL) {
-                    AlertDialog.Builder(this)
+                    AlertDialog.Builder(requireContext())
                         .setTitle("Full Live Enabled")
                         .setMessage("To stop TTS while it is speaking, say: 'stop it' or 'wait wait'.")
                         .setPositiveButton("Start") { _, _ -> startVoiceMode() }
                         .setNegativeButton("Cancel", null)
                         .show()
                 } else {
-                    // Ensure no leftover secondary interrupt recognizer from previous FULL run.
                     voiceManager.stopInterruptListening()
                     startVoiceMode()
                 }
@@ -1646,27 +1573,27 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
     }
 
     private fun startVoiceMode() {
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
-            != PackageManager.PERMISSION_GRANTED
+        if (ContextCompat.checkSelfPermission(
+                requireContext(), android.Manifest.permission.RECORD_AUDIO
+            ) != PackageManager.PERMISSION_GRANTED
         ) {
             ActivityCompat.requestPermissions(
-                this, arrayOf(android.Manifest.permission.RECORD_AUDIO), PERMISSION_REQUEST_CODE
+                requireActivity(),
+                arrayOf(android.Manifest.permission.RECORD_AUDIO),
+                PERMISSION_REQUEST_CODE
             )
             return
         }
         isVoiceModeActive = true
         isInterrupted = false
-        if (liveMicMode == LiveMicMode.PARTIAL) {
-            // Hard guarantee: partial mode should never run secondary interrupt listener.
-            voiceManager.stopInterruptListening()
-        }
+        if (liveMicMode == LiveMicMode.PARTIAL) voiceManager.stopInterruptListening()
         voiceButton.isEnabled = false
         voiceChatBar.visibility = View.VISIBLE
         listeningIndicator.visibility = View.GONE
         voiceChatButton.backgroundTintList =
             ColorStateList.valueOf(android.graphics.Color.parseColor("#E53935"))
         val modeLabel = if (liveMicMode == LiveMicMode.FULL) "Full Live" else "Partial Live"
-        Toast.makeText(this, "🎙️ Voice mode ON ($modeLabel)", Toast.LENGTH_SHORT).show()
+        Toast.makeText(requireContext(), "🎙️ Voice mode ON ($modeLabel)", Toast.LENGTH_SHORT).show()
         updateLiveModeUi()
         startVoiceLoopListening()
     }
@@ -1676,9 +1603,7 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         isInterrupted = false
         ttsManager.stop()
         voiceManager.stopInterruptListening()
-        if (isListening) {
-            voiceManager.stopListening(); isListening = false
-        }
+        if (isListening) { voiceManager.stopListening(); isListening = false }
         stopWaveAnimation()
         stopMicPulse()
         voiceButton.isEnabled = true
@@ -1686,17 +1611,15 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         voiceChatButton.backgroundTintList =
             ColorStateList.valueOf(android.graphics.Color.parseColor("#E8F5E9"))
         updateLiveModeUi()
-        Toast.makeText(this, "Voice mode OFF", Toast.LENGTH_SHORT).show()
+        Toast.makeText(requireContext(), "Voice mode OFF", Toast.LENGTH_SHORT).show()
     }
 
     private fun startVoiceLoopListening() {
         if (!isVoiceModeActive) return
         isListening = true
-        val listeningLabel = if (liveMicMode == LiveMicMode.FULL) {
+        val listeningLabel = if (liveMicMode == LiveMicMode.FULL)
             "🎙️ Full Live listening… say stop it / wait wait to interrupt"
-        } else {
-            "🎙️ Partial Live listening… no interruptions"
-        }
+        else "🎙️ Partial Live listening… no interruptions"
         setVoiceModeStatus(listeningLabel, "#2E7D32")
         voiceManager.startListening(this, currentLang)
         startMicPulse()
@@ -1719,13 +1642,8 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         voiceChatStatus.setTextColor(android.graphics.Color.parseColor(colorHex))
         when (colorHex) {
             "#2E7D32", "#6A1B9A" -> startWaveAnimation(colorHex)
-            "#1565C0" -> {
-                startWaveAnimation("#1565C0"); stopMicPulse()
-            }
-
-            else -> {
-                stopWaveAnimation(); stopMicPulse()
-            }
+            "#1565C0" -> { startWaveAnimation("#1565C0"); stopMicPulse() }
+            else -> { stopWaveAnimation(); stopMicPulse() }
         }
     }
 
@@ -1736,6 +1654,7 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         }
 
         override fun onBeginningOfSpeech() {}
+
         override fun onResults(text: String) {
             if (!isVoiceModeActive || text.length < 2) return
             if (shouldInterruptForText(text)) triggerBargein()
@@ -1750,14 +1669,9 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         val heard = text.lowercase().trim()
         if (heard.isBlank()) return false
         val normalizedTTS = currentTTSText.lowercase()
-
         return if (liveMicMode == LiveMicMode.FULL) {
-            // Full Live: only explicit stop words interrupt TTS.
             voiceStopWords.any { heard.contains(it) } && !normalizedTTS.contains(heard)
-        } else {
-            // Partial Live: no interruption while TTS is speaking.
-            false
-        }
+        } else false
     }
 
     private fun triggerBargein() {
@@ -1765,10 +1679,14 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         isInterrupted = true
         ttsManager.stop()
         voiceManager.stopInterruptListening()
-        runOnUiThread { setVoiceModeStatus("🎙️ Listening (interrupted)…", "#6A1B9A") }
+        requireActivity().runOnUiThread {
+            setVoiceModeStatus("🎙️ Listening (interrupted)…", "#6A1B9A")
+        }
         isListening = true
         voiceManager.startListening(this, currentLang)
     }
+
+    // ── Wave Animation & Mic Pulse ────────────────────────────────────────────
 
     private fun startWaveAnimation(colorHex: String) {
         waveBarContainer.visibility = View.VISIBLE
@@ -1779,8 +1697,7 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         listOf(waveBar1, waveBar2, waveBar3, waveBar4).forEachIndexed { i, bar ->
             bar.clearAnimation()
             bar.startAnimation(
-                ScaleAnimation(
-                    1f, 1f, 0.15f, 1f,
+                ScaleAnimation(1f, 1f, 0.15f, 1f,
                     Animation.RELATIVE_TO_SELF, 0.5f,
                     Animation.RELATIVE_TO_SELF, 1.0f
                 ).apply {
@@ -1801,8 +1718,7 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
     private fun startMicPulse() {
         voiceButton.clearAnimation()
         voiceButton.startAnimation(
-            ScaleAnimation(
-                1f, 1.15f, 1f, 1.15f,
+            ScaleAnimation(1f, 1.15f, 1f, 1.15f,
                 Animation.RELATIVE_TO_SELF, 0.5f,
                 Animation.RELATIVE_TO_SELF, 0.5f
             ).apply {
@@ -1818,5 +1734,4 @@ class ChatActivity : BaseActivity(), VoiceRecognitionCallback {
         voiceButton.scaleX = 1f
         voiceButton.scaleY = 1f
     }
-
 }

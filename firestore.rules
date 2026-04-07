@@ -1,0 +1,102 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ── User data (own document + all subcollections) ──────────────────────────
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      match /{subcollection=**} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // ── Bootstrap / app-start collections (public read, no client write) ───────
+
+    // Schools — needed before login (SchoolLoginActivity dropdown)
+    match /schools/{schoolId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Subscription plans — shown on paywall before/after login
+    match /plans/{planId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Promotional offer banners
+    match /app_offers/{offerId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // In-app broadcast notifications
+    match /notifications/{notifId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // App update / maintenance config (updates/app_config)
+    match /updates/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── Content catalogue (public read, no client write) ───────────────────────
+    match /subjects/{subjectId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /chapters/{chapterId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── Quiz content (authenticated read, server write only) ───────────────────
+    match /quizzes/{quizId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Quiz attempts (owner can read their own; server writes via service account)
+    match /attempts/{attemptId} {
+      allow read: if isSignedIn() && request.auth.uid == resource.data.user_id;
+      allow write: if false;
+    }
+
+    // ── Payment collections (server-only via service account) ─────────────────
+    match /payment_intents/{docId} {
+      allow read, write: if false;
+    }
+
+    match /payment_receipts/{docId} {
+      allow read, write: if false;
+    }
+
+    match /payment_webhooks/{docId} {
+      allow read, write: if false;
+    }
+
+    // ── Admin / server config (never accessible from clients) ────────────────
+    match /admin_config/{docId} {
+      allow read, write: if false;
+    }
+
+    // ── Blackboard fallback cache (server-written, no client access) ──────────
+    match /blackboard_cache/{docId} {
+      allow read, write: if false;
+    }
+  }
+}

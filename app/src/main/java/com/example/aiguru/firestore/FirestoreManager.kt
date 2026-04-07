@@ -229,13 +229,15 @@ object FirestoreManager {
         subjectName: String,
         chapterName: String,
         isPdf: Boolean = false,
-        pdfAssetPath: String = ""
+        pdfAssetPath: String = "",
+        ncertUrl: String = ""
     ) {
         if (userId.isBlank() || userId == "guest_user") return
         val doc = mapOf(
             "name"         to chapterName,
             "isPdf"        to isPdf,
             "pdfAssetPath" to pdfAssetPath,
+            "ncertUrl"     to ncertUrl,
             "createdAt"    to System.currentTimeMillis()
         )
         usersRef(userId).collection("subjects").document(safeId(subjectName))
@@ -292,7 +294,9 @@ object FirestoreManager {
         tokens: Int? = null,
         inputTokens: Int? = null,
         outputTokens: Int? = null,
-        imageUrl: String? = null
+        imageUrl: String? = null,
+        transcription: String = "",
+        extraSummary: String = ""
     ) {
         if (userId.isBlank() || userId == "guest_user") return
         val cid = convId(subject, chapter)
@@ -331,6 +335,8 @@ object FirestoreManager {
         if (inputTokens != null) msgDoc["inputTokens"] = inputTokens
         if (outputTokens != null) msgDoc["outputTokens"] = outputTokens
         if (imageUrl != null) msgDoc["imageUrl"] = imageUrl
+        if (transcription.isNotBlank()) msgDoc["transcription"] = transcription
+        if (extraSummary.isNotBlank()) msgDoc["extraSummary"] = extraSummary
         convRef.collection("messages").document(messageId).set(msgDoc)
             .addOnFailureListener { Log.e("Firestore", "saveMessage msg failed uid=$userId msgId=$messageId: ${it.message}") }
     }

@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     id("com.google.gms.google-services")
+
 }
 
 val localProperties = Properties().apply {
@@ -21,13 +22,13 @@ android {
         applicationId = "com.example.aiguru"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.0.0"
+        versionCode = 3
+        versionName = "1.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        // GROQ_API_KEY removed — Groq is called server-side only; key never ships in APK
-        buildConfigField("String", "GEMINI_API_KEY", "\"${localProperties["GEMINI_API_KEY"] ?: ""}\"")
-        buildConfigField("String", "PAYMENT_BASE_URL", "\"${localProperties["PAYMENT_BASE_URL"] ?: ""}\"")
-        buildConfigField("String", "RAZORPAY_KEY_ID", "\"${localProperties["RAZORPAY_KEY_ID"] ?: ""}\"")
+        val paymentBaseUrl = localProperties["PAYMENT_BASE_URL"] as? String ?: ""
+        val razorpayKeyId  = localProperties["RAZORPAY_KEY_ID"]  as? String ?: ""
+        buildConfigField("String", "PAYMENT_BASE_URL", "\"$paymentBaseUrl\"")
+        buildConfigField("String", "RAZORPAY_KEY_ID",  "\"$razorpayKeyId\"")
     }
 
     signingConfigs {
@@ -48,6 +49,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Gemini Live uses server proxy — no key needed in APK
+        }
+        debug {
+            versionNameSuffix = "-debug"
+            isDebuggable = true
         }
     }
     compileOptions {
@@ -63,18 +69,18 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.json:json:20240303")
     implementation("com.razorpay:checkout:1.6.40")
-    implementation("com.google.firebase:firebase-auth:22.3.1")
-    implementation("com.google.firebase:firebase-firestore:24.10.3")
-    implementation("com.google.android.gms:play-services-auth:21.0.0")
+    implementation("com.google.firebase:firebase-auth:23.1.0")
+    implementation("com.google.firebase:firebase-firestore:25.1.1")
+    implementation("com.google.android.gms:play-services-auth:21.3.0")
     implementation("com.github.bumptech.glide:glide:4.16.0")
     implementation("com.caverock:androidsvg-aar:1.4")
     
     // RecyclerView & Material Design 3
     implementation("androidx.recyclerview:recyclerview:1.3.2")
-    implementation("com.google.android.material:material:1.11.0")
+    implementation("com.google.android.material:material:1.12.0")
     
     // Voice & Audio
-    implementation("androidx.camera:camera-core:1.3.0")
+    implementation("androidx.camera:camera-core:1.3.4")
     
     // Image handling
     implementation("com.squareup.picasso:picasso:2.8")
@@ -83,15 +89,15 @@ dependencies {
     implementation("com.github.yalantis:ucrop:2.2.8")
     
     // Lifecycle & ViewModel
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     
     // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
     
     // DataStore for preferences
-    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
     
     // PDF handling
     implementation("com.itextpdf:itextpdf:5.5.13.3")
@@ -103,4 +109,5 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    implementation(platform("com.google.firebase:firebase-bom:34.11.0"))
 }

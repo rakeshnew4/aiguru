@@ -10,8 +10,8 @@ import com.google.firebase.firestore.FirebaseFirestore
  * Loads and caches AdminConfig + SubscriptionPlan definitions from Firestore.
  *
  * Firestore layout:
- *   admin_config/global            ← AdminConfig document
- *   admin_config/plans/{planId}    ← SubscriptionPlan documents
+ *   admin_config/global   ← AdminConfig document (server URL, model tiers, limits)
+ *   plans/{planId}        ← SubscriptionPlan documents (top-level collection)
  *
  * Cache lifetime is controlled by AdminConfig.cacheMaxAgeMs (default 1 hour).
  * Falls back to safe hardcoded defaults if Firestore is unreachable.
@@ -21,6 +21,7 @@ object AdminConfigRepository {
     private const val TAG = "AdminConfig"
     private const val COLLECTION = "admin_config"
     private const val GLOBAL_DOC = "global"
+    // Plans are in the top-level plans/ collection (same level as users/, updates/)
     private const val PLANS_COL  = "plans"
 
     private val db = FirebaseFirestore.getInstance()
@@ -34,7 +35,7 @@ object AdminConfigRepository {
     /** Returns the currently cached AdminConfig (may be the default if not yet loaded). */
     val config: AdminConfig get() = cachedConfig
 
-    /** Returns all known plans keyed by planId. */
+    /** Returns all known plans keyed by planId. Populated by [AppStartRepository] too. */
     val plans: Map<String, SubscriptionPlan> get() = cachedPlans
 
     // ── Public API ────────────────────────────────────────────────────────────
@@ -121,15 +122,16 @@ object AdminConfigRepository {
     // ── Private ───────────────────────────────────────────────────────────────
 
     private fun fetchPlans() {
-        db.collection(COLLECTION).document(GLOBAL_DOC)
-            .collection(PLANS_COL)
+        // Top-level plans/ collection (same hierarchy as users/ and updates/)
+        db.collection(PLANS_COL)
             .get()
             .addOnSuccessListener { snap ->
                 val loaded = mutableMapOf<String, SubscriptionPlan>()
                 for (doc in snap.documents) {
                     try {
                         val plan = doc.toObject(SubscriptionPlan::class.java)
-                        if (plan != null) loaded[plan.planId] = plan
+                            ?.copy(planId = doc.id)  // document ID is the authoritative planId
+                        if (plan != null) loaded[doc.id] = plan
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to parse plan ${doc.id}: ${e.message}")
                     }

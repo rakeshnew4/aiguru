@@ -307,12 +307,34 @@ class HomeActivity : BaseActivity() {
                 startActivity(
                     Intent(this, SubjectActivity::class.java)
                         .putExtra("subjectName", subject)
+                        .putExtra("subjectId", resolveSubjectId(subject))
                 )
             },
             onItemLongClick = { subject -> showDeleteSubjectDialog(subject) }
         )
         subjectsRecyclerView.layoutManager = GridLayoutManager(this, 4)
         subjectsRecyclerView.adapter = subjectAdapter
+    }
+
+    /** Maps a display subject name + user grade → Firestore subject_id. */
+    private fun resolveSubjectId(subjectName: String): String {
+        val rawGrade = SessionManager.getGrade(this).lowercase()
+            .replace(" ", "").replace("class", "").replace("grade", "").trim()
+        val grade = when {
+            rawGrade.endsWith("th") || rawGrade.endsWith("st") ||
+            rawGrade.endsWith("nd") || rawGrade.endsWith("rd") -> rawGrade
+            rawGrade.isNotEmpty() -> "${rawGrade}th"
+            else -> "9th"   // default
+        }
+        val key = subjectName.lowercase().trim()
+        return when {
+            key.contains("math")     -> "math_$grade"
+            key.contains("science")  -> "science_$grade"
+            key.contains("english")  -> "english_$grade"
+            key.contains("social") || key.contains("history") || key.contains("geography") -> "social_$grade"
+            key.contains("hindi")    -> "hindi_$grade"
+            else -> ""  // custom subject — NCERT button stays hidden
+        }
     }
 
     private val defaultSubjects = listOf(

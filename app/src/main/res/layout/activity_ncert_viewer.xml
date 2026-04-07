@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/colorBackground">
+
+    <!-- Toolbar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="4dp"
+        android:paddingEnd="8dp"
+        android:background="@color/colorPrimary"
+        android:elevation="4dp">
+
+        <ImageButton
+            android:id="@+id/ncertBackButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_arrow_back"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:tint="@color/colorOnPrimary"
+            android:contentDescription="Back" />
+
+        <TextView
+            android:id="@+id/ncertTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:textColor="@color/colorOnPrimary"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:paddingStart="4dp" />
+
+        <!-- Open in external browser -->
+        <ImageButton
+            android:id="@+id/ncertOpenBrowserButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@android:drawable/ic_menu_share"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:tint="@color/colorOnPrimary"
+            android:contentDescription="Open in browser" />
+
+    </LinearLayout>
+
+    <!-- Disclaimer strip -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="📚 NCERT content — hosted by ncert.nic.in (Government of India)"
+        android:textSize="11sp"
+        android:textColor="#555555"
+        android:gravity="center"
+        android:padding="6dp"
+        android:background="#F5F5F5" />
+
+    <!-- Loading progress -->
+    <ProgressBar
+        android:id="@+id/ncertProgressBar"
+        style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        android:max="100"
+        android:visibility="gone"
+        android:progressTint="@color/colorPrimary" />
+
+    <!-- WebView -->
+    <WebView
+        android:id="@+id/ncertWebView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+</LinearLayout>

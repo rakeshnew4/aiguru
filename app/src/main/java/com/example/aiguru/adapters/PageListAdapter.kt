@@ -16,6 +16,9 @@ class PageListAdapter(
     private val onAsk: (Int) -> Unit
 ) : RecyclerView.Adapter<PageListAdapter.PageViewHolder>() {
 
+    /** When set, replaces both the View and Ask button clicks with a single action. */
+    var onItemClickOverride: ((Int) -> Unit)? = null
+
     inner class PageViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val label: TextView = view.findViewById(R.id.pageLabel)
         val viewBtn: MaterialButton = view.findViewById(R.id.viewPageButton)
@@ -38,8 +41,16 @@ class PageListAdapter(
         holder.askBtn.backgroundTintList = ColorStateList.valueOf(
             Color.parseColor(if (position == 0) "#EF6C00" else "#FB8C00")
         )
-        holder.viewBtn.setOnClickListener { onView(position) }
-        holder.askBtn.setOnClickListener { onAsk(position) }
+        val override = onItemClickOverride
+        if (override != null) {
+            holder.viewBtn.text = "📖 Open"
+            holder.askBtn.visibility = View.GONE
+            holder.viewBtn.setOnClickListener { override(position) }
+        } else {
+            holder.askBtn.visibility = View.VISIBLE
+            holder.viewBtn.setOnClickListener { onView(position) }
+            holder.askBtn.setOnClickListener { onAsk(position) }
+        }
     }
 
     override fun getItemCount() = pages.size

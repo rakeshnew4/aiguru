@@ -15,6 +15,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import com.example.aiguru.BuildConfig
+import com.example.aiguru.config.AppStartRepository
 import com.example.aiguru.models.AppUpdateConfig
 import com.example.aiguru.utils.AppUpdateManager
 import com.example.aiguru.utils.AppUpdateManager.UpdateResult
@@ -68,6 +69,15 @@ class SplashActivity : AppCompatActivity() {
         prefs = getSharedPreferences(AppUpdateManager.PREFS_NAME, Context.MODE_PRIVATE)
 
         val splashStart = SystemClock.elapsedRealtime()
+
+        // Kick off bootstrap data fetch in parallel with the update check.
+        // Data will be ready in AppStartRepository by the time the user
+        // reaches HomeActivity (both fetches run concurrently during splash).
+        AppStartRepository.fetchAll {
+            Log.d(TAG, "Bootstrap data ready — plans=${AppStartRepository.plans.size}, " +
+                    "offers=${AppStartRepository.offers.size}, " +
+                    "notifications=${AppStartRepository.notifications.size}")
+        }
 
         AppUpdateManager.checkForUpdates(
             currentVersionCode = BuildConfig.VERSION_CODE,
