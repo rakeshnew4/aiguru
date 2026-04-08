@@ -12,6 +12,10 @@ users/{user_id}
 ├── last_quiz_date: string     // ISO date "YYYY-MM-DD"
 ├── plan: string               // "free" | "premium" | "pro"
 │
+├── chat_questions_today: number   // questions asked today (resets each UTC day)
+├── bb_sessions_today: number      // blackboard sessions today (resets each UTC day)
+├── questions_updated_at: number   // epoch-ms of last question counter update
+│
 └── chapter_progress/{chapter_id}
     ├── subject_id: string
     ├── completed_questions: number

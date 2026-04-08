@@ -47,7 +47,9 @@ object PlanEnforcer {
         FEATURE_VOICE,
         FEATURE_PDF,
         BLACKBOARD,
-        FEATURE_BLACKBOARD
+        FEATURE_BLACKBOARD,
+        CHAT_QUESTIONS,
+        BB_SESSIONS
     }
 
     // In-memory hourly rate-limit counter (resets each clock-hour, per process)
@@ -275,4 +277,98 @@ object PlanEnforcer {
     }
 
     enum class FeatureType { TEXT_CHAT, IMAGE_UPLOAD, VOICE_MODE, PDF_UPLOAD, BLACKBOARD }
+
+    // ── Question-quota API ────────────────────────────────────────────────────
+
+    /**
+     * Check whether the user has question quota remaining for today.
+     *
+     * @param isBlackboard  true = check BB sessions limit, false = check chat questions limit
+     */
+    fun checkQuestionsQuota(
+        metadata: UserMetadata,
+        limits: PlanLimits,
+        isBlackboard: Boolean
+    ): CheckResult {
+        val today = utcDayOf(System.currentTimeMillis())
+        val lastDay = utcDayOf(metadata.questionsUpdatedAt)
+        val isSameDay = lastDay == today
+
+        if (isBlackboard) {
+            val limit = limits.dailyBlackboardSessions
+            if (limit <= 0) return CheckResult(allowed = true) // 0 = unlimited
+            val used = if (isSameDay) metadata.bbSessionsToday else 0
+            if (used >= limit) {
+                return CheckResult(
+                    allowed        = false,
+                    reason         = "Daily Blackboard session limit reached ($used / $limit)",
+                    upgradeMessage = "You've used all $limit Blackboard sessions for today 🎓\nUpgrade your plan for more visual lessons!",
+                    limitType      = LimitType.BB_SESSIONS
+                )
+            }
+        } else {
+            val limit = limits.dailyChatQuestions
+            if (limit <= 0) return CheckResult(allowed = true) // 0 = unlimited
+            val used = if (isSameDay) metadata.chatQuestionsToday else 0
+            if (used >= limit) {
+                return CheckResult(
+                    allowed        = false,
+                    reason         = "Daily chat question limit reached ($used / $limit)",
+                    upgradeMessage = "You've asked all $limit questions for today 💬\nUpgrade your plan for unlimited questions!",
+                    limitType      = LimitType.CHAT_QUESTIONS
+                )
+            }
+        }
+        return CheckResult(allowed = true)
+    }
+
+    /**
+     * How many questions / sessions the user has left today.
+     * Returns -1 if the limit is 0 (= unlimited).
+     */
+    fun getQuestionsLeft(
+        metadata: UserMetadata,
+        limits: PlanLimits,
+        isBlackboard: Boolean
+    ): Int {
+        val today = utcDayOf(System.currentTimeMillis())
+        val lastDay = utcDayOf(metadata.questionsUpdatedAt)
+        val isSameDay = lastDay == today
+
+        return if (isBlackboard) {
+            val limit = limits.dailyBlackboardSessions
+            if (limit <= 0) -1
+            else {
+                val used = if (isSameDay) metadata.bbSessionsToday else 0
+                maxOf(0, limit - used)
+            }
+        } else {
+            val limit = limits.dailyChatQuestions
+            if (limit <= 0) -1
+            else {
+                val used = if (isSameDay) metadata.chatQuestionsToday else 0
+                maxOf(0, limit - used)
+            }
+        }
+    }
+
+    /**
+     * Increment the question counter in Firestore after a successful AI response.
+     * Also resets the counter if the stored date is a previous day.
+     */
+    fun recordQuestionAsked(userId: String, isBlackboard: Boolean) {
+        if (userId.isBlank() || userId == "guest_user") return
+        val now = System.currentTimeMillis()
+        val updates = mutableMapOf<String, Any>(
+            "questions_updated_at" to now
+        )
+        if (isBlackboard) {
+            updates["bb_sessions_today"] = FieldValue.increment(1L)
+        } else {
+            updates["chat_questions_today"] = FieldValue.increment(1L)
+        }
+        db.collection("users").document(userId)
+            .set(updates, SetOptions.merge())
+            .addOnFailureListener { Log.e(TAG, "recordQuestionAsked failed uid=$userId: ${it.message}") }
+    }
 }

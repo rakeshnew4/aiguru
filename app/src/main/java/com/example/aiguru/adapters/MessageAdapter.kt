@@ -24,9 +24,13 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.example.aiguru.R
+import com.example.aiguru.TutorController
 import com.example.aiguru.models.Message
 import com.google.android.material.imageview.ShapeableImageView
 import com.bumptech.glide.Glide
+import io.noties.markwon.Markwon
+import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
+import io.noties.markwon.ext.tables.TablePlugin
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -42,12 +46,48 @@ class MessageAdapter(
 
     private val dp = context.resources.displayMetrics.density
 
+    /** Single Markwon instance — handles bold/italic/tables/strikethrough/code/headings. */
+    private val markwon: Markwon = Markwon.builder(context)
+        .usePlugin(StrikethroughPlugin.create())
+        .usePlugin(TablePlugin.create(context))
+        .build()
+
+    /**
+     * Convert legacy ^{expr} / _{expr} notation outside existing LaTeX blocks to
+     * proper inline LaTeX ($...$) so Markwon renders them as math.
+     */
+    private fun preprocessLatex(text: String): String {
+        val tokenPattern = Regex("""\$\$[\s\S]*?\$\$|\$[^\$\n]+?\$""")
+        data class Token(val value: String, val isLatex: Boolean)
+        val tokens = mutableListOf<Token>()
+        var last = 0
+        for (m in tokenPattern.findAll(text)) {
+            if (m.range.first > last) tokens.add(Token(text.substring(last, m.range.first), false))
+            tokens.add(Token(m.value, true))
+            last = m.range.last + 1
+        }
+        if (last < text.length) tokens.add(Token(text.substring(last), false))
+        return tokens.joinToString("") { (content, isLatex) ->
+            if (isLatex) content
+            else content
+                .replace(Regex("""([A-Za-z0-9])\^\{([^}]+)\}""")) { m ->
+                    "\$${m.groupValues[1]}^{${m.groupValues[2]}}\$"
+                }
+                .replace(Regex("""([A-Za-z])_\{([^}]+)\}""")) { m ->
+                    "\$${m.groupValues[1]}_{${m.groupValues[2]}}\$"
+                }
+        }
+    }
+
     inner class MessageViewHolder(root: LinearLayout) : RecyclerView.ViewHolder(root) {
         private val root: LinearLayout = root
 
         fun bind(message: Message) {
             root.removeAllViews()
             val isUser = message.isUser
+            // For AI messages, always show only the 'answer' field to the user.
+            // The full JSON (with all keys) is stored in message.content / Firestore.
+            val displayContent = if (!isUser) TutorController.extractAnswerForDisplay(message.content) else message.content
 
             // Row container: [avatar] [bubble] for AI  /  [bubble] for user (right-aligned)
             val row = LinearLayout(context).apply {
@@ -100,7 +140,7 @@ class MessageAdapter(
                 val img = ShapeableImageView(context).apply {
                     val sz = (160 * dp).toInt()
                     layoutParams = LinearLayout.LayoutParams(sz, sz).apply {
-                        bottomMargin = if (message.content.isEmpty()) 0 else (8 * dp).toInt()
+                        bottomMargin = if (displayContent.isEmpty()) 0 else (8 * dp).toInt()
                     }
                     scaleType = ImageView.ScaleType.CENTER_CROP
                     shapeAppearanceModel = shapeAppearanceModel.toBuilder()
@@ -114,19 +154,19 @@ class MessageAdapter(
             }
 
             // --- Text content ---
-            if (message.content.isNotEmpty()) {
-                val textColor = Color.parseColor("#111827")
+            if (displayContent.isNotEmpty()) {
                 val msgText = TextView(context).apply {
-                    text = parseMarkdown(message.content)
                     textSize = if (isUser) 16f else 17f
                     typeface = Typeface.create("sans-serif", Typeface.NORMAL)
-                    setTextColor(textColor)
+                    setTextColor(Color.parseColor("#111827"))
                     layoutParams = LinearLayout.LayoutParams(
                         if (isUser) LinearLayout.LayoutParams.WRAP_CONTENT else LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT
                     )
                     setLineSpacing(0f, 1.3f)
+                    movementMethod = android.text.method.LinkMovementMethod.getInstance()
                 }
+                markwon.setMarkdown(msgText, preprocessLatex(displayContent))
                 bubble.addView(msgText)
             }
 
@@ -157,7 +197,7 @@ class MessageAdapter(
 
                 val copyBtn = actionButton("⧉") {
                     val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    cm.setPrimaryClip(ClipData.newPlainText("message", message.content))
+                    cm.setPrimaryClip(ClipData.newPlainText("message", displayContent))
                     Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
                 }
                 val speakBtn = actionButton("🔊") { onVoiceClick(message) }

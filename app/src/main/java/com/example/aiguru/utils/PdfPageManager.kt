@@ -58,7 +58,12 @@ class PdfPageManager(private val context: Context) {
     fun getPageCount(pdfId: String, assetPath: String): Int {
         val file = ensurePdfCached(pdfId, assetPath)
         val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-        return PdfRenderer(pfd).use { renderer -> renderer.pageCount }
+        return try {
+            PdfRenderer(pfd).use { renderer -> renderer.pageCount }
+        } catch (e: Exception) {
+            runCatching { pfd.close() }
+            throw e
+        }
     }
 
     /**
@@ -73,17 +78,31 @@ class PdfPageManager(private val context: Context) {
 
         val pdf = ensurePdfCached(pdfId, assetPath)
         val pfd = ParcelFileDescriptor.open(pdf, ParcelFileDescriptor.MODE_READ_ONLY)
-        PdfRenderer(pfd).use { renderer ->
-            renderer.openPage(pageIndex).use { page ->
-                val heightPx = (widthPx * page.height.toFloat() / page.width.toFloat()).toInt()
-                val bmp = Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
-                bmp.eraseColor(Color.WHITE)
-                page.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                FileOutputStream(pageFile).use { out ->
-                    bmp.compress(Bitmap.CompressFormat.JPEG, 85, out)
+        try {
+            PdfRenderer(pfd).use { renderer ->
+                renderer.openPage(pageIndex).use { page ->
+                    val heightPx = (widthPx * page.height.toFloat() / page.width.toFloat()).toInt()
+                    // Attempt full resolution; fall back to half-res on low memory
+                    val bmp: Bitmap = try {
+                        Bitmap.createBitmap(widthPx, heightPx, Bitmap.Config.ARGB_8888)
+                    } catch (oom: OutOfMemoryError) {
+                        Bitmap.createBitmap(widthPx / 2, heightPx / 2, Bitmap.Config.ARGB_8888)
+                    }
+                    bmp.eraseColor(Color.WHITE)
+                    page.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                    try {
+                        FileOutputStream(pageFile).use { out ->
+                            bmp.compress(Bitmap.CompressFormat.JPEG, 85, out)
+                        }
+                    } finally {
+                        bmp.recycle()
+                    }
                 }
-                bmp.recycle()
             }
+        } catch (e: Exception) {
+            runCatching { pfd.close() }
+            pageFile.delete()  // Remove any partial write
+            throw e
         }
         return pageFile
     }

@@ -130,20 +130,59 @@ def _extract_page_transcript(
     return str(transcript).strip() or None if transcript else None
 
 def extract_json_safe(text):
-    import re
+    """
+    Robustly extract and parse the first top-level JSON object from text.
+    Handles:
+      - Bare JSON
+      - ```json ... ``` fenced JSON
+      - Prefix/suffix prose around the JSON
+      - Nested objects / arrays / LaTeX braces inside string values
+    """
     import json
+    import re
 
-    # Case 1: ```json block
-    match = re.search(r"```json\s*(\{.*?\})\s*```", text, re.DOTALL)
-    if match:
-        return json.loads(match.group(1))
+    # Strip outer whitespace and optional markdown fences
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        stripped = re.sub(r"^```(?:json)?\s*", "", stripped)
+        stripped = re.sub(r"\s*```\s*$", "", stripped)
 
-    # Case 2: plain JSON
-    match = re.search(r"(\{.*\})", text, re.DOTALL)
-    if match:
-        return json.loads(match.group(1))
+    # Fast path: entire (stripped) text is valid JSON
+    try:
+        return json.loads(stripped)
+    except json.JSONDecodeError:
+        pass
 
-    raise text
+    # Scan for the first '{' then walk with balanced-brace counting,
+    # correctly skipping string contents (including escaped chars).
+    start = stripped.find('{')
+    if start < 0:
+        raise ValueError("No JSON object found in text")
+
+    depth = 0
+    in_string = False
+    i = start
+    while i < len(stripped):
+        ch = stripped[i]
+        if in_string:
+            if ch == '\\':
+                i += 2          # skip escaped character
+                continue
+            if ch == '"':
+                in_string = False
+        else:
+            if ch == '"':
+                in_string = True
+            elif ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    candidate = stripped[start:i + 1]
+                    return json.loads(candidate)
+        i += 1
+
+    raise ValueError("Unmatched braces — no complete JSON object found")
 @router.post("/chat-stream")
 async def chat_stream(req: ChatRequest):
     async def generator():
@@ -161,7 +200,8 @@ async def chat_stream(req: ChatRequest):
                 language=req.language_tag or req.language,
                 mode=req.mode,
             )
-
+            with open("prompt.txt", "w") as f:
+                f.write(prompt)
             # 3) image normalisation
             normalized_images = _normalize_images(req)
 
@@ -229,8 +269,23 @@ async def chat_stream(req: ChatRequest):
             if not text_content:
                 logger.warning("No text content in response")
                 text_content = "[No response generated]"
-            
+
+            # Send the full JSON envelope as-is so the client can store every field
+            # (user_question, answer, user_attachment_transcription,
+            #  extra_details_or_summary) in Firestore.
+            # Blackboard mode already returns its own JSON for BlackboardGenerator.
+            # Android extracts only the 'answer' field for display.
             yield f"data: {json.dumps({'text': text_content, 'cached': False})}\n\n"
+
+            # 6b) Determine whether the LLM thinks this answer is worth showing
+            #     on the blackboard (only for normal chat mode, not blackboard itself).
+            suggest_bb = False
+            if req.mode != "blackboard":
+                try:
+                    parsed_resp = extract_json_safe(text_content)
+                    suggest_bb = bool(parsed_resp.get("suggest_blackboard", False))
+                except Exception:
+                    pass
 
             # 7) Done frame
             tokens = result.get("tokens", {})
@@ -240,6 +295,7 @@ async def chat_stream(req: ChatRequest):
                     + json.dumps(
                         {
                             "done": True,
+                            "suggest_blackboard": suggest_bb,
                             "inputTokens": tokens.get("inputTokens", 0),
                             "outputTokens": tokens.get("outputTokens", 0),
                             "totalTokens": tokens.get("totalTokens", 0),
@@ -248,7 +304,7 @@ async def chat_stream(req: ChatRequest):
                     + "\n\n"
                 )
             else:
-                yield f"data: {json.dumps({'done': True})}\n\n"
+                yield f"data: {json.dumps({'done': True, 'suggest_blackboard': suggest_bb})}\n\n"
 
         except Exception as exc:
             logger.exception("Error in chat_stream: %s", exc)

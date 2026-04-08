@@ -13,6 +13,7 @@ import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.example.aiguru.config.ReferralManager
 import com.example.aiguru.firestore.FirestoreManager
 import com.example.aiguru.models.UserMetadata
 import com.example.aiguru.utils.ConfigManager
@@ -173,6 +174,92 @@ class UserProfileActivity : BaseActivity() {
         }
 
         logoutButton.setOnClickListener { confirmLogout() }
+
+        // ── Referral section ──────────────────────────────────────────────────
+        setupReferralSection()
+    }
+
+    private fun setupReferralSection() {
+        val code = ReferralManager.codeForUser(userId)
+
+        // "Share & Earn" button — opens Android share sheet
+        val shareBtn = runCatching { findViewById<MaterialButton>(R.id.referralShareButton) }.getOrNull()
+        shareBtn?.setOnClickListener {
+            val msg = "Join me on AiGuru 🎓 — AI-powered tutor that makes every topic click!\n" +
+                    "Use my referral code $code and we both get bonus questions!\n" +
+                    "Download: https://play.google.com/store/apps/details?id=com.example.aiguru"
+            startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, msg)
+            }, "Share AiGuru"))
+        }
+
+        // Display code
+        val codeLabel = runCatching { findViewById<TextView>(R.id.referralCodeText) }.getOrNull()
+        codeLabel?.text = code
+
+        // Copy to clipboard
+        val copyBtn = runCatching { findViewById<View>(R.id.referralCopyButton) }.getOrNull()
+        copyBtn?.setOnClickListener {
+            val cm = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            cm.setPrimaryClip(android.content.ClipData.newPlainText("Referral Code", code))
+            Toast.makeText(this, "Code $code copied!", Toast.LENGTH_SHORT).show()
+        }
+
+        // "Enter a friend's code" button → dialog
+        val claimBtn = runCatching { findViewById<MaterialButton>(R.id.claimReferralButton) }.getOrNull()
+        claimBtn?.setOnClickListener { showClaimReferralDialog() }
+    }
+
+    private fun showClaimReferralDialog() {
+        val input = EditText(this).apply {
+            hint = "Enter referral code (e.g. AB12CD34)"
+            maxLines = 1
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                    android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Enter Referral Code")
+            .setMessage("Get +${ReferralManager.REFERRED_BONUS} bonus questions/day!")
+            .setView(input)
+            .setPositiveButton("Claim") { _, _ ->
+                val code = input.text.toString().trim()
+                if (code.length < 4) {
+                    Toast.makeText(this, "Please enter a valid referral code", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                ReferralManager.claimReferralCode(
+                    claimantUserId = userId,
+                    code = code,
+                    onSuccess = { referrerName ->
+                        runOnUiThread {
+                            Toast.makeText(
+                                this,
+                                "🎉 Claimed! You and $referrerName both earned bonus questions!",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            loadMetadataFromFirestore() // refresh to show updated bonus
+                        }
+                    },
+                    onAlreadyClaimed = {
+                        runOnUiThread {
+                            Toast.makeText(this, "You've already used a referral code.", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onInvalid = {
+                        runOnUiThread {
+                            Toast.makeText(this, "Invalid referral code. Double-check and try again.", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onError = {
+                        runOnUiThread {
+                            Toast.makeText(this, "Something went wrong. Try again later.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                )
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun resolveSchoolIdForPlans(): String {

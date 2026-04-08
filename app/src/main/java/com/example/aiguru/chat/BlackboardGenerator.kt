@@ -17,14 +17,17 @@ object BlackboardGenerator {
         val text: String,
         val highlight: List<String> = emptyList(),
         val speech: String,
-        val durationMs: Long = 2000
+        val durationMs: Long = 2000,
+        val frameType: String = "concept",  // concept | quiz | memory | summary
+        val quizAnswer: String = ""
     )
 
     data class BlackboardStep(
         val title: String = "",
         val frames: List<BlackboardFrame>,
         val languageTag: String = "en-US",
-        val image_description: String = ""
+        val image_description: String = "",
+        val imageConfidenceScore: Float = 0f   // 0.0 = skip, 0.4–0.69 = tap-only, ≥0.7 = inline
     )
 
     // System prompt is loaded from assets/tutor_prompts.json → "blackboard_system_prompt"
@@ -91,14 +94,17 @@ object BlackboardGenerator {
                                 text       = frameObj.getString("text"),
                                 highlight  = if (hlArr != null) (0 until hlArr.length()).map { hlArr.getString(it) } else emptyList(),
                                 speech     = frameObj.optString("speech", ""),
-                                durationMs = frameObj.optLong("duration_ms", 2000)
+                                durationMs = frameObj.optLong("duration_ms", 2000),
+                                frameType  = frameObj.optString("frame_type", "concept"),
+                                quizAnswer = frameObj.optString("quiz_answer", "")
                             )
                         }
                         BlackboardStep(
-                            title             = stepObj.optString("title", ""),
-                            frames            = frames,
-                            languageTag       = langTag,
-                            image_description = stepObj.optString("image_description", "")
+                            title                = stepObj.optString("title", ""),
+                            frames               = frames,
+                            languageTag          = langTag,
+                            image_description    = stepObj.optString("image_description", ""),
+                            imageConfidenceScore = stepObj.optDouble("image_show_confidencescore", 0.0).toFloat()
                         )
                     }
                     steps.ifEmpty { null }
@@ -157,7 +163,7 @@ object BlackboardGenerator {
             ?.let { "\n\nPreferred speech language tag: $it" }
             ?: ""
         server.streamChat(
-            question     = systemPrompt + languageHint + "\n\nExplanation to convert:\n" + messageContent.take(3000),
+            question     = "\n\nExplanation to convert:\n" + messageContent.take(3000),
             pageId       = "blackboard__lesson",
             mode         = "blackboard",
             languageTag  = preferredLanguageTag ?: "en-US",
@@ -196,10 +202,11 @@ object BlackboardGenerator {
                     )
                 }
                 BlackboardStep(
-                    title             = stepObj.optString("title", ""),
-                    frames            = frames,
-                    languageTag       = langTag,
-                    image_description = stepObj.optString("image_description", "")
+                    title                = stepObj.optString("title", ""),
+                    frames               = frames,
+                    languageTag          = langTag,
+                    image_description    = stepObj.optString("image_description", ""),
+                    imageConfidenceScore = stepObj.optDouble("image_show_confidencescore", 0.0).toFloat()
                 )
             }
             if (result.isEmpty()) { onError("No steps were generated"); return }
@@ -214,7 +221,9 @@ object BlackboardGenerator {
                                     .put("text", frame.text)
                                     .put("highlight", JSONArray(frame.highlight))
                                     .put("speech", frame.speech)
-                                    .put("duration_ms", frame.durationMs))
+                                    .put("duration_ms", frame.durationMs)
+                                    .put("frame_type", frame.frameType)
+                                    .put("quiz_answer", frame.quizAnswer))
                             }
                         }
                         put(JSONObject()
@@ -222,6 +231,7 @@ object BlackboardGenerator {
                             .put("frames", framesJson)
                             .put("lang", step.languageTag)
                             .put("image_description", step.image_description)
+                            .put("image_show_confidencescore", step.imageConfidenceScore.toDouble())
                         )
                     }
                 }.toString()

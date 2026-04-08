@@ -74,6 +74,19 @@ data class UserMetadata(
     @field:PropertyName("tokens_updated_at")
     val tokensUpdatedAt: Long = 0L,
 
+    // ── Question counters (reset each UTC calendar day) ─────────────────────
+    /** Chat questions asked today (UTC). */
+    @field:PropertyName("chat_questions_today")
+    val chatQuestionsToday: Int = 0,
+
+    /** Blackboard sessions started today (UTC). */
+    @field:PropertyName("bb_sessions_today")
+    val bbSessionsToday: Int = 0,
+
+    /** Epoch-ms of last question counter update — used to detect day rollover. */
+    @field:PropertyName("questions_updated_at")
+    val questionsUpdatedAt: Long = 0L,
+
     // ── Model config ────────────────────────────────────────────
     @field:PropertyName("model_config")
     val modelConfig: ModelConfig? = null,

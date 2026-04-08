@@ -67,5 +67,14 @@ data class PlanLimits(
 
     /** Max concurrent active sessions (devices). 0 = unlimited. */
     @field:PropertyName("max_sessions")
-    val maxSessions: Int = 1
+    val maxSessions: Int = 1,
+
+    // ── Question quotas ──────────────────────────────────────────────────────
+    /** Max chat questions per UTC calendar day. 0 = unlimited. */
+    @field:PropertyName("daily_chat_questions")
+    val dailyChatQuestions: Int = 20,
+
+    /** Max Visual Blackboard sessions per UTC calendar day. 0 = unlimited. */
+    @field:PropertyName("daily_bb_sessions")
+    val dailyBlackboardSessions: Int = 3
 )

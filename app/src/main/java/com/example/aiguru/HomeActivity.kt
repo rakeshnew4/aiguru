@@ -54,7 +54,7 @@ class HomeActivity : BaseActivity() {
         }
         findViewById<MaterialButton>(R.id.generalChatButton).setOnClickListener {
             startActivity(
-                Intent(this, ChatActivity::class.java)
+                Intent(this, ChatHostActivity::class.java)
                     .putExtra("subjectName", "General")
                     .putExtra("chapterName", "General Chat")
             )

@@ -119,6 +119,22 @@
             android:background="#FFFFFF"
             android:elevation="6dp">
 
+            <!-- ── Quota banner (shown when limit is set; hidden when unlimited) ── -->
+            <TextView
+                android:id="@+id/quotaBannerChat"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:textSize="12sp"
+                android:textColor="#FFFFFF"
+                android:gravity="center"
+                android:background="#E65100"
+                android:visibility="gone"
+                android:text="" />
+
             <!-- Voice chat bar (GONE – shown in voice mode) -->
             <LinearLayout
                 android:id="@+id/voiceChatBar"

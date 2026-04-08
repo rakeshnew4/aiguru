@@ -59,6 +59,22 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/bbQuotaChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:textSize="11sp"
+                android:textColor="#FFFFFF"
+                android:background="#5C5BD4"
+                android:visibility="gone"
+                android:text="" />
+
+            <TextView
                 android:id="@+id/closeButton"
                 android:layout_width="40dp"
                 android:layout_height="40dp"

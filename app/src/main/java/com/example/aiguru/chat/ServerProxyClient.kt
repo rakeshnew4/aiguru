@@ -44,6 +44,7 @@ class ServerProxyClient(
     private val client = OkHttpClient.Builder()
         .readTimeout(120, TimeUnit.SECONDS)
         .connectTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
     private val endpoint: String get() {
@@ -96,6 +97,7 @@ class ServerProxyClient(
         imageData: JSONObject? = null,
         imageBase64: String? = null,
         onPageTranscript: ((String) -> Unit)? = null,
+        onSuggestBlackboard: ((Boolean) -> Unit)? = null,
         onToken: (String) -> Unit,
         onDone: (inputTokens: Int, outputTokens: Int, totalTokens: Int) -> Unit,
         onError: (String) -> Unit
@@ -117,7 +119,7 @@ class ServerProxyClient(
             "ServerProxyClient",
             "streamChat → imageData=${if (imageData != null) "present (${imageData.optString("transcript", "").take(40)}…)" else "none"}, imageBase64=${if (imageBase64.isNullOrBlank()) "none" else "present(${imageBase64.length})"}"
         )
-        executeStream(json, onPageTranscript, onToken, onDone, onError)
+        executeStream(json, onPageTranscript, onSuggestBlackboard, onToken, onDone, onError)
     }
 
     override fun streamWithImage(
@@ -137,6 +139,7 @@ class ServerProxyClient(
     private fun executeStream(
         json: JSONObject,
         onPageTranscript: ((String) -> Unit)? = null,
+        onSuggestBlackboard: ((Boolean) -> Unit)? = null,
         onToken: (String) -> Unit,
         onDone: (inputTokens: Int, outputTokens: Int, totalTokens: Int) -> Unit,
         onError: (String) -> Unit
@@ -167,7 +170,9 @@ class ServerProxyClient(
                             inputTokens  = obj.optInt("inputTokens",  0)
                             outputTokens = obj.optInt("outputTokens", 0)
                             totalTokens  = obj.optInt("totalTokens",  0)
-                            Log.d("TokenDebug", "[ServerProxy] done frame → in=$inputTokens out=$outputTokens total=$totalTokens raw=$data")
+                            val suggestBb = obj.optBoolean("suggest_blackboard", false)
+                            if (suggestBb) onSuggestBlackboard?.invoke(true)
+                            Log.d("TokenDebug", "[ServerProxy] done frame → in=$inputTokens out=$outputTokens total=$totalTokens suggest_bb=$suggestBb raw=$data")
                             break
                         }
                         val token = obj.optString("text", "")

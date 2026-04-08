@@ -59,6 +59,7 @@ import com.example.aiguru.utils.TextToSpeechManager
 import com.example.aiguru.utils.VoiceManager
 import com.example.aiguru.utils.VoiceRecognitionCallback
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.snackbar.Snackbar
 import com.yalantis.ucrop.UCrop
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -120,6 +121,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     // ── Auto Explain / Blackboard Mode ────────────────────────────────────────
     private var isAutoExplainActive = true
     private lateinit var autoExplainButton: MaterialButton
+    private var blackboardNudgeSnackbar: Snackbar? = null
 
     // ── Interactive Voice Chat Mode ────────────────────────────────────────────
     private var isVoiceModeActive = false
@@ -143,6 +145,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     private lateinit var chapterName: String
     private var userId = ""
     private var cachedMetadata = UserMetadata()
+    private lateinit var quotaBannerChat: TextView
 
     // ── Modular Components ────────────────────────────────────────────────────
     private lateinit var historyRepo: ChatHistoryRepository
@@ -176,6 +179,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
     private var pdfPageBase64: String? = null
     private var pendingImageBase64: String? = null
+    private var imageEncodeJob: kotlinx.coroutines.Job? = null
     private var saveNotesType: String? = null
 
     // ── Crop state ────────────────────────────────────────────────────────────
@@ -215,15 +219,29 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                     if (pendingCropIsPdf) {
                         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                             try {
-                                val stream =
+                                val bmp: android.graphics.Bitmap = try {
                                     requireContext().contentResolver.openInputStream(croppedUri)
-                                        ?: return@launch
-                                val bmp = android.graphics.BitmapFactory.decodeStream(stream)
-                                stream.close()
-                                if (bmp == null) return@launch
+                                        ?.use { stream -> android.graphics.BitmapFactory.decodeStream(stream) }
+                                        ?: run {
+                                            android.util.Log.e("FullChatFragment",
+                                                "Crop: could not open/decode stream for $croppedUri")
+                                            return@launch
+                                        }
+                                } catch (oom: OutOfMemoryError) {
+                                    android.util.Log.e("FullChatFragment", "Crop: OOM decoding cropped image")
+                                    withContext(Dispatchers.Main) {
+                                        Toast.makeText(requireContext(),
+                                            "Image too large — try a smaller crop",
+                                            Toast.LENGTH_LONG).show()
+                                    }
+                                    return@launch
+                                }
                                 val baos = ByteArrayOutputStream()
-                                bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, baos)
-                                bmp.recycle()
+                                try {
+                                    bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, baos)
+                                } finally {
+                                    bmp.recycle()
+                                }
                                 val b64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
                                 val pageLabel = if (pendingCropPdfPageNumber > 0)
                                     "Page $pendingCropPdfPageNumber \u2702\ufe0f cropped"
@@ -306,7 +324,10 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
         AdminConfigRepository.fetchIfStale()
         FirestoreManager.getUserMetadata(userId, onSuccess = { meta ->
-            if (meta != null) cachedMetadata = meta
+            if (meta != null) {
+                cachedMetadata = meta
+                updateQuotaBanner()
+            }
         })
 
         tutorSession = TutorSession(
@@ -434,7 +455,9 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             context = requireContext(),
             onVoiceClick = { msg ->
                 ttsManager.setLocale(Locale.forLanguageTag(currentLang))
-                val speechText = TutorController.prepareSpeechText(msg.content)
+                val speechText = TutorController.prepareSpeechText(
+                    TutorController.extractAnswerForDisplay(msg.content)
+                )
                 ttsManager.speak(speechText, object : TTSCallback {
                     override fun onStart() {}
                     override fun onComplete() {}
@@ -464,7 +487,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                         "${FirestoreManager.safeId(subjectName)}__${FirestoreManager.safeId(chapterName)}"
                     startActivity(
                         Intent(requireContext(), BlackboardActivity::class.java)
-                            .putExtra(BlackboardActivity.EXTRA_MESSAGE, msg.content)
+                            .putExtra(BlackboardActivity.EXTRA_MESSAGE, TutorController.extractAnswerForDisplay(msg.content))
                             .putExtra(BlackboardActivity.EXTRA_MESSAGE_ID, msg.id)
                             .putExtra(BlackboardActivity.EXTRA_USER_ID, userId)
                             .putExtra(BlackboardActivity.EXTRA_CONVERSATION_ID, convId)
@@ -510,6 +533,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         waveBar2 = view.findViewById(R.id.waveBar2)
         waveBar3 = view.findViewById(R.id.waveBar3)
         waveBar4 = view.findViewById(R.id.waveBar4)
+        quotaBannerChat = view.findViewById(R.id.quotaBannerChat)
 
         plusButton.setOnClickListener { toggleQuickActions() }
         languageButton.setOnClickListener { showLanguagePicker() }
@@ -576,6 +600,8 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         }
 
         removeImageButton.setOnClickListener {
+            imageEncodeJob?.cancel()
+            imageEncodeJob = null
             selectedImageUri = null
             pdfPageBase64 = null
             pendingImageBase64 = null
@@ -881,6 +907,9 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     private fun showImagePreview(uri: Uri) {
         selectedImageUri = uri
         pendingDisplayUri = uri
+        // Cancel any in-flight encode from a previous image pick
+        imageEncodeJob?.cancel()
+        imageEncodeJob = null
         pendingImageBase64 = null
         if (saveNextPickedImageToChapter) {
             saveNextPickedImageToChapter = false
@@ -895,8 +924,12 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         messageInput.setSelection(messageInput.text.length)
         bottomDescribeButton.visibility = View.VISIBLE
 
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            pendingImageBase64 = mediaManager.uriToBase64(uri)
+        // Eagerly encode in background; sendMessage falls back to re-encoding if this hasn't
+        // finished yet (race case when user sends immediately after picking).
+        imageEncodeJob = viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val b64 = mediaManager.uriToBase64(uri)
+            if (b64 != null) pendingImageBase64 = b64
+            // null means encode failed or was cancelled — sendMessage re-encodes from URI
         }
     }
 
@@ -912,11 +945,20 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
     private fun applyFullPdfPage(pageFile: File, pageNumber: Int) {
         if (!pageFile.exists()) return
-        val bmp = BitmapFactory.decodeFile(pageFile.absolutePath) ?: return
-        val baos = ByteArrayOutputStream()
-        bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, baos)
-        bmp.recycle()
-        val b64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
+        val bmp = try {
+            BitmapFactory.decodeFile(pageFile.absolutePath)
+        } catch (oom: OutOfMemoryError) {
+            android.util.Log.e("FullChatFragment", "applyFullPdfPage: OOM decoding ${pageFile.name}")
+            null
+        } ?: return
+        val b64: String
+        try {
+            val baos = ByteArrayOutputStream()
+            bmp.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, baos)
+            b64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP)
+        } finally {
+            bmp.recycle()
+        }
         pdfPageBase64 = b64
         pendingDisplayUri = Uri.fromFile(pageFile)
         currentPageContent = null
@@ -1061,6 +1103,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         currentPageContent = null
         val capturedDisplayUri = pendingDisplayUri.also { pendingDisplayUri = null }
         var serverPageTranscript: String? = null
+        var serverSuggestBlackboard = false
         val hadVisualAttachment = imageUri != null || capturedPdfBase64 != null
 
         val featureType = when {
@@ -1078,6 +1121,24 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             if (capturedDisplayUri != null) pendingDisplayUri = capturedDisplayUri
             showError(planCheck.upgradeMessage)
             if (planCheck.limitType == PlanEnforcer.LimitType.PLAN_EXPIRED) {
+                Handler(Looper.getMainLooper()).postDelayed({
+                    startActivity(
+                        Intent(ctx, SubscriptionActivity::class.java)
+                            .putExtra("schoolId", SessionManager.getSchoolId(ctx))
+                    )
+                }, 1500)
+            }
+            return
+        }
+
+        // Check daily question quota
+        val questionCheck = PlanEnforcer.checkQuestionsQuota(cachedMetadata, effectiveLimits, isBlackboard = false)
+        if (!questionCheck.allowed) {
+            if (imageUri != null) selectedImageUri = imageUri
+            if (capturedPdfBase64 != null) pdfPageBase64 = capturedPdfBase64
+            if (capturedDisplayUri != null) pendingDisplayUri = capturedDisplayUri
+            showError(questionCheck.upgradeMessage)
+            if (questionCheck.limitType == PlanEnforcer.LimitType.CHAT_QUESTIONS) {
                 Handler(Looper.getMainLooper()).postDelayed({
                     startActivity(
                         Intent(ctx, SubscriptionActivity::class.java)
@@ -1130,7 +1191,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                         } else {
                             // Include transcription and extra summary so the LLM has full context
                             buildString {
-                                append("assistant: ${msg.content}")
+                                append("assistant: ${TutorController.extractAnswerForDisplay(msg.content)}")
                                 if (msg.transcription.isNotBlank())
                                     append("\n[attachment_transcription: ${msg.transcription.take(600)}]")
                                 if (msg.extraSummary.isNotBlank())
@@ -1155,7 +1216,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                             showLoading(false)
                             messageAdapter.addMessage(streamingMsg)
                         }
-                        messageAdapter.updateMessage(streamingId, accumulated.toString())
+                        messageAdapter.updateMessage(streamingId, TutorController.extractAnswerForDisplay(accumulated.toString()))
                         messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
                     }
                 }
@@ -1186,6 +1247,13 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                                 tokensUpdatedAt = System.currentTimeMillis()
                             )
                         }
+                        // Increment question counter in-memory and Firestore
+                        PlanEnforcer.recordQuestionAsked(userId, isBlackboard = false)
+                        cachedMetadata = cachedMetadata.copy(
+                            chatQuestionsToday = cachedMetadata.chatQuestionsToday + 1,
+                            questionsUpdatedAt = System.currentTimeMillis()
+                        )
+                        updateQuotaBanner()
                         showLoading(false)
                         val rawResponse = accumulated.toString()
                         if (rawResponse.isNotEmpty()) {
@@ -1196,7 +1264,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                             }
                             val finalMsg = Message(
                                 id = streamingId,
-                                content = reply.response,
+                                content = rawResponse,  // full JSON — all fields preserved in Firestore
                                 isUser = false,
                                 transcription = reply.transcription,
                                 extraSummary = reply.extraSummary
@@ -1276,6 +1344,8 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                                         .putExtra(BlackboardActivity.EXTRA_CONVERSATION_ID, convId)
                                         .putExtra(BlackboardActivity.EXTRA_LANGUAGE_TAG, currentLang)
                                 )
+                            } else if (serverSuggestBlackboard) {
+                                showBlackboardNudge(finalMsg)
                             }
                         } else {
                             showError("Couldn't get a response. Check your connection and try again.")
@@ -1296,6 +1366,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                             client.streamChat(ctxMessage, pageId, "normal", currentLang,
                                 studentLevel, historyStrings, imageDataJson, b64,
                                 { transcript -> serverPageTranscript = transcript },
+                                { bb -> serverSuggestBlackboard = bb },
                                 onToken, onDone, onError)
                         } else {
                             if (b64 != null) client.streamWithImage(sysPrompt, ctxMessage, b64,
@@ -1308,6 +1379,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                             client.streamChat(ctxMessage, pageId, "normal", currentLang,
                                 studentLevel, historyStrings, imageDataJson, capturedPdfBase64,
                                 { transcript -> serverPageTranscript = transcript },
+                                { bb -> serverSuggestBlackboard = bb },
                                 onToken, onDone, onError)
                         else
                             client.streamWithImage(sysPrompt, ctxMessage, capturedPdfBase64,
@@ -1315,7 +1387,9 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                     else ->
                         if (client is ServerProxyClient)
                             client.streamChat(ctxMessage, pageId, "normal", currentLang,
-                                studentLevel, historyStrings, null, null, null,
+                                studentLevel, historyStrings, null, null,
+                                { transcript -> serverPageTranscript = transcript },
+                                { bb -> serverSuggestBlackboard = bb },
                                 onToken, onDone, onError)
                         else
                             client.streamText(sysPrompt, ctxMessage, onToken, onDone, onError)
@@ -1325,6 +1399,48 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                 act.runOnUiThread { showLoading(false); showError("Error: ${e.message}") }
             }
         }
+    }
+
+    // ── Blackboard Nudge ──────────────────────────────────────────────────────
+
+    /**
+     * Shows a soft Snackbar prompting the user to view the answer in Blackboard mode.
+     * Auto-dismisses after 10 seconds if the user does not act.
+     */
+    private fun showBlackboardNudge(msg: Message) {
+        blackboardNudgeSnackbar?.dismiss()
+        val bbLimits = AdminConfigRepository.resolveEffectiveLimits(
+            cachedMetadata.planId, cachedMetadata.planLimits
+        )
+        val bbCheck = PlanEnforcer.check(cachedMetadata, bbLimits, PlanEnforcer.FeatureType.BLACKBOARD)
+        if (!bbCheck.allowed) return  // Don't tease the user if they can't use it
+
+        val snackbar = Snackbar.make(
+            requireView(),
+            "✨ Want a step-by-step visual explanation?",
+            Snackbar.LENGTH_INDEFINITE
+        )
+        snackbar.setAction("Open Blackboard") {
+            blackboardNudgeSnackbar = null
+            val convId = "${FirestoreManager.safeId(subjectName)}__${FirestoreManager.safeId(chapterName)}"
+            startActivity(
+                Intent(requireContext(), BlackboardActivity::class.java)
+                    .putExtra(BlackboardActivity.EXTRA_MESSAGE, TutorController.extractAnswerForDisplay(msg.content))
+                    .putExtra(BlackboardActivity.EXTRA_MESSAGE_ID, msg.id)
+                    .putExtra(BlackboardActivity.EXTRA_USER_ID, userId)
+                    .putExtra(BlackboardActivity.EXTRA_CONVERSATION_ID, convId)
+                    .putExtra(BlackboardActivity.EXTRA_LANGUAGE_TAG, currentLang)
+            )
+        }
+        snackbar.show()
+        blackboardNudgeSnackbar = snackbar
+        // Auto-dismiss after 10 seconds
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (blackboardNudgeSnackbar === snackbar) {
+                snackbar.dismiss()
+                blackboardNudgeSnackbar = null
+            }
+        }, 10_000L)
     }
 
     private fun persistLatestPageContext(pageContent: PageContent?) {
@@ -1411,7 +1527,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             return
         }
         notesRepo.save(
-            content = lastAi.content,
+            content = TutorController.extractAnswerForDisplay(lastAi.content),
             type = saveNotesType ?: "chapter",
             onSuccess = {
                 metricsTracker.recordEvent(ChapterMetricsTracker.EventType.NOTES_SAVED)
@@ -1455,6 +1571,28 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
     private fun showError(msg: String) {
         Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
+    }
+
+    /** Refresh the quota banner above the input bar with today's remaining questions. */
+    private fun updateQuotaBanner() {
+        val limits = AdminConfigRepository.resolveEffectiveLimits(
+            cachedMetadata.planId, cachedMetadata.planLimits
+        )
+        val left = PlanEnforcer.getQuestionsLeft(cachedMetadata, limits, isBlackboard = false)
+        if (left < 0) {
+            // unlimited — hide banner
+            quotaBannerChat.visibility = View.GONE
+            return
+        }
+        quotaBannerChat.visibility = View.VISIBLE
+        quotaBannerChat.text = when {
+            left == 0 -> "💬 No questions left today — upgrade for unlimited access!"
+            left <= 3 -> "💬 Only $left question${if (left == 1) "" else "s"} left today ⚠️"
+            else      -> "💬 $left questions left today"
+        }
+        quotaBannerChat.setBackgroundColor(
+            android.graphics.Color.parseColor(if (left <= 3) "#BF360C" else "#37474F")
+        )
     }
 
     // ── VoiceRecognitionCallback ──────────────────────────────────────────────

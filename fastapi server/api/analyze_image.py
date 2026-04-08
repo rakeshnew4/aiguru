@@ -87,9 +87,11 @@ Rules:
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _cache_key(image_base64: str) -> str:
-    """Stable Redis key: MD5 of the first 512 chars of the base64 string."""
-    fingerprint = image_base64[:512].encode()
-    return hashlib.md5(fingerprint).hexdigest()
+    """Collision-resistant SHA-256 key: length + first 512 chars + last 256 chars."""
+    head = image_base64[:512]
+    tail = image_base64[-256:] if len(image_base64) > 512 else ""
+    fingerprint = f"{len(image_base64)}:{head}:{tail}".encode()
+    return hashlib.sha256(fingerprint).hexdigest()
 
 
 def _extract_json(text: str) -> Dict[str, Any]:

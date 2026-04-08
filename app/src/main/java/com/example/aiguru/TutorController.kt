@@ -110,6 +110,96 @@ $footer"""
         }
     }
 
+    /**
+     * Called on every streaming token to get something human-readable to show.
+     * If the accumulated text is a complete JSON envelope, returns the answer field.
+     * If the JSON is still incomplete, returns the answer value extracted so far
+     * (everything after `"answer":` up to the current position), so the user sees
+     * text appearing progressively instead of raw JSON.
+     * Falls back to the raw accumulated string if none of the above applies.
+     */
+    fun extractAnswerForDisplay(accumulated: String): String {
+        val trimmed = accumulated.trimStart()
+
+        // Fast path: server already sent plain text (not a JSON envelope)
+        if (!trimmed.startsWith("{") && !trimmed.startsWith("```")) return accumulated
+
+        // Strip optional ```json ... ``` fences
+        val text = if (trimmed.startsWith("```")) {
+            trimmed
+                .removePrefix("```json").removePrefix("```")
+                .trimStart()
+                .let { s ->
+                    val fence = s.lastIndexOf("```")
+                    if (fence > 0) s.substring(0, fence).trimEnd() else s
+                }
+        } else trimmed
+
+        // Try parsing as complete JSON using balanced-brace scanning
+        val jsonStr = extractBalancedJson(text)
+        if (jsonStr != null) {
+            try {
+                val obj = JSONObject(jsonStr)
+                val answer = obj.optString("answer", "").trim()
+                if (answer.isNotEmpty()) {
+                    val extra = obj.optString("extra_details_or_summary", "").trim()
+                    return if (extra.isNotBlank()) "$answer\n\n$extra" else answer
+                }
+            } catch (_: Exception) { }
+        }
+
+        // Partial JSON still arriving: stream the answer value characters
+        val marker = "\"answer\""
+        val markerIdx = text.indexOf(marker)
+        if (markerIdx >= 0) {
+            val colonIdx = text.indexOf(':', markerIdx + marker.length)
+            if (colonIdx >= 0) {
+                val quoteIdx = text.indexOf('"', colonIdx + 1)
+                if (quoteIdx >= 0) {
+                    val partial = text.substring(quoteIdx + 1)
+                        .replace("\\n", "\n")
+                        .replace("\\\"", "\"")
+                        .replace("\\\\", "\\")
+                        .trimEnd('"', ' ', '\n')
+                    if (partial.isNotBlank()) return partial
+                }
+            }
+        }
+
+        return accumulated
+    }
+
+    /**
+     * Walk [text] from the first '{' with balanced-brace counting,
+     * correctly skipping string contents (incl. escaped chars and LaTeX braces).
+     * Returns the JSON substring, or null if no complete object is found.
+     */
+    private fun extractBalancedJson(text: String): String? {
+        val start = text.indexOf('{')
+        if (start < 0) return null
+        var depth = 0
+        var inString = false
+        var i = start
+        while (i < text.length) {
+            val ch = text[i]
+            if (inString) {
+                if (ch == '\\') { i += 2; continue }  // skip escaped char
+                if (ch == '"') inString = false
+            } else {
+                when (ch) {
+                    '"' -> inString = true
+                    '{' -> depth++
+                    '}' -> {
+                        depth--
+                        if (depth == 0) return text.substring(start, i + 1)
+                    }
+                }
+            }
+            i++
+        }
+        return null
+    }
+
     private fun extractJson(text: String): String {
         val start = text.indexOf('{')
         val end = text.lastIndexOf('}')

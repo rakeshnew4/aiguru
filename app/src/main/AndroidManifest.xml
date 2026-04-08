@@ -94,6 +94,11 @@
         </activity>
         <activity android:name=".SubjectActivity" android:exported="false"/>
         <activity android:name=".ChapterActivity" android:exported="false"/>
+        <!-- ChatHostActivity: new thin wrapper around FullChatFragment (replaces ChatActivity) -->
+        <activity android:name=".ChatHostActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"/>
+        <!-- ChatActivity: kept for back-compat / redirect only — see ChatActivity.kt -->
         <activity android:name=".ChatActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"/>

@@ -29,6 +29,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.aiguru.chat.BlackboardGenerator
+import com.example.aiguru.config.AdminConfigRepository
+import com.example.aiguru.config.PlanEnforcer
+import com.example.aiguru.firestore.FirestoreManager
+import com.example.aiguru.models.UserMetadata
 import com.example.aiguru.utils.PromptRepository
 import com.example.aiguru.utils.TTSCallback
 import com.example.aiguru.utils.TextToSpeechManager
@@ -86,6 +90,15 @@ class BlackboardActivity : AppCompatActivity() {
     // Board views created once in setupBoard(), updated each frame
     private var boardLayout: LinearLayout? = null
 
+    // Reveal button reference for the current quiz frame (set in showFrame, used by TTS callback)
+    private var quizRevealBtn: android.widget.TextView? = null
+
+    // Quota chip in the top bar
+    private lateinit var bbQuotaChip: android.widget.TextView
+
+    // Cached user metadata for quota checks
+    private var cachedMetadata = UserMetadata()
+
     // ─────────────────────────────────────────────────────────────────────────
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -105,6 +118,7 @@ class BlackboardActivity : AppCompatActivity() {
         replayBtn       = findViewById(R.id.replayButton)
         nextBtn         = findViewById(R.id.nextButton)
         handWriter      = findViewById(R.id.handWriter)
+        bbQuotaChip     = findViewById(R.id.bbQuotaChip)
 
         closeBtn.setOnClickListener  { finish() }
         prevBtn.setOnClickListener   { prevStep() }
@@ -115,12 +129,60 @@ class BlackboardActivity : AppCompatActivity() {
         PromptRepository.init(this)
         tts = TextToSpeechManager(this)
         preferredLanguageTag = intent.getStringExtra(EXTRA_LANGUAGE_TAG)?.takeIf { it.isNotBlank() } ?: "en-US"
-        generateSteps(
-            message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
-            messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
-            userId         = intent.getStringExtra(EXTRA_USER_ID),
-            conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID)
-        )
+
+        val userId = intent.getStringExtra(EXTRA_USER_ID)
+        AdminConfigRepository.fetchIfStale()
+        FirestoreManager.getUserMetadata(userId ?: "", onSuccess = { meta ->
+            if (meta != null) {
+                cachedMetadata = meta
+                updateBbQuotaChip(userId)
+
+                // Check daily blackboard quota before generating
+                val limits = AdminConfigRepository.resolveEffectiveLimits(
+                    meta.planId, meta.planLimits
+                )
+                val check = PlanEnforcer.checkQuestionsQuota(meta, limits, isBlackboard = true)
+                if (!check.allowed) {
+                    loadingGroup.visibility = android.view.View.GONE
+                    loadingText.text = check.upgradeMessage
+                    loadingText.visibility = android.view.View.VISIBLE
+                    // Show error and offer upgrade after short delay
+                    android.widget.Toast.makeText(this, check.upgradeMessage, android.widget.Toast.LENGTH_LONG).show()
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        startActivity(
+                            android.content.Intent(this, SubscriptionActivity::class.java)
+                        )
+                    }, 2000)
+                    return@getUserMetadata
+                }
+
+                generateSteps(
+                    message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
+                    messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
+                    userId         = userId,
+                    conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
+                    recordSession  = true
+                )
+            } else {
+                // Metadata unavailable — generate without quota check
+                generateSteps(
+                    message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
+                    messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
+                    userId         = userId,
+                    conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
+                    recordSession  = false
+                )
+            }
+        }, onFailure = {
+            // Fall back to generating without quota guard
+            generateSteps(
+                message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
+                messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
+                userId         = userId,
+                conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
+                recordSession  = false
+            )
+        })
     }
 
     override fun onDestroy() {
@@ -135,7 +197,8 @@ class BlackboardActivity : AppCompatActivity() {
         message: String,
         messageId: String? = null,
         userId: String? = null,
-        conversationId: String? = null
+        conversationId: String? = null,
+        recordSession: Boolean = false
     ) {
         lifecycleScope.launch(Dispatchers.IO) {
             BlackboardGenerator.generate(
@@ -145,6 +208,14 @@ class BlackboardActivity : AppCompatActivity() {
                 conversationId = conversationId,
                 preferredLanguageTag = preferredLanguageTag,
                 onSuccess = { generated ->
+                    if (recordSession && !userId.isNullOrBlank()) {
+                        PlanEnforcer.recordQuestionAsked(userId, isBlackboard = true)
+                        cachedMetadata = cachedMetadata.copy(
+                            bbSessionsToday = cachedMetadata.bbSessionsToday + 1,
+                            questionsUpdatedAt = System.currentTimeMillis()
+                        )
+                        lifecycleScope.launch(Dispatchers.Main) { updateBbQuotaChip(userId) }
+                    }
                     lifecycleScope.launch(Dispatchers.Main) {
                         steps = generated
                         computedFontSp = computeFontSize(steps)
@@ -163,6 +234,27 @@ class BlackboardActivity : AppCompatActivity() {
                 }
             )
         }
+    }
+
+    /** Refresh the session quota chip in the top bar. */
+    private fun updateBbQuotaChip(userId: String?) {
+        val limits = AdminConfigRepository.resolveEffectiveLimits(
+            cachedMetadata.planId, cachedMetadata.planLimits
+        )
+        val left = PlanEnforcer.getQuestionsLeft(cachedMetadata, limits, isBlackboard = true)
+        if (left < 0) {
+            bbQuotaChip.visibility = View.GONE
+            return
+        }
+        bbQuotaChip.visibility = View.VISIBLE
+        bbQuotaChip.text = when {
+            left == 0 -> "0 sessions left"
+            left == 1 -> "1 session left"
+            else      -> "$left sessions left"
+        }
+        bbQuotaChip.setBackgroundColor(
+            android.graphics.Color.parseColor(if (left <= 1) "#BF360C" else "#5C5BD4")
+        )
     }
 
     // ── Font size ─────────────────────────────────────────────────────────────
@@ -270,9 +362,15 @@ class BlackboardActivity : AppCompatActivity() {
             }
             board.addView(imagePlaceholder)
 
-            val imageQuery = step.image_description.ifBlank { step.title }
-//            val imageConfidence = step.image_confidence_score.ifBlank { step.title }
-            if (imageQuery.isNotBlank()) fetchAndShowStepImage(imageQuery, 1.0f, imagePlaceholder)
+            // Only fetch an image when:
+            //   score >= 0.7  → show inline (diagram/process/structure — clearly visual)
+            //   score 0.35–0.69 → show small tap-to-view reference button
+            //   score < 0.35  → skip entirely (pure math/text — no image needed)
+            val imageScore = step.imageConfidenceScore
+            val imageQuery = step.image_description.trim()
+            if (imageScore >= 0.35f && imageQuery.isNotBlank() && imageQuery != "null") {
+                fetchAndShowStepImage(imageQuery, imageScore, imagePlaceholder)
+            }
         }
 
         // Now append the Frame Content
@@ -287,7 +385,72 @@ class BlackboardActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { topMargin = (16 * dp).toInt() }
         }
+        // Frame-type specific board text colour
+        when (frame.frameType) {
+            "memory"  -> contentText.setTextColor(Color.parseColor("#FFD700"))  // gold
+            "summary" -> contentText.setTextColor(Color.parseColor("#A8D8A8"))  // mint
+        }
         board.addView(contentText)
+
+        // Quiz frame: hidden reveal button + answer view (shown after TTS completes)
+        quizRevealBtn = null
+        if (frame.frameType == "quiz" && frame.quizAnswer.isNotBlank()) {
+            val answerView = TextView(this).apply {
+                text = buildFrameText("\u2705  ${frame.quizAnswer}", emptyList())
+                textSize = computedFontSp
+                gravity = Gravity.START
+                setTextColor(Color.parseColor("#90EE90"))
+                setLineSpacing(0f, 1.6f)
+                typeface = caveatFont
+                visibility = View.GONE
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = (12 * dp).toInt() }
+            }
+            val revealBtn = TextView(this).apply {
+                text = "\uD83C\uDFAF  Tap to Reveal Answer"
+                textSize = 16f
+                gravity = Gravity.CENTER
+                setTextColor(Color.parseColor("#1A1A0A"))
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE
+                    cornerRadius = 24 * dp
+                    setColor(Color.parseColor("#F5E3A0"))
+                }
+                setPadding((24 * dp).toInt(), (12 * dp).toInt(), (24 * dp).toInt(), (12 * dp).toInt())
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    gravity = Gravity.CENTER_HORIZONTAL
+                    topMargin = (20 * dp).toInt()
+                }
+                alpha = 0f
+                setOnClickListener {
+                    answerView.alpha = 0f
+                    answerView.visibility = View.VISIBLE
+                    answerView.animate().alpha(1f).setDuration(700).start()
+                    this.animate().alpha(0f).setDuration(300)
+                        .withEndAction { this.visibility = View.GONE }.start()
+                    stepsScrollView.postDelayed(
+                        { stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 300
+                    )
+                    tts.speak(frame.quizAnswer, object : TTSCallback {
+                        override fun onStart() {}
+                        override fun onComplete() {
+                            stepsScrollView.postDelayed({ advanceFrame() }, 600)
+                        }
+                        override fun onError(error: String) {
+                            stepsScrollView.postDelayed({ advanceFrame() }, 600)
+                        }
+                    })
+                }
+            }
+            board.addView(revealBtn)
+            board.addView(answerView)
+            quizRevealBtn = revealBtn
+        }
 
         val baseSsb = buildFrameText(frame.text, frame.highlight)
         val textLen = baseSsb.length
@@ -582,11 +745,16 @@ class BlackboardActivity : AppCompatActivity() {
             // Append all previous frames instantly (no animation)
             for (f in 0..maxFrame) {
                 val frame = step.frames[f]
+                val frameColor = when (frame.frameType) {
+                    "memory"  -> Color.parseColor("#FFD700")
+                    "summary" -> Color.parseColor("#A8D8A8")
+                    else      -> Color.parseColor("#F0EDD0")
+                }
                 val contentText = TextView(this).apply {
                     text = buildFrameText(frame.text, frame.highlight)
                     textSize = computedFontSp
-                    gravity = Gravity.CENTER
-                    setTextColor(Color.parseColor("#F0EDD0"))
+                    gravity = Gravity.START
+                    setTextColor(frameColor)
                     setLineSpacing(0f, 1.6f)
                     typeface = caveatFont
                     layoutParams = LinearLayout.LayoutParams(
@@ -595,6 +763,22 @@ class BlackboardActivity : AppCompatActivity() {
                     ).apply { topMargin = (16 * dp).toInt() }
                 }
                 board.addView(contentText)
+                // For quiz frames in history: show the answer directly (already revealed)
+                if (frame.frameType == "quiz" && frame.quizAnswer.isNotBlank()) {
+                    val answerText = TextView(this).apply {
+                        text = buildFrameText("\u2705  ${frame.quizAnswer}", emptyList())
+                        textSize = computedFontSp
+                        gravity = Gravity.START
+                        setTextColor(Color.parseColor("#90EE90"))
+                        setLineSpacing(0f, 1.6f)
+                        typeface = caveatFont
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply { topMargin = (8 * dp).toInt() }
+                    }
+                    board.addView(answerText)
+                }
             }
         }
 
@@ -771,9 +955,16 @@ class BlackboardActivity : AppCompatActivity() {
         override fun onStart() { /* no-op */ }
 
         override fun onComplete() {
-            // Only auto-advance if user hasn't already navigated away
             if (!isPaused && currentStepIdx == stepIdx && currentFrameIdx == frameIdx) {
-                stepsScrollView.postDelayed({ advanceFrame() }, 300)
+                val f = steps.getOrNull(stepIdx)?.frames?.getOrNull(frameIdx)
+                if (f?.frameType == "quiz" && f.quizAnswer.isNotBlank()) {
+                    // Quiz frame: show reveal button instead of auto-advancing
+                    runOnUiThread {
+                        quizRevealBtn?.animate()?.alpha(1f)?.setDuration(400)?.start()
+                    }
+                } else {
+                    stepsScrollView.postDelayed({ advanceFrame() }, 300)
+                }
             }
         }
 

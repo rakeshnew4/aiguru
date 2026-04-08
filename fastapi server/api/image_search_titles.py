@@ -26,25 +26,43 @@ def get_http_client() -> httpx.AsyncClient:
     return _http_client
 
 
+# Generic visual words that should NOT drive relevance matching.
+# Without this, "diagram" alone could match any image with "diagram" in its title.
+_GENERIC_IMAGE_WORDS = {
+    "diagram", "image", "picture", "photo", "figure", "illustration",
+    "chart", "graph", "file", "svg", "png", "jpg", "jpeg", "gif",
+}
+
+
 def _best_title_match(description: str, titles: List[str]) -> Optional[str]:
     """
-    Pick the Wikimedia title with the highest word-overlap against the image
-    description.  No LLM needed — the description is already 1-2 keywords.
-    Returns the matched title (without 'File:' prefix) or None if no overlap.
+    Pick the Wikimedia title with the highest content-word overlap against the
+    image description. Generic visual words (diagram, image, etc.) are excluded
+    from scoring so only subject-specific terms (e.g. "photosynthesis", "Newton")
+    drive the match. Requires >= 50% content-word overlap to accept a result.
+    Returns the matched title (without 'File:' prefix) or None.
     """
-    desc_words = set(re.sub(r"[^a-z0-9]", " ", description.lower()).split())
-    if not desc_words:
+    all_words = set(re.sub(r"[^a-z0-9]", " ", description.lower()).split())
+    # Score only on content-specific words, not generic visual labels
+    content_words = all_words - _GENERIC_IMAGE_WORDS
+    if not content_words:
+        content_words = all_words  # fallback: all generic words, use them
+    if not content_words:
         return None
+
     best_title: Optional[str] = None
     best_score = 0.0
     for raw_title in titles:
-        # Strip "File:" and file extension before comparing
         clean = re.sub(r"\.\w{2,5}$", "", raw_title.replace("File:", ""))
         title_words = set(re.sub(r"[^a-z0-9]", " ", clean.lower()).split())
-        score = len(desc_words & title_words) / len(desc_words)
+        # Fraction of subject-specific description words found in this title
+        score = len(content_words & title_words) / len(content_words)
         if score > best_score:
             best_score, best_title = score, raw_title.replace("File:", "")
-    return best_title if best_score > 0 else None
+
+    # Require at least 50% content-word match to avoid false positives
+    # (e.g. "rational system" should NOT match "Hack Computer CPU Block Diagram")
+    return best_title if best_score >= 0.5 else None
 
 
 def extract_json_safe(text: str) -> Dict:

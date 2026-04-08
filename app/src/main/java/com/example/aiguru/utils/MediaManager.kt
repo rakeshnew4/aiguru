@@ -114,28 +114,36 @@ class MediaManager(private val context: Context) {
      */
     fun uriToBase64(uri: Uri, maxSizeKb: Int = 500): String? {
         return try {
-            // Use FileInputStream directly for file:// URIs; ContentResolver for content:// URIs.
-            // ContentResolver.openInputStream() silently returns null / empty for file:// URIs
-            // on API 24+ because FileUriExposedException policy changes.
             val inputStream: InputStream = if (uri.scheme == "file") {
-                File(uri.path!!).inputStream()
+                val f = File(uri.path ?: return null)
+                if (!f.exists() || !f.canRead()) return null.also {
+                    Log.e(TAG, "uriToBase64: file not accessible: $uri")
+                }
+                f.inputStream()
             } else {
                 context.contentResolver.openInputStream(uri)
-                    ?: return null
+                    ?: return null.also { Log.e(TAG, "uriToBase64: openInputStream returned null for $uri") }
             }
 
-            // Decode with inSampleSize so large camera photos don't OOM (max 1920px side)
+            // First pass: decode bounds only to calculate inSampleSize
             val opts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
             inputStream.use { android.graphics.BitmapFactory.decodeStream(it, null, opts) }
+
+            if (opts.outWidth <= 0 || opts.outHeight <= 0) {
+                Log.e(TAG, "uriToBase64: image has unreadable dimensions (format unsupported?) for $uri")
+                return null
+            }
 
             val maxDim = 1920
             var sample = 1
             while (opts.outWidth / sample > maxDim || opts.outHeight / sample > maxDim) sample *= 2
 
+            // Second pass: decode actual pixels at reduced sample size
             val decodeStream: InputStream = if (uri.scheme == "file") {
                 File(uri.path!!).inputStream()
             } else {
-                context.contentResolver.openInputStream(uri) ?: return null
+                context.contentResolver.openInputStream(uri)
+                    ?: return null.also { Log.e(TAG, "uriToBase64: second openInputStream failed for $uri") }
             }
             val decodeOpts = android.graphics.BitmapFactory.Options().apply { inSampleSize = sample }
             val bitmap = decodeStream.use { android.graphics.BitmapFactory.decodeStream(it, null, decodeOpts) }
@@ -143,16 +151,20 @@ class MediaManager(private val context: Context) {
 
             var quality = 90
             var outputStream: ByteArrayOutputStream
-
-            do {
-                outputStream = ByteArrayOutputStream()
-                bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, quality, outputStream)
-                quality -= 10
-            } while (outputStream.size() / 1024 > maxSizeKb && quality > 10)
-
-            bitmap.recycle()
+            try {
+                do {
+                    outputStream = ByteArrayOutputStream()
+                    bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, quality, outputStream)
+                    quality -= 10
+                } while (outputStream.size() / 1024 > maxSizeKb && quality > 10)
+            } finally {
+                bitmap.recycle()
+            }
             Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
 
+        } catch (oom: OutOfMemoryError) {
+            Log.e(TAG, "uriToBase64: OOM encoding image $uri", oom)
+            null
         } catch (e: Exception) {
             Log.e(TAG, "Error converting URI to Base64: $uri", e)
             null

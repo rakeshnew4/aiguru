@@ -243,6 +243,107 @@
 
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Share & Earn (Referral) -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="#FFFFFF">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🎁 Share &amp; Earn"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorTextPrimary"
+                    android:layout_marginBottom="4dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Refer a friend and you both earn bonus questions every day!"
+                    android:textSize="13sp"
+                    android:textColor="@color/colorTextSecondary"
+                    android:layout_marginBottom="16dp" />
+
+                <!-- Referral code row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="12dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Your code:"
+                        android:textSize="13sp"
+                        android:textColor="@color/colorTextSecondary" />
+
+                    <TextView
+                        android:id="@+id/referralCodeText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--------"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/colorPrimary"
+                        android:letterSpacing="0.12"
+                        android:layout_marginEnd="8dp" />
+
+                    <ImageButton
+                        android:id="@+id/referralCopyButton"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:src="@drawable/ic_copy"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Copy referral code"
+                        app:tint="@color/colorPrimary" />
+
+                </LinearLayout>
+
+                <!-- Share button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/referralShareButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:text="📤 Share My Code"
+                    android:textSize="14sp"
+                    android:textColor="#FFFFFF"
+                    app:backgroundTint="@color/colorPrimary"
+                    app:cornerRadius="12dp"
+                    android:layout_marginBottom="10dp" />
+
+                <!-- Claim button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/claimReferralButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:text="Enter a Friend's Code"
+                    android:textSize="14sp"
+                    android:textColor="@color/colorPrimary"
+                    app:backgroundTint="@android:color/transparent"
+                    app:strokeColor="@color/colorPrimary"
+                    app:strokeWidth="1dp"
+                    app:cornerRadius="12dp" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- Logout -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/logoutButton"
