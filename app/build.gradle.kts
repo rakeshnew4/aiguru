@@ -13,30 +13,51 @@ val localProperties = Properties().apply {
 }
 
 android {
-    namespace = "com.example.aiguru"
+    namespace = "com.aiguruapp.student"
     compileSdk = 36
     buildFeatures {
         buildConfig = true
     }
     defaultConfig {
-        applicationId = "com.example.aiguru"
+        applicationId = "com.aiguruapp.student"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.1.0"
+        versionCode = 9
+        versionName = "1.2.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         val paymentBaseUrl = localProperties["PAYMENT_BASE_URL"] as? String ?: ""
         val razorpayKeyId  = localProperties["RAZORPAY_KEY_ID"]  as? String ?: ""
+        // SERVER_URL is the FastAPI base URL used as a compile-time fallback.
+        // The live value is always fetched from Firestore admin_config/global.server_url
+        // at runtime — this is only used on first launch before that fetch completes.
+        val serverUrl = localProperties["SERVER_URL"] as? String ?: ""
         buildConfigField("String", "PAYMENT_BASE_URL", "\"$paymentBaseUrl\"")
         buildConfigField("String", "RAZORPAY_KEY_ID",  "\"$razorpayKeyId\"")
+        buildConfigField("String", "SERVER_URL",       "\"$serverUrl\"")
     }
 
     signingConfigs {
         create("release") {
-            storeFile = file(localProperties["RELEASE_STORE_FILE"] as? String ?: "keystore.jks")
-            storePassword = localProperties["RELEASE_STORE_PASSWORD"] as? String ?: ""
-            keyAlias = localProperties["RELEASE_KEY_ALIAS"] as? String ?: ""
-            keyPassword = localProperties["RELEASE_KEY_PASSWORD"] as? String ?: ""
+            val storeFilePath = localProperties["RELEASE_STORE_FILE"] as? String
+            val storePass     = localProperties["RELEASE_STORE_PASSWORD"] as? String
+            val keyAliasVal   = localProperties["RELEASE_KEY_ALIAS"] as? String
+            val keyPass       = localProperties["RELEASE_KEY_PASSWORD"] as? String
+
+            // Fail loudly at configuration time if any release signing value is missing.
+            // This prevents Gradle from silently falling back to the debug keystore
+            // and producing a debug-signed AAB that Google Play will reject.
+            require(!storeFilePath.isNullOrBlank()) {
+                "RELEASE_STORE_FILE is missing from local.properties. " +
+                "Add it before building a release APK/AAB."
+            }
+            require(!storePass.isNullOrBlank())   { "RELEASE_STORE_PASSWORD missing from local.properties" }
+            require(!keyAliasVal.isNullOrBlank()) { "RELEASE_KEY_ALIAS missing from local.properties" }
+            require(!keyPass.isNullOrBlank())     { "RELEASE_KEY_PASSWORD missing from local.properties" }
+
+            storeFile     = file(storeFilePath)
+            storePassword = storePass
+            keyAlias      = keyAliasVal
+            keyPassword   = keyPass
         }
     }
 
@@ -49,6 +70,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Upload full debug symbols so crash stack traces are human-readable in Play Console
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
             // Gemini Live uses server proxy — no key needed in APK
         }
         debug {
@@ -63,7 +88,17 @@ android {
     kotlinOptions {
         jvmTarget = "11"
     }
+
+    // Required for Android 15+ 16 KB memory page size support.
+    // Native .so files must be embedded uncompressed so the OS can map them
+    // directly at the correct page-aligned offset.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
 }
+
 
 dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
@@ -79,6 +114,8 @@ dependencies {
     implementation("io.noties.markwon:core:4.6.2")
     implementation("io.noties.markwon:ext-tables:4.6.2")
     implementation("io.noties.markwon:ext-strikethrough:4.6.2")
+    implementation("io.noties.markwon:inline-parser:4.6.2") // required by JLatexMathPlugin
+    implementation("io.noties.markwon:ext-latex:4.6.2")    // LaTeX math rendering
 
     // RecyclerView & Material Design 3
     implementation("androidx.recyclerview:recyclerview:1.3.2")
@@ -90,8 +127,8 @@ dependencies {
     // Image handling
     implementation("com.squareup.picasso:picasso:2.8")
     
-    // Image crop + zoom (UCrop)
-    implementation("com.github.yalantis:ucrop:2.2.8")
+    // Image crop + zoom (UCrop) — 2.2.9+ is built with 16 KB-aligned native libs
+    implementation("com.github.yalantis:ucrop:2.2.9")
     
     // Lifecycle & ViewModel
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")

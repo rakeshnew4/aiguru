@@ -16,6 +16,13 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, write: if isOwner(userId);
 
+      // Allow any signed-in user to apply a referral bonus to this user's doc.
+      // The claiming transaction writes bonus_questions_today to the referrer's
+      // doc — only these two fields may be written this way.
+      allow update: if isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['bonus_questions_today', 'updatedAt']);
+
       match /{subcollection=**} {
         allow read, write: if isOwner(userId);
       }
@@ -98,5 +105,16 @@ service cloud.firestore {
     match /blackboard_cache/{docId} {
       allow read, write: if false;
     }
+
+    // ── Referral codes ─────────────────────────────────────────────────────────
+    // Structure: referralCodes/{code} → { ownerUserId: string, ownerName: string }
+    match /referralCodes/{code} {
+      // Any signed-in user can read — needed to validate / look up owner during claiming
+      allow read: if isSignedIn();
+      // Only the owner can create or update their own code
+      allow write: if isSignedIn()
+        && request.resource.data.ownerUserId == request.auth.uid;
+    }
   }
 }
+

@@ -26,8 +26,8 @@
 
 # ── Firestore / Firebase data models ─────────────────────────────────────────
 # All classes in the models package are serialized by Firestore — keep them.
--keep class com.example.aiguru.models.** { *; }
--keepclassmembers class com.example.aiguru.models.** {
+-keep class com.aiguruapp.student.models.** { *; }
+-keepclassmembers class com.aiguruapp.student.models.** {
     public <init>();
     <fields>;
 }
@@ -55,8 +55,8 @@
 }
 
 # BlackboardGenerator data classes (passed across boundaries)
--keep class com.example.aiguru.chat.BlackboardGenerator$BlackboardStep { *; }
--keep class com.example.aiguru.chat.BlackboardGenerator$BlackboardFrame { *; }
+-keep class com.aiguruapp.student.chat.BlackboardGenerator$BlackboardStep { *; }
+-keep class com.aiguruapp.student.chat.BlackboardGenerator$BlackboardFrame { *; }
 
 # ── Razorpay ──────────────────────────────────────────────────────────────────
 -keepclassmembers class * {

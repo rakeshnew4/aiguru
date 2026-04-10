@@ -1,0 +1,631 @@
+package com.aiguruapp.student
+
+import android.app.AlertDialog
+import android.content.ContentValues
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Bundle
+import android.provider.MediaStore
+import android.view.View
+import android.widget.*
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.aiguruapp.student.adapters.PageListAdapter
+import com.aiguruapp.student.utils.ChapterMetricsTracker
+import com.aiguruapp.student.utils.PdfPageManager
+import com.aiguruapp.student.utils.SessionManager
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.tabs.TabLayout
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.ConnectionSpec
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.TlsVersion
+import java.text.SimpleDateFormat
+import java.util.*
+import java.util.concurrent.TimeUnit
+
+class ChapterActivity : BaseActivity() {
+
+    private lateinit var pagesRecyclerView: RecyclerView
+    private val pagesListData = mutableListOf<String>()
+    private val imagePagePaths = mutableListOf<String>()
+    private lateinit var pageListAdapter: PageListAdapter
+    private lateinit var subjectName: String
+    private lateinit var chapterName: String
+    private var cameraImageUri: Uri? = null
+    private val CAMERA_PERMISSION_CODE = 201
+
+    // PDF chapter state
+    private var isPdfChapter = false
+    private var pdfAssetPath = ""
+    private var pdfId = ""
+    private var pdfPageCount = 0
+    private lateinit var pdfPageManager: PdfPageManager
+    private lateinit var metricsTracker: ChapterMetricsTracker
+
+    // NCERT download-and-render state
+    private var ncertUrl = ""
+    private val ncertPdfId
+        get() = "ncert_${subjectName}_${chapterName}"
+            .replace(" ", "_").replace("/", "_").take(60)
+
+    /** OkHttp client for NCERT downloads — browser-like User-Agent + TLS 1.2/1.3 fallback.
+     *  ncert.nic.in runs on older NIC servers that sometimes fail the default TLS handshake. */
+    private val ncertHttpClient: OkHttpClient by lazy {
+        val tlsSpec = ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS)
+            .tlsVersions(TlsVersion.TLS_1_3, TlsVersion.TLS_1_2)
+            .build()
+        OkHttpClient.Builder()
+            .connectTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(90, TimeUnit.SECONDS)
+            .connectionSpecs(listOf(tlsSpec, ConnectionSpec.CLEARTEXT))
+            .followRedirects(true)
+            .followSslRedirects(true)
+            .build()
+    }
+
+    private val pickImageLauncher =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+            uri?.let { savePage(it.toString()) }
+        }
+
+    private val cameraLauncher =
+        registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+            if (success && cameraImageUri != null) savePage(cameraImageUri.toString())
+        }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_chapter)
+
+        pdfPageManager = PdfPageManager(this)
+
+        subjectName = intent.getStringExtra("subjectName") ?: "Subject"
+        chapterName = intent.getStringExtra("chapterName") ?: "Chapter"
+
+        metricsTracker = ChapterMetricsTracker(subjectName, chapterName)
+
+        findViewById<TextView>(R.id.chapterTitle).text = chapterName
+        findViewById<ImageButton>(R.id.backButton).setOnClickListener { finish() }
+
+        // Notes button — always visible in header
+        findViewById<MaterialButton>(R.id.notesButton).setOnClickListener {
+            showNotesOptions()
+        }
+
+        // Quiz button — launches AI-powered quiz for this chapter
+        findViewById<MaterialButton>(R.id.startQuizButton).setOnClickListener {
+            val chapterId = "${subjectName}_${chapterName}"
+                .replace(" ", "_")
+                .lowercase()
+                .take(64)
+            startActivity(
+                Intent(this, QuizSetupActivity::class.java)
+                    .putExtra("subjectName",  subjectName)
+                    .putExtra("chapterId",    chapterId)
+                    .putExtra("chapterTitle", chapterName)
+            )
+        }
+
+        // Set up RecyclerView with PageListAdapter
+        pagesRecyclerView = findViewById(R.id.pagesList)
+        pageListAdapter = PageListAdapter(
+            pages = pagesListData,
+            onView = { position -> onViewPage(position) },
+            onAsk  = { position -> onAskPage(position) }
+        )
+        pagesRecyclerView.layoutManager = LinearLayoutManager(this)
+        pagesRecyclerView.adapter = pageListAdapter
+
+        loadChapterType()
+        loadMasteryScore()
+        setupTabs()
+    }
+
+    private fun setupTabs() {
+        val tabLayout   = findViewById<TabLayout>(R.id.tabLayout)
+        val pagesContent  = findViewById<View>(R.id.pagesContent)
+        val chatContainer = findViewById<View>(R.id.chatTabContainer)
+
+        tabLayout.addTab(tabLayout.newTab().setText("📄  Pages"))
+        tabLayout.addTab(tabLayout.newTab().setText("💬  Chat"))
+
+        tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                if (tab.position == 0) {
+                    pagesContent.visibility  = View.VISIBLE
+                    chatContainer.visibility = View.GONE
+                } else {
+                    pagesContent.visibility  = View.GONE
+                    chatContainer.visibility = View.VISIBLE
+                    getOrCreateChatFragment()
+                }
+            }
+            override fun onTabUnselected(tab: TabLayout.Tab) {}
+            override fun onTabReselected(tab: TabLayout.Tab) {}
+        })
+    }
+
+    /** Switch programmatically to the Chat tab (called by Ask AI buttons in the pages view). */
+    fun switchToChat() {
+        val tabLayout = findViewById<TabLayout>(R.id.tabLayout)
+        tabLayout.getTabAt(1)?.select()
+    }
+
+    /** Returns the existing FullChatFragment or creates it synchronously if not yet loaded. */
+    private fun getOrCreateChatFragment(): FullChatFragment {
+        val existing = supportFragmentManager.findFragmentByTag("chat_tab") as? FullChatFragment
+        if (existing != null) return existing
+        val fragment = FullChatFragment.newInstance(subjectName, chapterName)
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.chatTabContainer, fragment, "chat_tab")
+            .commitNow()
+        return fragment
+    }
+
+    override fun onStop() {
+        super.onStop()
+        metricsTracker.endSession(this, pdfPageCount)
+    }
+
+    private fun loadMasteryScore() {
+        // Mastery data will be loaded from Firestore when re-enabled
+        findViewById<View>(R.id.masteryCard).visibility = View.GONE
+    }
+
+    // ─── Notes generation ─────────────────────────────────────────────────────
+
+    private fun showNotesOptions() {
+        val options = mutableListOf(
+            "📖 Generate Chapter Notes",
+            "✏️ Generate Exercise Notes",
+            "📋 View Saved Notes"
+        )
+        if (isPdfChapter && pdfPageCount > 0) {
+            options.add(1, "📄 Generate Page-wise Notes")
+        }
+        AlertDialog.Builder(this)
+            .setTitle("📝 Notes for $chapterName")
+            .setItems(options.toTypedArray()) { _, which ->
+                when (options[which]) {
+                    "📖 Generate Chapter Notes"  -> generateChapterNotes()
+                    "📄 Generate Page-wise Notes" -> showPageWiseNotesPicker()
+                    "✏️ Generate Exercise Notes"  -> generateExerciseNotes()
+                    "📋 View Saved Notes"          -> viewSavedNotes()
+                }
+            }
+            .show()
+    }
+
+    private fun generateChapterNotes() {
+        val fragment = getOrCreateChatFragment()
+        switchToChat()
+        fragment.sendAutoPrompt(
+            "Create comprehensive study notes for \"$chapterName\" with:\n" +
+            "• Key concepts and definitions\n" +
+            "• Important facts to remember\n" +
+            "• Summary of main points\n" +
+            "• Any formulas or rules to know\n\n" +
+            "Format clearly with ## headings and bullet points.",
+            notesType = "chapter"
+        )
+    }
+
+    private fun showPageWiseNotesPicker() {
+        val pageOptions = (1..pdfPageCount).map { "Page $it" }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Select Page for Notes")
+            .setItems(pageOptions) { _, idx -> generateNotesForPage(idx + 1) }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun generateNotesForPage(pageNum: Int) {
+        val fragment = getOrCreateChatFragment()
+        switchToChat()
+        fragment.sendAutoPrompt(
+            "Create detailed study notes for Page $pageNum of \"$chapterName\":\n" +
+            "• Key concepts and definitions on this page\n" +
+            "• Any formulas, rules, or special points\n" +
+            "• Summary of content on this page\n\n" +
+            "Use ## Page $pageNum Notes as the heading and format with bullet points.",
+            notesType = "page_$pageNum"
+        )
+    }
+
+    private fun generateExerciseNotes() {
+        val fragment = getOrCreateChatFragment()
+        switchToChat()
+        fragment.sendAutoPrompt(
+            "For the exercises in \"$chapterName\":\n" +
+            "• List the types of exercises/problems in this chapter\n" +
+            "• Provide step-by-step problem-solving strategies\n" +
+            "• Show worked examples for typical questions\n" +
+            "• Highlight common mistakes to avoid\n\n" +
+            "Use ## Exercise Notes as the heading.",
+            notesType = "exercises"
+        )
+    }
+
+    private fun viewSavedNotes() {
+        val userId = SessionManager.getFirestoreUserId(this)
+        val notesRepo = com.aiguruapp.student.chat.NotesRepository(this, userId, subjectName, chapterName)
+        notesRepo.loadAll(
+            onResult  = { text ->
+                AlertDialog.Builder(this)
+                    .setTitle("📋 Notes: $chapterName")
+                    .setMessage(text)
+                    .setPositiveButton("OK", null)
+                    .show()
+            },
+            onEmpty   = { Toast.makeText(this, "No saved notes yet — generate some from the chat!", Toast.LENGTH_SHORT).show() },
+            onFailure = { Toast.makeText(this, "Couldn't load notes. Try again.", Toast.LENGTH_SHORT).show() }
+        )
+    }
+
+    // ─── Chapter type detection ───────────────────────────────────────────────
+
+    private fun loadChapterType() {
+        val meta = getSharedPreferences("chapters_prefs", MODE_PRIVATE)
+            .getString("meta_${subjectName}_${chapterName}", null)
+        if (meta != null) {
+            try {
+                val json = org.json.JSONObject(meta)
+
+                // NCERT chapter — open via NcertViewerActivity
+                if (json.optBoolean("isNcert", false)) {
+                    val ncertUrl = json.optString("ncertUrl", "")
+                    setupNcertChapter(ncertUrl)
+                    return
+                }
+
+                isPdfChapter = json.optBoolean("isPdf", false)
+                if (isPdfChapter) {
+                    pdfAssetPath = json.optString("pdfAssetPath", "")
+                    pdfId        = json.optString("pdfId", "")
+                    setupPdfChapter()
+                    return
+                }
+            } catch (_: Exception) { }
+        }
+//        setupImageChapter()
+    }
+
+    // ─── NCERT chapter ────────────────────────────────────────────────────────
+
+    private fun setupNcertChapter(url: String) {
+        ncertUrl = url
+
+        // Show attribution banner
+        findViewById<TextView>(R.id.ncertAttributionText).visibility = View.VISIBLE
+
+        // If already cached from a previous session — show pages directly
+        val cachedPdf = java.io.File(cacheDir, "pdf_cache/$ncertPdfId.pdf")
+        if (cachedPdf.exists()) {
+            loadNcertPagesFromCache()
+            return
+        }
+
+        if (url.isBlank()) {
+            pagesListData.clear()
+            pagesListData.add("⚠️ No NCERT URL available for this chapter.")
+            pageListAdapter.notifyDataSetChanged()
+            return
+        }
+
+        val pdfFileName = url.substringAfterLast("/")
+        pagesListData.clear()
+        pagesListData.add("⬇️  Tap to download \"$pdfFileName\" into the app")
+        pageListAdapter.notifyDataSetChanged()
+
+        pageListAdapter.onItemClickOverride = { pos ->
+            if (pos == 0) downloadNcertToCache()
+        }
+
+        // Ask AI → switch to Chat tab
+//        findViewById<MaterialButton>(R.id.askAIButton).apply {
+//            text = "💬 Ask AI about this Chapter"
+//            setOnClickListener { switchToChat() }
+//        }
+    }
+
+    /** Downloads the NCERT PDF directly into the app's private cache, then renders it. */
+    private fun downloadNcertToCache() {
+        if (ncertUrl.isBlank()) return
+        val pdfFileName = ncertUrl.substringAfterLast("/")
+
+        pagesListData.clear()
+        pagesListData.add("⏳  Downloading \"$pdfFileName\" — please wait…")
+        pageListAdapter.notifyDataSetChanged()
+        pageListAdapter.onItemClickOverride = null
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            val destDir  = java.io.File(cacheDir, "pdf_cache").also { it.mkdirs() }
+            val destFile = java.io.File(destDir, "$ncertPdfId.pdf")
+            var lastError: Exception? = null
+
+            // Retry up to 3 times — NCERT servers are flaky and SSL can fail transiently
+            for (attempt in 1..3) {
+                try {
+                    val request = Request.Builder()
+                        .url(ncertUrl)
+                        // Mimic a real browser — ncert.nic.in blocks non-browser User-Agents
+                        .header("User-Agent",
+                            "Mozilla/5.0 (Linux; Android 10; Mobile) " +
+                            "AppleWebKit/537.36 (KHTML, like Gecko) " +
+                            "Chrome/124.0.0.0 Mobile Safari/537.36")
+                        .header("Accept", "application/pdf,*/*")
+                        .header("Referer", "https://ncert.nic.in/")
+                        .build()
+
+                    val response = ncertHttpClient.newCall(request).execute()
+                    if (!response.isSuccessful) {
+                        throw Exception("Server returned ${response.code}")
+                    }
+                    response.body!!.byteStream().use { input ->
+                        destFile.outputStream().use { output -> input.copyTo(output) }
+                    }
+                    withContext(Dispatchers.Main) { loadNcertPagesFromCache() }
+                    return@launch
+                } catch (e: Exception) {
+                    lastError = e
+                    destFile.delete() // remove partial file before retry
+                    if (attempt < 3) kotlinx.coroutines.delay(1500L * attempt)
+                }
+            }
+
+            // All 3 attempts failed
+            withContext(Dispatchers.Main) {
+                val fn = ncertUrl.substringAfterLast("/")
+                pagesListData.clear()
+                pagesListData.add("⬇️  Tap to retry downloading \"$fn\"")
+                pageListAdapter.notifyDataSetChanged()
+                pageListAdapter.onItemClickOverride = { pos ->
+                    if (pos == 0) downloadNcertToCache()
+                }
+                Toast.makeText(this@ChapterActivity,
+                    "Download failed: ${lastError?.message}. Tap to retry.",
+                    Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    /**
+     * Called once the PDF is in our cache dir. Sets up isPdfChapter state
+     * and renders the page list exactly like a regular PDF chapter.
+     */
+    private fun loadNcertPagesFromCache() {
+        isPdfChapter = true
+        pdfId        = ncertPdfId
+        pdfAssetPath = ""          // cache already exists; PdfPageManager skips asset-open
+        pageListAdapter.onItemClickOverride = null
+
+        pagesListData.clear()
+        pagesListData.add("⏳ Loading pages…")
+        pageListAdapter.notifyDataSetChanged()
+
+        // Wire Ask AI button → switch to Chat tab
+//        findViewById<MaterialButton>(R.id.askAIButton).apply {
+//            text = "💬 Ask AI about this Chapter"
+//            setOnClickListener { switchToChat() }
+//        }
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val count = pdfPageManager.getPageCount(pdfId, pdfAssetPath)
+                pdfPageCount = count
+                withContext(Dispatchers.Main) {
+                    pagesListData.clear()
+                    for (i in 1..count) pagesListData.add("📄  Page $i")
+                    pageListAdapter.notifyDataSetChanged()
+                    Toast.makeText(this@ChapterActivity, "✅ $count pages ready!", Toast.LENGTH_SHORT).show()
+                    switchToChat()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    pagesListData.clear()
+                    pagesListData.add("⚠️ Could not read PDF: ${e.message}")
+                    pageListAdapter.notifyDataSetChanged()
+                }
+            }
+        }
+    }
+
+    private fun setupPdfChapter() {
+        val cachedPdf = java.io.File(cacheDir, "pdf_cache/$pdfId.pdf")
+        if (pdfId.isBlank() || (pdfAssetPath.isBlank() && !cachedPdf.exists())) {
+            pagesListData.clear()
+            pagesListData.add("⚠️ PDF data missing. Re-add this chapter from the Library.")
+            pageListAdapter.notifyDataSetChanged()
+            return
+        }
+
+        findViewById<MaterialButton>(R.id.uploadImageButton).apply {
+            visibility = View.VISIBLE
+            setOnClickListener { showImageSourceDialog() }
+        }
+        // Ask AI → switch to Chat tab
+//        findViewById<MaterialButton>(R.id.askAIButton).apply {
+//            text = "💬 Ask AI about this Chapter"
+//            setOnClickListener { switchToChat() }
+//        }
+
+        pagesListData.clear()
+        pagesListData.add("⏳ Loading PDF pages…")
+        pageListAdapter.notifyDataSetChanged()
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val count = pdfPageManager.getPageCount(pdfId, pdfAssetPath)
+                pdfPageCount = count
+                // pageCount will be synced to Firestore when re-enabled
+
+                withContext(Dispatchers.Main) {
+                    pagesListData.clear()
+                    for (i in 1..count) pagesListData.add("📄  Page $i")
+                    pageListAdapter.notifyDataSetChanged()
+                    switchToChat()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    pagesListData.clear()
+                    pagesListData.add("⚠️ Failed to load PDF: ${e.message}")
+                    pageListAdapter.notifyDataSetChanged()
+                }
+            }
+        }
+    }
+
+    private fun onViewPage(position: Int) {
+        metricsTracker.recordPageViewed(position + 1)
+        // Pre-render this page (and let PageViewerActivity handle rest)
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                pdfPageManager.getPage(pdfId, pdfAssetPath, position)
+                withContext(Dispatchers.Main) {
+                    startActivity(
+                        Intent(this@ChapterActivity, PageViewerActivity::class.java)
+                            .putExtra("subjectName", subjectName)
+                            .putExtra("chapterName", chapterName)
+                            .putExtra("pdfId", pdfId)
+                            .putExtra("pdfAssetPath", pdfAssetPath)
+                            .putExtra("pageCount", pdfPageCount)
+                            .putExtra("startPage", position)
+                    )
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@ChapterActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun onAskPage(position: Int) {
+        metricsTracker.recordPageViewed(position + 1)
+        Toast.makeText(this, "Rendering page ${position + 1}…", Toast.LENGTH_SHORT).show()
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val pageFile = pdfPageManager.getPage(pdfId, pdfAssetPath, position)
+                withContext(Dispatchers.Main) {
+                    val fragment = getOrCreateChatFragment()
+                    switchToChat()
+                    fragment.attachPdfPage(pageFile.absolutePath, position + 1)
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@ChapterActivity, "Render failed: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    // ─── Image chapter (plain photo uploads) ──────────────────────────────────
+
+//    private fun setupImageChapter() {
+//        findViewById<MaterialButton>(R.id.uploadImageButton).setOnClickListener { showImageSourceDialog() }
+//        // Ask AI → switch to Chat tab
+//        findViewById<MaterialButton>(R.id.askAIButton).setOnClickListener { switchToChat() }
+//        // For image chapters the View button opens the image in ChatActivity;
+//        // Ask does the same — both open ChatActivity with the image path
+//        loadImagePages()
+//    }
+
+    private fun showImageSourceDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Add Textbook Page")
+            .setItems(arrayOf("📷  Take Photo", "🖼️  Choose from Gallery")) { _, which ->
+                when (which) {
+                    0 -> openCamera()
+                    1 -> pickImageLauncher.launch("image/*")
+                }
+            }.show()
+    }
+
+    private fun openCamera() {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
+            != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                this, arrayOf(android.Manifest.permission.CAMERA), CAMERA_PERMISSION_CODE
+            ); return
+        }
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.TITLE, "AI_Guru_Page_${System.currentTimeMillis()}")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+        }
+        cameraImageUri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+        cameraImageUri?.let { cameraLauncher.launch(it) }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == CAMERA_PERMISSION_CODE && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
+            openCamera()
+    }
+
+    private fun savePage(imagePath: String) {
+        val timestamp = SimpleDateFormat("dd MMM yyyy HH:mm", Locale.getDefault()).format(Date())
+        val prefs = getSharedPreferences("chapters_prefs", MODE_PRIVATE)
+        val key = "imgpages_${subjectName}_${chapterName}"
+        val existing = prefs.getString(key, "[]") ?: "[]"
+        val arr = try { org.json.JSONArray(existing) } catch (_: Exception) { org.json.JSONArray() }
+        arr.put(org.json.JSONObject().apply {
+            put("path", imagePath)
+            put("timestamp", timestamp)
+        })
+        prefs.edit().putString(key, arr.toString()).apply()
+        imagePagePaths.add(imagePath)
+        pagesListData.add("Page uploaded - $timestamp")
+        pageListAdapter.notifyItemInserted(pagesListData.size - 1)
+        Toast.makeText(this, "Page saved!", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun loadImagePages() {
+        // Rebuild the PageListAdapter callbacks for image chapter
+        pageListAdapter = PageListAdapter(
+            pages = pagesListData,
+            onView = { position ->
+                if (position !in imagePagePaths.indices) return@PageListAdapter
+                val fragment = getOrCreateChatFragment()
+                switchToChat()
+                fragment.attachImage(imagePagePaths[position])
+            },
+            onAsk = { position ->
+                if (position !in imagePagePaths.indices) return@PageListAdapter
+                val fragment = getOrCreateChatFragment()
+                switchToChat()
+                fragment.attachImage(imagePagePaths[position])
+            }
+        )
+        pagesRecyclerView.adapter = pageListAdapter
+
+        val key = "imgpages_${subjectName}_${chapterName}"
+        val raw = getSharedPreferences("chapters_prefs", MODE_PRIVATE).getString(key, "[]") ?: "[]"
+        imagePagePaths.clear()
+        pagesListData.clear()
+        try {
+            val arr = org.json.JSONArray(raw)
+            for (i in 0 until arr.length()) {
+                val obj = arr.optJSONObject(i)
+                if (obj != null) {
+                    val path = obj.optString("path", "")
+                    val ts = obj.optString("timestamp", "")
+                    if (path.isNotBlank()) {
+                        imagePagePaths.add(path)
+                        pagesListData.add("Page - $ts")
+                    }
+                }
+            }
+        } catch (_: Exception) { }
+        pageListAdapter.notifyDataSetChanged()
+    }
+}

@@ -1,0 +1,164 @@
+package com.aiguruapp.student
+
+import android.content.Intent
+import android.os.Bundle
+import android.view.View
+import android.widget.*
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import com.aiguruapp.student.models.Quiz
+import com.aiguruapp.student.quiz.QuizApiClient
+import com.aiguruapp.student.utils.SessionManager
+import com.google.android.material.button.MaterialButton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+class QuizSetupActivity : BaseActivity() {
+
+    private lateinit var subjectName: String
+    private lateinit var chapterId: String
+    private lateinit var chapterTitle: String
+
+    private lateinit var difficultyGroup: RadioGroup
+    private lateinit var countGroup: RadioGroup
+    private lateinit var cbMcq: CheckBox
+    private lateinit var cbFillBlank: CheckBox
+    private lateinit var cbShortAnswer: CheckBox
+    private lateinit var generateButton: MaterialButton
+    private lateinit var loadingOverlay: FrameLayout
+
+    private val apiClient = QuizApiClient()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_quiz_setup)
+
+        subjectName  = intent.getStringExtra("subjectName")  ?: "Subject"
+        chapterId    = intent.getStringExtra("chapterId")    ?: ""
+        chapterTitle = intent.getStringExtra("chapterTitle") ?: "Chapter"
+
+        findViewById<ImageButton>(R.id.backButton).setOnClickListener { finish() }
+        findViewById<TextView>(R.id.chapterSubtitle).text = "$subjectName · $chapterTitle"
+
+        difficultyGroup = findViewById(R.id.difficultyGroup)
+        countGroup      = findViewById(R.id.countGroup)
+        cbMcq           = findViewById(R.id.cbMcq)
+        cbFillBlank     = findViewById(R.id.cbFillBlank)
+        cbShortAnswer   = findViewById(R.id.cbShortAnswer)
+        generateButton  = findViewById(R.id.generateButton)
+        loadingOverlay  = findViewById(R.id.loadingOverlay)
+
+        generateButton.setOnClickListener { onGenerateClicked() }
+    }
+
+    private fun onGenerateClicked() {
+        // Validate at least one type selected
+        val types = mutableListOf<String>()
+        if (cbMcq.isChecked)         types.add("mcq")
+        if (cbFillBlank.isChecked)   types.add("fill_blank_typed")
+        if (cbShortAnswer.isChecked) types.add("short_answer")
+
+        if (types.isEmpty()) {
+            Toast.makeText(this, "Please select at least one question type", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val difficulty = when (difficultyGroup.checkedRadioButtonId) {
+            R.id.rbEasy -> "easy"
+            R.id.rbHard -> "hard"
+            else        -> "medium"
+        }
+
+        val count = when (countGroup.checkedRadioButtonId) {
+            R.id.rb10 -> 10
+            R.id.rb15 -> 15
+            R.id.rb20 -> 20
+            else      -> 5
+        }
+
+        val userId = SessionManager.getFirestoreUserId(this)
+
+        setLoading(true)
+        lifecycleScope.launch {
+            try {
+                val quiz: Quiz = withContext(Dispatchers.IO) {
+                    apiClient.generateQuiz(
+                        subject       = subjectName,
+                        chapterId     = chapterId,
+                        chapterTitle  = chapterTitle,
+                        difficulty    = difficulty,
+                        questionTypes = types,
+                        count         = count,
+                        userId        = userId
+                    )
+                }
+                setLoading(false)
+                // Serialize & pass quiz to QuizActivity
+                startActivity(
+                    Intent(this@QuizSetupActivity, QuizActivity::class.java)
+                        .putExtra("quizJson", quiz.toTransferJson())
+                        .putExtra("subjectName", subjectName)
+                )
+                finish()
+            } catch (e: Exception) {
+                setLoading(false)
+                Toast.makeText(
+                    this@QuizSetupActivity,
+                    "Failed to generate quiz: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+
+    private fun setLoading(show: Boolean) {
+        loadingOverlay.visibility = if (show) View.VISIBLE else View.GONE
+        generateButton.isEnabled  = !show
+    }
+}
+
+// ── Simple Intent-safe serialization ──────────────────────────────────────────
+private fun Quiz.toTransferJson(): String {
+    val obj = org.json.JSONObject().apply {
+        put("id", id)
+        put("subject", subject)
+        put("chapter_id", chapterId)
+        put("chapter_title", chapterTitle)
+        put("difficulty", difficulty)
+        val qArray = org.json.JSONArray()
+        questions.forEach { q ->
+            val qObj = org.json.JSONObject().apply {
+                put("id", q.id)
+                put("type", q.type)
+                put("question", q.question)
+                put("explanation", q.explanation)
+                when (q) {
+                    is com.aiguruapp.student.models.QuizQuestion.MCQ -> {
+                        val opts = org.json.JSONArray()
+                        q.options.forEach { opts.put(it) }
+                        put("options", opts)
+                        put("correct_answer", q.correctAnswer)
+                    }
+                    is com.aiguruapp.student.models.QuizQuestion.FillBlankTyped -> {
+                        val ans = org.json.JSONArray()
+                        q.correctAnswers.forEach { ans.put(it) }
+                        put("correct_answers", ans)
+                        val hints = org.json.JSONArray()
+                        q.hints.forEach { hints.put(it) }
+                        put("hints", hints)
+                    }
+                    is com.aiguruapp.student.models.QuizQuestion.ShortAnswer -> {
+                        val kw = org.json.JSONArray()
+                        q.expectedKeywords.forEach { kw.put(it) }
+                        put("expected_keywords", kw)
+                        put("sample_answer", q.sampleAnswer)
+                    }
+                }
+            }
+            qArray.put(qObj)
+        }
+        put("questions", qArray)
+    }
+    return obj.toString()
+}
