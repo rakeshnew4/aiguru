@@ -203,6 +203,20 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             else saveNextPickedImageToChapter = false
         }
 
+    // Returns from PageViewerActivity — attach the rendered PDF page to chat and
+    // stay inside the current activity (ChapterActivity tabbed view or ChatHostActivity).
+    private val pageViewerLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == android.app.Activity.RESULT_OK) {
+                val data = result.data ?: return@registerForActivityResult
+                val filePath = data.getStringExtra("pdfPageFilePath") ?: return@registerForActivityResult
+                val pageNum = data.getIntExtra("pdfPageNumber", 1)
+                tutorSession.currentPage = pageNum
+                preloadPdfPage(java.io.File(filePath), pageNum)
+                chatDrawerLayout.closeDrawer(androidx.core.view.GravityCompat.START)
+            }
+        }
+
     private val cameraLauncher =
         registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
             if (success && cameraImageUri != null) launchCrop(cameraImageUri!!, isPdf = false)
@@ -807,7 +821,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     private fun onWorkspaceViewPage(index: Int) {
         if (isPdfChapterWorkspace) {
             if (chapterPdfPageCount <= 0) return
-            startActivity(
+            pageViewerLauncher.launch(
                 Intent(requireContext(), PageViewerActivity::class.java)
                     .putExtra("subjectName", subjectName)
                     .putExtra("chapterName", chapterName)

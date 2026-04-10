@@ -474,6 +474,19 @@ class BlackboardActivity : AppCompatActivity() {
             return
         }
 
+        // If the frame contains LaTeX, skip the typewriter animation and render directly
+        if (frame.text.contains('$')) {
+            val kalam = ResourcesCompat.getFont(this, R.font.kalam)
+            blackboardMarkwon.setMarkdown(contentText, preprocessLatex(frame.text))
+            contentText.typeface = kalam
+            contentText.setLineSpacing(0f, 1.6f)
+            stepsScrollView.post { stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }
+            if (!isPaused && frame.speech.isNotBlank()) {
+                contentText.postDelayed({ speakFrame(stepIdx, frameIdx) }, 200)
+            }
+            return
+        }
+
         // Setup typewriter transparent span
         val transparentSpan = ForegroundColorSpan(Color.TRANSPARENT)
         val initialSsb = SpannableStringBuilder(baseSsb)

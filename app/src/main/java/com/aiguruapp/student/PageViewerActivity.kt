@@ -112,15 +112,14 @@ class PageViewerActivity : AppCompatActivity() {
             Toast.makeText(this, "Page not rendered yet — wait a moment", Toast.LENGTH_SHORT).show()
             return
         }
-        // Use CLEAR_TOP so the existing ChatHostActivity is reused (not stacked on top).
-        // Then finish this PageViewerActivity so back goes to ChapterActivity.
-        startActivity(
-            Intent(this, ChatHostActivity::class.java)
-                .putExtra("subjectName", subjectName)
-                .putExtra("chapterName", chapterName)
+        // Return the page info to whoever launched us (FullChatFragment via its launcher).
+        // This keeps navigation inside the tabbed ChapterActivity instead of opening
+        // a standalone ChatHostActivity.
+        setResult(
+            android.app.Activity.RESULT_OK,
+            android.content.Intent()
                 .putExtra("pdfPageFilePath", file.absolutePath)
                 .putExtra("pdfPageNumber", currentPage + 1)
-                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
         )
         finish()
     }
