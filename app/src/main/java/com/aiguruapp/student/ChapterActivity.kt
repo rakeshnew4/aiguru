@@ -7,6 +7,8 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
+import android.view.GestureDetector
+import android.view.MotionEvent
 import android.view.View
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
@@ -16,6 +18,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.aiguruapp.student.adapters.PageListAdapter
 import com.aiguruapp.student.utils.ChapterMetricsTracker
 import com.aiguruapp.student.utils.PdfPageManager
@@ -58,6 +61,9 @@ class ChapterActivity : BaseActivity() {
         get() = "ncert_${subjectName}_${chapterName}"
             .replace(" ", "_").replace("/", "_").take(60)
 
+    // Swipe-to-switch-tabs gesture
+    private lateinit var swipeGestureDetector: GestureDetector
+
     /** OkHttp client for NCERT downloads — browser-like User-Agent + TLS 1.2/1.3 fallback.
      *  ncert.nic.in runs on older NIC servers that sometimes fail the default TLS handshake. */
     private val ncertHttpClient: OkHttpClient by lazy {
@@ -81,6 +87,18 @@ class ChapterActivity : BaseActivity() {
     private val cameraLauncher =
         registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
             if (success && cameraImageUri != null) savePage(cameraImageUri.toString())
+        }
+
+    /** Launched when the user taps "View" on a PDF page; receives the Ask AI result back. */
+    private val pageViewerForChapterLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val path = result.data?.getStringExtra("pdfPageFilePath") ?: return@registerForActivityResult
+                val page = result.data?.getIntExtra("pdfPageNumber", 1) ?: 1
+                val fragment = getOrCreateChatFragment()
+                switchToChat()
+                fragment.attachPdfPage(path, page)
+            }
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -129,6 +147,60 @@ class ChapterActivity : BaseActivity() {
         loadChapterType()
         loadMasteryScore()
         setupTabs()
+        setupSwipeToSwitchTabs()
+
+        val swipeRefresh = findViewById<SwipeRefreshLayout>(R.id.chapterSwipeRefresh)
+        swipeRefresh.setColorSchemeColors(getColor(R.color.colorPrimary), getColor(R.color.colorSecondary))
+        swipeRefresh.setOnRefreshListener {
+            pagesListData.clear()
+            pageListAdapter.notifyDataSetChanged()
+            loadChapterType()
+            loadMasteryScore()
+            swipeRefresh.isRefreshing = false
+        }
+    }
+
+    // ─── Swipe left/right to switch Pages ↔ Chat tabs ────────────────────────
+
+    private fun setupSwipeToSwitchTabs() {
+        swipeGestureDetector = GestureDetector(
+            this,
+            object : GestureDetector.SimpleOnGestureListener() {
+                private val SWIPE_MIN_DISTANCE = 80
+                private val SWIPE_MIN_VELOCITY = 200
+                override fun onFling(
+                    e1: MotionEvent?, e2: MotionEvent,
+                    velocityX: Float, velocityY: Float
+                ): Boolean {
+                    if (e1 == null) return false
+                    val dX = e2.x - e1.x
+                    val dY = e2.y - e1.y
+                    // Only treat as horizontal swipe when X dominates Y
+                    if (Math.abs(dX) < Math.abs(dY) * 1.5f) return false
+                    if (Math.abs(dX) < SWIPE_MIN_DISTANCE) return false
+                    if (Math.abs(velocityX) < SWIPE_MIN_VELOCITY) return false
+
+                    val tabLayout = findViewById<TabLayout>(R.id.tabLayout)
+                    val currentTab = tabLayout.selectedTabPosition
+                    if (dX < 0 && currentTab == 0) {
+                        // swipe left → go to Chat
+                        tabLayout.getTabAt(1)?.select()
+                        return true
+                    }
+                    if (dX > 0 && currentTab == 1) {
+                        // swipe right → go to Pages
+                        tabLayout.getTabAt(0)?.select()
+                        return true
+                    }
+                    return false
+                }
+            }
+        )
+    }
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        swipeGestureDetector.onTouchEvent(ev)
+        return super.dispatchTouchEvent(ev)
     }
 
     private fun setupTabs() {
@@ -142,12 +214,22 @@ class ChapterActivity : BaseActivity() {
         tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 if (tab.position == 0) {
-                    pagesContent.visibility  = View.VISIBLE
-                    chatContainer.visibility = View.GONE
+                    chatContainer.animate().alpha(0f).setDuration(200).withEndAction {
+                        chatContainer.visibility = View.GONE
+                        chatContainer.alpha = 1f
+                        pagesContent.alpha = 0f
+                        pagesContent.visibility = View.VISIBLE
+                        pagesContent.animate().alpha(1f).setDuration(300).start()
+                    }.start()
                 } else {
-                    pagesContent.visibility  = View.GONE
-                    chatContainer.visibility = View.VISIBLE
-                    getOrCreateChatFragment()
+                    pagesContent.animate().alpha(0f).setDuration(200).withEndAction {
+                        pagesContent.visibility = View.GONE
+                        pagesContent.alpha = 1f
+                        chatContainer.alpha = 0f
+                        chatContainer.visibility = View.VISIBLE
+                        getOrCreateChatFragment()
+                        chatContainer.animate().alpha(1f).setDuration(300).start()
+                    }.start()
                 }
             }
             override fun onTabUnselected(tab: TabLayout.Tab) {}
@@ -492,7 +574,7 @@ class ChapterActivity : BaseActivity() {
             try {
                 pdfPageManager.getPage(pdfId, pdfAssetPath, position)
                 withContext(Dispatchers.Main) {
-                    startActivity(
+                    pageViewerForChapterLauncher.launch(
                         Intent(this@ChapterActivity, PageViewerActivity::class.java)
                             .putExtra("subjectName", subjectName)
                             .putExtra("chapterName", chapterName)

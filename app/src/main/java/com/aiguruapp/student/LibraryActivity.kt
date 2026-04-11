@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.aiguruapp.student.models.LibraryBook
 import com.aiguruapp.student.utils.SessionManager
 import com.google.android.material.button.MaterialButton
@@ -48,6 +49,13 @@ class LibraryActivity : BaseActivity() {
         )
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
+
+        val swipeRefresh = findViewById<SwipeRefreshLayout>(R.id.librarySwipeRefresh)
+        swipeRefresh.setColorSchemeColors(getColor(R.color.colorPrimary), getColor(R.color.colorSecondary))
+        swipeRefresh.setOnRefreshListener {
+            scanLibraryAssets()
+            swipeRefresh.isRefreshing = false
+        }
 
         scanLibraryAssets()
     }
@@ -112,7 +120,7 @@ class LibraryActivity : BaseActivity() {
     // ─── Add to Subject dialog ────────────────────────────────────────────────
 
     private val defaultSubjects = listOf(
-        "Mathematics", "Science", "Computer", "English", "History", "Geography"
+        "My Subject",
     )
 
     private fun showAddToSubjectDialog(book: LibraryBook) {

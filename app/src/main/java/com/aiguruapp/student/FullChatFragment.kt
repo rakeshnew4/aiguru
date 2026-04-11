@@ -49,6 +49,7 @@ import com.aiguruapp.student.models.PageContent
 import com.aiguruapp.student.models.TutorMode
 import com.aiguruapp.student.models.TutorSession
 import com.aiguruapp.student.models.UserMetadata
+import com.aiguruapp.student.services.ResponseCacheService
 import com.aiguruapp.student.utils.ChapterMetricsTracker
 import com.aiguruapp.student.utils.MediaManager
 import com.aiguruapp.student.utils.PdfPageManager
@@ -93,7 +94,6 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     private lateinit var imagePreviewThumbnail: ImageView
     private lateinit var imagePreviewLabel: TextView
     private lateinit var removeImageButton: MaterialButton
-    private lateinit var languageButton: MaterialButton
     private lateinit var listeningIndicator: TextView
     private lateinit var bottomDescribeButton: MaterialButton
     private lateinit var plusButton: MaterialButton
@@ -145,11 +145,11 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     private lateinit var chapterName: String
     private var userId = ""
     private var cachedMetadata = UserMetadata()
-    private lateinit var quotaBannerChat: TextView
 
     // ── Modular Components ────────────────────────────────────────────────────
     private lateinit var historyRepo: ChatHistoryRepository
     private lateinit var notesRepo: NotesRepository
+    private lateinit var chapterNotesRepo: com.aiguruapp.student.notes.ChapterNotesRepository
     private lateinit var voiceManager: VoiceManager
     private lateinit var ttsManager: TextToSpeechManager
     private lateinit var mediaManager: MediaManager
@@ -186,6 +186,8 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     private var pendingCropIsPdf = false
     private var pendingCropPdfPageNumber = 0
     private var pendingCropPdfFile: File? = null
+    /** When true, the next crop result should be saved as a note instead of a chat attachment. */
+    private var pendingCropForNote = false
 
     // ── Tutor System ──────────────────────────────────────────────────────────
     private lateinit var tutorSession: TutorSession
@@ -230,7 +232,18 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                 android.app.Activity.RESULT_OK -> {
                     val croppedUri =
                         data?.let { UCrop.getOutput(it) } ?: return@registerForActivityResult
-                    if (pendingCropIsPdf) {
+                    // ── Crop-to-note path ─────────────────────────────────────────────────
+                    if (pendingCropForNote) {
+                        pendingCropForNote = false
+                        val cropUri = croppedUri
+                        val noteBase = com.aiguruapp.student.notes.ChapterNote(
+                            id       = java.util.UUID.randomUUID().toString(),
+                            type     = "image",
+                            content  = "",
+                            imageUri = cropUri.toString()
+                        )
+                        showCategoryPickerAndSaveNote(noteBase)
+                    } else if (pendingCropIsPdf) {
                         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                             try {
                                 val bmp: android.graphics.Bitmap = try {
@@ -283,6 +296,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                 }
 
                 UCrop.RESULT_ERROR -> {
+                    pendingCropForNote = false
                     android.util.Log.w("FullChatFragment",
                         "UCrop error: ${data?.let { UCrop.getError(it)?.message }}")
                     if (pendingCropIsPdf) pendingCropPdfFile?.let {
@@ -293,6 +307,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                 }
 
                 else -> {
+                    pendingCropForNote = false
                     if (pendingCropIsPdf) pendingCropPdfFile?.let {
                         applyFullPdfPage(it, pendingCropPdfPageNumber)
                     } else {
@@ -341,7 +356,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             if (meta != null) {
                 cachedMetadata = meta
                 // Guard: initializeUI may not have run yet if Firestore responds very fast
-                if (::quotaBannerChat.isInitialized) updateQuotaBanner()
+
             }
         })
 
@@ -368,6 +383,8 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
         historyRepo = ChatHistoryRepository(userId, subjectName, chapterName)
         notesRepo = NotesRepository(requireContext(), userId, subjectName, chapterName)
+        chapterNotesRepo = com.aiguruapp.student.notes.ChapterNotesRepository(
+            requireContext(), userId, subjectName, chapterName)
         voiceManager = VoiceManager(requireActivity())
         ttsManager = TextToSpeechManager(requireContext())
         mediaManager = MediaManager(requireContext())
@@ -376,9 +393,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         initializeUI(view)
         initializeChapterWorkspaceDrawer()
 
-        if (isAutoExplainActive) {
-            Toast.makeText(requireContext(), "Blackboard mode on", Toast.LENGTH_SHORT).show()
-        }
+        // Blackboard preference is remembered across sessions (default ON).
 
         historyRepo.loadHistory(
             onMessages = { msgs ->
@@ -446,13 +461,19 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             FirestoreManager.getUserMetadata(userId, onSuccess = { meta ->
                 if (meta != null) {
                     cachedMetadata = meta
-                    activity?.runOnUiThread { updateQuotaBanner() }
                 }
             })
         }
         if (isVoiceModeActive && isAutoExplainActive && !isListening) {
             setVoiceModeStatus("🎙️ Listening… speak now", "#2E7D32")
             startVoiceLoopListening()
+        }
+        // Re-apply any language change made in HomeActivity while this screen was paused
+        val resumeLang = com.aiguruapp.student.utils.SessionManager.getPreferredLang(requireContext())
+        if (resumeLang.isNotBlank() && resumeLang != currentLang) {
+            currentLang = resumeLang
+            currentLangName = LANGUAGES.entries.firstOrNull { it.value == resumeLang }?.key ?: currentLangName
+            ttsManager.setLocale(java.util.Locale.forLanguageTag(currentLang))
         }
     }
 
@@ -520,6 +541,16 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                             .putExtra(BlackboardActivity.EXTRA_LANGUAGE_TAG, currentLang)
                     )
                 }
+            },
+            onSaveNoteClick = { msg ->
+                val text = TutorController.extractAnswerForDisplay(msg.content).take(4000)
+                showCategoryPickerAndSaveNote(
+                    com.aiguruapp.student.notes.ChapterNote(
+                        id       = msg.id,
+                        type     = "ai",
+                        content  = text
+                    )
+                )
             }
         )
         messagesRecyclerView.layoutManager = LinearLayoutManager(requireContext()).apply {
@@ -540,7 +571,6 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         imagePreviewThumbnail = view.findViewById(R.id.imagePreviewThumbnail)
         imagePreviewLabel = view.findViewById(R.id.imagePreviewLabel)
         removeImageButton = view.findViewById(R.id.removeImageButton)
-        languageButton = view.findViewById(R.id.languageButton)
         pagesDrawerCloseButton = view.findViewById(R.id.pagesDrawerCloseButton)
         pagesDrawerAddPageButton = view.findViewById(R.id.pagesDrawerAddPageButton)
         pagesDrawerTitle = view.findViewById(R.id.pagesDrawerTitle)
@@ -559,13 +589,18 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         waveBar2 = view.findViewById(R.id.waveBar2)
         waveBar3 = view.findViewById(R.id.waveBar3)
         waveBar4 = view.findViewById(R.id.waveBar4)
-        quotaBannerChat = view.findViewById(R.id.quotaBannerChat)
 
         plusButton.setOnClickListener { toggleQuickActions() }
-        languageButton.setOnClickListener { showLanguagePicker() }
         pagesDrawerCloseButton.setOnClickListener { chatDrawerLayout.closeDrawer(GravityCompat.START) }
 
-        updateLanguageButton()
+        // Load language preference saved during signup/settings
+        val savedLang = com.aiguruapp.student.utils.SessionManager.getPreferredLang(requireContext())
+        if (savedLang.isNotBlank()) {
+            currentLang = savedLang
+            currentLangName = LANGUAGES.entries.firstOrNull { it.value == savedLang }?.key ?: currentLangName
+            ttsManager.setLocale(java.util.Locale.forLanguageTag(currentLang))
+        }
+
         updateLiveModeUi()
         setupButtons(view)
         setupQuickActions(view)
@@ -616,6 +651,21 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         saveNotesButton.setOnClickListener { saveLastAIMessageAsNotes() }
         viewNotesButton.setOnClickListener { viewSavedNotes() }
 
+        imagePreviewThumbnail.setOnLongClickListener {
+            val curUri = selectedImageUri ?: pendingDisplayUri
+            if (curUri != null) {
+                androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                    .setTitle("Add to Notes")
+                    .setMessage("Crop a region of this image and add it as a note?")
+                    .setPositiveButton("✂️ Crop & Add") { _, _ ->
+                        pendingCropForNote = true
+                        launchCrop(curUri, isPdf = false)
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            }
+            true
+        }
         imagePreviewThumbnail.setOnClickListener {
             pendingDisplayUri?.let { uri ->
                 startActivity(
@@ -685,6 +735,11 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         view.findViewById<MaterialButton>(R.id.flashcardsButton).setOnClickListener {
             generateFlashcards()
             closeQuickActions()
+        }
+        view.findViewById<MaterialButton>(R.id.createPageButton).setOnClickListener {
+            saveNextPickedImageToChapter = true
+            closeQuickActions()
+            showImageSourceDialog()
         }
     }
 
@@ -806,10 +861,9 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                 val item = arr.optJSONObject(i)
                 if (item != null) {
                     val path = item.optString("path", "")
-                    val ts = item.optString("timestamp", "")
                     if (path.isNotBlank()) {
                         chapterImagePaths.add(path)
-                        chapterPages.add(if (ts.isBlank()) "Image Page ${i + 1}" else "Page • $ts")
+                        chapterPages.add("Page ${chapterImagePaths.size}")
                     }
                 }
             }
@@ -1011,23 +1065,24 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         val imagesDir = File(requireContext().filesDir, "chat_images").also { it.mkdirs() }
         val destFile = File(imagesDir, "crop_${System.currentTimeMillis()}.jpg")
         val options = UCrop.Options().apply {
-            setToolbarTitle(if (isPdf) "Select Region to Ask About" else "Crop Image")
-            setToolbarColor(ContextCompat.getColor(requireContext(), android.R.color.white))
-            setToolbarWidgetColor(ContextCompat.getColor(requireContext(), android.R.color.black))
-            setActiveControlsWidgetColor(android.graphics.Color.parseColor("#1565C0"))
+            setToolbarTitle(if (isPdf) "Select Region" else "Crop Image")
+            // Dark toolbar so the white ✓ and ✕ icons are always visible
+            setToolbarColor(android.graphics.Color.parseColor("#1A237E"))
+            setToolbarWidgetColor(android.graphics.Color.WHITE)
+            setStatusBarColor(android.graphics.Color.parseColor("#0D1650"))
+            setActiveControlsWidgetColor(android.graphics.Color.parseColor("#5C6BC0"))
             setFreeStyleCropEnabled(true)
             setShowCropGrid(true)
             setShowCropFrame(true)
-            setHideBottomControls(false)
+            setHideBottomControls(true)
             withMaxResultSize(1920, 1920)
             setCompressionFormat(android.graphics.Bitmap.CompressFormat.JPEG)
             setCompressionQuality(90)
-            setDimmedLayerColor(android.graphics.Color.parseColor("#88000000"))
+            setDimmedLayerColor(android.graphics.Color.parseColor("#AA000000"))
         }
         try {
             val uCrop = UCrop.of(sourceUri, Uri.fromFile(destFile))
                 .withOptions(options)
-                .withAspectRatio(0f, 0f)
                 .withMaxResultSize(1920, 1920)
             cropLauncher.launch(uCrop.getIntent(requireContext()))
         } catch (e: Exception) {
@@ -1110,7 +1165,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     private fun buildAiClient(): AiClient {
         val cfg = AdminConfigRepository.config
         return ServerProxyClient(
-            serverUrl = cfg.serverUrl.ifBlank { "http://108.181.187.227:8003" },
+            serverUrl = AdminConfigRepository.effectiveServerUrl(),
             modelName = "",
             apiKey = cfg.serverApiKey,
             userId = userId
@@ -1289,13 +1344,13 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                         // Increment question counter in-memory and Firestore
                         // Guard against day-rollover: if it's a new UTC day, reset to 1 instead
                         // of adding to yesterday's stale count (which would falsely trigger the limit)
-                        val isNewQuotaDay = PlanEnforcer.isNewQuotaDay(cachedMetadata.questionsUpdatedAt)
+                        val isNewQuotaDay = cachedMetadata.questionsUpdatedAt > 0L &&
+                            PlanEnforcer.isNewQuotaDay(cachedMetadata.questionsUpdatedAt)
                         PlanEnforcer.recordQuestionAsked(userId, isBlackboard = false, previousUpdatedAt = cachedMetadata.questionsUpdatedAt)
                         cachedMetadata = cachedMetadata.copy(
                             chatQuestionsToday = if (isNewQuotaDay) 1 else cachedMetadata.chatQuestionsToday + 1,
                             questionsUpdatedAt = System.currentTimeMillis()
                         )
-                        updateQuotaBanner()
                         showLoading(false)
                         val rawResponse = accumulated.toString()
                         if (rawResponse.isNotEmpty()) {
@@ -1375,23 +1430,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                             if (autoSaveNotes && saveNotesType != null) {
                                 notesRepo.save(reply.response, saveNotesType!!)
                             }
-                            if (isAutoExplainActive) {
-                                lastInputWasVoice = false
-                                if (isVoiceModeActive) {
-                                    setVoiceModeStatus("🎯 Blackboard open…", "#6A1B9A")
-                                    voiceManager.stopInterruptListening()
-                                }
-                                val convId =
-                                    "${FirestoreManager.safeId(subjectName)}__${FirestoreManager.safeId(chapterName)}"
-                                startActivity(
-                                    Intent(ctx, BlackboardActivity::class.java)
-                                        .putExtra(BlackboardActivity.EXTRA_MESSAGE, reply.response)
-                                        .putExtra(BlackboardActivity.EXTRA_MESSAGE_ID, streamingId)
-                                        .putExtra(BlackboardActivity.EXTRA_USER_ID, userId)
-                                        .putExtra(BlackboardActivity.EXTRA_CONVERSATION_ID, convId)
-                                        .putExtra(BlackboardActivity.EXTRA_LANGUAGE_TAG, currentLang)
-                                )
-                            } else if (serverSuggestBlackboard) {
+                            if (serverSuggestBlackboard || isAutoExplainActive) {
                                 showBlackboardNudge(finalMsg)
                             }
                         } else {
@@ -1599,22 +1638,56 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     }
 
     private fun viewSavedNotes() {
-        notesRepo.loadAll(
-            onResult = { text ->
-                AlertDialog.Builder(requireContext())
-                    .setTitle("📋 Saved Notes — $chapterName")
-                    .setMessage(text)
-                    .setPositiveButton("OK", null)
-                    .show()
-            },
-            onEmpty = {
-                Toast.makeText(requireContext(),
-                    "No saved notes yet — generate and save notes first!", Toast.LENGTH_SHORT).show()
-            },
-            onFailure = {
-                Toast.makeText(requireContext(), "Couldn't load notes.", Toast.LENGTH_SHORT).show()
-            }
+        com.aiguruapp.student.notes.NotesActivity.launch(
+            requireContext(), subjectName, chapterName, userId
         )
+    }
+
+    /**
+     * Shows a category picker dialog, then saves [note] with the chosen category.
+     * If reusing an existing note ID (AI message), updates it in place.
+     */
+    private fun showCategoryPickerAndSaveNote(note: com.aiguruapp.student.notes.ChapterNote) {
+        val cats = chapterNotesRepo.getCategories()
+        val options = (cats + listOf("＋ New Category...")).toTypedArray()
+        var chosen = cats.firstOrNull() ?: "General"
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("📌 Add to Notes")
+            .setSingleChoiceItems(options, 0) { _, which ->
+                chosen = if (which < cats.size) cats[which] else "__new__"
+            }
+            .setPositiveButton("Save") { _, _ ->
+                if (chosen == "__new__") {
+                    showNewCategoryInput { newCat ->
+                        chapterNotesRepo.addCategory(newCat)
+                        chapterNotesRepo.saveNote(note.copy(category = newCat))
+                        Toast.makeText(requireContext(), "✅ Added to Notes ($newCat)", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    chapterNotesRepo.saveNote(note.copy(category = chosen))
+                    Toast.makeText(requireContext(), "✅ Added to Notes", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showNewCategoryInput(onCreated: (String) -> Unit) {
+        val input = android.widget.EditText(requireContext()).apply {
+            hint = "Category name"
+            setPadding(48, 24, 48, 8)
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                    android.text.InputType.TYPE_TEXT_FLAG_CAP_WORDS
+        }
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("New Category")
+            .setView(input)
+            .setPositiveButton("Add") { _, _ ->
+                val name = input.text.toString().trim()
+                if (name.isNotBlank()) onCreated(name)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     // ── Loading / Error ───────────────────────────────────────────────────────
@@ -1627,27 +1700,9 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
     }
 
-    /** Refresh the quota banner above the input bar with today's remaining questions. */
+    /** Refresh the quota pill in the top info bar with today's remaining questions. */
     private fun updateQuotaBanner() {
-        if (!::quotaBannerChat.isInitialized) return
-        val limits = AdminConfigRepository.resolveEffectiveLimits(
-            cachedMetadata.planId, cachedMetadata.planLimits
-        )
-        val left = PlanEnforcer.getQuestionsLeft(cachedMetadata, limits, isBlackboard = false)
-        if (left < 0) {
-            // unlimited — hide banner
-            quotaBannerChat.visibility = View.GONE
-            return
-        }
-        quotaBannerChat.visibility = View.VISIBLE
-        quotaBannerChat.text = when {
-            left == 0 -> "💬 No questions left today — upgrade for unlimited access!"
-            left <= 3 -> "💬 Only $left question${if (left == 1) "" else "s"} left today ⚠️"
-            else      -> "💬 $left questions left today"
-        }
-        quotaBannerChat.setBackgroundColor(
-            android.graphics.Color.parseColor(if (left <= 3) "#BF360C" else "#37474F")
-        )
+        // quota display moved to HomeActivity
     }
 
     // ── VoiceRecognitionCallback ──────────────────────────────────────────────
@@ -1702,40 +1757,6 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             if (perm == android.Manifest.permission.RECORD_AUDIO) startVoiceInput()
             else if (perm == android.Manifest.permission.CAMERA) openCamera()
         }
-    }
-
-    // ── Language ──────────────────────────────────────────────────────────────
-
-    private fun showLanguagePicker() {
-        val names = LANGUAGES.keys.toTypedArray()
-        val currentIdx = names.indexOf(currentLangName).coerceAtLeast(0)
-        AlertDialog.Builder(requireContext())
-            .setTitle("🌐 Select Response Language")
-            .setSingleChoiceItems(names, currentIdx) { dialog, which ->
-                currentLangName = names[which]
-                currentLang = LANGUAGES[currentLangName] ?: "en-US"
-                updateLanguageButton()
-                ttsManager.setLocale(Locale.forLanguageTag(currentLang))
-                dialog.dismiss()
-                Toast.makeText(requireContext(), "Lang:$currentLangName", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun updateLanguageButton() {
-        val label = when (currentLang) {
-            "en-US" -> "English"
-            "hi-IN" -> "Hindi"
-            "bn-IN" -> "Bengali"
-            "te-IN" -> "Telugu"
-            "ta-IN" -> "Tamil"
-            "mr-IN" -> "Marathi"
-            "kn-IN" -> "Kannada"
-            "gu-IN" -> "Gujarati"
-            else -> currentLangName
-        }
-        languageButton.text = "Language: $label ▾"
     }
 
     // ── Interactive Voice Chat Mode ───────────────────────────────────────────

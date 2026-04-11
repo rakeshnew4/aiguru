@@ -43,7 +43,8 @@ class MessageAdapter(
     private val onStopClick: (Message) -> Unit = {},
     private val onImageClick: (Message) -> Unit = {},
     private val onRetry: (Message) -> Unit = {},
-    private val onExplainClick: (Message) -> Unit = {}
+    private val onExplainClick: (Message) -> Unit = {},
+    private val onSaveNoteClick: (Message) -> Unit = {}
 ) : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() {
 
     private val dp = context.resources.displayMetrics.density
@@ -211,6 +212,9 @@ class MessageAdapter(
                 }
                 val speakBtn = actionButton("🔊") { onVoiceClick(message) }
                 val stopBtn = actionButton("■") { onStopClick(message) }
+                val saveNoteBtn = actionButton("📌") { onSaveNoteClick(message) }.apply {
+                    setTextColor(Color.parseColor("#1565C0"))
+                }
                 val explainBtn = actionButton("BB") { onExplainClick(message) }.apply {
                     setTextColor(Color.WHITE)
                     val bg = GradientDrawable().apply {
@@ -225,6 +229,7 @@ class MessageAdapter(
                 speakRow.addView(copyBtn)
                 speakRow.addView(speakBtn)
                 speakRow.addView(stopBtn)
+                speakRow.addView(saveNoteBtn)
                 speakRow.addView(explainBtn)
                 bubble.addView(speakRow)
             }

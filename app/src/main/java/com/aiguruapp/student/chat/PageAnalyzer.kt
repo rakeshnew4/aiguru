@@ -39,7 +39,7 @@ object PageAnalyzer {
         onError: (String) -> Unit
     ) {
         val cfg = AdminConfigRepository.config
-        val serverUrl = cfg.serverUrl.ifBlank { "http://108.181.187.227:8003" }.trimEnd('/')
+        val serverUrl = AdminConfigRepository.effectiveServerUrl().trimEnd('/')
         val endpoint = "$serverUrl/analyze-image"
 
         val body = JSONObject().apply {

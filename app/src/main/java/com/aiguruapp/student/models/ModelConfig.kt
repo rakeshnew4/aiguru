@@ -4,7 +4,7 @@ import android.content.Context
 
 /** Persists the server URL and optional model override for the AI Guru backend. */
 data class ModelConfig(
-    val serverUrl: String = "http://108.181.187.227:8003/chat-stream",
+    val serverUrl: String = "",
     val serverModel: String = "",
     val serverApiKey: String = ""
 ) {
@@ -14,7 +14,7 @@ data class ModelConfig(
         fun load(context: Context): ModelConfig {
             val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             return ModelConfig(
-                serverUrl    = p.getString("server_url",    "http://108.181.187.227:8003")!!,
+                serverUrl    = p.getString("server_url",    "")!!,
                 serverModel  = p.getString("server_model",  "")!!,
                 serverApiKey = p.getString("server_api_key", "")!!
             )

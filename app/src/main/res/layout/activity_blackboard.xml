@@ -2,7 +2,7 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#1E2235"
+    android:background="@drawable/blackboard"
     android:keepScreenOn="true"
     android:fitsSystemWindows="true">
 
@@ -15,10 +15,10 @@
         android:gravity="center"
         android:visibility="visible">
 
-        <ProgressBar
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:indeterminateTint="#5C5BD4" />
+        <com.aiguruapp.student.widget.BoxSpinnerView
+            android:id="@+id/boxSpinner"
+            android:layout_width="64dp"
+            android:layout_height="64dp" />
 
         <TextView
             android:id="@+id/loadingText"

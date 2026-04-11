@@ -146,7 +146,7 @@ object BlackboardGenerator {
 
         // ── 2. Generate via LLM ───────────────────────────────────────────────
         val cfg = AdminConfigRepository.config
-        val serverUrl = cfg.serverUrl.ifBlank { "http://108.181.187.227:8003" }
+        val serverUrl = AdminConfigRepository.effectiveServerUrl()
 
         val server = ServerProxyClient(
             serverUrl = serverUrl,

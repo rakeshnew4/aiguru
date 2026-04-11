@@ -8,7 +8,6 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -41,7 +40,7 @@ class SubscriptionActivity : BaseActivity(), PaymentResultWithDataListener {
         private const val TAG = "SubscriptionActivity"
     }
 
-    private lateinit var school: School
+    private var school: School? = null
     private lateinit var paymentClient: PaymentApiClient
     private var selectedPaidPlan: SchoolPlan? = null
     private var selectedPaidButton: MaterialButton? = null
@@ -66,11 +65,7 @@ class SubscriptionActivity : BaseActivity(), PaymentResultWithDataListener {
 
         school = ConfigManager.getSchool(this, schoolId)
             ?: ConfigManager.getSchools(this).firstOrNull()
-            ?: run {
-                Toast.makeText(this, "No school configuration found. Please contact support.", Toast.LENGTH_LONG).show()
-                finish()
-                return
-            }
+        // Continue even if school is null — plans and payment work without local school config
 
         paymentClient = PaymentApiClient(resolvePaymentBaseUrl())
 
@@ -81,22 +76,25 @@ class SubscriptionActivity : BaseActivity(), PaymentResultWithDataListener {
     private fun resolvePaymentBaseUrl(): String {
         val configured = BuildConfig.PAYMENT_BASE_URL.trim()
         if (configured.isNotBlank()) return configured
-        return AdminConfigRepository.config.serverUrl.ifBlank { "http://108.181.187.227:8003" }
+        return AdminConfigRepository.effectiveServerUrl()
     }
 
     private fun applySchoolBranding() {
-        val branding = school.branding
-        runCatching {
-            val primary = Color.parseColor(branding.primaryColor)
-            findViewById<LinearLayout>(R.id.subscriptionHeader)
-                .setBackgroundColor(primary)
+        val branding = school?.branding
+        if (branding != null) {
+            runCatching {
+                val primary = Color.parseColor(branding.primaryColor)
+                findViewById<LinearLayout>(R.id.subscriptionHeader)
+                    .setBackgroundColor(primary)
+            }
+            findViewById<TextView>(R.id.schoolLogoText).text = branding.logoEmoji
         }
         val studentName = SessionManager.getStudentName(this)
         val studentId = SessionManager.getStudentId(this)
-        findViewById<TextView>(R.id.schoolNameHeader).text = school.name
+        val schoolName = school?.name ?: SessionManager.getSchoolName(this)
+        findViewById<TextView>(R.id.schoolNameHeader).text = schoolName
         findViewById<TextView>(R.id.studentInfoHeader).text =
             "$studentName  •  ID: $studentId"
-        findViewById<TextView>(R.id.schoolLogoText).text = branding.logoEmoji
     }
 
     // ── Plan loading ─────────────────────────────────────────────────────
@@ -268,15 +266,11 @@ class SubscriptionActivity : BaseActivity(), PaymentResultWithDataListener {
     private fun startFirestorePlanSelection(plan: FirestorePlan, ctaButton: MaterialButton) {
         if (isPaymentInFlight) { showToast("Payment is already in progress"); return }
         if (plan.isFree) {
-            val userId = SessionManager.getFirestoreUserId(this)
+            // Free plan — save locally; server does not need to act
             SessionManager.savePlan(this, plan.id, plan.name)
             SessionManager.savePlanExpiry(this, 0L)
             selectedValidityDays = 0
-            FirestoreManager.updateUserPlan(
-                userId = userId, planId = plan.id, planName = plan.name,
-                limits = AdminConfigRepository.resolveEffectiveLimits(plan.id),
-                onSuccess = { navigateHome() }, onFailure = { navigateHome() }
-            )
+            navigateHome()
             return
         }
         // Wrap as SchoolPlan for the shared Razorpay checkout flow
@@ -299,7 +293,19 @@ class SubscriptionActivity : BaseActivity(), PaymentResultWithDataListener {
         val recommendedPlanId = ConfigManager.getAppConfig(this)
             .let { "BASIC" }  // Could be read from config in future
 
-        school.plans.forEach { plan ->
+        val schoolPlans = school?.plans ?: emptyList()
+        if (schoolPlans.isEmpty()) {
+            val tv = TextView(this).apply {
+                text = "No plans available right now.\nPlease check back later or contact support."
+                textSize = 14f
+                setTextColor(Color.parseColor("#666B8A"))
+                setPadding(32, 48, 32, 48)
+                gravity = android.view.Gravity.CENTER
+            }
+            container.addView(tv)
+            return
+        }
+        schoolPlans.forEach { plan ->
             val card = inflater.inflate(R.layout.item_plan_card, container, false)
             bindPlanCard(card, plan, plan.id == recommendedPlanId)
             container.addView(card)
@@ -307,10 +313,10 @@ class SubscriptionActivity : BaseActivity(), PaymentResultWithDataListener {
     }
 
     private fun bindPlanCard(view: View, plan: SchoolPlan, isRecommended: Boolean) {
-        val branding = school.branding
-        val primaryColor = runCatching { Color.parseColor(branding.primaryColor) }
+        val branding = school?.branding
+        val primaryColor = runCatching { Color.parseColor(branding?.primaryColor ?: "") }
             .getOrDefault(Color.parseColor("#1565C0"))
-        val accentColor = runCatching { Color.parseColor(branding.accentColor) }
+        val accentColor = runCatching { Color.parseColor(branding?.accentColor ?: "") }
             .getOrDefault(Color.parseColor("#1A1A2E"))
 
         view.findViewById<TextView>(R.id.planName).apply {
@@ -420,7 +426,7 @@ class SubscriptionActivity : BaseActivity(), PaymentResultWithDataListener {
         }
 
         val options = JSONObject().apply {
-            put("name", order.checkoutName.ifBlank { school.name })
+            put("name", order.checkoutName.ifBlank { school?.name ?: "AI Guru" })
             put("description", order.checkoutDescription.ifBlank { "${plan.name} plan" })
             put("order_id", order.orderId)
             put("currency", order.currency.ifBlank { "INR" })
@@ -432,7 +438,7 @@ class SubscriptionActivity : BaseActivity(), PaymentResultWithDataListener {
             })
 
             put("theme", JSONObject().apply {
-                put("color", school.branding.primaryColor)
+                put("color", school?.branding?.primaryColor ?: "#1565C0")
             })
 
             put("prefill", JSONObject().apply {
@@ -529,27 +535,15 @@ class SubscriptionActivity : BaseActivity(), PaymentResultWithDataListener {
         val expiryMs = if (selectedValidityDays > 0)
             now + selectedValidityDays.toLong() * 86_400_000L else 0L
 
+        // Save locally so quota checks work offline immediately.
+        // The server (FastAPI) has already written the authoritative plan record
+        // to users_table/{userId} in Firestore after verifyPayment succeeded.
+        // Android does NOT write plan data to Firestore to prevent client-side tampering.
         SessionManager.savePlan(this, plan.id, plan.name)
         SessionManager.savePlanExpiry(this, expiryMs)
 
-        val userId = SessionManager.getFirestoreUserId(this)
-        FirestoreManager.updateUserPlan(
-            userId = userId,
-            planId = plan.id,
-            planName = plan.name,
-            planStartDate = now,
-            planExpiryDate = expiryMs,
-            limits = AdminConfigRepository.resolveEffectiveLimits(plan.id),
-            onSuccess = {
-                setPaymentLoading(false)
-                navigateHome()
-            },
-            onFailure = {
-                // Keep UX smooth if Firestore write is delayed; local plan is already updated.
-                setPaymentLoading(false)
-                navigateHome()
-            }
-        )
+        setPaymentLoading(false)
+        navigateHome()
     }
 
     private fun setPaymentLoading(loading: Boolean, statusMessage: String = "") {

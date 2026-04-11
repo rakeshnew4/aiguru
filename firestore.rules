@@ -28,6 +28,18 @@ service cloud.firestore {
       }
     }
 
+    // ── Server-managed user metadata (plan, quotas, tokens) ───────────────────
+    // Plan/subscription fields are written exclusively by the FastAPI server.
+    // The Android client may only read, and may update the daily question counters.
+    match /users_table/{userId} {
+      allow read: if isOwner(userId);
+      // Client may only increment the three daily-quota counter fields.
+      // All other fields (plan, tokens, expiry, etc.) remain server-only.
+      allow update: if isOwner(userId)
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['chat_questions_today', 'bb_sessions_today', 'questions_updated_at']);
+    }
+
     // ── Bootstrap / app-start collections (public read, no client write) ───────
 
     // Schools — needed before login (SchoolLoginActivity dropdown)
@@ -96,9 +108,12 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // ── Admin / server config (never accessible from clients) ────────────────
+    // ── Admin / server config (readable by signed-in clients, never writable) ─
+    // Android app reads admin_config/global for server URL, model tiers, and
+    // maintenance messages. Writing is server-only via service account.
     match /admin_config/{docId} {
-      allow read, write: if false;
+      allow read: if isSignedIn();
+      allow write: if false;
     }
 
     // ── Blackboard fallback cache (server-written, no client access) ──────────

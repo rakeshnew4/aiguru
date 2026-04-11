@@ -25,6 +25,7 @@ object SessionManager {
     private const val KEY_GRADE = "grade"
     private const val KEY_SIGNUP_COMPLETE = "signup_complete"
     private const val KEY_FIREBASE_UID = "firebase_uid"
+    private const val KEY_PREF_LANG = "pref_lang"
 
     private fun prefs(context: Context): SharedPreferences =
         context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -180,8 +181,8 @@ object SessionManager {
             schoolId  = getSchoolId(context),
             schoolName = getSchoolName(context),
             grade     = getGrade(context),
-            planId    = getPlanId(context),
-            planName  = getPlanName(context),
+            planId    = getPlanId(context).ifBlank { "free" },
+            planName  = getPlanName(context).ifBlank { "Free" },
             createdAt = prefs.getLong("metadata_created", now),
             updatedAt = now
         )
@@ -190,4 +191,14 @@ object SessionManager {
     fun completeSignup(context: Context) {
         prefs(context).edit().putBoolean(KEY_SIGNUP_COMPLETE, true).apply()
     }
+
+    // ── Language Preference ───────────────────────────────────────────────────
+
+    fun savePreferredLang(context: Context, langCode: String) {
+        prefs(context).edit().putString(KEY_PREF_LANG, langCode).apply()
+    }
+
+    /** Returns the BCP-47 lang code (e.g. "hi-IN"), or empty string if not set. */
+    fun getPreferredLang(context: Context): String =
+        prefs(context).getString(KEY_PREF_LANG, "") ?: ""
 }

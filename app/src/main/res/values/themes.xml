@@ -73,4 +73,10 @@
         <item name="android:textColor">@color/colorPrimary</item>
     </style>
 
+    <!-- Rounded corners overlay for ShapeableImageView in note cards -->
+    <style name="RoundedCorners10" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">10dp</item>
+    </style>
+
 </resources>

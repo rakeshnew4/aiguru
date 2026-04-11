@@ -329,19 +329,12 @@ object PlanEnforcer {
         limits: PlanLimits,
         isBlackboard: Boolean
     ): CheckResult {
-        val today = utcDayOf(System.currentTimeMillis())
-        val lastDay = utcDayOf(metadata.questionsUpdatedAt)
-        val isSameDay = lastDay == today
+        val isSameDay = metadata.questionsUpdatedAt > 0L &&
+            utcDayOf(metadata.questionsUpdatedAt) == utcDayOf(System.currentTimeMillis())
 
         if (isBlackboard) {
-            // Use stored plan limit if available, else fall back to admin config limit
-            val limit = when {
-                metadata.planDailyBbLimit > 0  -> metadata.planDailyBbLimit
-                limits.dailyBlackboardSessions > 0 -> limits.dailyBlackboardSessions
-                else -> 0 // 0 = unlimited
-            }
+            val limit = limits.dailyBlackboardSessions
             if (limit <= 0) return CheckResult(allowed = true)
-            // Use max of Firestore value and in-memory counter (handles pre-ack race)
             val fsUsed = if (isSameDay) metadata.bbSessionsToday else 0
             val used = maxOf(fsUsed, inMemEffectiveBb(metadata.userId))
             if (used >= limit) {
@@ -353,16 +346,9 @@ object PlanEnforcer {
                 )
             }
         } else {
-            // Use stored plan limit if available, else fall back to admin config limit
-            val baseLimit = when {
-                metadata.planDailyChatLimit > 0  -> metadata.planDailyChatLimit
-                limits.dailyChatQuestions > 0    -> limits.dailyChatQuestions
-                else -> 0 // 0 = unlimited
-            }
+            val baseLimit = limits.dailyChatQuestions
             if (baseLimit <= 0) return CheckResult(allowed = true)
-            // Bonus questions from referrals increase the effective daily limit
             val effectiveLimit = baseLimit + metadata.bonusQuestionsToday.coerceAtLeast(0)
-            // Use max of Firestore value and in-memory counter (handles pre-ack race)
             val fsUsed = if (isSameDay) metadata.chatQuestionsToday else 0
             val used = maxOf(fsUsed, inMemEffectiveChat(metadata.userId))
             if (used >= effectiveLimit) {
@@ -386,34 +372,22 @@ object PlanEnforcer {
         limits: PlanLimits,
         isBlackboard: Boolean
     ): Int {
-        val today = utcDayOf(System.currentTimeMillis())
-        val lastDay = utcDayOf(metadata.questionsUpdatedAt)
-        val isSameDay = lastDay == today
-
+        val isSameDay = metadata.questionsUpdatedAt > 0L &&
+            utcDayOf(metadata.questionsUpdatedAt) == utcDayOf(System.currentTimeMillis())
         return if (isBlackboard) {
-            val limit = when {
-                metadata.planDailyBbLimit > 0       -> metadata.planDailyBbLimit
-                limits.dailyBlackboardSessions > 0  -> limits.dailyBlackboardSessions
-                else -> 0
-            }
+            val limit = limits.dailyBlackboardSessions
             if (limit <= 0) -1
             else {
                 val fsUsed = if (isSameDay) metadata.bbSessionsToday else 0
-                val used = maxOf(fsUsed, inMemEffectiveBb(metadata.userId))
-                maxOf(0, limit - used)
+                maxOf(0, limit - maxOf(fsUsed, inMemEffectiveBb(metadata.userId)))
             }
         } else {
-            val baseLimit = when {
-                metadata.planDailyChatLimit > 0  -> metadata.planDailyChatLimit
-                limits.dailyChatQuestions > 0    -> limits.dailyChatQuestions
-                else -> 0
-            }
+            val baseLimit = limits.dailyChatQuestions
             if (baseLimit <= 0) -1
             else {
                 val effectiveLimit = baseLimit + metadata.bonusQuestionsToday.coerceAtLeast(0)
                 val fsUsed = if (isSameDay) metadata.chatQuestionsToday else 0
-                val used = maxOf(fsUsed, inMemEffectiveChat(metadata.userId))
-                maxOf(0, effectiveLimit - used)
+                maxOf(0, effectiveLimit - maxOf(fsUsed, inMemEffectiveChat(metadata.userId)))
             }
         }
     }
@@ -439,8 +413,10 @@ object PlanEnforcer {
         }
 
         val now = System.currentTimeMillis()
-        // On day rollover: reset counter to 1 instead of incrementing yesterday's stale value
-        val isNewDay = isNewQuotaDay(previousUpdatedAt)
+        // On day rollover: reset counter to 1 instead of incrementing yesterday's stale value.
+        // Guard against unset (0L) timestamp — 0L must NOT be treated as "previous day"
+        // because it simply means the doc was just created or the caller passed no value.
+        val isNewDay = previousUpdatedAt > 0L && isNewQuotaDay(previousUpdatedAt)
         val updates = mutableMapOf<String, Any>(
             "questions_updated_at" to now
         )
@@ -449,8 +425,8 @@ object PlanEnforcer {
         } else {
             updates["chat_questions_today"] = if (isNewDay) 1L else FieldValue.increment(1L)
         }
-        db.collection("users").document(userId)
-            .set(updates, SetOptions.merge())
+        db.collection("users_table").document(userId)
+            .update(updates)
             .addOnFailureListener { Log.e(TAG, "recordQuestionAsked failed uid=$userId: ${it.message}") }
     }
 }

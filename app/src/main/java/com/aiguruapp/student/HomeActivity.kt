@@ -1,13 +1,16 @@
 package com.aiguruapp.student
 
+import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -20,9 +23,12 @@ import com.aiguruapp.student.utils.SchoolTheme
 import com.aiguruapp.student.utils.SessionManager
 import com.google.android.material.button.MaterialButton
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.core.view.WindowCompat
 import com.aiguruapp.student.firestore.FirestoreManager
 import com.aiguruapp.student.models.FirestoreOffer
+import com.google.firebase.firestore.FirebaseFirestore
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import java.util.Calendar
 
 class HomeActivity : BaseActivity() {
@@ -32,6 +38,7 @@ class HomeActivity : BaseActivity() {
     private lateinit var subjectAdapter: SubjectAdapter
     private lateinit var userId: String
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -52,6 +59,15 @@ class HomeActivity : BaseActivity() {
         loadSubjects()
         loadOffersFromFirestore()
 
+        val swipeRefresh = findViewById<SwipeRefreshLayout>(R.id.homeSwipeRefresh)
+        swipeRefresh.setColorSchemeColors(getColor(R.color.colorPrimary), getColor(R.color.colorSecondary))
+        swipeRefresh.setOnRefreshListener {
+            loadSubjects()
+            loadQuotaStrip()
+            loadOffersFromFirestore()
+            swipeRefresh.isRefreshing = false
+        }
+
         findViewById<MaterialButton>(R.id.addSubjectButton).setOnClickListener {
             showAddSubjectDialog()
         }
@@ -68,6 +84,7 @@ class HomeActivity : BaseActivity() {
         findViewById<MaterialButton>(R.id.progressButton).setOnClickListener {
             startActivity(Intent(this, ProgressDashboardActivity::class.java))
         }
+        setupLangChip()
         findViewById<TextView?>(R.id.profileButton)?.setOnClickListener {
             startActivity(Intent(this, UserProfileActivity::class.java))
         }
@@ -85,42 +102,65 @@ class HomeActivity : BaseActivity() {
         loadQuotaStrip()
     }
 
+    @SuppressLint("ResourceType")
     private fun loadQuotaStrip() {
         val uid = SessionManager.getFirestoreUserId(this)
         if (uid.isBlank() || uid == "guest_user") return
 
-        AdminConfigRepository.fetchIfStale()
+        val db = FirebaseFirestore.getInstance()
 
-        FirestoreManager.getUserMetadata(uid, forceServer = true, onSuccess = { meta ->
-            if (meta == null) return@getUserMetadata
-            val limits = AdminConfigRepository.resolveEffectiveLimits(
-                meta.planId, meta.planLimits
-            )
-            val chatLeft = PlanEnforcer.getQuestionsLeft(meta, limits, isBlackboard = false)
-            val bbLeft   = PlanEnforcer.getQuestionsLeft(meta, limits, isBlackboard = true)
+        // Step 1: fetch live user counters from users_table
+        db.collection("users_table").document(uid).get()
+            .addOnSuccessListener { userDoc ->
+                if (!userDoc.exists()) return@addOnSuccessListener
 
-            runOnUiThread {
-                val strip = findViewById<LinearLayout?>(R.id.quotaStripCard) ?: return@runOnUiThread
-                // Hide strip only when both are truly unlimited
-                if (chatLeft < 0 && bbLeft < 0) {
-                    strip.visibility = android.view.View.GONE
-                    return@runOnUiThread
-                }
-                strip.visibility = android.view.View.VISIBLE
+                val chatToday = userDoc.getLong("chat_questions_today")?.toInt() ?: 0
+                val bbToday   = userDoc.getLong("bb_sessions_today")?.toInt() ?: 0
+                val updatedAt = userDoc.getLong("questions_updated_at") ?: 0L
+                val planId    = (userDoc.getString("planId") ?: "").ifBlank { "free" }
 
-                val chatView = findViewById<TextView?>(R.id.quotaChatCount)
-                chatView?.text = if (chatLeft < 0) "∞" else chatLeft.toString()
-                chatView?.setTextColor(
-                    android.graphics.Color.parseColor(if (chatLeft in 0..3) "#BF360C" else "#1565C0")
-                )
+                // Only count today's usage if the counters are from the current UTC day
+                val isSameDay = updatedAt > 0L && !PlanEnforcer.isNewQuotaDay(updatedAt)
+                val chatUsed  = if (isSameDay) chatToday else 0
+                val bbUsed    = if (isSameDay) bbToday else 0
 
-                val bbView = findViewById<TextView?>(R.id.quotaBbCount)
-                bbView?.text = if (bbLeft < 0) "∞" else bbLeft.toString()
-                bbView?.setTextColor(
-                    android.graphics.Color.parseColor(if (bbLeft in 0..1) "#BF360C" else "#1565C0")
-                )
+                // Step 2: fetch plan limits directly from plans/ collection
+                db.collection("plans").document(planId).get()
+                    .addOnSuccessListener { planDoc ->
+                        @Suppress("UNCHECKED_CAST")
+                        val limitsMap = planDoc.get("limits") as? Map<String, Any>
+                        val chatLimit = (limitsMap?.get("daily_chat_questions") as? Long)?.toInt() ?: 12
+                        val bbLimit   = (limitsMap?.get("daily_bb_sessions") as? Long)?.toInt() ?: 2
+
+                        val chatLeft = if (chatLimit <= 0) -1 else (chatLimit - chatUsed).coerceAtLeast(0)
+                        val bbLeft   = if (bbLimit   <= 0) -1 else (bbLimit   - bbUsed).coerceAtLeast(0)
+
+                        runOnUiThread { updateQuotaStripUI(chatLeft, bbLeft) }
+                    }
+                    .addOnFailureListener {
+                        // Plan fetch failed — show with free plan defaults
+                        val chatLeft = (12 - chatUsed).coerceAtLeast(0)
+                        val bbLeft   = (2  - bbUsed).coerceAtLeast(0)
+                        runOnUiThread { updateQuotaStripUI(chatLeft, bbLeft) }
+                    }
             }
-        })
+    }
+
+    private fun updateQuotaStripUI(chatLeft: Int, bbLeft: Int) {
+        val strip = findViewById<LinearLayout?>(R.id.quotaStripCard) ?: return
+        if (chatLeft < 0 && bbLeft < 0) {
+            strip.visibility = android.view.View.GONE
+            return
+        }
+        strip.visibility = android.view.View.VISIBLE
+
+        val chatView = findViewById<TextView?>(R.id.quotaChatCount)
+        chatView?.text = if (chatLeft < 0) "∞" else chatLeft.toString()
+        chatView?.setTextColor(Color.parseColor(if (chatLeft in 0..3) "#BF360C" else "#1565C0"))
+
+        val bbView = findViewById<TextView?>(R.id.quotaBbCount)
+        bbView?.text = if (bbLeft < 0) "∞" else bbLeft.toString()
+        bbView?.setTextColor(Color.parseColor(if (bbLeft in 0..1) "#BF360C" else "#1565C0"))
     }
 
     private fun applySchoolBranding() {
@@ -159,12 +199,11 @@ class HomeActivity : BaseActivity() {
         findViewById<TextView?>(R.id.userNameText)?.text = studentName
         // Show school name as subtitle if view exists
         findViewById<TextView?>(R.id.schoolNameSubtitle)?.text = schoolName
-        // Show plan badge if view exists
-        if (planName.isNotBlank()) {
-            findViewById<TextView?>(R.id.planBadgeText)?.apply {
-                text = "📋 $planName"
-                visibility = android.view.View.VISIBLE
-            }
+        // Always show plan badge — new users see "Free" so they can navigate to subscribe
+        val displayPlan = if (planName.isNotBlank()) "📋 $planName" else "📋 Free"
+        findViewById<TextView?>(R.id.planBadgeText)?.apply {
+            text = displayPlan
+            visibility = android.view.View.VISIBLE
         }
     }
 
@@ -177,6 +216,52 @@ class HomeActivity : BaseActivity() {
             else -> config.greetingMessages["evening"] ?: "Good evening! 🌙"
         }
         findViewById<TextView>(R.id.greetingText).text = greeting
+    }
+
+    // ── Language chip ─────────────────────────────────────────────────────────
+
+    private val langLabels = arrayOf(
+        "English only",
+        "Hindi + English",
+        "Telugu + English",
+        "Tamil + English",
+        "Kannada + English",
+        "Marathi + English",
+        "Bengali + English",
+        "Gujarati + English"
+    )
+    private val langCodes = arrayOf(
+        "en-US", "hi-IN", "te-IN", "ta-IN", "kn-IN", "mr-IN", "bn-IN", "gu-IN"
+    )
+    private val langShort = arrayOf(
+        "English", "Hindi", "Telugu", "Tamil", "Kannada", "Marathi", "Bengali", "Gujarati"
+    )
+
+    private fun setupLangChip() {
+        val chip = findViewById<MaterialButton?>(R.id.langChipButton) ?: return
+        refreshLangChip(chip)
+        chip.setOnClickListener { showLangPicker(chip) }
+    }
+
+    private fun refreshLangChip(chip: MaterialButton) {
+        val saved = SessionManager.getPreferredLang(this)
+        val idx   = langCodes.indexOf(saved).coerceAtLeast(0)
+        chip.text = "🌐 ${langShort[idx]}"
+    }
+
+    private fun showLangPicker(chip: MaterialButton) {
+        val saved    = SessionManager.getPreferredLang(this)
+        val current  = langCodes.indexOf(saved).coerceAtLeast(0)
+        android.app.AlertDialog.Builder(this)
+            .setTitle("🌐 Teaching Language")
+            .setSingleChoiceItems(langLabels, current) { dialog, which ->
+                SessionManager.savePreferredLang(this, langCodes[which])
+                refreshLangChip(chip)
+                dialog.dismiss()
+                Toast.makeText(this, "Language set to ${langLabels[which]}", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun showProfileDialog() {
@@ -259,49 +344,161 @@ class HomeActivity : BaseActivity() {
 
     // ── Offers banner (Firestore-backed) ───────────────────────────────────────
 
+    private val offerAutoScrollHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var offerAutoScrollRunnable: Runnable? = null
+
     /**
      * Fetches active offers from Firestore [app_offers] collection and populates
-     * the horizontal banner.  Falls back silently to the static XML cards on failure.
+     * the horizontal banner with animated, highlighted cards.
      *
      * Firestore document fields: title, subtitle, emoji, background_color,
      * display_order, is_active. See [FirestoreOffer] for full schema.
      */
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun loadOffersFromFirestore() {
         FirestoreManager.fetchOffers(
             onSuccess = { offers ->
                 if (offers.isEmpty()) return@fetchOffers   // keep static placeholder cards
                 val container = findViewById<android.widget.LinearLayout>(R.id.offersBannerContainer)
-                container.removeAllViews()
-                offers.forEach { offer -> container.addView(buildOfferCard(offer)) }
+                    ?: return@fetchOffers
+                val scroll = findViewById<android.widget.HorizontalScrollView>(R.id.offersBannerScroll)
+                val header = findViewById<android.view.View>(R.id.offersSectionHeader)
+
+                runOnUiThread {
+                    container.removeAllViews()
+                    stopOfferAutoScroll()
+
+                    // Reveal the scroll view (hidden in XML until real data arrives)
+                    scroll?.visibility = android.view.View.VISIBLE
+
+                    // Show the section header with a fade-in
+                    header?.apply {
+                        visibility = android.view.View.VISIBLE
+                        alpha = 0f
+                        animate().alpha(1f).setDuration(400).start()
+                    }
+                    offers.forEachIndexed { index, offer ->
+                        val card = buildOfferCard(offer)
+                        container.addView(card)
+
+                        // Entry: scale-up + fade-in with stagger (spring-like overshoot)
+                        card.scaleX = 0.75f
+                        card.scaleY = 0.75f
+                        card.alpha = 0f
+                        card.animate()
+                            .scaleX(1.05f).scaleY(1.05f)
+                            .alpha(1f)
+                            .setStartDelay(100L * index)
+                            .setDuration(280)
+                            .setInterpolator(android.view.animation.DecelerateInterpolator())
+                            .withEndAction {
+                                card.animate()
+                                    .scaleX(1f).scaleY(1f)
+                                    .setDuration(120)
+                                    .setInterpolator(android.view.animation.OvershootInterpolator(1.5f))
+                                    .start()
+                            }
+                            .start()
+                    }
+
+                    // Start auto-scroll after all entry animations complete
+                    if (offers.size > 1) {
+                        val totalEntryMs = 100L * offers.size + 400L
+                        offerAutoScrollHandler.postDelayed({
+                            startOfferAutoScroll(scroll, container)
+                        }, totalEntryMs)
+                    }
+                }
             },
-            onFailure = { /* silent — static XML card remain */ }
+            onFailure = { e -> Log.w("HomeActivity", "fetchOffers failed: ${e?.message}") }
         )
     }
 
+    /** Auto-scroll the offers banner every 3 seconds so all cards get seen. */
+    private fun startOfferAutoScroll(
+        scroll: android.widget.HorizontalScrollView?,
+        container: android.widget.LinearLayout?
+    ) {
+        scroll ?: return
+        container ?: return
+        var targetX = scroll.scrollX
+
+        offerAutoScrollRunnable = object : Runnable {
+            override fun run() {
+                if (!scroll.isAttachedToWindow) return
+                val maxScroll = container.width - scroll.width
+                if (maxScroll <= 0) return   // all cards fit, no need to scroll
+                // Advance by ~270dp then wrap
+                val cardWidthPx = (270 * resources.displayMetrics.density).toInt()
+                targetX += cardWidthPx
+                if (targetX > maxScroll) targetX = 0
+                scroll.smoothScrollTo(targetX, 0)
+                offerAutoScrollHandler.postDelayed(this, 3000)
+            }
+        }
+        offerAutoScrollHandler.postDelayed(offerAutoScrollRunnable!!, 3000)
+    }
+
+    private fun stopOfferAutoScroll() {
+        offerAutoScrollRunnable?.let { offerAutoScrollHandler.removeCallbacks(it) }
+        offerAutoScrollRunnable = null
+    }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun buildOfferCard(offer: FirestoreOffer): android.view.View {
         val ctx = this
         val bgColor = runCatching { android.graphics.Color.parseColor(offer.backgroundColor) }
             .getOrDefault(android.graphics.Color.parseColor("#1A1A2E"))
 
-        // Card
+        // Lighten the bg color slightly for the stroke
+        val cardStrokeColor = android.graphics.Color.argb(
+            180,
+            (android.graphics.Color.red(bgColor) + 70).coerceAtMost(255),
+            (android.graphics.Color.green(bgColor) + 70).coerceAtMost(255),
+            (android.graphics.Color.blue(bgColor) + 70).coerceAtMost(255)
+        )
+
+        // Card with glowing stroke
         val card = com.google.android.material.card.MaterialCardView(ctx).apply {
             layoutParams = android.widget.LinearLayout.LayoutParams(
-                (260 * resources.displayMetrics.density).toInt(),
-                (96 * resources.displayMetrics.density).toInt()
+                (268 * resources.displayMetrics.density).toInt(),
+                (104 * resources.displayMetrics.density).toInt()
             ).also { it.marginEnd = (10 * resources.displayMetrics.density).toInt() }
-            radius = 14 * resources.displayMetrics.density
-            cardElevation = 3 * resources.displayMetrics.density
+            radius = 16 * resources.displayMetrics.density
+            cardElevation = 6 * resources.displayMetrics.density
             setCardBackgroundColor(bgColor)
+            setStrokeColor(cardStrokeColor)
+            strokeWidth = (2 * resources.displayMetrics.density).toInt()
         }
 
-        // Inner row
+        // Root frame for stacking (inner row + badge)
+        val frame = android.widget.FrameLayout(ctx).apply {
+            layoutParams = android.widget.FrameLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        }
+
+        // Gradient overlay (bottom fade to dark, for depth)
+        val gradient = android.view.View(ctx).apply {
+            layoutParams = android.widget.FrameLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            background = android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(android.graphics.Color.TRANSPARENT, android.graphics.Color.argb(80, 0, 0, 0))
+            )
+        }
+
+        // Inner row (text + emoji)
         val row = android.widget.LinearLayout(ctx).apply {
             orientation = android.widget.LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
             val p = (16 * resources.displayMetrics.density).toInt()
             val pe = (12 * resources.displayMetrics.density).toInt()
             setPadding(p, 0, pe, 0)
-            layoutParams = android.widget.LinearLayout.LayoutParams(
+            layoutParams = android.widget.FrameLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT
             )
@@ -318,7 +515,7 @@ class HomeActivity : BaseActivity() {
             setTextColor(android.graphics.Color.WHITE)
             textSize = 13f
             setTypeface(null, android.graphics.Typeface.BOLD)
-//            lineSpacingExtra = 2 * resources.displayMetrics.density
+            setShadowLayer(4f, 0f, 1f, android.graphics.Color.argb(120, 0, 0, 0))
         }
         textCol.addView(title)
         if (offer.subtitle.isNotBlank()) {
@@ -334,13 +531,44 @@ class HomeActivity : BaseActivity() {
         // Emoji icon
         val icon = android.widget.TextView(ctx).apply {
             text = offer.emoji
-            textSize = 36f
+            textSize = 38f
         }
 
         row.addView(textCol)
         row.addView(icon)
-        card.addView(row)
+
+        // "HOT" badge in top-right corner
+        val badge = android.widget.TextView(ctx).apply {
+            text = "  ★ NEW  "
+            textSize = 9f
+            setTypeface(null, android.graphics.Typeface.BOLD)
+            setTextColor(android.graphics.Color.WHITE)
+            val badgeBg = android.graphics.drawable.GradientDrawable().apply {
+                setColor(android.graphics.Color.parseColor("#E53935"))
+                cornerRadius = 20 * resources.displayMetrics.density
+                setPadding(0, 0, 0, 0)
+            }
+            background = badgeBg
+            val lp = android.widget.FrameLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            lp.gravity = android.view.Gravity.TOP or android.view.Gravity.END
+            lp.topMargin = (6 * resources.displayMetrics.density).toInt()
+            lp.marginEnd = (8 * resources.displayMetrics.density).toInt()
+            layoutParams = lp
+        }
+
+        frame.addView(gradient)
+        frame.addView(row)
+        frame.addView(badge)
+        card.addView(frame)
         return card
+    }
+
+    override fun onStop() {
+        super.onStop()
+        stopOfferAutoScroll()
     }
 
     private fun setupRecyclerView() {
@@ -382,7 +610,7 @@ class HomeActivity : BaseActivity() {
     }
 
     private val defaultSubjects = listOf(
-        "Mathematics", "Science", "Computer", "English", "History", "Geography"
+        "My Subject"
     )
 
     // ── Local SharedPreferences storage (Firestore will be added later) ──────
@@ -439,16 +667,146 @@ class HomeActivity : BaseActivity() {
     }
 
     private fun showAddSubjectDialog() {
+        val options = arrayOf(
+            "\ud83d\udcd6 Import from NCERT (auto-add subject + chapters)",
+            "\ud83d\udcdd Type subject name manually"
+        )
+        AlertDialog.Builder(this)
+            .setTitle("\ud83d\udcda Add Subject")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> showNcertSubjectImportDialog()
+                    1 -> showManualSubjectDialog()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showManualSubjectDialog() {
         val input = EditText(this).apply {
             hint = "e.g. Science, Maths, History"
             setPadding(40, 24, 40, 24)
         }
         AlertDialog.Builder(this)
-            .setTitle("📚 Add Subject")
+            .setTitle("\ud83d\udcda Add Subject")
             .setView(input)
             .setPositiveButton("Add") { _, _ ->
                 val name = input.text.toString().trim()
                 if (name.isNotEmpty()) addSubject(name)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    // \u2500\u2500 NCERT subject + chapters auto-import \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+
+    private fun loadNcertJson(): org.json.JSONObject {
+        val raw = assets.open("ncert.json").bufferedReader().use { it.readText() }
+        return org.json.JSONObject(raw)
+    }
+
+    private fun ncertChapterUrl(code: String, chapterNum: Int): String =
+        "https://ncert.nic.in/textbook/pdf/${code}${chapterNum.toString().padStart(2, '0')}.pdf"
+
+    private fun showNcertSubjectImportDialog() {
+        val ncertRoot = try { loadNcertJson() } catch (e: Exception) {
+            Toast.makeText(this, "Could not load NCERT data", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val classNums = (6..12).map { it.toString() }.filter { ncertRoot.has(it) }
+        val classLabels = classNums.map { "\ud83c\udf93 Class $it" }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("\ud83d\udcd6 NCERT \u2014 Pick Class")
+            .setItems(classLabels) { _, ci ->
+                pickNcertSubjectForHome(ncertRoot, classNums[ci])
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun pickNcertSubjectForHome(root: org.json.JSONObject, classNum: String) {
+        val classObj = root.optJSONObject(classNum) ?: return
+        val subjects = mutableListOf<String>()
+        val keys = classObj.keys()
+        while (keys.hasNext()) subjects.add(keys.next())
+        subjects.sort()
+        val labels = subjects.map { "\ud83d\udcd8 $it" }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("\ud83d\udcd6 Class $classNum \u2014 Pick Subject")
+            .setItems(labels) { _, si ->
+                pickNcertBookForHome(root, classNum, subjects[si])
+            }
+            .setNegativeButton("\u2190 Back") { _, _ -> showNcertSubjectImportDialog() }
+            .show()
+    }
+
+    private fun pickNcertBookForHome(root: org.json.JSONObject, classNum: String, subject: String) {
+        val booksArr = root.optJSONObject(classNum)?.optJSONArray(subject) ?: return
+        if (booksArr.length() == 1) {
+            confirmNcertImport(booksArr.getJSONObject(0), classNum, subject)
+            return
+        }
+        val labels = (0 until booksArr.length())
+            .map { "\ud83d\udcd7 ${booksArr.getJSONObject(it).getString("text")}" }
+            .toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("\ud83d\udcd6 $subject \u2014 Pick Book")
+            .setItems(labels) { _, bi ->
+                confirmNcertImport(booksArr.getJSONObject(bi), classNum, subject)
+            }
+            .setNegativeButton("\u2190 Back") { _, _ -> pickNcertSubjectForHome(root, classNum) }
+            .show()
+    }
+
+    private fun confirmNcertImport(bookObj: org.json.JSONObject, classNum: String, subject: String) {
+        val bookTitle = bookObj.getString("text")
+        val code = bookObj.getString("code")
+        val chapRange = bookObj.optString("chapters", "1-5")
+        val parts = chapRange.split("-")
+        val rawStart = parts.getOrNull(0)?.toIntOrNull() ?: 1
+        val rawEnd   = parts.getOrNull(1)?.toIntOrNull() ?: 5
+        val start = if (rawStart == 0) 1 else rawStart
+        val end   = rawEnd
+        val chapterCount = end - start + 1
+
+        AlertDialog.Builder(this)
+            .setTitle("\ud83d\udcda Add \"$subject\"?")
+            .setMessage("Book: $bookTitle\nClass $classNum\n\n$chapterCount chapters will be added automatically with NCERT PDF links.")
+            .setPositiveButton("Add Subject + Chapters") { _, _ ->
+                // 1. Add the subject if not already present
+                val subjectLabel = "$subject (Class $classNum)"
+                if (!subjectsList.contains(subjectLabel)) {
+                    addSubject(subjectLabel)
+                }
+                // 2. Save all chapters with NCERT URLs to SharedPreferences + Firestore
+                val prefs = getSharedPreferences("chapters_prefs", MODE_PRIVATE)
+                val chaptersKey = "chapters_$subjectLabel"
+                val existing = prefs.getString(chaptersKey, "") ?: ""
+                val chapters = if (existing.isEmpty()) mutableListOf()
+                               else existing.split("||||").filter { it.isNotEmpty() }.toMutableList()
+                var added = 0
+                for (ch in start..end) {
+                    val title = "$bookTitle \u2014 Chapter $ch"
+                    val url = ncertChapterUrl(code, ch)
+                    if (!chapters.contains(title)) {
+                        chapters.add(title)
+                        prefs.edit().putString(
+                            "meta_${subjectLabel}_$title",
+                            org.json.JSONObject().apply {
+                                put("isPdf", false)
+                                put("isNcert", true)
+                                put("ncertUrl", url)
+                            }.toString()
+                        ).apply()
+                        FirestoreManager.saveChapter(userId, subjectLabel, title, ncertUrl = url)
+                        added++
+                    }
+                }
+                prefs.edit().putString(chaptersKey, chapters.joinToString("||||")).apply()
+                Toast.makeText(this,
+                    "\u2705 \"$subjectLabel\" added with $added NCERT chapters!",
+                    Toast.LENGTH_LONG).show()
             }
             .setNegativeButton("Cancel", null)
             .show()

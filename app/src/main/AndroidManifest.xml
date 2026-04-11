@@ -112,6 +112,10 @@
         <activity android:name=".FullscreenImageActivity" android:exported="false"
             android:theme="@style/Theme.AIGuru.Fullscreen"/>
         <activity android:name=".ProgressDashboardActivity" android:exported="false"/>
+        <!-- Notes viewer (per-chapter student notes) -->
+        <activity android:name=".notes.NotesActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize"/>
         <!-- Quiz system -->
         <activity android:name=".QuizSetupActivity" android:exported="false"/>
         <activity android:name=".QuizActivity"

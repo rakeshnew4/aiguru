@@ -131,7 +131,12 @@ class BlackboardActivity : AppCompatActivity() {
 
         PromptRepository.init(this)
         tts = TextToSpeechManager(this)
-        preferredLanguageTag = intent.getStringExtra(EXTRA_LANGUAGE_TAG)?.takeIf { it.isNotBlank() } ?: "en-US"
+        // Prefer SessionManager lang (set from HomeActivity) over the intent extra so that
+        // language changes made after the fragment launched are always reflected.
+        val intentLang = intent.getStringExtra(EXTRA_LANGUAGE_TAG)?.takeIf { it.isNotBlank() } ?: "en-US"
+        val sessionLang = com.aiguruapp.student.utils.SessionManager.getPreferredLang(this)
+        preferredLanguageTag = sessionLang.ifBlank { intentLang }
+        tts.setLocale(Locale.forLanguageTag(preferredLanguageTag))
 
         val userId = intent.getStringExtra(EXTRA_USER_ID)
         AdminConfigRepository.fetchIfStale()
@@ -212,7 +217,8 @@ class BlackboardActivity : AppCompatActivity() {
                 preferredLanguageTag = preferredLanguageTag,
                 onSuccess = { generated ->
                     if (recordSession && !userId.isNullOrBlank()) {
-                        val isNewQuotaDay = PlanEnforcer.isNewQuotaDay(cachedMetadata.questionsUpdatedAt)
+                        val isNewQuotaDay = cachedMetadata.questionsUpdatedAt > 0L &&
+                            PlanEnforcer.isNewQuotaDay(cachedMetadata.questionsUpdatedAt)
                         PlanEnforcer.recordQuestionAsked(userId, isBlackboard = true, previousUpdatedAt = cachedMetadata.questionsUpdatedAt)
                         cachedMetadata = cachedMetadata.copy(
                             bbSessionsToday = if (isNewQuotaDay) 1 else cachedMetadata.bbSessionsToday + 1,

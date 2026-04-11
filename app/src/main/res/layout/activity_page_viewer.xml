@@ -74,10 +74,10 @@
                 android:scaleType="fitCenter"
                 android:contentDescription="Page image" />
 
-            <ProgressBar
+            <com.aiguruapp.student.widget.BoxSpinnerView
                 android:id="@+id/loadingSpinner"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
                 android:layout_gravity="center"
                 android:layout_marginTop="80dp"
                 android:visibility="visible" />

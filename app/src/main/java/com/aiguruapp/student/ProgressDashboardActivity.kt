@@ -11,6 +11,7 @@ import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.aiguruapp.student.utils.SessionManager
 import java.util.concurrent.TimeUnit
 
@@ -26,6 +27,13 @@ class ProgressDashboardActivity : BaseActivity() {
         findViewById<TextView>(R.id.dashboardSubtitle).text = "$studentName's learning journey"
 
         loadProgress()
+
+        val swipeRefresh = findViewById<SwipeRefreshLayout>(R.id.dashboardSwipeRefresh)
+        swipeRefresh.setColorSchemeColors(getColor(R.color.colorPrimary), getColor(R.color.colorSecondary))
+        swipeRefresh.setOnRefreshListener {
+            loadProgress()
+            swipeRefresh.isRefreshing = false
+        }
     }
 
     private fun loadProgress() {

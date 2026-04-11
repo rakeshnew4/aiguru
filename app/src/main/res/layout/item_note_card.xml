@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="10dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="2dp"
+    app:strokeWidth="0dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="14dp">
+
+        <!-- Header row: type icon + category label + spacer + delete button -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:id="@+id/noteTypeIcon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:minWidth="28dp"/>
+
+            <TextView
+                android:id="@+id/noteCategoryLabel"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:textSize="11sp"
+                android:textColor="#1565C0"
+                android:background="@drawable/bg_category_chip"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:maxWidth="160dp"
+                android:ellipsize="end"
+                android:maxLines="1"/>
+
+            <TextView
+                android:id="@+id/noteTimestamp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:textSize="10sp"
+                android:textColor="#9CA3AF"/>
+
+            <TextView
+                android:id="@+id/noteDeleteBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:text="🗑"
+                android:textSize="16sp"
+                android:padding="4dp"/>
+
+        </LinearLayout>
+
+        <!-- Cropped image thumbnail (only visible for image notes) -->
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/noteImage"
+            android:layout_width="match_parent"
+            android:layout_height="160dp"
+            android:scaleType="centerCrop"
+            android:layout_marginBottom="10dp"
+            android:visibility="gone"
+            app:shapeAppearanceOverlay="@style/RoundedCorners10"/>
+
+        <!-- Main content text -->
+        <TextView
+            android:id="@+id/noteContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="15sp"
+            android:textColor="#111827"
+            android:lineSpacingMultiplier="1.35"
+            android:visibility="gone"/>
+
+        <!-- Divider above annotation -->
+        <View
+            android:id="@+id/annotationDivider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#E0E4F0"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone"/>
+
+        <!-- Student annotation label -->
+        <TextView
+            android:id="@+id/annotationHint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="✏️ Your thoughts"
+            android:textSize="11sp"
+            android:textColor="#9CA3AF"
+            android:layout_marginBottom="4dp"/>
+
+        <!-- Annotation EditText -->
+        <EditText
+            android:id="@+id/noteAnnotationEdit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Add your understanding, key points..."
+            android:textSize="14sp"
+            android:textColor="#374151"
+            android:textColorHint="#9CA3AF"
+            android:background="@drawable/bg_annotation_input"
+            android:padding="10dp"
+            android:minLines="2"
+            android:gravity="top"
+            android:inputType="textMultiLine|textCapSentences"/>
+
+        <!-- Save annotation button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/saveAnnotationBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Save"
+            android:textSize="12sp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:visibility="gone"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            app:strokeColor="@color/colorPrimary"
+            app:strokeWidth="1dp"/>
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

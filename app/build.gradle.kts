@@ -22,8 +22,8 @@ android {
         applicationId = "com.aiguruapp.student"
         minSdk = 26
         targetSdk = 36
-        versionCode = 9
-        versionName = "1.2.3"
+        versionCode = 10
+        versionName = "1.2.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         val paymentBaseUrl = localProperties["PAYMENT_BASE_URL"] as? String ?: ""
         val razorpayKeyId  = localProperties["RAZORPAY_KEY_ID"]  as? String ?: ""
@@ -120,6 +120,7 @@ dependencies {
     // RecyclerView & Material Design 3
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("com.google.android.material:material:1.12.0")
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     
     // Voice & Audio
     implementation("androidx.camera:camera-core:1.3.4")

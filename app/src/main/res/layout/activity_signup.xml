@@ -88,6 +88,22 @@
                     android:layout_height="52dp"
                     android:background="@drawable/rounded_edittext_bg"
                     android:padding="10dp"
+                    android:layout_marginBottom="20dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Preferred teaching language"
+                    android:textSize="13sp"
+                    android:textColor="@color/colorTextSecondary"
+                    android:layout_marginBottom="8dp" />
+
+                <Spinner
+                    android:id="@+id/spinnerLang"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:background="@drawable/rounded_edittext_bg"
+                    android:padding="10dp"
                     android:layout_marginBottom="24dp" />
 
                 <com.google.android.material.button.MaterialButton

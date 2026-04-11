@@ -1,28 +1,27 @@
 package com.aiguruapp.student.models
 
 import com.google.firebase.firestore.IgnoreExtraProperties
-import com.google.firebase.firestore.PropertyName
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 /**
- * A subscription plan fetched from Firestore collection: app_plans/{planId}
+ * A subscription plan fetched from Firestore collection: plans/{planId}
  *
- * Firestore document structure (create manually):
- *   name:          "Basic"           (string)
- *   badge:         "Popular"         (string — shown as chip above plan card)
- *   price_inr:     99                (number — 0 for free)
- *   duration:      "1 Month"         (string — display label)
- *   validity_days: 30                (number — 0 = never expires, e.g. for free plan)
- *   features:      ["Feature A", …] (array of strings)
- *   display_order: 1                 (number — 0 = shown first)
- *   is_active:     true              (boolean — false hides from app)
- *   accent_color:  "#0891B2"         (string hex — card accent / highlight color)
+ * Firestore document structure — all keys are camelCase to match Kotlin property names:
+ *   name:          "Basic"
+ *   badge:         "Popular"
+ *   priceInr:      99                (0 for free plans)
+ *   duration:      "1 Month"
+ *   validityDays:  30                (0 = never expires)
+ *   features:      ["Feature A", …]
+ *   displayOrder:  1
+ *   isActive:      true
+ *   accentColor:   "#0891B2"
  */
 @IgnoreExtraProperties
 data class FirestorePlan(
-    /** Document ID in app_plans collection (e.g. "plan_free", "plan_basic"). */
+    /** Document ID in plans collection (e.g. "free", "basic"). */
     val id: String = "",
 
     val name: String = "",
@@ -30,7 +29,6 @@ data class FirestorePlan(
     /** Badge text shown on the plan card (e.g. "Popular", "Best Value"). */
     val badge: String = "",
 
-    @field:PropertyName("price_inr")
     val priceInr: Int = 0,
 
     /** Human-readable validity label displayed on the card (e.g. "1 Month"). */
@@ -40,19 +38,15 @@ data class FirestorePlan(
      * Number of calendar days the plan stays active after purchase.
      * 0 = no expiry (free / lifetime plans).
      */
-    @field:PropertyName("validity_days")
     val validityDays: Int = 30,
 
     val features: List<String> = emptyList(),
 
-    @field:PropertyName("display_order")
     val displayOrder: Int = 0,
 
-    @field:PropertyName("is_active")
     val isActive: Boolean = true,
 
     /** Hex color for the plan card accent (button / badge / border). */
-    @field:PropertyName("accent_color")
     val accentColor: String = "#1565C0"
 ) {
     val isFree: Boolean get() = priceInr == 0

@@ -75,6 +75,7 @@ object AdminConfigRepository {
                 Log.w(TAG, "AdminConfig fetch failed, using cached: ${e.message}")
                 isFetching  = false
                 lastFetchMs = System.currentTimeMillis() // back-off — don't retry immediately
+                fetchPlans() // still load plans even if admin config read fails
             }
     }
 

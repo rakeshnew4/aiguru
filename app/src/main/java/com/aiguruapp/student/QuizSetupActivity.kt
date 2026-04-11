@@ -6,6 +6,7 @@ import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.aiguruapp.student.config.AdminConfigRepository
 import com.aiguruapp.student.models.Quiz
 import com.aiguruapp.student.quiz.QuizApiClient
 import com.aiguruapp.student.utils.SessionManager
@@ -28,7 +29,7 @@ class QuizSetupActivity : BaseActivity() {
     private lateinit var generateButton: MaterialButton
     private lateinit var loadingOverlay: FrameLayout
 
-    private val apiClient = QuizApiClient()
+    private val apiClient by lazy { QuizApiClient(AdminConfigRepository.effectiveServerUrl()) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

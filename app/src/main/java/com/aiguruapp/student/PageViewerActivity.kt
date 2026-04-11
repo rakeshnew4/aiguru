@@ -12,6 +12,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.aiguruapp.student.utils.PdfPageManager
+import com.aiguruapp.student.utils.PdfPreloadManager
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -39,6 +40,7 @@ class PageViewerActivity : AppCompatActivity() {
     private var currentPage = 0
 
     private lateinit var pdfPageManager: PdfPageManager
+    private lateinit var pdfPreloader: PdfPreloadManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,6 +54,7 @@ class PageViewerActivity : AppCompatActivity() {
         currentPage  = intent.getIntExtra("startPage", 0)
 
         pdfPageManager = PdfPageManager(this)
+        pdfPreloader = PdfPreloadManager()
 
         pageImage     = findViewById(R.id.pageImage)
         loadingSpinner = findViewById(R.id.loadingSpinner)
@@ -68,11 +71,6 @@ class PageViewerActivity : AppCompatActivity() {
         nextButton.setOnClickListener {
             if (currentPage < pageCount - 1) { currentPage++; loadPage() }
         }
-        findViewById<MaterialButton>(R.id.askAiPageButton).setOnClickListener {
-            openChatForCurrentPage()
-        }
-
-        loadPage()
     }
 
     private fun loadPage() {
@@ -88,6 +86,10 @@ class PageViewerActivity : AppCompatActivity() {
             try {
                 val file = pdfPageManager.getPage(pdfId, pdfAssetPath, currentPage)
                 val bmp  = BitmapFactory.decodeFile(file.absolutePath)
+                
+                // Start preloading next 5 pages in background
+                pdfPreloader.preloadAhead(pdfId, pdfAssetPath, currentPage, pdfPageManager, pageCount)
+                
                 withContext(Dispatchers.Main) {
                     loadingSpinner.visibility = View.GONE
                     if (bmp != null) {
@@ -122,5 +124,10 @@ class PageViewerActivity : AppCompatActivity() {
                 .putExtra("pdfPageNumber", currentPage + 1)
         )
         finish()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        pdfPreloader.stop()
     }
 }

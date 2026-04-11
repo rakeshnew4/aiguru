@@ -48,6 +48,17 @@ object FirestoreManager {
     fun safeId(name: String): String =
         name.trim().replace(Regex("[/\\\\#%?*\\[\\]]"), "_").take(100)
 
+    /**
+     * Primary user profile + plan collection. Written exclusively by the server
+     * (admin SDK / FastAPI) to prevent client-side plan tampering. Android reads only.
+     * Plan activations are written here by the server after payment verification.
+     */
+    private fun usersTableRef(userId: String) = db.collection("users_table").document(userId)
+
+    /**
+     * Legacy reference for conversation/subject/chapter subcollections under /users/{userId}.
+     * Android may write subject and conversation data here. Plan data goes to users_table.
+     */
     private fun usersRef(userId: String) = db.collection("users").document(userId)
     
     /**
@@ -68,7 +79,7 @@ object FirestoreManager {
             createdAt = if (metadata.createdAt == 0L) now else metadata.createdAt
         )
         
-        db.collection("users").document(userId)
+        db.collection("users_table").document(userId)
             .set(docData, SetOptions.merge())
             .addOnSuccessListener { onSuccess() }
             .addOnFailureListener { onFailure(it) }
@@ -82,7 +93,7 @@ object FirestoreManager {
      */
     fun cleanupMangledFields(userId: String) {
         if (userId.isBlank() || userId == "guest_user") return
-        db.collection("users").document(userId)
+        db.collection("users_table").document(userId)
             .update(
                 mapOf(
                     "a" to FieldValue.delete(),
@@ -114,7 +125,8 @@ object FirestoreManager {
         forceServer: Boolean = false
     ) {
         val source = if (forceServer) Source.SERVER else Source.DEFAULT
-        db.collection("users").document(userId)
+        // Read from users_table (server-managed). Falls back gracefully if doc absent.
+        db.collection("users_table").document(userId)
             .get(source)
             .addOnSuccessListener { doc ->
                 if (doc.exists()) {
@@ -136,7 +148,7 @@ object FirestoreManager {
         onSuccess: () -> Unit = {},
         onFailure: (Exception?) -> Unit = {}
     ) {
-        db.collection("users").document(userId)
+        db.collection("users_table").document(userId)
             .update(field, value)
             .addOnSuccessListener { onSuccess() }
             .addOnFailureListener { onFailure(it) }
@@ -184,7 +196,7 @@ object FirestoreManager {
             updates["plan_image_enabled"]     = limits.imageUploadEnabled
         }
 
-        db.collection("users").document(userId)
+        db.collection("users_table").document(userId)
             .set(updates, SetOptions.merge())
             .addOnSuccessListener { onSuccess() }
             .addOnFailureListener { onFailure(it) }
@@ -204,14 +216,14 @@ object FirestoreManager {
         onSuccess: (List<FirestorePlan>) -> Unit,
         onFailure: (Exception?) -> Unit = {}
     ) {
+        // Fetch all docs without a compound query (avoids requiring a composite index).
         db.collection("plans")
-            .whereEqualTo("is_active", true)
-            .orderBy("display_order")
             .get()
             .addOnSuccessListener { snap ->
-                val plans = snap.documents.mapNotNull { doc ->
-                    doc.toObject(FirestorePlan::class.java)?.copy(id = doc.id)
-                }
+                val plans = snap.documents
+                    .mapNotNull { doc -> doc.toObject(FirestorePlan::class.java)?.copy(id = doc.id) }
+                    .filter { it.isActive }
+                    .sortedBy { it.displayOrder }
                 onSuccess(plans)
             }
             .addOnFailureListener { onFailure(it) }
@@ -228,14 +240,15 @@ object FirestoreManager {
         onSuccess: (List<FirestoreOffer>) -> Unit,
         onFailure: (Exception?) -> Unit = {}
     ) {
+        // Fetch all docs without a compound query (avoids requiring a composite index).
+        // Filter is_active and sort by display_order client-side.
         db.collection("app_offers")
-            .whereEqualTo("is_active", true)
-            .orderBy("display_order")
             .get()
             .addOnSuccessListener { snap ->
-                val offers = snap.documents.mapNotNull { doc ->
-                    doc.toObject(FirestoreOffer::class.java)?.copy(id = doc.id)
-                }
+                val offers = snap.documents
+                    .mapNotNull { doc -> doc.toObject(FirestoreOffer::class.java)?.copy(id = doc.id) }
+                    .filter { it.isActive }
+                    .sortedBy { it.displayOrder }
                 onSuccess(offers)
             }
             .addOnFailureListener { onFailure(it) }

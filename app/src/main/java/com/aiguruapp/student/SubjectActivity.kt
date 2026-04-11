@@ -18,6 +18,7 @@ import com.google.android.material.button.MaterialButton
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
 import org.json.JSONObject
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 class SubjectActivity : BaseActivity() {
 
@@ -30,9 +31,6 @@ class SubjectActivity : BaseActivity() {
 
     // ncertUrlMap: chapter order (1-based) → direct PDF URL from Firestore
     private val ncertUrlMap = mutableMapOf<Int, String>()
-
-    // Data holder for an NCERT chapter fetched from Firestore
-    private data class NcertChapterItem(val title: String, val order: Int, val ncertUrl: String, val subjectId: String)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,8 +47,15 @@ class SubjectActivity : BaseActivity() {
         loadChapters()
         fetchNcertUrls()      // async — updates buttons as data arrives
 
+        val swipeRefresh = findViewById<SwipeRefreshLayout>(R.id.subjectSwipeRefresh)
+        swipeRefresh.setColorSchemeColors(getColor(R.color.colorPrimary), getColor(R.color.colorSecondary))
+        swipeRefresh.setOnRefreshListener {
+            loadChapters()
+            swipeRefresh.isRefreshing = false
+        }
+
         findViewById<MaterialButton>(R.id.addChapterButton).setOnClickListener {
-            showAddChapterOptions()
+            showManualChapterDialog()
         }
     }
 
@@ -177,21 +182,7 @@ class SubjectActivity : BaseActivity() {
         chaptersPrefs().edit().remove("meta_${subjectName}_$name").apply()
     }
 
-    // ─── Add chapter options ───────────────────────────────────────────────────
-
-    private fun showAddChapterOptions() {
-        val options = arrayOf("📝 Type chapter name", "📚 Pick from Library")
-        AlertDialog.Builder(this)
-            .setTitle("➕ Add Chapter to $subjectName")
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> showManualChapterDialog()
-                    1 -> showLibraryPickerDialog()
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
+    // ─── Add chapter ──────────────────────────────────────────────────────────
 
     private fun showManualChapterDialog() {
         val input = EditText(this).apply {
@@ -209,80 +200,6 @@ class SubjectActivity : BaseActivity() {
             .show()
     }
 
-    // ── Class → Subject → Chapter 3-level Firestore picker ──────────────
-
-    /**
-     * Hard-coded grade list. Matching values stored as Firestore `subjects.grade` field
-     * (e.g. "6th", "9th"). Labels shown to the user include the ordinal suffix.
-     */
-    private val pickerGrades = listOf("6th", "7th", "8th", "9th", "10th")
-
-    private fun showLibraryPickerDialog() {
-        val gradeLabels = pickerGrades.map { "🎓 Class $it" }.toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle("📚 Pick Class")
-            .setItems(gradeLabels) { _, gi -> pickFirestoreSubject(pickerGrades[gi]) }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun pickFirestoreSubject(grade: String) {
-        val db = FirebaseFirestore.getInstance()
-        db.collection("subjects")
-            .whereEqualTo("grade", grade)
-            .get()
-            .addOnSuccessListener { snap ->
-                val docs = snap.documents
-                if (docs.isEmpty()) {
-                    Toast.makeText(this, "No subjects found for Class $grade", Toast.LENGTH_SHORT).show()
-                    return@addOnSuccessListener
-                }
-                val labels = docs.map { "📘 ${it.getString("name") ?: it.id}" }.toTypedArray()
-                AlertDialog.Builder(this)
-                    .setTitle("📚 Class $grade — Pick Subject")
-                    .setItems(labels) { _, si ->
-                        val doc = docs[si]
-                        val sid = doc.getString("subject_id") ?: doc.id
-                        val sName = doc.getString("name") ?: sid
-                        pickFirestoreChapter(grade, sName, sid)
-                    }
-                    .setNegativeButton("← Back") { _, _ -> showLibraryPickerDialog() }
-                    .show()
-            }
-            .addOnFailureListener {
-                Toast.makeText(this, "Failed to load subjects: ${it.message}", Toast.LENGTH_SHORT).show()
-            }
-    }
-
-    private fun pickFirestoreChapter(grade: String, subjectLabel: String, sid: String) {
-        val db = FirebaseFirestore.getInstance()
-        db.collection("chapters")
-            .whereEqualTo("subject_id", sid)
-            .get()                             // no .orderBy() — sort client-side to avoid needing a composite index
-            .addOnSuccessListener { snap ->
-                val docs = snap.documents
-                if (docs.isEmpty()) {
-                    Toast.makeText(this, "No chapters found for $subjectLabel", Toast.LENGTH_SHORT).show()
-                    return@addOnSuccessListener
-                }
-                val items = docs.mapNotNull { doc ->
-                    val title  = doc.getString("title") ?: return@mapNotNull null
-                    val order  = (doc.getLong("order") ?: 0L).toInt()
-                    val url    = doc.getString("ncert_pdf_url") ?: ""
-                    NcertChapterItem(title, order, url, sid)
-                }.sortedBy { it.order }        // sort by chapter order client-side
-                val labels = items.map { "📄 Ch ${it.order}: ${it.title}" }.toTypedArray()
-                AlertDialog.Builder(this)
-                    .setTitle("📗 $subjectLabel · Class $grade")
-                    .setItems(labels) { _, idx -> addNcertChapter(items[idx]) }
-                    .setNegativeButton("← Back") { _, _ -> pickFirestoreSubject(grade) }
-                    .show()
-            }
-            .addOnFailureListener {
-                Toast.makeText(this, "Failed to load chapters: ${it.message}", Toast.LENGTH_SHORT).show()
-            }
-    }
-
     // ─── Chapter persistence ───────────────────────────────────────────────────
 
     private fun addManualChapter(name: String) {
@@ -296,25 +213,6 @@ class SubjectActivity : BaseActivity() {
             ChapterItem(name = n, ncertPdfUrl = ncertUrlMap[idx + 1])
         })
         chapterAdapter.notifyDataSetChanged()
-    }
-
-    private fun addNcertChapter(item: NcertChapterItem) {
-        val chapters = loadChaptersLocally()
-        if (!chapters.contains(item.title)) chapters.add(item.title)
-        saveChaptersLocally(chapters)
-        saveChapterMetaNcert(item.title, item.ncertUrl)
-        FirestoreManager.saveChapter(userId, subjectName, item.title, ncertUrl = item.ncertUrl)
-        chaptersListData.clear()
-        chaptersListData.addAll(chapters.mapIndexed { idx, n ->
-            ChapterItem(name = n, ncertPdfUrl = ncertUrlMap[idx + 1])
-        })
-        chapterAdapter.notifyDataSetChanged()
-        Toast.makeText(this, "\"${item.title}\" added ✓", Toast.LENGTH_SHORT).show()
-        if (item.ncertUrl.isNotBlank()) {
-            Toast.makeText(this,
-                "📖 Open the chapter to download and read the PDF.",
-                Toast.LENGTH_LONG).show()
-        }
     }
 
     private fun showDeleteChapterDialog(name: String) {

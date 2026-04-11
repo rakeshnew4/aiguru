@@ -95,10 +95,9 @@
             android:paddingBottom="10dp"
             android:visibility="gone">
 
-            <ProgressBar
+            <com.aiguruapp.student.widget.BoxSpinnerView
                 android:layout_width="22dp"
                 android:layout_height="22dp"
-                android:indeterminateTint="@color/colorPrimary"
                 android:layout_marginEnd="12dp" />
 
             <TextView
@@ -118,22 +117,6 @@
             android:orientation="vertical"
             android:background="#FFFFFF"
             android:elevation="6dp">
-
-            <!-- ── Quota banner (shown when limit is set; hidden when unlimited) ── -->
-            <TextView
-                android:id="@+id/quotaBannerChat"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:paddingTop="6dp"
-                android:paddingBottom="6dp"
-                android:textSize="12sp"
-                android:textColor="#FFFFFF"
-                android:gravity="center"
-                android:background="#E65100"
-                android:visibility="gone"
-                android:text="" />
 
             <!-- Voice chat bar (GONE – shown in voice mode) -->
             <LinearLayout
@@ -363,7 +346,7 @@
                         android:minHeight="0dp"
                         android:paddingStart="4dp"
                         android:paddingEnd="4dp"
-                        android:text="👁 View"
+                        android:text="� My Notes"
                         android:textColor="@color/colorPrimary"
                         android:textSize="11sp"
                         app:backgroundTint="@color/colorPrimaryLight"
@@ -479,6 +462,22 @@
                     android:layout_marginTop="6dp"
                     android:visibility="gone" />
 
+                <!-- 📷 Create chat page — save photo as a named page and attach to chat -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/createPageButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="36dp"
+                    android:minHeight="0dp"
+                    android:text="📷 Create Chat Page"
+                    android:textSize="12sp"
+                    android:textColor="@color/colorPrimary"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    app:backgroundTint="@color/colorPrimaryLight"
+                    app:strokeWidth="0dp"
+                    app:cornerRadius="18dp"
+                    android:layout_marginTop="6dp" />
+
                 <!-- Hidden utility elements (code-only, not visible) -->
                 <TextView
                     android:id="@+id/liveModeChip"
@@ -489,34 +488,6 @@
 
             </LinearLayout>
             <!-- END quickActionsPanel -->
-            <LinearLayout
-                android:layout_width="100dp"
-                android:layout_height="40dp"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:paddingTop="8dp"
-                android:paddingBottom="12dp">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/languageButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="40dp"
-                    android:minHeight="0dp"
-                    android:text="Language ▾"
-                    android:textAllCaps="false"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/colorTextSecondary"
-                    android:paddingStart="10dp"
-                    android:paddingEnd="10dp"
-                    app:backgroundTint="@color/colorBackground"
-                    app:strokeColor="@color/colorDivider"
-                    app:strokeWidth="1dp"
-                    app:cornerRadius="18dp"
-                    android:layout_marginEnd="6dp" />
-            </LinearLayout>
             <!-- ── Input row ──────────────────────────────────────── -->
             <LinearLayout
                 android:layout_width="match_parent"

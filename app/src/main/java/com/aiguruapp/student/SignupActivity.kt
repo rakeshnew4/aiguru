@@ -12,10 +12,26 @@ class SignupActivity : BaseActivity() {
 
     private lateinit var nameEditText: EditText
     private lateinit var gradeSpinner: Spinner
+    private lateinit var langSpinner: Spinner
     private lateinit var submitButton: Button
     private lateinit var progressBar: ProgressBar
 
-    private val grades = arrayOf("Select Grade", "6th", "7th", "8th", "9th", "10th", "11th", "12th")
+    private val grades = arrayOf("Select Grade", "General", "6th", "7th", "8th", "9th", "10th", "11th", "12th")
+
+    // Display labels paired with BCP-47 codes
+    private val langLabels = arrayOf(
+        "English only",
+        "Hindi + English mix",
+        "Telugu + English mix",
+        "Tamil + English mix",
+        "Kannada + English mix",
+        "Marathi + English mix",
+        "Bengali + English mix",
+        "Gujarati + English mix"
+    )
+    private val langCodes = arrayOf(
+        "en-US", "hi-IN", "te-IN", "ta-IN", "kn-IN", "mr-IN", "bn-IN", "gu-IN"
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -23,12 +39,22 @@ class SignupActivity : BaseActivity() {
 
         nameEditText = findViewById(R.id.etStudentName)
         gradeSpinner = findViewById(R.id.spinnerGrade)
+        langSpinner  = findViewById(R.id.spinnerLang)
         submitButton = findViewById(R.id.btnSubmit)
-        progressBar = findViewById(R.id.progressBar)
+        progressBar  = findViewById(R.id.progressBar)
 
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, grades)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        gradeSpinner.adapter = adapter
+        val gradeAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, grades)
+        gradeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        gradeSpinner.adapter = gradeAdapter
+
+        val langAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, langLabels)
+        langAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        langSpinner.adapter = langAdapter
+
+        // Pre-select saved preference
+        val savedLang = SessionManager.getPreferredLang(this)
+        val savedIdx = langCodes.indexOf(savedLang).coerceAtLeast(0)
+        langSpinner.setSelection(savedIdx)
 
         // Pre-fill name from session if already set
         val existingName = SessionManager.getStudentName(this)
@@ -52,6 +78,8 @@ class SignupActivity : BaseActivity() {
             return
         }
 
+        val selectedLangCode = langCodes.getOrElse(langSpinner.selectedItemPosition) { "en-US" }
+
         // Persist name update and grade locally
         SessionManager.login(
             context     = this,
@@ -61,6 +89,7 @@ class SignupActivity : BaseActivity() {
             studentName = name
         )
         SessionManager.saveGrade(this, grade)
+        SessionManager.savePreferredLang(this, selectedLangCode)
         SessionManager.completeSignup(this)
 
         // Persist to Firestore (fire-and-forget — don't block the user)

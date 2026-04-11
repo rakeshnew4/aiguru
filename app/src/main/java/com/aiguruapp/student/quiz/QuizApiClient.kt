@@ -1,35 +1,31 @@
 package com.aiguruapp.student.quiz
 
 import android.util.Log
+import com.aiguruapp.student.config.AdminConfigRepository
+import com.aiguruapp.student.http.HttpClientManager
 import com.aiguruapp.student.models.Quiz
 import com.aiguruapp.student.models.QuizAnswer
 import com.aiguruapp.student.models.QuizQuestion
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
-import java.util.concurrent.TimeUnit
 
 /**
  * OkHttp3-based client for the FastAPI quiz & library endpoints.
  * All methods are blocking — call from Dispatchers.IO / lifecycleScope.
  */
 class QuizApiClient(
-    private val baseUrl: String = BASE_URL
+    private val baseUrl: String = AdminConfigRepository.effectiveServerUrl()
 ) {
     companion object {
-        /** Production server. Override via constructor for local dev (10.0.2.2:8003). */
-        const val BASE_URL = "http://108.181.187.227:8003"
         private const val TAG = "QuizApiClient"
         private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
     }
 
-    private val http = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(90, TimeUnit.SECONDS)
-        .build()
+    // Use singleton HTTP client (connection pooling + reuse)
+    private val http = HttpClientManager.standardClient
 
     // ── Quiz generation ────────────────────────────────────────────────────────
 

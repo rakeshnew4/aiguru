@@ -82,15 +82,13 @@ object AppStartRepository {
 
     private fun fetchPlans(onDone: () -> Unit) {
         db.collection("plans")
-            .whereEqualTo("is_active", true)
-            .orderBy("display_order")
             .get(Source.DEFAULT)
             .addOnSuccessListener { snapshot ->
                 try {
                     plans = snapshot.documents.mapNotNull { doc ->
                         doc.toObject(FirestorePlan::class.java)
                             ?.copy(id = doc.id)
-                    }
+                    }.filter { it.isActive }.sortedBy { it.displayOrder }
                     Log.d(TAG, "Plans loaded: ${plans.map { it.id }}")
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to parse plans: ${e.message}")

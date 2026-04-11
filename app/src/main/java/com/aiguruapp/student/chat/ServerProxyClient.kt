@@ -1,14 +1,13 @@
 package com.aiguruapp.student.chat
 
 import android.util.Log
+import com.aiguruapp.student.http.HttpClientManager
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
-import java.util.concurrent.TimeUnit
 
 /**
  * Streams responses from a custom self-hosted server.
@@ -41,11 +40,8 @@ class ServerProxyClient(
     private val userId: String = ""
 ) : AiClient {
 
-    private val client = OkHttpClient.Builder()
-        .readTimeout(120, TimeUnit.SECONDS)
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
-        .build()
+    // Use singleton HTTP client from manager (connection pooling + reuse)
+    private val client = HttpClientManager.longTimeoutClient
 
     private val endpoint: String get() {
         val base = serverUrl.trimEnd('/')
