@@ -136,3 +136,7 @@ app/src/main/gen/
 # Proguard mapping
 app/build/outputs/mapping/
 
+
+
+server/.env
+server/myenv

@@ -1,0 +1,98 @@
+You are a concise academic summarizer.
+Given the following tutoring conversation transcript for the subject "Mathematics", chapter "iemh102",
+write a SHORT summary (3–5 sentences) covering:
+- The main topic(s) the student asked about
+- Key concepts explained
+- Any confusion or difficulty the student had
+- How the tutor resolved it (if applicable)
+
+Be factual and brief. Output plain text only — no markdown, no bullet points.
+
+Transcript:
+Tutor: That's good to hear! To make sure we're focusing on what you need most, could you tell me what specific math topic from Chapter iemh102 you'd like to explore today? Or perhaps there's a problem you're finding a bit tricky?
+Student: Ok
+Student: What happened?
+Student: ?
+Student: Ok
+Tutor: 1 + 1 = 2
+Student: Great
+Tutor: 1 + 1 = 2
+Student: How?
+Tutor: 1 + 1 = 2
+Student: Okay
+Tutor: 1 + 1 = 2
+Student: Ok
+Tutor: The mighty lion roared, king of the savanna.
+All creatures respected his powerful presence.
+Student: Ok
+Tutor: # 🦁 The Roaring King & The Tiny Helper 🐭
+
+Here's a swift tale of unexpected bravery!
+
+> A mighty lion, caught in a hunter's net, roared in despair, his powerful strength useless. 🌳
+> A tiny mouse, *hearing his plight*, gnawed through the ropes, freeing the grateful **King of the Jungle**! 👑😄
+
+-
+Student: Okay
+Tutor: Here's another one, about finding your unique strength! 🌟
+
+# 🦁 The Quiet Cub's True Roar 📣
+
+A swift tale of self-discovery!
+
+> A young lion, timid and unsure, always compared his soft voice to the thunderous roars of the elders. 🦁🤫
+> One day, protecting his family, he found his own powerful, un
+Student: do you know that what is that
+Tutor: Here's another one, about the true nature of leadership! 🌟
+
+# 👑 The Burdened King's Discovery 🌿
+
+A swift tale of responsibility and service!
+
+> The great lion, burdened by his pride's hunger, felt the heavy weight of the lean season on his shoulders. 🦁😔
+> By tirelessly searching for new hunting
+Student: wait wait then what happened is that one
+Tutor: Here's another one, about the power of quiet determination! 🌟
+
+# 🦁 The Silent Hunter's Triumph 🤫
+
+A swift tale of understated strength!
+
+> A mighty lion, known for his thunderous roars, often dismissed the quiet, persistent efforts of smaller creatures. 🦁🔊
+> Yet, when a complex task required pa
+Student: Hi
+Tutor: Here's another one, about the beauty of venturing beyond the familiar! 🌟
+
+# 🦁 The Curious Cub's Forest Journey 🌳
+
+A swift tale of discovery!
+
+> A young lion, always sticking to known paths, feared the mysterious forest's dark edge. 🦁🌲
+> But when a lost cub needed help, he ventured in, discoveri
+Student: Hi
+Tutor: Here's another one, about the unexpected sources of wisdom! 🌟
+
+# 🦁 The Skeptical King's Revelation 🐦
+
+A swift tale of open-mindedness!
+
+> A mighty lion, quick to judge new arrivals, often roared fiercely at any unfamiliar creature. 🦁🔊
+> But when a small, unknown bird showed him a hidden water s
+Student: Great
+Tutor: Here's another one, about the often-overlooked power of rest! 🌟
+
+# 🦁 The Weary King's True Strength 😴
+
+A swift tale of knowing your limits!
+
+> A mighty lion, constantly patrolling his vast domain, felt his powerful roars begin to falter from sheer exhaustion. 🦁💨
+> He learned that true strength 
+Student: Explain this page
+Tutor: Here's another one, about the power of learning from mistakes! 🌟
+
+# 🦁 The Proud King's Second Chance 👑
+
+A swift tale of humility and growth!
+
+> The proud lion, once convinced of his own infallibility, nearly led his pride into a grave danger. 🦁💨
+> Humbled by his error, he learned that true lead
