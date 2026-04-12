@@ -1,6 +1,17 @@
 <resources>
 
+    <!-- Smooth slide animations for all activity transitions -->
+    <style name="SlideAnimation" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/slide_in_right</item>
+        <item name="android:activityOpenExitAnimation">@anim/slide_out_left</item>
+        <item name="android:activityCloseEnterAnimation">@anim/slide_in_left</item>
+        <item name="android:activityCloseExitAnimation">@anim/slide_out_right</item>
+    </style>
+
     <style name="Theme.AIGuru" parent="Theme.Material3.Light.NoActionBar">
+
+        <!-- ── Smooth slide transitions for all activities ────────────── -->
+        <item name="android:windowAnimationStyle">@style/SlideAnimation</item>
 
         <!-- ── Material3 brand color roles ────────────────────────────── -->
         <item name="colorPrimary">@color/colorPrimary</item>

@@ -11,6 +11,7 @@ import com.aiguruapp.student.models.QuizQuestion
 import com.aiguruapp.student.models.QuizResult
 import com.aiguruapp.student.quiz.QuizApiClient
 import com.aiguruapp.student.utils.SessionManager
+import com.aiguruapp.student.widget.BoxSpinnerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import com.google.android.material.textfield.TextInputEditText
@@ -57,7 +58,7 @@ class QuizActivity : BaseActivity() {
     private lateinit var explanationText: TextView
 
     // Bottom bar
-    private lateinit var evalSpinner: ProgressBar
+    private lateinit var evalSpinner: BoxSpinnerView
     private lateinit var submitAnswerBtn: MaterialButton
     private lateinit var nextBtn: MaterialButton
 
@@ -271,6 +272,7 @@ class QuizActivity : BaseActivity() {
                 }
                 questionAnswered = true
                 evalSpinner.visibility = View.VISIBLE
+                evalSpinner.start()
                 submitAnswerBtn.isEnabled = false
                 lifecycleScope.launch {
                     val (score, result, feedback) = withContext(Dispatchers.IO) {
@@ -281,6 +283,7 @@ class QuizActivity : BaseActivity() {
                             sampleAnswer     = q.sampleAnswer
                         )
                     }
+                    evalSpinner.stop()
                     evalSpinner.visibility = View.GONE
                     val correct = score >= 2
                     val extraFeedback = buildString {

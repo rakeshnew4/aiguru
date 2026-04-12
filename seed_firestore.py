@@ -511,6 +511,7 @@ NOTIFICATIONS = [
 ADMIN_CONFIG_GLOBAL = {
     "server_url": "http://108.181.187.227:8003",
     "server_api_key": "",
+    "razorpay_key_id": "rzp_test_SWYJxX0vJpdv4i",  # Razorpay publishable key — safe to store here
     "model_tiers": {
         "standard": "gemini-2.0-flash",
         "advanced": "gemini-2.5-pro",

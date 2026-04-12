@@ -4,12 +4,12 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
-import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.aiguruapp.student.firestore.FirestoreManager
 import com.aiguruapp.student.utils.SessionManager
+import com.aiguruapp.student.widget.BoxSpinnerView
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.auth.FirebaseAuth
@@ -22,7 +22,7 @@ class EmailAuthActivity : BaseActivity() {
     private lateinit var etConfirmPassword: TextInputEditText
     private lateinit var tilConfirmPassword: TextInputLayout
     private lateinit var btnSubmit: Button
-    private lateinit var progressBar: ProgressBar
+    private lateinit var progressBar: BoxSpinnerView
     private lateinit var tvTitle: TextView
     private lateinit var tvSubtitle: TextView
     private lateinit var tvToggleText: TextView
@@ -204,7 +204,13 @@ class EmailAuthActivity : BaseActivity() {
     }
 
     private fun setLoading(loading: Boolean) {
-        btnSubmit.isEnabled    = !loading
-        progressBar.visibility = if (loading) View.VISIBLE else View.GONE
+        btnSubmit.isEnabled = !loading
+        if (loading) {
+            progressBar.visibility = View.VISIBLE
+            progressBar.start()
+        } else {
+            progressBar.stop()
+            progressBar.visibility = View.GONE
+        }
     }
 }

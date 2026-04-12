@@ -139,10 +139,10 @@
                     app:strokeColor="@color/colorError"
                     app:strokeWidth="1dp" />
 
-                <ProgressBar
+                <com.aiguruapp.student.widget.BoxSpinnerView
                     android:id="@+id/loginProgressBar"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
                     android:layout_gravity="center"
                     android:layout_marginTop="16dp"
                     android:visibility="gone" />

@@ -137,24 +137,65 @@
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Pages list -->
-        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-            android:id="@+id/chapterSwipeRefresh"
+        <!-- Pages list + download overlay wrapper -->
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1">
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/pagesList"
+            <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+                android:id="@+id/chapterSwipeRefresh"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/pagesList"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:paddingTop="12dp"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingBottom="8dp"
+                    android:clipToPadding="false" />
+
+            </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+            <!-- NCERT download / PDF loading overlay -->
+            <LinearLayout
+                android:id="@+id/downloadOverlay"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:paddingTop="12dp"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:paddingBottom="8dp"
-                android:clipToPadding="false" />
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@color/colorBackground"
+                android:visibility="gone">
 
-        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+                <com.aiguruapp.student.widget.BoxSpinnerView
+                    android:id="@+id/downloadSpinner"
+                    android:layout_width="64dp"
+                    android:layout_height="64dp" />
+
+                <TextView
+                    android:id="@+id/downloadStatusText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Downloading…"
+                    android:textSize="14sp"
+                    android:textColor="@color/colorTextSecondary"
+                    android:layout_marginTop="16dp" />
+
+                <TextView
+                    android:id="@+id/downloadSubText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="This only happens once"
+                    android:textSize="12sp"
+                    android:textColor="@color/colorTextSecondary"
+                    android:layout_marginTop="4dp" />
+
+            </LinearLayout>
+
+        </FrameLayout>
 
         <!-- Bottom action buttons -->
         <LinearLayout

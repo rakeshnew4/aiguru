@@ -6,13 +6,13 @@ import android.os.Bundle
 import android.view.View
 import android.widget.ImageButton
 import android.widget.ImageView
-import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.aiguruapp.student.utils.PdfPageManager
 import com.aiguruapp.student.utils.PdfPreloadManager
+import com.aiguruapp.student.widget.BoxSpinnerView
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -26,7 +26,7 @@ import kotlinx.coroutines.withContext
 class PageViewerActivity : AppCompatActivity() {
 
     private lateinit var pageImage: ImageView
-    private lateinit var loadingSpinner: ProgressBar
+    private lateinit var loadingSpinner: BoxSpinnerView
     private lateinit var pageTitle: TextView
     private lateinit var pageCounter: TextView
     private lateinit var prevButton: MaterialButton
@@ -80,6 +80,7 @@ class PageViewerActivity : AppCompatActivity() {
         nextButton.isEnabled = currentPage < pageCount - 1
 
         loadingSpinner.visibility = View.VISIBLE
+        loadingSpinner.start()
         pageImage.visibility = View.INVISIBLE
 
         lifecycleScope.launch(Dispatchers.IO) {
@@ -91,6 +92,7 @@ class PageViewerActivity : AppCompatActivity() {
                 pdfPreloader.preloadAhead(pdfId, pdfAssetPath, currentPage, pdfPageManager, pageCount)
                 
                 withContext(Dispatchers.Main) {
+                    loadingSpinner.stop()
                     loadingSpinner.visibility = View.GONE
                     if (bmp != null) {
                         pageImage.setImageBitmap(bmp)
@@ -101,6 +103,7 @@ class PageViewerActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
+                    loadingSpinner.stop()
                     loadingSpinner.visibility = View.GONE
                     Toast.makeText(this@PageViewerActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
                 }

@@ -36,6 +36,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 
+import com.aiguruapp.student.widget.BoxSpinnerView
+
 class ChapterActivity : BaseActivity() {
 
     private lateinit var pagesRecyclerView: RecyclerView
@@ -54,6 +56,12 @@ class ChapterActivity : BaseActivity() {
     private var pdfPageCount = 0
     private lateinit var pdfPageManager: PdfPageManager
     private lateinit var metricsTracker: ChapterMetricsTracker
+
+    // Download overlay views
+    private lateinit var downloadOverlay: android.widget.LinearLayout
+    private lateinit var downloadSpinner: BoxSpinnerView
+    private lateinit var downloadStatusText: android.widget.TextView
+    private lateinit var downloadSubText: android.widget.TextView
 
     // NCERT download-and-render state
     private var ncertUrl = ""
@@ -111,6 +119,11 @@ class ChapterActivity : BaseActivity() {
         chapterName = intent.getStringExtra("chapterName") ?: "Chapter"
 
         metricsTracker = ChapterMetricsTracker(subjectName, chapterName)
+
+        downloadOverlay    = findViewById(R.id.downloadOverlay)
+        downloadSpinner    = findViewById(R.id.downloadSpinner)
+        downloadStatusText = findViewById(R.id.downloadStatusText)
+        downloadSubText    = findViewById(R.id.downloadSubText)
 
         findViewById<TextView>(R.id.chapterTitle).text = chapterName
         findViewById<ImageButton>(R.id.backButton).setOnClickListener { finish() }
@@ -384,6 +397,19 @@ class ChapterActivity : BaseActivity() {
 
     // ─── NCERT chapter ────────────────────────────────────────────────────────
 
+    private fun showDownloadOverlay(statusText: String, subText: String = "") {
+        downloadStatusText.text = statusText
+        downloadSubText.text = subText
+        downloadSubText.visibility = if (subText.isNotBlank()) View.VISIBLE else View.GONE
+        downloadOverlay.visibility = View.VISIBLE
+        downloadSpinner.start()
+    }
+
+    private fun hideDownloadOverlay() {
+        downloadSpinner.stop()
+        downloadOverlay.visibility = View.GONE
+    }
+
     private fun setupNcertChapter(url: String) {
         ncertUrl = url
 
@@ -404,20 +430,13 @@ class ChapterActivity : BaseActivity() {
             return
         }
 
+        // Auto-start download immediately — no need to tap
         val pdfFileName = url.substringAfterLast("/")
-        pagesListData.clear()
-        pagesListData.add("⬇️  Tap to download \"$pdfFileName\" into the app")
-        pageListAdapter.notifyDataSetChanged()
-
-        pageListAdapter.onItemClickOverride = { pos ->
-            if (pos == 0) downloadNcertToCache()
-        }
-
-        // Ask AI → switch to Chat tab
-//        findViewById<MaterialButton>(R.id.askAIButton).apply {
-//            text = "💬 Ask AI about this Chapter"
-//            setOnClickListener { switchToChat() }
-//        }
+        showDownloadOverlay(
+            "Downloading '$pdfFileName'",
+            "Free NCERT textbook · saved once"
+        )
+        downloadNcertToCache()
     }
 
     /** Downloads the NCERT PDF directly into the app's private cache, then renders it. */
@@ -425,9 +444,10 @@ class ChapterActivity : BaseActivity() {
         if (ncertUrl.isBlank()) return
         val pdfFileName = ncertUrl.substringAfterLast("/")
 
-        pagesListData.clear()
-        pagesListData.add("⏳  Downloading \"$pdfFileName\" — please wait…")
-        pageListAdapter.notifyDataSetChanged()
+        showDownloadOverlay(
+            "Downloading ",
+            "Free NCERT textbook · saved once"
+        )
         pageListAdapter.onItemClickOverride = null
 
         lifecycleScope.launch(Dispatchers.IO) {
@@ -456,7 +476,7 @@ class ChapterActivity : BaseActivity() {
                     response.body!!.byteStream().use { input ->
                         destFile.outputStream().use { output -> input.copyTo(output) }
                     }
-                    withContext(Dispatchers.Main) { loadNcertPagesFromCache() }
+                    withContext(Dispatchers.Main) { hideDownloadOverlay(); loadNcertPagesFromCache() }
                     return@launch
                 } catch (e: Exception) {
                     lastError = e
@@ -467,6 +487,7 @@ class ChapterActivity : BaseActivity() {
 
             // All 3 attempts failed
             withContext(Dispatchers.Main) {
+                hideDownloadOverlay()
                 val fn = ncertUrl.substringAfterLast("/")
                 pagesListData.clear()
                 pagesListData.add("⬇️  Tap to retry downloading \"$fn\"")
@@ -492,8 +513,8 @@ class ChapterActivity : BaseActivity() {
         pageListAdapter.onItemClickOverride = null
 
         pagesListData.clear()
-        pagesListData.add("⏳ Loading pages…")
         pageListAdapter.notifyDataSetChanged()
+        showDownloadOverlay("Loading pages…", "")
 
         // Wire Ask AI button → switch to Chat tab
 //        findViewById<MaterialButton>(R.id.askAIButton).apply {
@@ -509,11 +530,13 @@ class ChapterActivity : BaseActivity() {
                     pagesListData.clear()
                     for (i in 1..count) pagesListData.add("📄  Page $i")
                     pageListAdapter.notifyDataSetChanged()
+                    hideDownloadOverlay()
                     Toast.makeText(this@ChapterActivity, "✅ $count pages ready!", Toast.LENGTH_SHORT).show()
                     switchToChat()
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
+                    hideDownloadOverlay()
                     pagesListData.clear()
                     pagesListData.add("⚠️ Could not read PDF: ${e.message}")
                     pageListAdapter.notifyDataSetChanged()
@@ -542,16 +565,16 @@ class ChapterActivity : BaseActivity() {
 //        }
 
         pagesListData.clear()
-        pagesListData.add("⏳ Loading PDF pages…")
         pageListAdapter.notifyDataSetChanged()
+        showDownloadOverlay("Loading PDF pages…", "")
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val count = pdfPageManager.getPageCount(pdfId, pdfAssetPath)
                 pdfPageCount = count
-                // pageCount will be synced to Firestore when re-enabled
 
                 withContext(Dispatchers.Main) {
+                    hideDownloadOverlay()
                     pagesListData.clear()
                     for (i in 1..count) pagesListData.add("📄  Page $i")
                     pageListAdapter.notifyDataSetChanged()
@@ -559,6 +582,7 @@ class ChapterActivity : BaseActivity() {
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
+                    hideDownloadOverlay()
                     pagesListData.clear()
                     pagesListData.add("⚠️ Failed to load PDF: ${e.message}")
                     pageListAdapter.notifyDataSetChanged()

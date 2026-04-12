@@ -395,12 +395,23 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
         // Blackboard preference is remembered across sessions (default ON).
 
+        val chatInitOverlay = view.findViewById<android.view.View>(R.id.chatInitOverlay)
+        fun hideChatInitOverlay() {
+            chatInitOverlay?.animate()?.alpha(0f)?.setDuration(250)?.withEndAction {
+                chatInitOverlay.visibility = android.view.View.GONE
+                chatInitOverlay.alpha = 1f
+            }?.start()
+        }
         historyRepo.loadHistory(
             onMessages = { msgs ->
+                hideChatInitOverlay()
                 messageAdapter.addMessages(msgs)
                 messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
             },
-            onEmpty = { addWelcomeMessage() }
+            onEmpty = {
+                hideChatInitOverlay()
+                addWelcomeMessage()
+            }
         )
 
         // Drain any pending actions queued before views were ready

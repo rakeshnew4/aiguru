@@ -15,8 +15,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.aiguruapp.student.adapters.SubjectAdapter
+import com.aiguruapp.student.BuildConfig
 import com.aiguruapp.student.config.AdminConfigRepository
 import com.aiguruapp.student.config.PlanEnforcer
+import com.aiguruapp.student.models.AppUpdateConfig
+import com.aiguruapp.student.utils.AppUpdateBus
+import com.aiguruapp.student.utils.AppUpdateManager
 import com.aiguruapp.student.models.UserMetadata
 import com.aiguruapp.student.utils.ConfigManager
 import com.aiguruapp.student.utils.SchoolTheme
@@ -37,6 +41,7 @@ class HomeActivity : BaseActivity() {
     private val subjectsList = mutableListOf<String>()
     private lateinit var subjectAdapter: SubjectAdapter
     private lateinit var userId: String
+    private var homePendingForceUpdate: AppUpdateManager.UpdateResult.ForceUpdate? = null
 
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -100,6 +105,22 @@ class HomeActivity : BaseActivity() {
         super.onResume()
         setupStudentInfo()
         loadQuotaStrip()
+        // If user returned from Play Store for a mandatory update, re-check.
+        homePendingForceUpdate?.let { fu ->
+            if (BuildConfig.VERSION_CODE < fu.config.minVersionCode) {
+                showHomeForceUpdateDialog(fu.config)
+            } else {
+                homePendingForceUpdate = null
+            }
+            return
+        }
+        // Receive any late-arriving update result (check finished after splash).
+        AppUpdateBus.consume { result -> handleHomeUpdateResult(result) }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        AppUpdateBus.clearConsumer()
     }
 
     @SuppressLint("ResourceType")
@@ -837,6 +858,73 @@ class HomeActivity : BaseActivity() {
             FirestoreManager.deleteSubject(userId, name)
             subjectAdapter.notifyItemRemoved(idx)
             updateSubjectCount()
+        }
+    }
+
+    // ── Background update-check result ────────────────────────────────────────
+    //  Delivered here when SplashActivity left before the Firestore check finished.
+
+    private fun handleHomeUpdateResult(result: AppUpdateManager.UpdateResult) {
+        when (result) {
+            is AppUpdateManager.UpdateResult.Maintenance   -> showHomeMaintenanceDialog(result.config)
+            is AppUpdateManager.UpdateResult.ForceUpdate   -> {
+                homePendingForceUpdate = result
+                showHomeForceUpdateDialog(result.config)
+            }
+            is AppUpdateManager.UpdateResult.OptionalUpdate -> showHomeOptionalUpdateDialog(result.config)
+            else -> Unit  // UpToDate / NetworkError — nothing to do
+        }
+    }
+
+    private fun showHomeForceUpdateDialog(config: AppUpdateConfig) {
+        val versionLabel = config.latestVersionName
+            .takeIf { it.isNotBlank() }?.let { " (v$it)" } ?: ""
+        AlertDialog.Builder(this)
+            .setTitle("Update Required")
+            .setMessage(
+                "${config.updateMessage}\n\n" +
+                "You need to update AI Guru$versionLabel to continue."
+            )
+            .setCancelable(false)
+            .setPositiveButton("Update Now") { _, _ -> openPlayStoreHome(config.updateUrl) }
+            .setNegativeButton("Exit") { _, _ -> finishAffinity() }
+            .show()
+    }
+
+    private fun showHomeMaintenanceDialog(config: AppUpdateConfig) {
+        val msg = buildString {
+            append(config.maintenanceMessage)
+            if (config.supportContact.isNotBlank())
+                append("\n\nFor assistance: ${config.supportContact}")
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Down for Maintenance")
+            .setMessage(msg)
+            .setCancelable(false)
+            .setPositiveButton("Close App") { _, _ -> finishAffinity() }
+            .show()
+    }
+
+    private fun showHomeOptionalUpdateDialog(config: AppUpdateConfig) {
+        val title = if (config.latestVersionName.isNotBlank())
+            "Update Available — v${config.latestVersionName}" else "Update Available"
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(config.updateMessage)
+            .setCancelable(true)
+            .setPositiveButton("Update") { _, _ -> openPlayStoreHome(config.updateUrl) }
+            .setNegativeButton("Later") { _, _ -> }
+            .show()
+    }
+
+    private fun openPlayStoreHome(url: String) {
+        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)).apply {
+            setPackage("com.android.vending")
+        }
+        try {
+            startActivity(intent)
+        } catch (e: Exception) {
+            startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
         }
     }
 }

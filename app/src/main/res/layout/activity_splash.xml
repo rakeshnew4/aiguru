@@ -66,12 +66,10 @@
         android:layout_alignParentBottom="true"
         android:layout_marginBottom="48dp">
 
-        <ProgressBar
+        <com.aiguruapp.student.widget.BoxSpinnerView
             android:id="@+id/splashProgressBar"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            style="?android:attr/progressBarStyle"
-            android:indeterminateTint="#AACCFF"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
             android:layout_gravity="center" />
 
         <TextView

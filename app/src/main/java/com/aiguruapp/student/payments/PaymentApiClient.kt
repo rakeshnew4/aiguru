@@ -1,7 +1,6 @@
 package com.aiguruapp.student.payments
 
 import android.util.Log
-import com.aiguruapp.student.BuildConfig
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -101,7 +100,7 @@ class PaymentApiClient(
                     orderId = root.optString("order_id", root.optString("orderId")),
                     amountPaise = root.optInt("amount"),
                     currency = root.optString("currency", "INR"),
-                    keyId = root.optString("key_id", root.optString("keyId", BuildConfig.RAZORPAY_KEY_ID)),
+                    keyId = root.optString("key_id", root.optString("keyId", "")),
                     checkoutName = root.optString("checkout_name", "AI Guru"),
                     checkoutDescription = root.optString("checkout_description", "Plan upgrade"),
                     prefillName = root.optString("prefill_name", ""),

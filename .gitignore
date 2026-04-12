@@ -56,3 +56,83 @@ coverage/
 # Environment variables
 .env
 .env.local
+
+# ────── Additional Security & Build Files ──────
+
+# Signing keys and keystores (CRITICAL — never commit!)
+*.key
+*.key.pem
+*.priv
+signing/
+keystore/
+release-key/
+app/signing/
+app/release-key.jks
+
+# Gradle properties with potential secrets
+gradle.properties.local
+gradle.properties.backup
+gradle.properties.bak
+local.gradle.properties
+
+# Firebase credentials and configs (all variations)
+firebase_serviceaccount_*.json
+serviceAccountKey.json
+firebase-debug.log
+.env.firebase
+
+# Android release/build outputs
+app/release/
+release/
+*.aab
+app/build/outputs/
+
+# Build logs and outputs
+build_output*.txt
+build.log
+lint-results.xml
+proguard/
+
+# Gradle build cache
+.gradle/
+.gradle/caches/
+
+# IntelliJ/Android Studio IDE
+.idea/
+*.iml
+out/
+.idea/vcs.xml
+.idea/copyright/
+
+# Python/FastAPI server secrets
+fastapi\ server/.env*
+fastapi\ server/*/secrets/
+fastapi\ server/**/.env
+server_credentials.json
+api_credentials.json
+
+# Backup and temporary files
+*.bak
+*.backup
+*~
+*.tmp
+*.temp
+
+# Test results and reports
+test-results/
+lint-results.xml
+app/build/reports/
+
+# Secrets and credentials (catch-all)
+secrets.txt
+api_keys.txt
+credentials.txt
+*.secrets
+.secrets/
+
+# Generated files
+app/src/main/gen/
+
+# Proguard mapping
+app/build/outputs/mapping/
+

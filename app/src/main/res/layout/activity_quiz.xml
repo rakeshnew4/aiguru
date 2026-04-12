@@ -325,11 +325,10 @@
         android:elevation="4dp">
 
         <!-- Evaluating spinner -->
-        <ProgressBar
+        <com.aiguruapp.student.widget.BoxSpinnerView
             android:id="@+id/evalSpinner"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:indeterminateTint="@color/colorPrimary"
             android:layout_marginEnd="12dp"
             android:visibility="gone" />
 

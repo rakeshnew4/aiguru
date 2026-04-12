@@ -25,15 +25,8 @@ android {
         versionCode = 10
         versionName = "1.2.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        val paymentBaseUrl = localProperties["PAYMENT_BASE_URL"] as? String ?: ""
-        val razorpayKeyId  = localProperties["RAZORPAY_KEY_ID"]  as? String ?: ""
-        // SERVER_URL is the FastAPI base URL used as a compile-time fallback.
-        // The live value is always fetched from Firestore admin_config/global.server_url
-        // at runtime — this is only used on first launch before that fetch completes.
-        val serverUrl = localProperties["SERVER_URL"] as? String ?: ""
-        buildConfigField("String", "PAYMENT_BASE_URL", "\"$paymentBaseUrl\"")
-        buildConfigField("String", "RAZORPAY_KEY_ID",  "\"$razorpayKeyId\"")
-        buildConfigField("String", "SERVER_URL",       "\"$serverUrl\"")
+        // Server URL, Razorpay key, and payment URL are fetched from Firestore admin_config/global
+        // at runtime via AdminConfigRepository — no compile-time keys needed.
     }
 
     signingConfigs {
@@ -103,7 +96,7 @@ android {
 dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.json:json:20240303")
-    implementation("com.razorpay:checkout:1.6.40")
+    implementation("com.razorpay:checkout:1.6.41")
     implementation("com.google.firebase:firebase-auth:23.1.0")
     implementation("com.google.firebase:firebase-firestore:25.1.1")
     implementation("com.google.android.gms:play-services-auth:21.3.0")

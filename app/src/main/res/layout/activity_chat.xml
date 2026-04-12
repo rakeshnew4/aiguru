@@ -17,23 +17,78 @@
 
         <!-- ── Header ──────────────────────────────────────────────── -->
 
-        <!-- Thin divider under header -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="@color/colorDivider" />
-
-        <!-- ── Messages (full remaining height) ───────────────────── -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/messagesRecyclerView"
+        <!-- ── Messages area (FrameLayout allows overlays to float) ── -->
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1"
-            android:clipToPadding="false"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            android:paddingTop="10dp"
-            android:paddingBottom="6dp" />
+            android:layout_weight="1">
+
+            <!-- Messages list -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/messagesRecyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="6dp" />
+
+            <!-- ── AI "thinking" bar — floats at BOTTOM of messages ── -->
+            <LinearLayout
+                android:id="@+id/loadingLayout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@color/colorPrimaryLight"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:visibility="gone">
+
+                <com.aiguruapp.student.widget.BoxSpinnerView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_marginEnd="12dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="AI is thinking..."
+                    android:textColor="@color/colorPrimary"
+                    android:textSize="13sp"
+                    android:textStyle="italic" />
+
+            </LinearLayout>
+
+            <!-- ── Chat init overlay — shown while history is loading ── -->
+            <LinearLayout
+                android:id="@+id/chatInitOverlay"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@color/colorBackground"
+                android:visibility="visible">
+
+                <com.aiguruapp.student.widget.BoxSpinnerView
+                    android:layout_width="56dp"
+                    android:layout_height="56dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Opening chat…"
+                    android:textSize="13sp"
+                    android:textColor="@color/colorTextSecondary"
+                    android:layout_marginTop="14dp" />
+
+            </LinearLayout>
+
+        </FrameLayout>
 
         <!-- ── Image preview strip (GONE by default) ─────────────── -->
         <LinearLayout
@@ -78,35 +133,6 @@
                 app:backgroundTint="@color/colorErrorLight"
                 app:cornerRadius="16dp"
                 style="@style/Widget.MaterialComponents.Button.TextButton" />
-
-        </LinearLayout>
-
-        <!-- ── AI loading indicator (GONE by default) ────────────── -->
-        <LinearLayout
-            android:id="@+id/loadingLayout"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:background="@color/colorPrimaryLight"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp"
-            android:visibility="gone">
-
-            <com.aiguruapp.student.widget.BoxSpinnerView
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:layout_marginEnd="12dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="AI is thinking..."
-                android:textColor="@color/colorPrimary"
-                android:textSize="13sp"
-                android:textStyle="italic" />
 
         </LinearLayout>
 

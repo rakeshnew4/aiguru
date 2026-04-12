@@ -7,6 +7,7 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.aiguruapp.student.utils.SessionManager
 import com.aiguruapp.student.firestore.FirestoreManager
+import com.aiguruapp.student.widget.BoxSpinnerView
 
 class SignupActivity : BaseActivity() {
 
@@ -14,7 +15,7 @@ class SignupActivity : BaseActivity() {
     private lateinit var gradeSpinner: Spinner
     private lateinit var langSpinner: Spinner
     private lateinit var submitButton: Button
-    private lateinit var progressBar: ProgressBar
+    private lateinit var progressBar: BoxSpinnerView
 
     private val grades = arrayOf("Select Grade", "General", "6th", "7th", "8th", "9th", "10th", "11th", "12th")
 

@@ -8,15 +8,14 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.os.SystemClock
 import android.util.Log
-import android.widget.ProgressBar
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
 import com.aiguruapp.student.BuildConfig
 import com.aiguruapp.student.config.AppStartRepository
 import com.aiguruapp.student.models.AppUpdateConfig
+import com.aiguruapp.student.utils.AppUpdateBus
 import com.aiguruapp.student.utils.AppUpdateManager
 import com.aiguruapp.student.utils.AppUpdateManager.UpdateResult
 
@@ -38,8 +37,8 @@ class SplashActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "SplashActivity"
-        /** Minimum time to show splash so the user sees the brand. */
-        private const val MIN_SPLASH_MS = 1_500L
+        /** Minimum time to show splash so the user sees the brand — fast entry at 700ms. */
+        private const val MIN_SPLASH_MS = 700L
     }
 
     private lateinit var prefs: SharedPreferences
@@ -53,6 +52,12 @@ class SplashActivity : AppCompatActivity() {
 
     /** Guards against launching HomeActivity more than once. */
     private var hasProceeded = false
+
+    /** True once MIN_SPLASH_MS has elapsed — never act before the brand is shown. */
+    private var minTimeElapsed = false
+
+    /** Holds the update-check result once Firestore responds. */
+    private var checkResultCache: UpdateResult? = null
 
     // ── Lifecycle ─────────────────────────────────────────────────────────
 
@@ -68,27 +73,51 @@ class SplashActivity : AppCompatActivity() {
 
         prefs = getSharedPreferences(AppUpdateManager.PREFS_NAME, Context.MODE_PRIVATE)
 
-        val splashStart = SystemClock.elapsedRealtime()
-
-        // Kick off bootstrap data fetch in parallel with the update check.
-        // Data will be ready in AppStartRepository by the time the user
-        // reaches HomeActivity (both fetches run concurrently during splash).
+        // Bootstrap data fetch — runs in parallel, not on the critical path.
         AppStartRepository.fetchAll {
             Log.d(TAG, "Bootstrap data ready — plans=${AppStartRepository.plans.size}, " +
                     "offers=${AppStartRepository.offers.size}, " +
                     "notifications=${AppStartRepository.notifications.size}")
         }
 
+        // Minimum brand-exposure timer.
+        // When it fires we either handle an already-available result or proceed
+        // straight to HomeActivity and let AppUpdateBus deliver the result there.
+        Handler(Looper.getMainLooper()).postDelayed({
+            minTimeElapsed = true
+            tryAct()
+        }, MIN_SPLASH_MS)
+
+        // Update check runs fully in parallel — no blocking.
         AppUpdateManager.checkForUpdates(
             currentVersionCode = BuildConfig.VERSION_CODE,
             prefs = prefs
         ) { result ->
-            // Ensure minimum splash time has elapsed before acting.
-            val elapsed = SystemClock.elapsedRealtime() - splashStart
-            val delay = (MIN_SPLASH_MS - elapsed).coerceAtLeast(0L)
-            Handler(Looper.getMainLooper()).postDelayed({
-                handleResult(result)
-            }, delay)
+            checkResultCache = result
+            if (hasProceeded) {
+                // Splash already dismissed — deliver result to HomeActivity via bus.
+                AppUpdateBus.post(result)
+            } else {
+                tryAct()
+            }
+        }
+    }
+
+    /**
+     * Acts only after [minTimeElapsed] is true.
+     *
+     * • Result available  → handle it here on splash (ForceUpdate / Maintenance will
+     *   block; UpToDate / NetworkError will proceed normally).
+     * • Result not yet in → proceed immediately; the result is delivered to
+     *   HomeActivity via [AppUpdateBus] when it eventually arrives.
+     */
+    private fun tryAct() {
+        if (!minTimeElapsed) return
+        val result = checkResultCache
+        if (result == null) {
+            proceedToApp()          // check still running — HomeActivity handles via bus
+        } else {
+            handleResult(result)
         }
     }
 

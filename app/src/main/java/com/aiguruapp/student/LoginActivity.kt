@@ -5,11 +5,11 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Button
-import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import com.aiguruapp.student.firestore.FirestoreManager
 import com.aiguruapp.student.utils.SessionManager
+import com.aiguruapp.student.widget.BoxSpinnerView
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -28,7 +28,7 @@ class LoginActivity : BaseActivity() {
 
     private lateinit var googleSignInClient: GoogleSignInClient
     private lateinit var signInButton: Button
-    private lateinit var loadingBar: ProgressBar
+    private lateinit var loadingBar: BoxSpinnerView
     private val auth = FirebaseAuth.getInstance()
 
     private val signInLauncher =
@@ -54,7 +54,7 @@ class LoginActivity : BaseActivity() {
         setContentView(R.layout.activity_login)
 
         signInButton = findViewById(R.id.googleSignInButton)
-        loadingBar   = findViewById<ProgressBar?>(R.id.loginProgressBar) ?: ProgressBar(this)
+        loadingBar   = findViewById(R.id.loginProgressBar)
 
         // Already logged in — go straight home
         if (SessionManager.isLoggedIn(this)) {
@@ -150,6 +150,12 @@ class LoginActivity : BaseActivity() {
 
     private fun setLoading(loading: Boolean) {
         signInButton.isEnabled = !loading
-        loadingBar.visibility  = if (loading) View.VISIBLE else View.GONE
+        if (loading) {
+            loadingBar.visibility = View.VISIBLE
+            loadingBar.start()
+        } else {
+            loadingBar.stop()
+            loadingBar.visibility = View.GONE
+        }
     }
 }

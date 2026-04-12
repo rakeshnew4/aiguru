@@ -73,11 +73,7 @@ class SubscriptionActivity : BaseActivity(), PaymentResultWithDataListener {
         loadPlansAndRender()
     }
 
-    private fun resolvePaymentBaseUrl(): String {
-        val configured = BuildConfig.PAYMENT_BASE_URL.trim()
-        if (configured.isNotBlank()) return configured
-        return AdminConfigRepository.effectiveServerUrl()
-    }
+    private fun resolvePaymentBaseUrl(): String = AdminConfigRepository.effectiveServerUrl()
 
     private fun applySchoolBranding() {
         val branding = school?.branding
@@ -418,10 +414,10 @@ class SubscriptionActivity : BaseActivity(), PaymentResultWithDataListener {
         plan: SchoolPlan,
         order: com.aiguruapp.student.payments.CreateOrderResponse
     ) {
-        val keyId = order.keyId.ifBlank { BuildConfig.RAZORPAY_KEY_ID }
+        val keyId = order.keyId.ifBlank { AdminConfigRepository.razorpayKeyId() }
         if (keyId.isBlank()) {
             setPaymentLoading(false)
-            showToast("Missing Razorpay key id. Add RAZORPAY_KEY_ID or return key_id from create-order API.")
+            showToast("Razorpay key not loaded yet. Please wait a moment and retry.")
             return
         }
 

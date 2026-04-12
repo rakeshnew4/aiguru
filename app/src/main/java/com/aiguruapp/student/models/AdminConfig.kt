@@ -14,15 +14,23 @@ data class AdminConfig(
     // ── Server / model routing ────────────────────────────────────────────────
     /**
      * Base URL for the chat server. Loaded from Firestore admin_config/global.
-     * Empty string = not yet loaded from Firestore (use BuildConfig.SERVER_URL fallback).
-     * Never hardcode an IP here — set it in Firestore and in local.properties SERVER_URL.
+     * Default is a sensible fallback for first app launch before Firestore loads.
+     * Firestore value will override this after the first fetch.
      */
     @field:PropertyName("server_url")
-    val serverUrl: String = "",
+    val serverUrl: String = "http://108.181.187.227:8003",
 
     /** Optional API key for the server. Empty = no auth header. */
     @field:PropertyName("server_api_key")
     val serverApiKey: String = "",
+
+    /**
+     * Razorpay publishable key (rzp_live_xxx or rzp_test_xxx).
+     * Loaded from Firestore so it can be rotated without an app update.
+     * The server's create-order response also returns the key — this is the fallback.
+     */
+    @field:PropertyName("razorpay_key_id")
+    val razorpayKeyId: String = "",
 
     /**
      * Map of model tier → actual model name string sent to the server.

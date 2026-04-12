@@ -1,7 +1,6 @@
 package com.aiguruapp.student.config
 
 import android.util.Log
-import com.aiguruapp.student.BuildConfig
 import com.aiguruapp.student.models.AdminConfig
 import com.aiguruapp.student.models.PlanLimits
 import com.aiguruapp.student.models.SubscriptionPlan
@@ -118,12 +117,13 @@ object AdminConfigRepository {
         cachedPlans[planId] ?: SubscriptionPlan(planId = planId.ifBlank { "free" })
 
     /**
-     * Returns the effective server base URL.
-     * Priority: Firestore admin_config/global.server_url > BuildConfig.SERVER_URL (local.properties)
+     * Returns the server base URL from Firestore admin_config/global.server_url.
      * This is the ONLY place you should obtain the server URL — never hardcode it elsewhere.
      */
-    fun effectiveServerUrl(): String =
-        cachedConfig.serverUrl.ifBlank { BuildConfig.SERVER_URL }
+    fun effectiveServerUrl(): String = cachedConfig.serverUrl
+
+    /** Razorpay publishable key from Firestore. Falls back to empty string if not loaded yet. */
+    fun razorpayKeyId(): String = cachedConfig.razorpayKeyId
 
     /** Resolve the server model name for a given tier key. */
     fun modelNameForTier(tier: String): String =

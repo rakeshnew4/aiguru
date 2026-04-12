@@ -3,7 +3,6 @@ package com.aiguruapp.student.utils
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
-import android.os.Build
 import android.view.View
 import android.view.Window
 import androidx.core.graphics.ColorUtils
@@ -109,20 +108,19 @@ object SchoolTheme {
      * luminance of the chosen color — exactly like BookMyShow / Zomato.
      */
     fun applyStatusBar(window: Window) {
-        // Keep solid color for pre-35 devices where statusBarColor is still honored.
-        window.statusBarColor = primaryDarkColor
-        // Use WindowCompat for reliable cross-version behavior.
+        // Transparent status bar on all API levels — app header draws behind it.
+        // On API 35+ the system already forces this; on older devices we set it
+        // explicitly so every screen looks consistently edge-to-edge.
+        @Suppress("DEPRECATION")
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
+        // Transparent nav bar so bottom-nav / input bar extends to the screen edge.
+        @Suppress("DEPRECATION")
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
         val controller = WindowCompat.getInsetsController(window, window.decorView)
-        if (Build.VERSION.SDK_INT >= 35) {
-            // Android 15+ (targetSdk 36) forces edge-to-edge: the status bar becomes
-            // transparent and shows the content behind it.  Our content background is
-            // #F5F7FA (light), so we need DARK icons so the clock stays readable.
-            controller.isAppearanceLightStatusBars = true
-        } else {
-            // Pre-35: statusBarColor is applied as a solid bar.  Determine icon mode
-            // from that bar's luminance (dark bar → white icons, light bar → dark icons).
-            controller.isAppearanceLightStatusBars = isColorLight(primaryDarkColor)
-        }
+        // App background is light (#F5F7FA / white) — always use dark (black) icons
+        // so the clock and battery are clearly visible over the app content.
+        controller.isAppearanceLightStatusBars = true
+        controller.isAppearanceLightNavigationBars = true
     }
 
     /** Returns true when [color] is light enough to need dark (black) text/icons. */

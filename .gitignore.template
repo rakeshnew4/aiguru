@@ -1,0 +1,85 @@
+# .gitignore.template
+# ═════════════════════════════════════════════════════════════════════════════
+# This file documents sensitive/local files that are ignored by .gitignore
+# Copy these templates and fill in YOUR OWN values — never commit actual secrets!
+# ═════════════════════════════════════════════════════════════════════════════
+
+# ────────────────────────────────────────────────────────────────────────────
+# 1. local.properties — Local SDK/NDK paths (each developer's machine is different)
+# ────────────────────────────────────────────────────────────────────────────
+# Location: ./local.properties (in project root, gitignored)
+# Template content:
+# 
+# sdk.dir=/Users/yourname/Library/Android/sdk
+# ndk.dir=/Users/yourname/Library/Android/ndk/25.1.8537368
+# 
+
+# ────────────────────────────────────────────────────────────────────────────
+# 2. google-services.json — Firebase configuration (contains project IDs)
+# ────────────────────────────────────────────────────────────────────────────
+# Location: ./app/google-services.json (gitignored)
+# How to obtain:
+#   1. Go to Firebase Console: https://console.firebase.google.com
+#   2. Select your project
+#   3. Settings → Project settings → Google-Services.json
+#   4. Download and place in app/ directory
+# NEVER commit this file — it contains your Firebase project ID and API keys!
+
+# ────────────────────────────────────────────────────────────────────────────
+# 3. Release keystore (signing key for Play Store releases)
+# ────────────────────────────────────────────────────────────────────────────
+# Location: ./signing/release-key.jks (gitignored)
+# How to obtain/create:
+#   keytool -genkey -v -keystore signing/release-key.jks \
+#     -keyalg RSA -keysize 2048 -validity 10000 \
+#     -alias aiguru_production
+#
+# CRITICAL SECURITY: 
+#   - Store ONLY on your local machine
+#   - Back up securely (password-protected storage)
+#   - NEVER commit to git
+#   - NEVER share the keystore file or password
+
+# ────────────────────────────────────────────────────────────────────────────
+# 4. gradle.properties.local — Local build properties (optional per-machine config)
+# ────────────────────────────────────────────────────────────────────────────
+# Location: ./gradle.properties.local (gitignored)
+# Template content:
+#
+# # Local overrides for build.gradle.kts
+# # org.gradle.jvmargs=-Xmx4096m
+# # android.useAndroidX=true
+
+# ────────────────────────────────────────────────────────────────────────────
+# 5. .env files — Environment variables for FastAPI backend
+# ────────────────────────────────────────────────────────────────────────────
+# Location: ./fastapi\ server/.env (gitignored)
+# Template content:
+#
+# DATABASE_URL=postgresql://user:password@localhost/aiguru
+# FIREBASE_PROJECT_ID=your-project-id
+# API_KEY_SECRET=your-super-secret-key
+# JWT_SECRET=your-jwt-secret-key
+
+# ────────────────────────────────────────────────────────────────────────────
+# 6. Firebase Service Account Key (server-side authentication)
+# ────────────────────────────────────────────────────────────────────────────
+# Location: ./firebase_serviceaccount.json (gitignored)
+# How to obtain:
+#   1. Firebase Console → Settings → Service Accounts
+#   2. Click "Generate New Private Key"
+#   3. Save as ./firebase_serviceaccount.json
+# CRITICAL: This file grants full admin access to your Firebase project!
+
+# ────────────────────────────────────────────────────────────────────────────
+# Summary: Files you MUST create locally but NEVER commit
+# ────────────────────────────────────────────────────────────────────────────
+# ✓ local.properties                    — Local SDK/NDK paths
+# ✓ app/google-services.json            — Firebase config
+# ✓ signing/release-key.jks             — Play Store signing key
+# ✓ firebase_serviceaccount.json        — Firebase admin credentials
+# ✓ fastapi\ server/.env                — Backend secrets
+# ✓ gradle.properties.local             — Local build overrides (optional)
+#
+# All these are in .gitignore — they will never be committed to GitHub.
+# This keeps your secrets safe! ✨
