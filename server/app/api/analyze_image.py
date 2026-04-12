@@ -16,10 +16,11 @@ import json
 import re
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.core.logger import get_logger
+from app.core.auth import require_auth, AuthUser
 from app.services.llm_service import generate_response
 from app.services import cache_service
 
@@ -121,7 +122,7 @@ def _to_response(data: Dict[str, Any], cached: bool = False) -> AnalyzeImageResp
 # ── Endpoint ──────────────────────────────────────────────────────────────────
 
 @router.post("/analyze-image", response_model=AnalyzeImageResponse)
-async def analyze_image(req: AnalyzeImageRequest) -> AnalyzeImageResponse:
+async def analyze_image(req: AnalyzeImageRequest, auth: AuthUser = Depends(require_auth)) -> AnalyzeImageResponse:
     """
     Analyse an educational image with the vision LLM and return structured
     content (transcript, paragraphs, diagrams, key terms).

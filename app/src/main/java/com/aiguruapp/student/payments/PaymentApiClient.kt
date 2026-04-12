@@ -1,6 +1,7 @@
 package com.aiguruapp.student.payments
 
 import android.util.Log
+import com.aiguruapp.student.auth.TokenManager
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -50,8 +51,7 @@ data class VerifyPaymentResponse(
 )
 
 class PaymentApiClient(
-    private val baseUrl: String,
-    private val authToken: String? = null
+    private val baseUrl: String
 ) {
 
     companion object {
@@ -64,6 +64,13 @@ class PaymentApiClient(
         .readTimeout(20, TimeUnit.SECONDS)
         .writeTimeout(20, TimeUnit.SECONDS)
         .build()
+
+    /** Adds Firebase ID token as Bearer header; call from a background thread. */
+    private fun Request.Builder.addFirebaseAuth(forceRefresh: Boolean = false): Request.Builder {
+        val header = TokenManager.buildAuthHeader(forceRefresh)
+        if (header != null) header("Authorization", header)
+        return this
+    }
 
     fun createOrder(request: CreateOrderRequest): Result<CreateOrderResponse> {
         return runCatching {
@@ -83,9 +90,7 @@ class PaymentApiClient(
             val httpRequest = Request.Builder()
                 .url(endpoint)
                 .header("Content-Type", "application/json")
-                .apply {
-                    if (!authToken.isNullOrBlank()) header("Authorization", "Bearer $authToken")
-                }
+                .addFirebaseAuth()
                 .post(body.toString().toRequestBody(JSON))
                 .build()
 
@@ -132,9 +137,7 @@ class PaymentApiClient(
             val httpRequest = Request.Builder()
                 .url(endpoint)
                 .header("Content-Type", "application/json")
-                .apply {
-                    if (!authToken.isNullOrBlank()) header("Authorization", "Bearer $authToken")
-                }
+                .addFirebaseAuth()
                 .post(body.toString().toRequestBody(JSON))
                 .build()
 

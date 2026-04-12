@@ -1,6 +1,7 @@
 package com.aiguruapp.student.chat
 
 import android.util.Log
+import com.aiguruapp.student.auth.TokenManager
 import com.aiguruapp.student.http.HttpClientManager
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
@@ -14,6 +15,7 @@ import java.io.IOException
  *
  * Expected server contract:
  *   POST <serverUrl>/chat-stream
+ *   Authorization: Bearer <firebase-id-token>
  *   Request body : {
  *     "question":      "<user message>",
  *     "page_id":       "<subject>__<chapter>",
@@ -29,7 +31,7 @@ import java.io.IOException
  *                  data: {"done": true}          (terminal frame)
  *
  * [serverUrl] should be the base URL, e.g. "http://192.168.1.10:8000".
- * [apiKey] is optional — sent as Bearer token when non-empty.
+ * [apiKey] is kept for API compatibility only — ignored when a Firebase user is signed in.
  *
  * All calls are blocking — invoke from Dispatchers.IO.
  */
@@ -46,6 +48,19 @@ class ServerProxyClient(
     private val endpoint: String get() {
         val base = serverUrl.trimEnd('/')
         return if (base.endsWith("/chat-stream")) base else "$base/chat-stream"
+    }
+
+    /**
+     * Attach the Firebase ID token as a Bearer header.
+     * Falls back to the static [apiKey] only if no Firebase user is signed in
+     * (which should only happen in development/test scenarios).
+     * On HTTP 401, callers should pass forceRefresh=true to get a fresh token.
+     */
+    private fun addAuthHeader(builder: Request.Builder, forceRefresh: Boolean = false) {
+        val authHeader =
+            TokenManager.buildAuthHeader(forceRefresh)
+                ?: if (apiKey.isNotEmpty()) "Bearer $apiKey" else null
+        if (authHeader != null) builder.header("Authorization", authHeader)
     }
 
     override fun streamText(
@@ -140,17 +155,45 @@ class ServerProxyClient(
         onDone: (inputTokens: Int, outputTokens: Int, totalTokens: Int) -> Unit,
         onError: (String) -> Unit
     ) {
+        // Try with cached token; on 401 force-refresh and retry once.
+        val retried = executeStreamInternal(
+            json, forceRefresh = false,
+            onPageTranscript, onSuggestBlackboard, onToken, onDone, onError
+        )
+        if (retried == RETRY_NEEDED) {
+            Log.w("ServerProxyClient", "401 received — refreshing Firebase token and retrying")
+            executeStreamInternal(
+                json, forceRefresh = true,
+                onPageTranscript, onSuggestBlackboard, onToken, onDone, onError
+            )
+        }
+    }
+
+    /** Returns [RETRY_NEEDED] when server returned 401 and caller should retry. */
+    private fun executeStreamInternal(
+        json: JSONObject,
+        forceRefresh: Boolean,
+        onPageTranscript: ((String) -> Unit)?,
+        onSuggestBlackboard: ((Boolean) -> Unit)?,
+        onToken: (String) -> Unit,
+        onDone: (inputTokens: Int, outputTokens: Int, totalTokens: Int) -> Unit,
+        onError: (String) -> Unit
+    ): Int {
         val reqBuilder = Request.Builder()
             .url(endpoint)
             .post(json.toString().toRequestBody("application/json".toMediaType()))
-        if (apiKey.isNotEmpty()) reqBuilder.addHeader("Authorization", "Bearer $apiKey")
+        addAuthHeader(reqBuilder, forceRefresh)
         Log.d("ServerProxyClient", "→ POST $endpoint")
-        try {
+        return try {
             val response = client.newCall(reqBuilder.build()).execute()
             Log.d("ServerProxyClient", "← HTTP ${response.code}")
+            if (response.code == 401 && !forceRefresh) {
+                response.close()
+                return RETRY_NEEDED
+            }
             if (!response.isSuccessful) {
                 onError("HTTP ${response.code}: ${response.message}")
-                return
+                return OK
             }
             var inputTokens = 0; var outputTokens = 0; var totalTokens = 0
             response.body?.source()?.let { source ->
@@ -178,9 +221,16 @@ class ServerProxyClient(
             }
             onDone(inputTokens, outputTokens, totalTokens)
             Log.d("TokenDebug", "[ServerProxy] onDone called with in=$inputTokens out=$outputTokens total=$totalTokens")
+            OK
         } catch (e: IOException) {
             Log.e("ServerProxyClient", "IOException: ${e.message}", e)
             onError(e.message ?: "Network error")
+            OK
         }
+    }
+
+    companion object {
+        private const val OK = 0
+        private const val RETRY_NEEDED = 1
     }
 }

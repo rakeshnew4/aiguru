@@ -1,6 +1,7 @@
 package com.aiguruapp.student.chat
 
 import android.util.Log
+import com.aiguruapp.student.auth.TokenManager
 import com.aiguruapp.student.config.AdminConfigRepository
 import com.aiguruapp.student.models.PageContent
 import okhttp3.MediaType.Companion.toMediaType
@@ -51,9 +52,9 @@ object PageAnalyzer {
         }.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
 
         val reqBuilder = Request.Builder().url(endpoint).post(body)
-        if (cfg.serverApiKey.isNotBlank()) {
-            reqBuilder.addHeader("Authorization", "Bearer ${cfg.serverApiKey}")
-        }
+        // Firebase ID token for server auth; forget the static serverApiKey
+        val authHeader = TokenManager.buildAuthHeader()
+        if (authHeader != null) reqBuilder.header("Authorization", authHeader)
 
         try {
             val response = http.newCall(reqBuilder.build()).execute()

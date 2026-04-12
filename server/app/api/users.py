@@ -12,12 +12,13 @@ from __future__ import annotations
 import asyncio
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.services import user_service, litellm_service
 from app.core.logger import get_logger
 from app.core.config import settings
+from app.core.auth import require_auth, AuthUser
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/users", tags=["users"])
@@ -39,7 +40,7 @@ class RegisterResponse(BaseModel):
 
 
 @router.post("/register", response_model=RegisterResponse)
-async def register_user(req: RegisterRequest):
+async def register_user(req: RegisterRequest, auth: AuthUser = Depends(require_auth)):
     """
     Create users_table/{uid} on first sign-up + LiteLLM API key for usage tracking.
 
@@ -51,6 +52,14 @@ async def register_user(req: RegisterRequest):
     """
     if not req.userId or req.userId == "guest_user":
         raise HTTPException(status_code=400, detail="Valid userId is required")
+
+    # The authenticated token UID must match the userId being registered.
+    # This prevents one user from creating/overwriting another user's document.
+    if auth.uid != req.userId:
+        raise HTTPException(
+            status_code=403,
+            detail="Token UID does not match the userId in the request.",
+        )
 
     # Create user in Firestore (sync via executor)
     loop = asyncio.get_event_loop()

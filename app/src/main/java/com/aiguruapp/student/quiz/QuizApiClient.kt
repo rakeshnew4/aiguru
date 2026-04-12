@@ -1,6 +1,7 @@
 package com.aiguruapp.student.quiz
 
 import android.util.Log
+import com.aiguruapp.student.auth.TokenManager
 import com.aiguruapp.student.config.AdminConfigRepository
 import com.aiguruapp.student.http.HttpClientManager
 import com.aiguruapp.student.models.Quiz
@@ -26,6 +27,13 @@ class QuizApiClient(
 
     // Use singleton HTTP client (connection pooling + reuse)
     private val http = HttpClientManager.standardClient
+
+    /** Adds Firebase ID token as Bearer header; call from a background thread. */
+    private fun Request.Builder.addFirebaseAuth(): Request.Builder {
+        val header = TokenManager.buildAuthHeader()
+        if (header != null) header("Authorization", header)
+        return this
+    }
 
     // ── Quiz generation ────────────────────────────────────────────────────────
 
@@ -55,6 +63,7 @@ class QuizApiClient(
 
         val request = Request.Builder()
             .url("$baseUrl/quiz/generate")
+            .addFirebaseAuth()
             .post(body)
             .build()
 
@@ -91,6 +100,7 @@ class QuizApiClient(
 
         val request = Request.Builder()
             .url("$baseUrl/quiz/evaluate-answer")
+            .addFirebaseAuth()
             .post(body)
             .build()
 
@@ -140,6 +150,7 @@ class QuizApiClient(
 
         val request = Request.Builder()
             .url("$baseUrl/quiz/submit")
+            .addFirebaseAuth()
             .post(body)
             .build()
 

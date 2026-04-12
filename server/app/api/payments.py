@@ -8,37 +8,24 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import razorpay
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 
-from app.core.config import settings   # adjust to your project
+from app.core.config import settings
+from app.core.auth import require_auth, AuthUser
+from app.core.firebase_auth import get_firestore_db
 from app.services import user_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/payments/razorpay", tags=["payments"])
 
 
-# ── Firebase / Firestore ─────────────────────────────────────────────────────────
-try:
-    import firebase_admin
-    from firebase_admin import credentials, firestore
-
-    if not firebase_admin._apps:
-        cred = credentials.Certificate(settings.FIREBASE_SERVICE_ACCOUNT)
-        firebase_admin.initialize_app(cred)
-
-    _db = firestore.client()
-    _firestore_ok = True
-except Exception as _e:
-    logger.warning(f"Firestore not configured: {_e}")
-    _db = None
-    _firestore_ok = False
-
-
 def get_db():
-    if not _firestore_ok or _db is None:
-        raise HTTPException(status_code=500, detail="Firestore not configured")
-    return _db
+    """Return the shared Firestore client (raises 500 if not configured)."""
+    try:
+        return get_firestore_db()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 def _now_ms() -> int:
@@ -107,9 +94,16 @@ class VerifyPaymentRequest(BaseModel):
 @router.post("/create-order", response_model=CreateOrderResponse)
 async def create_order(
     req: CreateOrderRequest,
+    auth: AuthUser = Depends(require_auth),
     client: razorpay.Client = Depends(get_razorpay_client),
     db=Depends(get_db),
 ):
+    # The authenticated user can only create orders for themselves.
+    if auth.uid != req.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only create payment orders for your own account.",
+        )
     if req.amountInr <= 0:
         raise HTTPException(status_code=400, detail="Amount must be greater than 0")
 
@@ -167,9 +161,16 @@ async def create_order(
 @router.post("/verify", response_model=VerifyPaymentResponse)
 async def verify_payment(
     req: VerifyPaymentRequest,
+    auth: AuthUser = Depends(require_auth),
     client: razorpay.Client = Depends(get_razorpay_client),
     db=Depends(get_db),
 ):
+    # Prevent one user from verifying another user's payment.
+    if auth.uid != req.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only verify payments for your own account.",
+        )
     # 1. Verify HMAC-SHA256 signature (snake_case field names from model)
     payload_str = f"{req.razorpay_order_id}|{req.razorpay_payment_id}"
     expected_sig = hmac.new(

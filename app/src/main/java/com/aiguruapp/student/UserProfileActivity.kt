@@ -382,6 +382,7 @@ class UserProfileActivity : BaseActivity() {
             .setPositiveButton("Logout") { _, _ ->
                 SessionManager.logout(this)
                 FirebaseAuth.getInstance().signOut()
+                com.aiguruapp.student.auth.TokenManager.clearCache()
                 startActivity(Intent(this, LoginActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 })

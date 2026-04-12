@@ -8,9 +8,10 @@ import uuid
 from datetime import datetime, timezone
 from typing import List, Union
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.logger import get_logger
+from app.core.auth import require_auth, AuthUser
 from app.models.quiz import (
     AttemptResult,
     EvaluateAnswerRequest,
@@ -34,7 +35,7 @@ router = APIRouter(prefix="/quiz", tags=["quiz"])
 # ── Generate ──────────────────────────────────────────────────────────────────
 
 @router.post("/generate", response_model=GenerateQuizResponse)
-async def generate_quiz(req: GenerateQuizRequest):
+async def generate_quiz(req: GenerateQuizRequest, auth: AuthUser = Depends(require_auth)):
     """
     Generate a new quiz using the LLM and persist it in Firestore.
     Returned quiz_id is used when submitting answers.
@@ -71,7 +72,7 @@ async def generate_quiz(req: GenerateQuizRequest):
 # ── Evaluate short answer (standalone endpoint) ───────────────────────────────
 
 @router.post("/evaluate-answer", response_model=EvaluateAnswerResponse)
-async def evaluate_answer(req: EvaluateAnswerRequest):
+async def evaluate_answer(req: EvaluateAnswerRequest, auth: AuthUser = Depends(require_auth)):
     """Evaluate a single short-answer response using the LLM."""
     try:
         return await evaluation_service.evaluate_short_answer(
@@ -88,7 +89,7 @@ async def evaluate_answer(req: EvaluateAnswerRequest):
 # ── Submit quiz ───────────────────────────────────────────────────────────────
 
 @router.post("/submit", response_model=AttemptResult)
-async def submit_quiz(req: SubmitQuizRequest):
+async def submit_quiz(req: SubmitQuizRequest, auth: AuthUser = Depends(require_auth)):
     """
     Grade a quiz submission:
     - MCQ / fill-blank: rule-based
@@ -229,7 +230,7 @@ async def submit_quiz(req: SubmitQuizRequest):
 # ── User stats ────────────────────────────────────────────────────────────────
 
 @router.get("/stats", response_model=UserStats)
-async def get_user_stats(user_id: str = Query(...)):
+async def get_user_stats(user_id: str = Query(...), auth: AuthUser = Depends(require_auth)):
     """Return gamification snapshot for a user."""
     try:
         return await gamification_service.get_user_stats(user_id)
@@ -242,6 +243,7 @@ async def get_user_stats(user_id: str = Query(...)):
 async def get_user_attempts(
     user_id: str = Query(...),
     limit: int = Query(default=10, le=50),
+    auth: AuthUser = Depends(require_auth),
 ):
     """Return the latest quiz attempts for a user."""
     try:

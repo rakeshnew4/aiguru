@@ -4,9 +4,10 @@ Library API – subjects, chapters, and chapter selection endpoints.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.logger import get_logger
+from app.core.auth import require_auth, AuthUser
 from app.models.library import (
     ChaptersResponse,
     SelectChaptersRequest,
@@ -42,7 +43,7 @@ async def list_chapters(subject_id: str = Query(..., description="Firestore subj
 
 
 @router.post("/select-chapters", response_model=SelectChaptersResponse)
-async def select_chapters(req: SelectChaptersRequest):
+async def select_chapters(req: SelectChaptersRequest, auth: AuthUser = Depends(require_auth)):
     """Save the user's selected chapter IDs to Firestore."""
     try:
         await library_service.save_selected_chapters(req.user_id, req.chapter_ids)
@@ -56,7 +57,7 @@ async def select_chapters(req: SelectChaptersRequest):
 
 
 @router.get("/selected-chapters")
-async def get_selected_chapters(user_id: str = Query(...)):
+async def get_selected_chapters(user_id: str = Query(...), auth: AuthUser = Depends(require_auth)):
     """Retrieve a user's previously saved chapter selection."""
     try:
         ids = await library_service.get_selected_chapters(user_id)
@@ -67,7 +68,7 @@ async def get_selected_chapters(user_id: str = Query(...)):
 
 
 @router.get("/progress")
-async def get_progress(user_id: str = Query(...)):
+async def get_progress(user_id: str = Query(...), auth: AuthUser = Depends(require_auth)):
     """Return per-chapter progress for a user."""
     try:
         progress = await library_service.get_chapter_progress(user_id)

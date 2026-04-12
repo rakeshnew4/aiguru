@@ -2,7 +2,7 @@ import asyncio
 import json
 from typing import Optional, List, Dict, Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from app.services.context_service import get_context
@@ -12,6 +12,7 @@ from app.services.strands_agent import run_agent
 from app.services import user_service
 from app.core.config import settings
 from app.core.logger import get_logger
+from app.core.auth import require_auth, AuthUser
 from app.api.image_search_titles import search_wikimedia_images, get_titles
 
 logger = get_logger(__name__)
@@ -188,7 +189,7 @@ def extract_json_safe(text):
 
     raise ValueError("Unmatched braces — no complete JSON object found")
 @router.post("/chat-stream")
-async def chat_stream(req: ChatRequest):
+async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
     async def generator():
         try:
             # 1) context fetch
