@@ -3,12 +3,29 @@ from typing import Dict, Any
 
 from app.core.config import settings
 from app.core.logger import get_logger
+from strands import Agent
+from strands.models.litellm import LiteLLMModel
+from strands_tools import calculator
 
 logger = get_logger(__name__)
 
 # ── Lazy singleton ────────────────────────────────────────────────────────────
 _agent = None
+def litellm_agent(prompt: str) -> Dict[str, Any]:
+    
 
+    model = LiteLLMModel(
+    client_args={
+        "api_key": settings.LITELLM_MASTER_KEY,
+        "api_base": settings.LITELLM_PROXY_URL if settings.USE_LITELLM_PROXY else None,
+        "use_litellm_proxy": settings.USE_LITELLM_PROXY
+    },
+    model_id="gemini-2.5-flash-lite"
+    )
+
+    agent = Agent(model=model)
+    response = agent(prompt)
+    return response
 
 def _get_agent():
     """Build (once) and return the Strands Agent backed by Gemini."""
@@ -41,8 +58,9 @@ def _get_agent():
 
 def _run_agent_sync(prompt: str) -> Dict[str, Any]:
     """Blocking call — must be run in a thread executor."""
-    agent = _get_agent()
-    output = agent(prompt)
+    # agent = _get_agent()
+    # output = agent(prompt)
+    output = litellm_agent(prompt)
     text = str(output)
     usage = output.metrics.accumulated_usage
     return {

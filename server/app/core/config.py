@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379"
     USE_AGENT: bool = False
     
+    
     # ── Model Tier Configuration ──────────────────────────────────────────────
     # POWER: Most capable models for premium users
     POWER_PROVIDER: str = "bedrock"  # bedrock, gemini, groq

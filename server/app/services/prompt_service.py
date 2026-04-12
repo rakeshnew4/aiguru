@@ -48,9 +48,8 @@ MATH (STRICT):
 - ALWAYS use $$...$$ for ALL math
 - Example:
   $$a^2 + b^2 = c^2$$
-- NEVER use $...$
+- use $$...$$ for all math, for all types of frac,sqrt, etc, even simple inline formulas like $$E=mc^2$$
 - NEVER use plain text math
-- NEVER use code blocks for math
 
 FINAL CHECK:
 All formulas MUST be in $$...$$ format.
@@ -77,6 +76,7 @@ PRIORITY RULES:
 3. If partially → combine context + knowledge.
 4. If not → answer normally.
 5. If unclear → ask a short question.
+6, If it is greeting, Just greet back simple.
 
 CONTEXT:
 {context}
@@ -110,9 +110,11 @@ MATH (STRICT):
 - NEVER use plain text math
 - NEVER use code blocks for math
 - Validate two times to keep $$...$$ format
+- All formulas MUST be in $$...$$ format.
 
 FINAL CHECK:
-All formulas MUST be in $$...$$ format.
+validate the answer with the question , are we giving correct answer or not for the user question
+
 
 ---
 
