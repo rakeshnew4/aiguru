@@ -1,0 +1,239 @@
+{
+  "schools": [
+    {
+      "id": "SCH001",
+      "name": "Delhi Public School",
+      "shortName": "DPS",
+      "city": "New Delhi",
+      "state": "Delhi",
+      "code": "DPS-ND",
+      "contactEmail": "admin@dpsnd.edu.in",
+      "branding": {
+        "primaryColor": "#0D47A1",
+        "primaryDarkColor": "#002171",
+        "accentColor": "#000000",
+        "backgroundColor": "#E3F2FD",
+        "headerTextColor": "#FFFFFF",
+        "headerSubtextColor": "#90CAF9",
+        "bodyTextPrimaryColor": "#0D47A1",
+        "logoText": "DPS",
+        "logoEmoji": "🏫"
+      },
+      "plans": [
+        {
+          "id": "FREE",
+          "name": "Free Trial",
+          "badge": "",
+          "priceINR": 0,
+          "duration": "7 days",
+          "features": ["AI Chat (10 messages/day)", "Up to 2 Subjects", "Basic Library Access", "Voice Input"]
+        },
+        {
+          "id": "BASIC",
+          "name": "Basic",
+          "badge": "Popular",
+          "priceINR": 99,
+          "duration": "per month",
+          "features": ["AI Chat (unlimited)", "Up to 5 Subjects", "Full Library Access", "Voice Teacher", "Chapter Notes"]
+        },
+        {
+          "id": "PREMIUM",
+          "name": "Premium",
+          "badge": "Best Value",
+          "priceINR": 249,
+          "duration": "per month",
+          "features": ["Everything in Basic", "PDF Analysis & Upload", "Revision Tests", "Flashcards", "Priority Support"]
+        }
+      ],
+      "testStudentIds": ["DPS001", "DPS002", "DPS003", "STUDENT1"]
+    },
+    {
+      "id": "SCH002",
+      "name": "Kendriya Vidyalaya",
+      "shortName": "KV",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "code": "KV-MUM",
+      "contactEmail": "admin@kvmumbai.edu.in",
+      "branding": {
+        "primaryColor": "#880E4F",
+        "primaryDarkColor": "#560027",
+        "accentColor": "#F57F17",
+        "backgroundColor": "#FCE4EC",
+        "headerTextColor": "#FFFFFF",
+        "headerSubtextColor": "#F48FB1",
+        "bodyTextPrimaryColor": "#880E4F",
+        "logoText": "KV",
+        "logoEmoji": "🎓"
+      },
+      "plans": [
+        {
+          "id": "FREE",
+          "name": "Free Trial",
+          "badge": "",
+          "priceINR": 0,
+          "duration": "7 days",
+          "features": ["AI Chat (10 messages/day)", "Up to 2 Subjects", "Basic Library Access"]
+        },
+        {
+          "id": "BASIC",
+          "name": "Standard",
+          "badge": "Popular",
+          "priceINR": 79,
+          "duration": "per month",
+          "features": ["AI Chat (unlimited)", "Up to 5 Subjects", "Full Library Access", "Voice Teacher"]
+        },
+        {
+          "id": "PREMIUM",
+          "name": "Pro",
+          "badge": "Best Value",
+          "priceINR": 199,
+          "duration": "per month",
+          "features": ["Everything in Standard", "PDF Analysis", "Revision Tests", "Analytics Dashboard"]
+        }
+      ],
+      "testStudentIds": ["KV001", "KV002", "STUDENT1"]
+    },
+    {
+      "id": "SCH003",
+      "name": "DAV Public School",
+      "shortName": "DAV",
+      "city": "Bengaluru",
+      "state": "Karnataka",
+      "code": "DAV-BLR",
+      "contactEmail": "principal@davblr.edu.in",
+      "branding": {
+        "primaryColor": "#1B5E20",
+        "primaryDarkColor": "#003300",
+        "accentColor": "#E65100",
+        "backgroundColor": "#E8F5E9",
+        "headerTextColor": "#FFFFFF",
+        "headerSubtextColor": "#A5D6A7",
+        "bodyTextPrimaryColor": "#1B5E20",
+        "logoText": "DAV",
+        "logoEmoji": "📚"
+      },
+      "plans": [
+        {
+          "id": "FREE",
+          "name": "Free Trial",
+          "badge": "",
+          "priceINR": 0,
+          "duration": "14 days",
+          "features": ["AI Chat (10 messages/day)", "Up to 2 Subjects", "Basic Library Access", "Voice Input"]
+        },
+        {
+          "id": "BASIC",
+          "name": "Standard",
+          "badge": "Popular",
+          "priceINR": 129,
+          "duration": "per month",
+          "features": ["AI Chat (unlimited)", "All Subjects", "Full Library Access", "Voice Teacher", "Chapter Notes"]
+        },
+        {
+          "id": "PREMIUM",
+          "name": "Pro",
+          "badge": "Best Value",
+          "priceINR": 299,
+          "duration": "per month",
+          "features": ["Everything in Standard", "PDF Analysis", "Tests & Flashcards", "Performance Analytics", "Parent Reports"]
+        }
+      ],
+      "testStudentIds": ["DAV001", "DAV002", "STUDENT1"]
+    },
+    {
+      "id": "SCH004",
+      "name": "Ryan International School",
+      "shortName": "Ryan",
+      "city": "Hyderabad",
+      "state": "Telangana",
+      "code": "RYAN-HYD",
+      "contactEmail": "info@ryanhyd.edu.in",
+      "branding": {
+        "primaryColor": "#4A148C",
+        "primaryDarkColor": "#12005E",
+        "accentColor": "#FFD600",
+        "backgroundColor": "#F3E5F5",
+        "headerTextColor": "#FFFFFF",
+        "headerSubtextColor": "#CE93D8",
+        "bodyTextPrimaryColor": "#4A148C",
+        "logoText": "Ryan",
+        "logoEmoji": "⭐"
+      },
+      "plans": [
+        {
+          "id": "FREE",
+          "name": "Free Trial",
+          "badge": "",
+          "priceINR": 0,
+          "duration": "7 days",
+          "features": ["AI Chat (10 messages/day)", "Up to 2 Subjects", "Basic Library Access"]
+        },
+        {
+          "id": "BASIC",
+          "name": "Scholar",
+          "badge": "Popular",
+          "priceINR": 149,
+          "duration": "per month",
+          "features": ["AI Chat (unlimited)", "Up to 6 Subjects", "Full Library", "Voice Teacher", "Notes"]
+        },
+        {
+          "id": "PREMIUM",
+          "name": "Elite",
+          "badge": "Best Value",
+          "priceINR": 349,
+          "duration": "per month",
+          "features": ["Everything in Scholar", "PDF Analysis", "Mock Tests", "Doubt Clearing Sessions", "Priority Support"]
+        }
+      ],
+      "testStudentIds": ["RYAN001", "RYAN002", "STUDENT1"]
+    },
+    {
+      "id": "SCH005",
+      "name": "St. Xavier's High School",
+      "shortName": "Xavier's",
+      "city": "Kolkata",
+      "state": "West Bengal",
+      "code": "SXS-KOL",
+      "contactEmail": "office@sxskol.edu.in",
+      "branding": {
+        "primaryColor": "#B71C1C",
+        "primaryDarkColor": "#7F0000",
+        "accentColor": "#1565C0",
+        "backgroundColor": "#FFEBEE",
+        "headerTextColor": "#FFFFFF",
+        "headerSubtextColor": "#EF9A9A",
+        "bodyTextPrimaryColor": "#B71C1C",
+        "logoText": "SXS",
+        "logoEmoji": "✝️"
+      },
+      "plans": [
+        {
+          "id": "FREE",
+          "name": "Free Trial",
+          "badge": "",
+          "priceINR": 0,
+          "duration": "7 days",
+          "features": ["AI Chat (10 messages/day)", "Up to 2 Subjects", "Basic Library"]
+        },
+        {
+          "id": "BASIC",
+          "name": "Basic",
+          "badge": "Popular",
+          "priceINR": 89,
+          "duration": "per month",
+          "features": ["AI Chat (unlimited)", "5 Subjects", "Full Library", "Voice Teacher"]
+        },
+        {
+          "id": "PREMIUM",
+          "name": "Premium",
+          "badge": "Best Value",
+          "priceINR": 229,
+          "duration": "per month",
+          "features": ["Everything in Basic", "PDF Upload & Analysis", "Revision Tests", "Performance Reports"]
+        }
+      ],
+      "testStudentIds": ["SXS001", "SXS002", "STUDENT1"]
+    }
+  ]
+}
