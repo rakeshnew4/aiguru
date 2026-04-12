@@ -58,7 +58,7 @@
             android:minHeight="0dp"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            app:backgroundTint="@color/colorPrimary"
+            app:backgroundTint="@color/black"
             app:cornerRadius="10dp" />
 
     </LinearLayout>

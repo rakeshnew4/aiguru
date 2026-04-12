@@ -664,8 +664,9 @@ class HomeActivity : BaseActivity() {
         }
         subjectAdapter.notifyDataSetChanged()
         updateSubjectCount()
-        // Restore from Firestore if local was empty (e.g. fresh install)
-        if (saved.isEmpty()) return
+        
+        // ALWAYS load from Firestore as fallback/sync (survives app uninstall)
+        // This restores subjects even if local SharedPrefs were wiped
         FirestoreManager.loadSubjects(userId,
             onSuccess = { remoteList ->
                 val toAdd = remoteList.filter { it !in subjectsList }
@@ -677,7 +678,8 @@ class HomeActivity : BaseActivity() {
                         updateSubjectCount()
                     }
                 }
-            }
+            },
+            onFailure = { /* Local list is sufficient; Firestore error is OK */ }
         )
     }
 

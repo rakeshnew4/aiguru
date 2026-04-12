@@ -85,10 +85,32 @@ class SubjectActivity : BaseActivity() {
 
     private fun loadChapters() {
         chaptersListData.clear()
-        chaptersListData.addAll(loadChaptersLocally().mapIndexed { idx, name ->
+        val localChapters = loadChaptersLocally()
+        chaptersListData.addAll(localChapters.mapIndexed { idx, name ->
             ChapterItem(name = name, ncertPdfUrl = ncertUrlMap[idx + 1])
         })
         chapterAdapter.notifyDataSetChanged()
+        
+        // ALSO load from Firestore as fallback (survives app uninstall)
+        // This restores chapters even if local SharedPrefs were wiped
+        FirestoreManager.loadChapters(userId, subjectName,
+            onSuccess = { remoteList ->
+                val localSet = localChapters.toSet()
+                val toAdd = remoteList.filter { it !in localSet }
+                if (toAdd.isNotEmpty()) {
+                    val updated = localChapters + toAdd
+                    saveChaptersLocally(updated)
+                    chaptersListData.clear()
+                    chaptersListData.addAll(updated.mapIndexed { idx, name ->
+                        ChapterItem(name = name, ncertPdfUrl = ncertUrlMap[idx + 1])
+                    })
+                    runOnUiThread {
+                        chapterAdapter.notifyDataSetChanged()
+                    }
+                }
+            },
+            onFailure = { /* Local list is sufficient; Firestore error is OK */ }
+        )
     }
 
     /**

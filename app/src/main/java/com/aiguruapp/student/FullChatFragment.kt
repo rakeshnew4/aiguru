@@ -1075,6 +1075,35 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
         val imagesDir = File(requireContext().filesDir, "chat_images").also { it.mkdirs() }
         val destFile = File(imagesDir, "crop_${System.currentTimeMillis()}.jpg")
+
+        // Decode only image header (no pixels) to get dimensions for crop ratio calculation
+        var imgW = 0f; var imgH = 0f
+        runCatching {
+            val boundsOpts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            requireContext().contentResolver.openInputStream(sourceUri)?.use {
+                android.graphics.BitmapFactory.decodeStream(it, null, boundsOpts)
+            }
+            imgW = boundsOpts.outWidth.toFloat()
+            imgH = boundsOpts.outHeight.toFloat()
+        }
+
+        // Compute an aspect ratio that pre-positions the crop box to ~30% of the image area:
+        //   Landscape (W≥H): box = 30% width × 100% height → ratio = (0.3×W) : H
+        //   Portrait  (H>W): box = 100% width × 30% height → ratio = W : (0.3×H)
+        // UCrop's initCropWindow() uses this ratio to size the initial crop frame.
+        // setFreeStyleCropEnabled(true) still allows the user to resize freely after opening.
+        val cropRatioX: Float
+        val cropRatioY: Float
+        if (imgW > 0f && imgH > 0f) {
+            if (imgW >= imgH) {
+                cropRatioX = 0.3f * imgW; cropRatioY = imgH   // landscape
+            } else {
+                cropRatioX = imgW; cropRatioY = 0.3f * imgH   // portrait
+            }
+        } else {
+            cropRatioX = 1f; cropRatioY = 1f   // fallback: square box if decode failed
+        }
+
         val options = UCrop.Options().apply {
             setToolbarTitle(if (isPdf) "Select Region" else "Crop Image")
             // Dark toolbar so the white ✓ and ✕ icons are always visible
@@ -1095,6 +1124,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             val uCrop = UCrop.of(sourceUri, Uri.fromFile(destFile))
                 .withOptions(options)
                 .withMaxResultSize(1920, 1920)
+                .withAspectRatio(cropRatioX, cropRatioY)  // pre-positions crop box to ~30% area
             cropLauncher.launch(uCrop.getIntent(requireContext()))
         } catch (e: Exception) {
             android.util.Log.w("FullChatFragment", "UCrop launch failed: ${e.message}")
