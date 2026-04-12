@@ -32,8 +32,8 @@ services:
       DATABASE_URL: "postgresql://litellm:litellm_secure_password_2024@litellm-postgres:5432/litellm_db"
       
       # Server config
-      LITELLM_LOG_LEVEL: "DEBUG"
-      LITELLM_MASTER_KEY: "sk-1234567890abcdefghijklmnop"
+      LITELLM_LOG_LEVEL: "INFO"
+      LITELLM_MASTER_KEY: "sk-1234567890abcdefghijklmnopqrstuvwxyz"
       
       # Timeouts
       LITELLM_TIMEOUT: "300"

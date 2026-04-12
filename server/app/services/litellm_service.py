@@ -13,6 +13,7 @@ Architecture:
 """
 
 import httpx
+import json
 import logging
 from typing import Optional, Dict, List, Any
 from app.core.config import settings
@@ -21,9 +22,9 @@ logger = logging.getLogger(__name__)
 
 # ─── Constants ────────────────────────────────────────────────────────
 
-LITELLM_PROXY_URL = settings.LITELLM_PROXY_URL  # http://localhost:8005
+LITELLM_PROXY_URL = settings.LITELLM_PROXY_URL  # http://localhost:8005 — all API ops here
 LITELLM_MASTER_KEY = settings.LITELLM_MASTER_KEY
-LITELLM_ADMIN_URL = settings.LITELLM_ADMIN_URL  # http://localhost:8006
+LITELLM_ADMIN_URL = settings.LITELLM_PROXY_URL   # key/generate, user/info are on proxy port too
 
 
 # ─── Per-User API Key Management ─────────────────────────────────────
@@ -46,10 +47,12 @@ async def create_user_api_key(user_id: str, user_metadata: Optional[Dict[str, An
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
-                f"{LITELLM_ADMIN_URL}/key/new",
+                f"{LITELLM_PROXY_URL}/key/generate",
                 headers={"Authorization": f"Bearer {LITELLM_MASTER_KEY}"},
                 json={
                     "user_id": user_id,
+                    "models": ["cheaper", "faster", "gemini-2.5-flash"],
+                    "duration": "365d",
                     "metadata": user_metadata or {}
                 }
             )
@@ -79,7 +82,7 @@ async def get_user_api_keys(user_id: str) -> List[Dict[str, Any]]:
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
-                f"{LITELLM_ADMIN_URL}/user/info",
+                f"{LITELLM_PROXY_URL}/user/info",
                 headers={"Authorization": f"Bearer {LITELLM_MASTER_KEY}"},
                 params={"user_id": user_id}
             )
@@ -107,9 +110,9 @@ async def revoke_api_key(key: str) -> bool:
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
-                f"{LITELLM_ADMIN_URL}/key/delete",
+                f"{LITELLM_PROXY_URL}/key/delete",
                 headers={"Authorization": f"Bearer {LITELLM_MASTER_KEY}"},
-                json={"key": key}
+                json={"keys": [key]}
             )
             response.raise_for_status()
             logger.info(f"Revoked API key: {key[:20]}...")
@@ -145,7 +148,7 @@ async def get_user_usage_stats(user_id: str) -> Optional[Dict[str, Any]]:
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
-                f"{LITELLM_ADMIN_URL}/usage",
+                f"{LITELLM_PROXY_URL}/user/info",
                 headers={"Authorization": f"Bearer {LITELLM_MASTER_KEY}"},
                 params={"user_id": user_id}
             )
@@ -171,7 +174,7 @@ async def get_all_usage_stats() -> Optional[Dict[str, Any]]:
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
-                f"{LITELLM_ADMIN_URL}/usage/all",
+                f"{LITELLM_PROXY_URL}/user/list",
                 headers={"Authorization": f"Bearer {LITELLM_MASTER_KEY}"}
             )
             response.raise_for_status()
@@ -285,7 +288,7 @@ async def stream_litellm(
                         chunk_str = line[6:]
                         if chunk_str != "[DONE]":
                             try:
-                                chunk = eval(chunk_str)  # Safe here (LiteLLM response)
+                                chunk = json.loads(chunk_str)
                                 yield chunk
                             except Exception:
                                 continue

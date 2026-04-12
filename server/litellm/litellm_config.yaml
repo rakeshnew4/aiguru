@@ -9,27 +9,33 @@ model_list:
   # ── CHEAPER TIER (Good quality, balance) ─────────────────────────
   - model_name: "cheaper"
     litellm_params:
-      model: "gemini-2.0-flash"
-      api_key: "${GEMINI_API_KEY}"
+      model: "gemini/gemini-2.5-flash"
+      api_key: "os.environ/GEMINI_API_KEY"
+      timeout: 120
+
+  - model_name: "gemini-2.5-flash"
+    litellm_params:
+      model: "gemini/gemini-2.5-flash"
+      api_key: "os.environ/GEMINI_API_KEY"
       timeout: 120
 
   - model_name: "gemini-2.0-flash"
     litellm_params:
-      model: "gemini-2.0-flash"
-      api_key: "${GEMINI_API_KEY}"
+      model: "gemini/gemini-2.5-flash"
+      api_key: "os.environ/GEMINI_API_KEY"
       timeout: 120
 
   # ── FASTER TIER (Low latency) ──────────────────────────────────
   - model_name: "faster"
     litellm_params:
-      model: "gemini-2.0-flash-lite"
-      api_key: "${GEMINI_API_KEY}"
+      model: "gemini/gemini-2.5-flash"
+      api_key: "os.environ/GEMINI_API_KEY"
       timeout: 60
 
   - model_name: "gemini-2.0-flash-lite"
     litellm_params:
-      model: "gemini-2.0-flash-lite"
-      api_key: "${GEMINI_API_KEY}"
+      model: "gemini/gemini-2.5-flash"
+      api_key: "os.environ/GEMINI_API_KEY"
       timeout: 60
 
 # ─── General Settings ────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import base64
 import json
+import http.client
 from typing import List, Literal, Optional, Dict, Any
 
 import httpx
@@ -402,6 +403,65 @@ def _call_bedrock(
 
 
 # ── Main LLM Interface ────────────────────────────────────────────────────────
+def _call_litellm_proxy(
+    prompt: str,
+    model_config,
+    images: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    """Call LLM through the LiteLLM proxy using the tier name as the model."""
+    from urllib.parse import urlparse
+    proxy_url = settings.LITELLM_PROXY_URL  # e.g. http://localhost:8005
+    parsed = urlparse(proxy_url)
+    host = parsed.hostname
+    port = parsed.port or 80
+
+    tier_to_model = {"power": "cheaper", "cheaper": "cheaper", "faster": "faster"}
+    model_name = tier_to_model.get(model_config.provider, "cheaper")
+    # If provider is gemini/groq/bedrock, map tier -> litellm model name
+    # The tier name itself works as the model alias in litellm_config.yaml
+    # Use the attempt_tier that was passed to generate_response
+    # Fallback: use model_config.model_id stripped of provider prefix
+    model_name = getattr(model_config, "_tier_name", "cheaper")
+
+    # Build messages — text only (images go direct when LiteLLM can't handle them)
+    messages = [{"role": "user", "content": prompt}]
+
+    body = json.dumps({
+        "model": model_name,
+        "messages": messages,
+        "temperature": model_config.temperature,
+        "max_tokens": model_config.max_tokens,
+    }).encode()
+
+
+    conn = http.client.HTTPConnection(host, port, timeout=300)
+    headers = {
+        "Authorization": f"Bearer {settings.LITELLM_MASTER_KEY}",
+        "Content-Type": "application/json",
+    }
+    conn.request("POST", "/v1/chat/completions", body=body, headers=headers)
+    resp = conn.getresponse()
+    raw = resp.read().decode()
+    conn.close()
+
+    if resp.status != 200:
+        raise RuntimeError(f"LiteLLM proxy error {resp.status}: {raw[:300]}")
+
+    data = json.loads(raw)
+    text = data["choices"][0]["message"]["content"]
+    usage = data.get("usage", {})
+    return {
+        "text": text,
+        "tokens": {
+            "inputTokens": usage.get("prompt_tokens", 0),
+            "outputTokens": usage.get("completion_tokens", 0),
+            "totalTokens": usage.get("total_tokens", 0),
+        },
+        "provider": "litellm",
+        "model": data.get("model", model_name),
+    }
+
+
 def generate_response(
     prompt: str,
     images: Optional[List[str]] = None,
@@ -423,7 +483,20 @@ def generate_response(
     """
     attempted_tiers = []
     last_error = None
-    
+
+    # Try LiteLLM proxy first (text-only requests, no images)
+    if settings.USE_LITELLM_PROXY and not images:
+        try:
+            model_config = settings.get_model_config(tier)
+            model_config._tier_name = tier  # pass tier name for model alias
+            logger.info("LLM call | route=litellm_proxy | tier=%s", tier)
+            result = _call_litellm_proxy(prompt, model_config, images)
+            with open("response.txt", "w") as f:
+                f.write(str(result))
+            return result
+        except Exception as e:
+            logger.warning(f"LiteLLM proxy failed (tier={tier}): {e}. Falling back to direct provider.")
+
     # Priority: requested tier -> power tier -> groq (last resort)
     tiers_to_try = [tier]
     if tier != "power":
