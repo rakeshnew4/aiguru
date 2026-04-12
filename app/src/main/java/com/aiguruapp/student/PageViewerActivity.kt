@@ -72,6 +72,11 @@ class PageViewerActivity : AppCompatActivity() {
             if (currentPage < pageCount - 1) { currentPage++; loadPage() }
         }
         
+        // Ask AI button - attach page to chat and send result back
+        findViewById<MaterialButton>(R.id.askAiPageButton).setOnClickListener { 
+            openChatForCurrentPage() 
+        }
+        
         // Load the initial page
         loadPage()
     }
