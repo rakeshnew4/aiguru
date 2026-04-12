@@ -352,7 +352,7 @@
     ],
     "Mathematics": [
       {
-        "text": "Mathematics",
+        "text": "Mathematics (English)",
         "code": "cemh1",
         "chapters": "0-14"
       },
@@ -1388,117 +1388,117 @@
     ],
     "Mathematics": [
       {
-        "text": "Ganita Prakash",
+        "text": "Mathematics (English)",
         "code": "fegp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Hindi)",
+        "text": "Mathematics (Hindi)",
         "code": "fhgp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Odia)",
+        "text": "Mathematics (Odia)",
         "code": "forgp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Bodo)",
+        "text": "Mathematics (Bodo)",
         "code": "fbdgp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Malayalam)",
+        "text": "Mathematics (Malayalam)",
         "code": "fmlgp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Punjabi)",
+        "text": "Mathematics (Punjabi)",
         "code": "fpngp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Sanskrit)",
+        "text": "Mathematics (Sanskrit)",
         "code": "fskgp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Kannada)",
+        "text": "Mathematics (Kannada)",
         "code": "fkngp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Tamil)",
+        "text": "Mathematics (Tamil)",
         "code": "ftmgp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Marathi)",
+        "text": "Mathematics (Marathi)",
         "code": "fmrgp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Bengali)",
+        "text": "Mathematics (Bengali)",
         "code": "fbngp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Telugu)",
+        "text": "Mathematics (Telugu)",
         "code": "ftlgp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Maithili)",
+        "text": "Mathematics (Maithili)",
         "code": "fmtgp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Dogri)",
+        "text": "Mathematics (Dogri)",
         "code": "fdggp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Nepali)",
+        "text": "Mathematics (Nepali)",
         "code": "fnpgp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Urdu)",
+        "text": "Mathematics (Urdu)",
         "code": "fugp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Assamese)",
+        "text": "Mathematics (Assamese)",
         "code": "fasgp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Gujarati)",
+        "text": "Mathematics (Gujarati)",
         "code": "fgjgp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Manipuri)",
+        "text": "Mathematics (Manipuri)",
         "code": "fmngp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Konkani)",
+        "text": "Mathematics (Konkani)",
         "code": "fkogp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Santhali)",
+        "text": "Mathematics (Santhali)",
         "code": "fsngp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Sindhi)",
+        "text": "Mathematics (Sindhi)",
         "code": "fsigp1",
         "chapters": "0-10"
       },
       {
-        "text": "Ganita Prakash (Kashmiri)",
+        "text": "Mathematics (Kashmiri)",
         "code": "fksgp1",
         "chapters": "0-10"
       },
@@ -1989,22 +1989,22 @@
     ],
     "Mathematics": [
       {
-        "text": "Ganita Prakash",
+        "text": "Mathematics (English)",
         "code": "gegp1",
         "chapters": "0-8"
       },
       {
-        "text": "Ganita Prakash-II",
+        "text": "Mathematics-II",
         "code": "gegp2",
         "chapters": "0-7"
       },
       {
-        "text": "Ganita Prakash(Hindi)",
+        "text": "Mathematics(Hindi)",
         "code": "ghgp1",
         "chapters": "0-8"
       },
       {
-        "text": "Ganita Prakash(Urdu)",
+        "text": "Mathematics(Urdu)",
         "code": "gugp1",
         "chapters": "0-8"
       },
@@ -2171,22 +2171,22 @@
   "8": {
     "Mathematics": [
       {
-        "text": "Ganita Prakash Part-I",
+        "text": "Mathematics Part-I",
         "code": "hegp1",
         "chapters": "0-7"
       },
       {
-        "text": "Ganita Prakash Part-II",
+        "text": "Mathematics Part-II",
         "code": "hegp2",
         "chapters": "0-7"
       },
       {
-        "text": "Ganita Prakash (Hindi)",
+        "text": "Mathematics (Hindi)",
         "code": "hhgp1",
         "chapters": "0-7"
       },
       {
-        "text": "Mathematics",
+        "text": "Mathematics (English)",
         "code": "hemh1",
         "chapters": "0-13"
       },
@@ -2518,7 +2518,7 @@
     ],
     "Mathematics": [
       {
-        "text": "Mathematics",
+        "text": "Mathematics (English)",
         "code": "iemh1",
         "chapters": "0-12"
       },
@@ -2756,7 +2756,7 @@
   "10": {
     "Mathematics": [
       {
-        "text": "Mathematics",
+        "text": "Mathematics (English)",
         "code": "jemh1",
         "chapters": "0-14"
       },
@@ -3093,7 +3093,7 @@
     ],
     "Mathematics": [
       {
-        "text": "Mathematics",
+        "text": "Mathematics (English)",
         "code": "kemh1",
         "chapters": "0-14"
       },

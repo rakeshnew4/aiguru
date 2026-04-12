@@ -71,6 +71,9 @@ class PageViewerActivity : AppCompatActivity() {
         nextButton.setOnClickListener {
             if (currentPage < pageCount - 1) { currentPage++; loadPage() }
         }
+        
+        // Load the initial page
+        loadPage()
     }
 
     private fun loadPage() {
