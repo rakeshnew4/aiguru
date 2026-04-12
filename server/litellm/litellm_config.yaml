@@ -1,0 +1,43 @@
+num_workers: 2
+timeout: 300
+
+# ─── Model Management ──────────────────────────────────────────────────
+# LiteLLM Config - Minimal working setup
+# Only include models where we have valid API keys configured
+
+model_list:
+  # ── CHEAPER TIER (Good quality, balance) ─────────────────────────
+  - model_name: "cheaper"
+    litellm_params:
+      model: "gemini-2.0-flash"
+      api_key: "${GEMINI_API_KEY}"
+      timeout: 120
+
+  - model_name: "gemini-2.0-flash"
+    litellm_params:
+      model: "gemini-2.0-flash"
+      api_key: "${GEMINI_API_KEY}"
+      timeout: 120
+
+  # ── FASTER TIER (Low latency) ──────────────────────────────────
+  - model_name: "faster"
+    litellm_params:
+      model: "gemini-2.0-flash-lite"
+      api_key: "${GEMINI_API_KEY}"
+      timeout: 60
+
+  - model_name: "gemini-2.0-flash-lite"
+    litellm_params:
+      model: "gemini-2.0-flash-lite"
+      api_key: "${GEMINI_API_KEY}"
+      timeout: 60
+
+# ─── General Settings ────────────────────────────────────────────────
+
+general_settings:
+  log_level: "INFO"
+  log_responses: true
+  litellm_drop_incomplete_logs: false
+  enable_authentication: true
+  authentication_strategy: "api_key"
+  request_timeout: 600

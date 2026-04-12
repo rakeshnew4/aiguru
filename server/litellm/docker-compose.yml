@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  litellm-postgres:
+    image: postgres:16-alpine
+    container_name: litellm-postgres
+    environment:
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: litellm_secure_password_2024
+      POSTGRES_DB: litellm_db
+    volumes:
+      - litellm_db_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"  # Use 5433 to avoid conflict with existing postgres_db on 5432
+    networks:
+      - litellm_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm -d litellm_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  litellm-proxy:
+    image: ghcr.io/berriai/litellm:v1.79.3-stable
+    container_name: litellm-proxy
+    depends_on:
+      litellm-postgres:
+        condition: service_healthy
+
+    environment:
+      # ✅ Connect to PostgreSQL via service name (not host.docker.internal)
+      DATABASE_URL: "postgresql://litellm:litellm_secure_password_2024@litellm-postgres:5432/litellm_db"
+      
+      # Server config
+      LITELLM_LOG_LEVEL: "DEBUG"
+      LITELLM_MASTER_KEY: "sk-1234567890abcdefghijklmnop"
+      
+      # Timeouts
+      LITELLM_TIMEOUT: "300"
+      LITELLM_REQUEST_TIMEOUT: "600"
+      
+      # Features
+      LITELLM_ENABLE_PROXY_SERVER_LOGS: "True"
+      LITELLM_ENABLE_MOCK_OPENAI_ENDPOINT: "False"
+      
+      # API Keys
+      GEMINI_API_KEY: "${GEMINI_API_KEY}"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      GROQ_API_KEY: "${GROQ_API_KEY}"
+
+    ports:
+      - "8005:8001"
+      - "8006:7000"
+
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml
+      - ./litellm_logs:/app/logs
+
+    networks:
+      - litellm_network
+
+    command: >
+      --config /app/config.yaml
+      --port 8001
+      --num_workers 4
+      --host 0.0.0.0
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+networks:
+  litellm_network:
+    driver: bridge
+
+volumes:
+  litellm_db_data:
+    driver: local
