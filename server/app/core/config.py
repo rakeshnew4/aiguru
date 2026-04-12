@@ -74,6 +74,11 @@ class Settings(BaseSettings):
     # PostgreSQL database URL for LiteLLM (same as docker-compose)
     LITELLM_DATABASE_URL: str = "postgresql://litellm:litellm_secure_password_2024@localhost:5432/litellm_db"
 
+    # ── Authentication & Security ────────────────────────────────────────────
+    # Set to True to enforce Firebase ID token authentication
+    # Set to False to allow development/testing without tokens (UNSAFE FOR PRODUCTION)
+    AUTH_REQUIRED: bool = False
+
 
     class Config:
         env_file = ".env"

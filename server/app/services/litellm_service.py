@@ -219,6 +219,7 @@ async def call_litellm(
         print(response["choices"][0]["message"]["content"])
     """
     auth_key = user_litellm_key or LITELLM_MASTER_KEY
+    auth_key = "sk-O9b3-TMZdBMEipehw0csFA"
     
     try:
         async with httpx.AsyncClient(timeout=300.0) as client:
@@ -229,12 +230,13 @@ async def call_litellm(
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": model,
+                    "model": "gemini-2.5-flash",
+                    "metadata": {"model_group": None},
                     "messages": messages,
                     "temperature": temperature,
                     "max_tokens": max_tokens,
                     "stream": stream,
-                    **kwargs
+                    # **kwargs
                 }
             )
             response.raise_for_status()
@@ -263,7 +265,7 @@ async def stream_litellm(
             print(chunk["choices"][0]["delta"]["content"], end="")
     """
     auth_key = user_litellm_key or LITELLM_MASTER_KEY
-    
+    auth_key = "sk-O9b3-TMZdBMEipehw0csFA"
     try:
         async with httpx.AsyncClient(timeout=300.0) as client:
             async with client.stream(
@@ -274,12 +276,13 @@ async def stream_litellm(
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": model,
+                    "model": "gemini-2.5-flash",
+                    "metadata": {"model_group": None},
                     "messages": messages,
                     "temperature": temperature,
                     "max_tokens": max_tokens,
                     "stream": True,
-                    **kwargs
+                    # **kwargs
                 }
             ) as response:
                 response.raise_for_status()

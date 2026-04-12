@@ -192,6 +192,23 @@ def extract_json_safe(text):
 async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
     async def generator():
         try:
+            # Log chat event (fire-and-forget)
+            asyncio.get_event_loop().run_in_executor(
+                None,
+                user_service.log_activity,
+                "chat",
+                req.user_id or auth.uid,
+                "",
+                auth.email,
+                {
+                    "page_id": req.page_id or "",
+                    "mode": req.mode or "normal",
+                    "user_plan": req.user_plan or "free",
+                    "has_image": bool(req.image_base64 or req.images),
+                    "prompt_preview": (req.question or "")[:80],
+                },
+            )
+
             # 1) context fetch
             context = get_context(req.page_id)
             merged_context = _merge_context_with_image_data(context, req.image_data)
@@ -235,10 +252,20 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                         None, lambda: generate_response(prompt, normalized_images, tier=model_tier)
                     )
                 
+                # Check for valid response structure
                 if not result or not isinstance(result, dict):
                     logger.error(f"Invalid LLM response: {type(result)}")
                     yield f"data: {json.dumps({'error': 'Invalid LLM response'})}\n\n"
                     return
+                
+                # Check if this is an error response from LiteLLM
+                if result.get("provider") == "error":
+                    logger.error(f"LLM error response: {result.get('error', 'Unknown error')}")
+                    error_msg = result.get("error", "LLM service error")
+                    yield f"data: {json.dumps({'error': error_msg})}\n\n"
+                    return
+                
+                logger.info(f"LLM response received | provider={result.get('provider')} | model={result.get('model')}")
 
             except Exception as e:
                 logger.error(f"LLM call failed: {e}")

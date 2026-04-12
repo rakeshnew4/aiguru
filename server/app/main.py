@@ -16,6 +16,7 @@ if "app" not in sys.modules:
     _app_pkg.__spec__ = None              # type: ignore[attr-defined]
     sys.modules["app"] = _app_pkg
 
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles

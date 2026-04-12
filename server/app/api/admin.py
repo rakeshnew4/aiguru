@@ -556,12 +556,50 @@ async def litellm_health(_: str = Depends(_require_admin)):
     }
 
 
+# ── Activity Logs ─────────────────────────────────────────────────────────────
+
+@router.get("/activity-logs")
+def get_activity_logs(
+    limit: int = Query(100, le=500),
+    event_type: Optional[str] = Query(None, description="Filter by event type: chat, register, quiz_generate, login"),
+    uid: Optional[str] = Query(None, description="Filter by user UID"),
+    _: str = Depends(_require_admin),
+):
+    """Return recent activity log entries, newest first."""
+    db = _get_db()
+    ref = db.collection("activity_logs")
+    query = ref.order_by("timestamp", direction=firestore.Query.DESCENDING)
+    if event_type:
+        query = ref.where("event_type", "==", event_type).order_by("timestamp", direction=firestore.Query.DESCENDING)
+    if uid:
+        query = ref.where("uid", "==", uid).order_by("timestamp", direction=firestore.Query.DESCENDING)
+    docs = query.limit(limit).stream()
+    return [_doc_to_dict(d) for d in docs]
+
+
+@router.get("/activity-logs/stats")
+def get_activity_stats(_: str = Depends(_require_admin)):
+    """Return count totals per event type over the last 500 entries."""
+    db = _get_db()
+    docs = db.collection("activity_logs").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(500).stream()
+    counts = {}
+    recent = []
+    for doc in docs:
+        data = _doc_to_dict(doc)
+        event = data.get("event_type", "unknown")
+        counts[event] = counts.get(event, 0) + 1
+        if len(recent) < 10:
+            recent.append(data)
+    return {"counts": counts, "recent": recent, "total": sum(counts.values())}
+
+
 # ── Generic collection viewer (read-only safety hatch) ────────────────────────
 
 ALLOWED_COLLECTIONS = {
     "users", "subjects", "chapters", "plans", "schools",
     "quizzes", "payment_intents", "payment_receipts", "payment_webhooks",
     "app_offers", "updates", "notifications", "admin_config", "referralCodes",
+    "activity_logs",
 }
 
 

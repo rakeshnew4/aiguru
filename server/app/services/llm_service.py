@@ -415,51 +415,65 @@ def _call_litellm_proxy(
     host = parsed.hostname
     port = parsed.port or 80
 
-    tier_to_model = {"power": "cheaper", "cheaper": "cheaper", "faster": "faster"}
-    model_name = tier_to_model.get(model_config.provider, "cheaper")
-    # If provider is gemini/groq/bedrock, map tier -> litellm model name
-    # The tier name itself works as the model alias in litellm_config.yaml
-    # Use the attempt_tier that was passed to generate_response
-    # Fallback: use model_config.model_id stripped of provider prefix
+    # Use tier name as the model alias (configured in litellm_config.yaml)
     model_name = getattr(model_config, "_tier_name", "cheaper")
 
     # Build messages — text only (images go direct when LiteLLM can't handle them)
     messages = [{"role": "user", "content": prompt}]
 
     body = json.dumps({
-        "model": model_name,
+        "model": "gemini-2.5-flash-lite",
         "messages": messages,
         "temperature": model_config.temperature,
         "max_tokens": model_config.max_tokens,
     }).encode()
 
+    logger.debug(f"LiteLLM proxy request: model={model_name}, prompt_len={len(prompt)}")
 
-    conn = http.client.HTTPConnection(host, port, timeout=300)
-    headers = {
-        "Authorization": f"Bearer {settings.LITELLM_MASTER_KEY}",
-        "Content-Type": "application/json",
-    }
-    conn.request("POST", "/v1/chat/completions", body=body, headers=headers)
-    resp = conn.getresponse()
-    raw = resp.read().decode()
-    conn.close()
+    try:
+        conn = http.client.HTTPConnection(host, port, timeout=300)
+        headers = {
+            "Authorization": f"Bearer {settings.LITELLM_MASTER_KEY}",
+            "Content-Type": "application/json",
+        }
+        conn.request("POST", "/v1/chat/completions", body=body, headers=headers)
+        resp = conn.getresponse()
+        raw = resp.read().decode()
+        conn.close()
 
-    if resp.status != 200:
-        raise RuntimeError(f"LiteLLM proxy error {resp.status}: {raw[:300]}")
+        if resp.status != 200:
+            logger.error(f"LiteLLM proxy returned {resp.status}: {raw[:500]}")
+            raise RuntimeError(f"LiteLLM proxy error {resp.status}: {raw[:300]}")
 
-    data = json.loads(raw)
-    text = data["choices"][0]["message"]["content"]
-    usage = data.get("usage", {})
-    return {
-        "text": text,
-        "tokens": {
-            "inputTokens": usage.get("prompt_tokens", 0),
-            "outputTokens": usage.get("completion_tokens", 0),
-            "totalTokens": usage.get("total_tokens", 0),
-        },
-        "provider": "litellm",
-        "model": data.get("model", model_name),
-    }
+        data = json.loads(raw)
+        if not data.get("choices") or not data["choices"][0].get("message"):
+            logger.error(f"LiteLLM responded with invalid structure: {data}")
+            raise RuntimeError("LiteLLM response missing choices[0].message")
+        
+        text = data["choices"][0]["message"]["content"]
+        if not text:
+            logger.warning("LiteLLM returned empty text content")
+        
+        usage = data.get("usage", {})
+        result = {
+            "text": text,
+            "tokens": {
+                "inputTokens": usage.get("prompt_tokens", 0),
+                "outputTokens": usage.get("completion_tokens", 0),
+                "totalTokens": usage.get("total_tokens", 0),
+            },
+            "provider": "litellm",
+            "model": data.get("model", model_name),
+        }
+        logger.info(f"LiteLLM success: model={model_name} | tokens={result['tokens']['totalTokens']}")
+        return result
+        
+    except json.JSONDecodeError as e:
+        logger.error(f"LiteLLM response is not valid JSON: {e}")
+        raise RuntimeError(f"LiteLLM returned invalid JSON: {str(e)[:100]}")
+    except Exception as e:
+        logger.error(f"LiteLLM proxy call failed: {type(e).__name__}: {e}")
+        raise
 
 
 def generate_response(
@@ -468,107 +482,55 @@ def generate_response(
     tier: Literal["power", "cheaper", "faster"] = "cheaper",
 ) -> Dict[str, Any]:
     """
-    Generate LLM response using the specified model tier with intelligent fallback.
+    Generate LLM response using LiteLLM proxy.
     
-    ROBUST: Automatically falls back to premium tier if requested tier fails.
-    Never raises an exception - always returns a valid response.
+    UNIFIED PATH: All requests go through LiteLLM proxy (http://localhost:8005).
+    LiteLLM handles routing to the configured models in litellm_config.yaml.
     
     Args:
         prompt: The text prompt
-        images: Optional list of image URLs or base64 data URIs
-        tier: Model tier - "power" (premium), "cheaper" (standard), "faster" (simple tasks)
+        images: Optional list of image URLs or base64 data URIs (currently ignored for LiteLLM)
+        tier: Model tier - "power", "cheaper", or "faster"
     
     Returns:
         Dict with 'text', 'tokens', 'provider', 'model' keys
+        
+    Raises:
+        RuntimeError: If LiteLLM is down or all models fail
     """
-    attempted_tiers = []
-    last_error = None
-
-    # Try LiteLLM proxy first (text-only requests, no images)
-    if settings.USE_LITELLM_PROXY and not images:
-        try:
-            model_config = settings.get_model_config(tier)
-            model_config._tier_name = tier  # pass tier name for model alias
-            logger.info("LLM call | route=litellm_proxy | tier=%s", tier)
-            result = _call_litellm_proxy(prompt, model_config, images)
+    logger.info(f"generate_response | tier={tier} | images={len(images) if images else 0}")
+    
+    # LiteLLM proxy is the ONLY path
+    if not settings.USE_LITELLM_PROXY:
+        logger.error("USE_LITELLM_PROXY is disabled. LiteLLM proxy is required.")
+        raise RuntimeError("LiteLLM proxy is not enabled in configuration")
+    
+    try:
+        model_config = settings.get_model_config(tier)
+        model_config._tier_name = tier
+        
+        logger.info(f"Calling LiteLLM proxy with tier={tier}")
+        result = _call_litellm_proxy(prompt, model_config, images)
+        
+        if result and result.get("text"):
+            logger.info(f"LiteLLM success | tier={tier} | tokens={result.get('tokens', {})}")
             with open("response.txt", "w") as f:
                 f.write(str(result))
             return result
-        except Exception as e:
-            logger.warning(f"LiteLLM proxy failed (tier={tier}): {e}. Falling back to direct provider.")
-
-    # Priority: requested tier -> power tier -> groq (last resort)
-    tiers_to_try = [tier]
-    if tier != "power":
-        tiers_to_try.append("power")  # Premium fallback
-    for attempt_tier in tiers_to_try:
-        try:
-            model_config = settings.get_model_config(attempt_tier)
-            attempted_tiers.append(f"{attempt_tier}({model_config.provider})")
+        else:
+            logger.error(f"LiteLLM returned empty response: {result}")
+            raise RuntimeError("LiteLLM returned empty or invalid response")
             
-            logger.info(
-                "LLM call | tier=%s | provider=%s | model=%s | images=%d | temp=%.1f | max_tokens=%d",
-                attempt_tier,
-                model_config.provider,
-                model_config.model_id,
-                len(images) if images else 0,
-                model_config.temperature,
-                model_config.max_tokens,
-            )
-            
-            # Route to appropriate provider
-            if model_config.provider == "gemini":
-                response_output = _call_gemini(prompt, model_config, images)
-                with open("response.txt", "w") as f:
-                    f.write(str(response_output))
-                return response_output
-            elif model_config.provider == "groq":
-                response_output = _call_groq(prompt, model_config, images)
-                with open("response.txt", "w") as f:
-                    f.write(str(response_output))
-                return response_output
-            elif model_config.provider == "bedrock":
-                response_output = _call_bedrock(prompt, model_config, images)
-                with open("response.txt", "w") as f:
-                    f.write(str(response_output))
-                return response_output
-            else:
-                raise ValueError(f"Unknown provider: {model_config.provider}")
-            
-
-        except Exception as e:
-            last_error = e
-            logger.warning(
-                f"Tier '{attempt_tier}' failed: {e}. "
-                f"Attempted: {' -> '.join(attempted_tiers)}"
-            )
-            continue  # Try next tier
-    
-    # # Last resort: try Groq if available and not already tried
-    # if _groq_client and "faster(groq)" not in attempted_tiers:
-    #     try:
-    #         attempted_tiers.append("faster(groq-fallback)")
-    #         logger.warning(f"All primary tiers failed. Attempting Groq fallback...")
-    #         fallback_config = ModelConfig(
-    #             provider="groq",
-    #             model_id=settings.FASTER_MODEL_ID,
-    #             temperature=0.5,
-    #             max_tokens=2048,
-    #         )
-    #         return _call_groq(prompt, fallback_config, images)
-    #     except Exception as e:
-    #         last_error = e
-    #         logger.error(f"Groq fallback also failed: {e}")
-    #         attempted_tiers.append("GROQ-FAILED")
-    
-    # # Complete failure - no tier worked
-    # logger.critical(
-    #     f"All LLM tiers exhausted without success. "
-    #     f"Attempted: {' -> '.join(attempted_tiers)}. "
-    #     f"Last error: {last_error}"
-    # )
-    # raise RuntimeError(
-    #     f"LLM service unavailable. Attempted tiers: {', '.join(attempted_tiers)}. "
-    #     f"Last error: {last_error}"
-    # )
+    except Exception as e:
+        logger.error(f"LiteLLM call failed for tier={tier}: {type(e).__name__}: {e}")
+        
+        # Return a clear error response instead of None
+        error_response = {
+            "text": f"[LLM SERVICE ERROR] {str(e)[:200]}",
+            "tokens": {"inputTokens": 0, "outputTokens": 0, "totalTokens": 0},
+            "provider": "error",
+            "model": f"error-{tier}",
+            "error": str(e),
+        }
+        return error_response
 

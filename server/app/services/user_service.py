@@ -15,6 +15,7 @@ Firestore collection: users_table/{uid}
   counter fields (chat_questions_today, bb_sessions_today, questions_updated_at).
 """
 
+
 from __future__ import annotations
 
 import time
@@ -247,3 +248,47 @@ def record_tokens(
         "record_tokens: uid=%s in=%d out=%d total=%d day_reset=%s",
         uid, input_tokens, output_tokens, total_tokens, needs_day_reset,
     )
+
+
+# ── Activity Logging ──────────────────────────────────────────────────────────
+
+def log_activity(
+    event_type: str,
+    uid: str = "",
+    name: str = "",
+    email: str = "",
+    extra: dict = None,
+) -> None:
+    """
+    Write a single activity log entry to Firestore collection 'activity_logs'.
+
+    Entries are auto-ID documents with:
+      event_type : str  — e.g. "login", "chat", "register", "quiz", "payment"
+      uid        : str  — Firebase UID (may be empty for anonymous events)
+      name       : str  — Display name (best-effort, may be empty)
+      email      : str  — Email (best-effort, may be empty)
+      timestamp  : int  — Unix millis
+      ts_iso     : str  — ISO-8601 human-readable UTC timestamp
+      ...extra fields passed in the extra dict
+
+    Always fire-and-forget (never raises).
+    """
+    try:
+        db = _get_db()
+        if db is None:
+            return
+        now = _now_ms()
+        doc = {
+            "event_type": event_type,
+            "uid": uid or "",
+            "name": name or "",
+            "email": email or "",
+            "timestamp": now,
+            "ts_iso": datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        }
+        if extra:
+            doc.update(extra)
+        db.collection("activity_logs").add(doc)
+        logger.debug("log_activity: event=%s uid=%s", event_type, uid)
+    except Exception as exc:
+        logger.warning("log_activity: failed to write event=%s: %s", event_type, exc)

@@ -55,7 +55,8 @@ async def register_user(req: RegisterRequest, auth: AuthUser = Depends(require_a
 
     # The authenticated token UID must match the userId being registered.
     # This prevents one user from creating/overwriting another user's document.
-    if auth.uid != req.userId:
+    # Skip this check in development mode (AUTH_REQUIRED=False)
+    if settings.AUTH_REQUIRED and auth.uid != req.userId:
         raise HTTPException(
             status_code=403,
             detail="Token UID does not match the userId in the request.",
@@ -93,6 +94,17 @@ async def register_user(req: RegisterRequest, auth: AuthUser = Depends(require_a
         except Exception as exc:
             logger.error("register_user: LiteLLM key creation failed for uid=%s: %s", req.userId, exc)
             # Continue gracefully — Firestore user still created
+
+    # Log registration / login event (fire-and-forget)
+    loop.run_in_executor(
+        None,
+        user_service.log_activity,
+        "register",
+        req.userId,
+        req.name or "",
+        req.email or "",
+        {"grade": req.grade or "", "school": req.schoolName or ""},
+    )
 
     return RegisterResponse(
         success=True,

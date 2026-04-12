@@ -24,9 +24,10 @@ from app.models.quiz import (
     SubmitQuizRequest,
     UserStats,
 )
-from app.services import evaluation_service, gamification_service, quiz_service
+from app.services import evaluation_service, gamification_service, quiz_service, user_service
 from app.services.library_service import _get_db, update_chapter_progress
 from google.cloud import firestore
+import asyncio
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/quiz", tags=["quiz"])
@@ -65,6 +66,13 @@ async def generate_quiz(req: GenerateQuizRequest, auth: AuthUser = Depends(requi
         logger.info("Quiz %s persisted to Firestore", quiz.id)
     except Exception as exc:
         logger.warning("Quiz %s could not be saved to Firestore (non-fatal): %s", quiz.id, exc)
+
+    # Log quiz generation (fire-and-forget)
+    asyncio.get_event_loop().run_in_executor(
+        None, user_service.log_activity, "quiz_generate",
+        auth.uid, "", auth.email,
+        {"chapter_id": req.chapter_id or "", "difficulty": req.difficulty or "", "count": req.count},
+    )
 
     return GenerateQuizResponse(quiz_id=quiz.id, quiz=quiz)
 

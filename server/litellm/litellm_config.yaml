@@ -2,41 +2,19 @@ num_workers: 2
 timeout: 300
 
 # ─── Model Management ──────────────────────────────────────────────────
-# LiteLLM Config - Minimal working setup
-# Only include models where we have valid API keys configured
+# LiteLLM Config - Models are loaded from PostgreSQL (configured via admin UI)
+# 
+# DO NOT define models here with api_base pointing to localhost:8005!
+# That creates a recursive loop (proxy calling itself).
+#
+# How models are added:
+#  1. Start a model with a real provider (Gemini, OpenAI, Claude, etc.)
+#  2. Configure via http://localhost:8006 (admin UI)
+#  3. Models are stored in PostgreSQL and loaded automatically
+#
+# The model_list below is EMPTY - models come from the database.
 
-model_list:
-  # ── CHEAPER TIER (Good quality, balance) ─────────────────────────
-  - model_name: "cheaper"
-    litellm_params:
-      model: "gemini/gemini-2.5-flash"
-      api_key: "os.environ/GEMINI_API_KEY"
-      timeout: 120
-
-  - model_name: "gemini-2.5-flash"
-    litellm_params:
-      model: "gemini/gemini-2.5-flash"
-      api_key: "os.environ/GEMINI_API_KEY"
-      timeout: 120
-
-  - model_name: "gemini-2.0-flash"
-    litellm_params:
-      model: "gemini/gemini-2.5-flash"
-      api_key: "os.environ/GEMINI_API_KEY"
-      timeout: 120
-
-  # ── FASTER TIER (Low latency) ──────────────────────────────────
-  - model_name: "faster"
-    litellm_params:
-      model: "gemini/gemini-2.5-flash"
-      api_key: "os.environ/GEMINI_API_KEY"
-      timeout: 60
-
-  - model_name: "gemini-2.0-flash-lite"
-    litellm_params:
-      model: "gemini/gemini-2.5-flash"
-      api_key: "os.environ/GEMINI_API_KEY"
-      timeout: 60
+model_list: []
 
 # ─── General Settings ────────────────────────────────────────────────
 

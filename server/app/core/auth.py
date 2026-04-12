@@ -54,7 +54,34 @@ async def require_auth(
 
     Returns an AuthUser on success.
     Raises HTTP 401 on any auth failure (missing header, expired token, bad signature, etc.).
+    
+    🚨 DEVELOPMENT MODE: Auth verification is optional based on AUTH_REQUIRED setting.
+    When AUTH_REQUIRED=False: All requests pass through with a dev user UID.
+    When AUTH_REQUIRED=True: Real Firebase token validation is performed.
     """
+    from app.core.config import settings
+    
+    # 🚨 DEVELOPMENT/BYPASS MODE: Skip validation, allow all requests
+    if not getattr(settings, "AUTH_REQUIRED", False):
+        # In dev mode, use any provided token/uid, or generate a dev user ID
+        if credentials and credentials.credentials:
+            # For development: use the token as the UID (so it matches userId in requests)
+            dev_uid = credentials.credentials
+            # Try to extract a reasonable length ID
+            if len(dev_uid) > 50:
+                dev_uid = dev_uid[:30]
+        else:
+            # No token provided - generate a guest ID
+            import uuid
+            dev_uid = f"guest-{str(uuid.uuid4())[:12]}"
+        
+        logger.info(f"🚨 AUTH BYPASS (DEV MODE): User ID = {dev_uid}")
+        return AuthUser(
+            uid=dev_uid,
+            email="dev@local",
+        )
+    
+    # 🔒 PRODUCTION MODE: Verify Firebase token strictly
     if credentials is None or not credentials.credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

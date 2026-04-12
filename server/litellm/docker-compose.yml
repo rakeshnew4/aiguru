@@ -1,13 +1,13 @@
 version: '3.8'
 
 services:
-  litellm-postgres:
+  litellm-postgres2:
     image: postgres:16-alpine
-    container_name: litellm-postgres
+    container_name: litellm-postgres2
     environment:
       POSTGRES_USER: litellm
       POSTGRES_PASSWORD: litellm_secure_password_2024
-      POSTGRES_DB: litellm_db
+      POSTGRES_DB: litellm_db2
     volumes:
       - litellm_db_data:/var/lib/postgresql/data
     ports:
@@ -15,26 +15,29 @@ services:
     networks:
       - litellm_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U litellm -d litellm_db"]
+      test: ["CMD-SHELL", "pg_isready -U litellm -d litellm_db2"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   litellm-proxy:
-    image: ghcr.io/berriai/litellm:v1.79.3-stable
+    image: ghcr.io/berriai/litellm:v1.81.14-stable.gpt-5.4_patch2
     container_name: litellm-proxy
     depends_on:
-      litellm-postgres:
+      litellm-postgres2:
         condition: service_healthy
 
     environment:
       # ✅ Connect to PostgreSQL via service name (not host.docker.internal)
-      DATABASE_URL: "postgresql://litellm:litellm_secure_password_2024@litellm-postgres:5432/litellm_db"
+      DATABASE_URL: "postgresql://litellm:litellm_secure_password_2024@litellm-postgres2:5432/litellm_db2"
       
       # Server config
       LITELLM_LOG_LEVEL: "INFO"
       LITELLM_MASTER_KEY: "sk-1234567890abcdefghijklmnopqrstuvwxyz"
-      
+      UI_USERNAME: rakesh  # username to sign in on UI
+      UI_PASSWORD: "rakinew4"
+      STORE_MODEL_IN_DB: "True"
+
       # Timeouts
       LITELLM_TIMEOUT: "300"
       LITELLM_REQUEST_TIMEOUT: "600"
@@ -44,7 +47,6 @@ services:
       LITELLM_ENABLE_MOCK_OPENAI_ENDPOINT: "False"
       
       # API Keys
-      GEMINI_API_KEY: "${GEMINI_API_KEY}"
       ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
       OPENAI_API_KEY: "${OPENAI_API_KEY}"
       GROQ_API_KEY: "${GROQ_API_KEY}"

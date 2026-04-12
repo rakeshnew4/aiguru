@@ -112,6 +112,7 @@ const App = (() => {
     offers:        { title: 'Offers',           render: () => Offers.render()         },
     notifications: { title: 'Notifications',   render: () => Notifications.render()  },
     referrals:     { title: 'Referral Codes',   render: () => Referrals.render()      },
+    logs:          { title: 'Activity Logs',    render: () => Logs.render()           },
   };
 
   let _currentSection = null;
@@ -121,6 +122,8 @@ const App = (() => {
   function navigate(section) {
     if (!SECTION_MAP[section]) return;
     if (_currentSection === section) return;
+    // Tear down previous section if it has a destroy method
+    if (_currentSection === 'logs' && typeof Logs !== 'undefined' && Logs.destroy) Logs.destroy();
     _currentSection = section;
 
     // Update sidebar active state
