@@ -263,7 +263,7 @@ object PlanEnforcer {
             updates["output_tokens_today"]       = FieldValue.increment(outputTokens.toLong())
             updates["output_tokens_this_month"]  = FieldValue.increment(outputTokens.toLong())
         }
-        db.collection("users").document(userId)
+        db.collection("users_table").document(userId)
             .set(updates, SetOptions.merge())
             .addOnFailureListener { Log.e(TAG, "recordTokensUsed failed uid=$userId: ${it.message}") }
     }
@@ -276,7 +276,7 @@ object PlanEnforcer {
         val lastDay = utcDayOf(metadata.tokensUpdatedAt)
         val today   = utcDayOf(System.currentTimeMillis())
         if (lastDay != today && metadata.tokensToday > 0) {
-            db.collection("users").document(userId)
+            db.collection("users_table").document(userId)
                 .set(mapOf("tokens_today" to 0, "tokens_updated_at" to System.currentTimeMillis()), SetOptions.merge())
                 .addOnFailureListener { Log.e(TAG, "resetDaily failed: ${it.message}") }
         }

@@ -91,6 +91,7 @@ class MessageAdapter(
 
     inner class MessageViewHolder(root: LinearLayout) : RecyclerView.ViewHolder(root) {
         private val root: LinearLayout = root
+        private var explainBtn: TextView? = null  // Store reference for animation
 
         fun bind(message: Message) {
             root.removeAllViews()
@@ -215,7 +216,7 @@ class MessageAdapter(
                 val saveNoteBtn = actionButton("📌") { onSaveNoteClick(message) }.apply {
                     setTextColor(Color.parseColor("#1565C0"))
                 }
-                val explainBtn = actionButton("BB") { onExplainClick(message) }.apply {
+                explainBtn = actionButton("BB") { onExplainClick(message) }.apply {
                     setTextColor(Color.WHITE)
                     val bg = GradientDrawable().apply {
                         shape = GradientDrawable.RECTANGLE
@@ -397,6 +398,23 @@ class MessageAdapter(
             }
             result.append(text.substring(lastEnd))
             return result
+        }
+
+        /**
+         * Briefly highlight the Explain (BB) button to draw attention to it —
+         * a single clean color flash with no scale/pop animation.
+         */
+        fun highlightExplainButton() {
+            explainBtn?.let { btn ->
+                val originalColor = Color.parseColor("#111827")
+                val highlightColor = Color.parseColor("#1565C0")  // Professional blue
+                val bg = btn.background as? GradientDrawable ?: return
+                // Flash to highlight color, then restore after a short hold
+                bg.setColor(highlightColor)
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    bg.setColor(originalColor)
+                }, 1200L)
+            }
         }
 
         private fun formatTime(timestamp: Long): String =

@@ -9,6 +9,8 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import com.aiguruapp.student.firestore.FirestoreManager
 import com.aiguruapp.student.utils.SessionManager
+import com.aiguruapp.student.chat.ServerProxyClient
+import com.aiguruapp.student.config.AdminConfigRepository
 import com.aiguruapp.student.widget.BoxSpinnerView
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -127,6 +129,19 @@ class LoginActivity : BaseActivity() {
                     // Remove corrupted single-letter fields left by older builds
                     FirestoreManager.cleanupMangledFields(user.uid)
                 })
+                // Register with server (creates LiteLLM key, ensures server-side user record).
+                // Fire-and-forget on background thread — login is not blocked by this call.
+                Thread {
+                    ServerProxyClient.registerWithServer(
+                        serverUrl  = AdminConfigRepository.effectiveServerUrl(),
+                        userId     = user.uid,
+                        name       = user.displayName ?: "",
+                        email      = user.email ?: "",
+                        grade      = "",
+                        schoolId   = "google",
+                        schoolName = "Google Account"
+                    )
+                }.start()
                 setLoading(false)
                 goHome()
             }

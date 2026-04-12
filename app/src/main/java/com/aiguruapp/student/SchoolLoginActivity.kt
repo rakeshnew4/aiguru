@@ -13,6 +13,8 @@ import com.aiguruapp.student.utils.SessionManager
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.FirebaseAuth
+import com.aiguruapp.student.chat.ServerProxyClient
+import com.aiguruapp.student.config.AdminConfigRepository
 
 class SchoolLoginActivity : BaseActivity() {
 
@@ -107,13 +109,33 @@ class SchoolLoginActivity : BaseActivity() {
 
         val auth = FirebaseAuth.getInstance()
         if (auth.currentUser != null) {
-            SessionManager.saveFirebaseUid(this, auth.currentUser!!.uid)
+            val uid = auth.currentUser!!.uid
+            SessionManager.saveFirebaseUid(this, uid)
+            Thread {
+                ServerProxyClient.registerWithServer(
+                    serverUrl  = AdminConfigRepository.effectiveServerUrl(),
+                    userId     = uid,
+                    name       = name,
+                    schoolId   = school.id,
+                    schoolName = school.name
+                )
+            }.start()
             navigateNext()
         } else {
             loginButton.isEnabled = false
             auth.signInAnonymously()
                 .addOnSuccessListener { result ->
-                    result.user?.uid?.let { uid -> SessionManager.saveFirebaseUid(this, uid) }
+                    val uid = result.user?.uid ?: return@addOnSuccessListener
+                    SessionManager.saveFirebaseUid(this, uid)
+                    Thread {
+                        ServerProxyClient.registerWithServer(
+                            serverUrl  = AdminConfigRepository.effectiveServerUrl(),
+                            userId     = uid,
+                            name       = name,
+                            schoolId   = school.id,
+                            schoolName = school.name
+                        )
+                    }.start()
                     navigateNext()
                 }
                 .addOnFailureListener { navigateNext() }

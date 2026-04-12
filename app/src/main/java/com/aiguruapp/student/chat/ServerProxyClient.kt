@@ -232,5 +232,54 @@ class ServerProxyClient(
     companion object {
         private const val OK = 0
         private const val RETRY_NEEDED = 1
+
+        /**
+         * POST /users/register — idempotent server-side registration.
+         * Creates the user in LiteLLM and ensures their Firestore record exists.
+         * Must be called from a background thread (blocking I/O).
+         *
+         * Retries once on 401 with a fresh Firebase token.
+         */
+        @JvmStatic
+        fun registerWithServer(
+            serverUrl: String,
+            userId: String,
+            name: String = "",
+            email: String = "",
+            grade: String = "",
+            schoolId: String = "",
+            schoolName: String = ""
+        ) {
+            if (serverUrl.isBlank() || userId.isBlank() || userId == "guest_user") return
+            val json = JSONObject().apply {
+                put("userId",     userId)
+                put("name",       name)
+                put("email",      email)
+                put("grade",      grade)
+                put("schoolId",   schoolId)
+                put("schoolName", schoolName)
+            }
+            val base = serverUrl.trimEnd('/')
+            val url  = "$base/users/register"
+            fun attempt(forceRefresh: Boolean): Boolean {
+                val authHeader = TokenManager.buildAuthHeader(forceRefresh) ?: return false
+                val req = Request.Builder()
+                    .url(url)
+                    .post(json.toString().toRequestBody("application/json".toMediaType()))
+                    .header("Authorization", authHeader)
+                    .build()
+                return try {
+                    val resp = HttpClientManager.longTimeoutClient.newCall(req).execute()
+                    val code = resp.code
+                    resp.close()
+                    Log.d("ServerProxyClient", "registerWithServer → HTTP $code uid=$userId")
+                    code != 401
+                } catch (e: IOException) {
+                    Log.w("ServerProxyClient", "registerWithServer failed: ${e.message}")
+                    true  // don't retry on network error
+                }
+            }
+            if (!attempt(false)) attempt(true)  // retry once with fresh token on 401
+        }
     }
 }

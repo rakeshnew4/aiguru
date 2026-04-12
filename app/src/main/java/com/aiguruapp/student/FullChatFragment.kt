@@ -1253,12 +1253,80 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             return
         }
 
-        // Check daily question quota
-        val questionCheck = PlanEnforcer.checkQuestionsQuota(cachedMetadata, effectiveLimits, isBlackboard = false)
-        if (!questionCheck.allowed) {
+        // FAST PATH: check question quota synchronously against the in-memory-accurate
+        // cachedMetadata (updated in onDone after each successful response).
+        // This blocks exhausted users immediately without waiting for Firestore.
+        val fastQuotaCheck = PlanEnforcer.checkQuestionsQuota(cachedMetadata, effectiveLimits, isBlackboard = false)
+        if (!fastQuotaCheck.allowed) {
             if (imageUri != null) selectedImageUri = imageUri
             if (capturedPdfBase64 != null) pdfPageBase64 = capturedPdfBase64
             if (capturedDisplayUri != null) pendingDisplayUri = capturedDisplayUri
+            android.util.Log.e("FullChatFragment",
+                "FAST QUOTA BLOCK: ${fastQuotaCheck.reason} (asked=${cachedMetadata.chatQuestionsToday}/${effectiveLimits.dailyChatQuestions})")
+            showError(fastQuotaCheck.upgradeMessage)
+            if (fastQuotaCheck.limitType == PlanEnforcer.LimitType.CHAT_QUESTIONS) {
+                Handler(Looper.getMainLooper()).postDelayed({
+                    startActivity(
+                        Intent(ctx, SubscriptionActivity::class.java)
+                            .putExtra("schoolId", SessionManager.getSchoolId(ctx))
+                    )
+                }, 1500)
+            }
+            return
+        }
+
+        // Refresh metadata from Firestore to catch cross-device / post-restart usage
+        FirestoreManager.getUserMetadata(userId, onSuccess = { freshMeta ->
+            if (freshMeta != null) {
+                // Preserve the local userId in case Firestore deserialization leaves it blank,
+                // so the in-memory quota counter (keyed by userId) stays aligned.
+                cachedMetadata = if (freshMeta.userId.isBlank()) freshMeta.copy(userId = userId) else freshMeta
+                android.util.Log.d(
+                    "FullChatFragment",
+                    "Meta refreshed before quota: chatAsked=${freshMeta.chatQuestionsToday} bbDone=${freshMeta.bbSessionsToday} questionsUpdatedAt=${freshMeta.questionsUpdatedAt}"
+                )
+            }
+            // Now proceed with the actual message sending using refreshed metadata
+            proceedWithSendMessage(
+                userText, autoSaveNotes, imageUri, capturedPdfBase64, capturedImageBase64,
+                capturedDisplayUri, hadVisualAttachment, featureType, effectiveLimits
+            )
+        }, onFailure = {
+            android.util.Log.w("FullChatFragment", "Meta refresh failed, proceeding with cached: ${it?.message}")
+            // Proceed anyway with potentially stale metadata (worst case: user needs to refresh and retry)
+            proceedWithSendMessage(
+                userText, autoSaveNotes, imageUri, capturedPdfBase64, capturedImageBase64,
+                capturedDisplayUri, hadVisualAttachment, featureType, effectiveLimits
+            )
+        })
+    }
+
+    private fun proceedWithSendMessage(
+        userText: String,
+        autoSaveNotes: Boolean,
+        imageUri: android.net.Uri?,
+        capturedPdfBase64: String?,
+        capturedImageBase64: String?,
+        capturedDisplayUri: android.net.Uri?,
+        hadVisualAttachment: Boolean,
+        featureType: PlanEnforcer.FeatureType,
+        effectiveLimits: com.aiguruapp.student.models.PlanLimits
+    ) {
+        val act = requireActivity()
+        val ctx = requireContext()
+        var serverPageTranscript: String? = null
+        var serverSuggestBlackboard = false
+
+        // Check daily question quota using the FRESHLY REFRESHED metadata
+        val questionCheck = PlanEnforcer.checkQuestionsQuota(cachedMetadata, effectiveLimits, isBlackboard = false)
+        if (!questionCheck.allowed) {
+            selectedImageUri = imageUri
+            pdfPageBase64 = capturedPdfBase64
+            pendingDisplayUri = capturedDisplayUri
+            android.util.Log.e(
+                "FullChatFragment",
+                "QUOTA BLOCKED: ${questionCheck.reason} (asked=${cachedMetadata.chatQuestionsToday}/${effectiveLimits.dailyChatQuestions})"
+            )
             showError(questionCheck.upgradeMessage)
             if (questionCheck.limitType == PlanEnforcer.LimitType.CHAT_QUESTIONS) {
                 Handler(Looper.getMainLooper()).postDelayed({
@@ -1531,8 +1599,8 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     // ── Blackboard Nudge ──────────────────────────────────────────────────────
 
     /**
-     * Shows a soft Snackbar prompting the user to view the answer in Blackboard mode.
-     * Auto-dismisses after 10 seconds if the user does not act.
+     * Quietly draws attention to the Explain (BB) button — scrolls the message into
+     * view and briefly highlights the button with a single blue flash (no animation pop).
      */
     private fun showBlackboardNudge(msg: Message) {
         blackboardNudgeSnackbar?.dismiss()
@@ -1542,32 +1610,19 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         val bbCheck = PlanEnforcer.check(cachedMetadata, bbLimits, PlanEnforcer.FeatureType.BLACKBOARD)
         if (!bbCheck.allowed) return  // Don't tease the user if they can't use it
 
-        val snackbar = Snackbar.make(
-            requireView(),
-            "✨ Want a step-by-step visual explanation?",
-            Snackbar.LENGTH_INDEFINITE
-        )
-        snackbar.setAction("Open Blackboard") {
-            blackboardNudgeSnackbar = null
-            val convId = "${FirestoreManager.safeId(subjectName)}__${FirestoreManager.safeId(chapterName)}"
-            startActivity(
-                Intent(requireContext(), BlackboardActivity::class.java)
-                    .putExtra(BlackboardActivity.EXTRA_MESSAGE, TutorController.extractAnswerForDisplay(msg.content))
-                    .putExtra(BlackboardActivity.EXTRA_MESSAGE_ID, msg.id)
-                    .putExtra(BlackboardActivity.EXTRA_USER_ID, userId)
-                    .putExtra(BlackboardActivity.EXTRA_CONVERSATION_ID, convId)
-                    .putExtra(BlackboardActivity.EXTRA_LANGUAGE_TAG, currentLang)
-            )
+        // Scroll to ensure the message with the BB button is visible
+        val msgPosition = messageAdapter.getMessages().indexOf(msg)
+        if (msgPosition >= 0) {
+            messagesRecyclerView.scrollToPosition(msgPosition)
+
+            // After scroll settles, briefly highlight the BB button (no pop/scale)
+            Handler(Looper.getMainLooper()).postDelayed({
+                val holder = messagesRecyclerView.findViewHolderForAdapterPosition(msgPosition)
+                if (holder is MessageAdapter.MessageViewHolder) {
+                    holder.highlightExplainButton()
+                }
+            }, 200)
         }
-        snackbar.show()
-        blackboardNudgeSnackbar = snackbar
-        // Auto-dismiss after 10 seconds
-        Handler(Looper.getMainLooper()).postDelayed({
-            if (blackboardNudgeSnackbar === snackbar) {
-                snackbar.dismiss()
-                blackboardNudgeSnackbar = null
-            }
-        }, 10_000L)
     }
 
     private fun persistLatestPageContext(pageContent: PageContent?) {

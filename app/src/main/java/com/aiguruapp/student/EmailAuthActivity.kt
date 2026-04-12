@@ -9,6 +9,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.aiguruapp.student.firestore.FirestoreManager
 import com.aiguruapp.student.utils.SessionManager
+import com.aiguruapp.student.chat.ServerProxyClient
+import com.aiguruapp.student.config.AdminConfigRepository
 import com.aiguruapp.student.widget.BoxSpinnerView
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -135,6 +137,18 @@ class EmailAuthActivity : BaseActivity() {
                             )
                             SessionManager.saveFirebaseUid(this, user.uid)
                         }
+                        // Register with server to create LiteLLM key and server-side user record
+                        Thread {
+                            ServerProxyClient.registerWithServer(
+                                serverUrl  = AdminConfigRepository.effectiveServerUrl(),
+                                userId     = user.uid,
+                                name       = metadata?.name ?: "",
+                                email      = user.email ?: "",
+                                grade      = metadata?.grade ?: "",
+                                schoolId   = metadata?.schoolId?.ifBlank { "email" } ?: "email",
+                                schoolName = metadata?.schoolName?.ifBlank { "Email Account" } ?: "Email Account"
+                            )
+                        }.start()
                         setLoading(false)
                         goHome()
                     },
@@ -148,6 +162,14 @@ class EmailAuthActivity : BaseActivity() {
                             studentName = user.displayName ?: "Student"
                         )
                         SessionManager.saveFirebaseUid(this, user.uid)
+                        // Still attempt server registration (fire-and-forget)
+                        Thread {
+                            ServerProxyClient.registerWithServer(
+                                serverUrl = AdminConfigRepository.effectiveServerUrl(),
+                                userId    = user.uid,
+                                email     = user.email ?: ""
+                            )
+                        }.start()
                         setLoading(false)
                         goHome()
                     }
@@ -173,6 +195,16 @@ class EmailAuthActivity : BaseActivity() {
                     studentName = "Student"
                 )
                 SessionManager.saveFirebaseUid(this, user.uid)
+                // Register new user with server (creates LiteLLM key, server-side record)
+                Thread {
+                    ServerProxyClient.registerWithServer(
+                        serverUrl  = AdminConfigRepository.effectiveServerUrl(),
+                        userId     = user.uid,
+                        email      = user.email ?: "",
+                        schoolId   = "email",
+                        schoolName = "Email Account"
+                    )
+                }.start()
                 // New user — send to profile completion
                 goHome()
             }
