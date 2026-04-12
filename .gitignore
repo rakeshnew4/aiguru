@@ -140,3 +140,5 @@ app/build/outputs/mapping/
 
 server/.env
 server/myenv
+server/test.py
+server/firebase_serviceaccount.json
