@@ -2,6 +2,7 @@ package com.aiguruapp.student.calculator
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
@@ -86,9 +87,6 @@ class FloatingCalculatorView(context: Context) : FrameLayout(context) {
     private val cResultPre = 0xFF9E9E9E.toInt()   // preview text
 
     // ── Session-persistent bubble Y (fraction 0..1) ───────────────────────────
-    companion object {
-        private var savedYFraction = 0.45f
-    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // init
@@ -131,11 +129,16 @@ class FloatingCalculatorView(context: Context) : FrameLayout(context) {
             background = oval(cBg)
             elevation  = dp(8).toFloat()
         }
-        // Icon label
-        val icon = TextView(context).apply {
-            text      = "🧮"
-            textSize  = 22f
-            gravity   = Gravity.CENTER
+        // Icon from assets/calc.png
+        val icon = ImageView(context).apply {
+            try {
+                val bmp = BitmapFactory.decodeStream(context.assets.open("calc.png"))
+                setImageBitmap(bmp)
+            } catch (_: Exception) {
+                // fallback: leave image empty
+            }
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            setPadding(dp(10), dp(10), dp(10), dp(10))
         }
         bub.addView(icon, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
         return bub
@@ -521,6 +524,7 @@ class FloatingCalculatorView(context: Context) : FrameLayout(context) {
     }
 
     companion object {
+        private var savedYFraction = 0.45f
         private const val BUBBLE_SZ = 56    // dp
         private const val PANEL_W   = 285   // dp
     }
