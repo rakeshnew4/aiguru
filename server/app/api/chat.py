@@ -297,10 +297,10 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
             # 5) Emit page_transcript BEFORE the answer so Android can persist
             #    it to Firestore system-context as early as possible.
             try:
-                with open("response.txt", "w") as f:
-                    f.write(str(result.get('text', '')))
+                with open("response.json", "w") as f:
+                    json.dump(result, f, indent=2)
             except Exception as e:
-                logger.warning(f"Failed to write response.txt: {e}")
+                logger.warning(f"Failed to write response.json: {e}")
             
             page_transcript = _extract_page_transcript(result, normalized_images, req.image_data)
             if page_transcript:

@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from typing import Optional
-
 from google.cloud import firestore
 
 from app.core.logger import get_logger
