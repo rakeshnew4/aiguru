@@ -514,8 +514,8 @@ def generate_response(
         
         if result and result.get("text"):
             logger.info(f"LiteLLM success | tier={tier} | tokens={result.get('tokens', {})}")
-            with open("response.txt", "w") as f:
-                f.write(str(result))
+            with open("response.json", "w") as f:
+                json.dump(result, f, indent=2)
             return result
         else:
             logger.error(f"LiteLLM returned empty response: {result}")
