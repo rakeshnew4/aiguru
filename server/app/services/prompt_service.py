@@ -393,9 +393,18 @@ def build_bb_main_prompt(
     steps_count = max(4, min(6, int(plan.get("steps_count") or 5)))
 
     concepts_str = ", ".join(str(c) for c in key_concepts) if key_concepts else ""
-    ctx_snippet = (context or "")[:800].strip()
-    history_text = "\n".join((history or [])[-6:])  # last 3 turns
-    hist_snippet = history_text[-400:] if history_text else ""
+    # Up to 2000 chars of chapter context so the LLM stays grounded in the textbook
+    ctx_snippet = (context or "")[:2000].strip()
+    # Last 3 full turns (6 entries: user+assistant pairs) — no character truncation
+    history_entries = (history or [])[-6:]
+    # Format nicely: strip "user:"/"assistant:" prefix labels for readability
+    def _fmt(h: str) -> str:
+        if h.startswith("user:"):
+            return f"Student: {h[5:].strip()}"
+        if h.startswith("assistant:"):
+            return f"Teacher: {h[10:].strip()}"
+        return h
+    hist_snippet = "\n".join(_fmt(h) for h in history_entries)
     lang_instr = language_instructions.get(lang or "en-US", "")
 
     parts = [blackboard_prompt, "\n\n---LESSON BRIEF (follow these instructions exactly)---\n"]
@@ -407,10 +416,10 @@ def build_bb_main_prompt(
     parts.append(f"Generate EXACTLY {steps_count} steps — no more, no less.\n")
 
     if ctx_snippet:
-        parts.append(f"\nCHAPTER CONTEXT (ground the lesson in this content):\n{ctx_snippet}\n")
+        parts.append(f"\nCHAPTER CONTEXT (use this as the primary source — ground the lesson here):\n{ctx_snippet}\n")
 
     if hist_snippet:
-        parts.append(f"\nRECENT CONVERSATION (avoid re-teaching what was already covered):\n{hist_snippet}\n")
+        parts.append(f"\nRECENT CONVERSATION (last 3 turns — do NOT re-teach what was already covered):\n{hist_snippet}\n")
 
     parts.append("\n---END LESSON BRIEF---\n")
     parts.append(lang_instr)

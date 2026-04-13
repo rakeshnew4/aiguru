@@ -276,6 +276,13 @@ def extract_json_safe(text):
         i += 1
 
     raise ValueError("Unmatched braces — no complete JSON object found")
+
+
+def _status_frame(message: str, progress: int) -> str:
+    """Return a progress-status SSE data frame so the UI can show activity."""
+    return f"data: {json.dumps({'status': message, 'progress': progress})}\n\n"
+
+
 @router.post("/chat-stream")
 async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
     async def generator():
@@ -304,6 +311,12 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
             loop = asyncio.get_event_loop()
             lang = req.language_tag or req.language or "en-US"
 
+            # ── First status: let the user know we received their request ──────
+            if req.mode == "blackboard":
+                yield _status_frame("📖 Reading your question...", 12)
+            else:
+                yield _status_frame("🤔 Understanding your question...", 20)
+
             if req.mode == "blackboard":
                 # ── BLACKBOARD PIPELINE ────────────────────────────────────────
                 # B1) Fast planner (150ms, faster model) — decides scope + key concepts
@@ -318,6 +331,7 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     plan.get("topic_type"), plan.get("scope"),
                     plan.get("steps_count", 5), plan.get("key_concepts"),
                 )
+                yield _status_frame("🔍 Collecting topic details and context...", 38)
 
                 # B2) Start Wikimedia pre-fetch NOW — runs while BB LLM is running (free)
                 wiki_task = asyncio.ensure_future(
@@ -380,6 +394,12 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
             except Exception:
                 pass
 
+            # ── Status before the main (slowest) LLM call ────────────────────
+            if req.mode == "blackboard":
+                yield _status_frame("🎨 Preparing your blackboard...", 58)
+            else:
+                yield _status_frame("💡 Writing your answer...", 55)
+
             # 4) LLM call — use Strands agent or direct LLM based on config
             loop = asyncio.get_event_loop()
             try:
@@ -438,6 +458,7 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
             
             # BB post-processing: image title matching (LLM-powered + pre-fetched Wikimedia)
             if req.mode == "blackboard":
+                yield _status_frame("🖼️ Matching visuals to your lesson...", 87)
                 try:
                     extra_wiki = await wiki_task  # pre-fetched while BB LLM was running
                     result["text"] = await get_titles(result["text"], extra_candidates=extra_wiki)
