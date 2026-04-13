@@ -142,3 +142,5 @@ server/.env
 server/myenv
 server/test.py
 server/firebase_serviceaccount.json
+**/__pycache__
+server/app/__pycache__

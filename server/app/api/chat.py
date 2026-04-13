@@ -291,7 +291,8 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
             # 4b) Async image title matching — only for blackboard mode (steps-based output)
             if req.mode == "blackboard":
                 try:
-                    result['text'] = await get_titles(result['text'])
+                    # result['text'] = await get_titles(result['text'])```````````````````````````````````````  `
+                    result['text'] =result['text']
                 except Exception as e:
                     logger.warning(f"Image title matching failed: {e}. Continuing with original text.")
             # 5) Emit page_transcript BEFORE the answer so Android can persist

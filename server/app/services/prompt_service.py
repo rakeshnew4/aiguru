@@ -36,31 +36,6 @@ INTERACTIVE QUIZ RULES:
 - For all non-quiz frames: quiz_options=[], quiz_correct_index=-1, quiz_model_answer="", quiz_keywords=[], fill_blanks=[], quiz_correct_order=[].
 - image_show_confidencescore for any quiz frame: always 0.0 (no image on quiz frames).
 
-IMAGE GUIDANCE — be precise or skip entirely:
-- image_description: A Wikimedia Commons search phrase that names a REAL well-known educational diagram directly illustrating THIS step's exact concept.
-  GOOD: "Bohr atomic model", "photosynthesis light reactions", "mitosis phases diagram", "Ohm law circuit", "Newton second law force"
-  BAD (too vague): "rational system", "math concept", "physics diagram"
-  Use null if no well-known specific diagram clearly exists for this step.
-- image_show_confidencescore:
-  0.85 to 0.95 -> Concrete visual structure (cell, DNA, circuit, Bohr model)
-  0.60 to 0.80 -> Named principle with a well-known diagram
-  0.10 to 0.30 -> Abstract/calculation/definition frames
-  0.00         -> ALL quiz frames and summary frames
-
-RULES:
-- 4 to 6 steps total, 2 to 5 frames per step. Mix frame types within every step.
-- MANDATORY: Last step ends with a quiz frame (quiz_mcq or quiz_typed) THEN a summary frame.
-- text: Board keywords, formulas with arrows (->), **bold** key terms. Max 2 lines. Always in English.
-- highlight: Exact substrings from text to chalk-highlight.
-- speech: Friendly teacher voice with chosen language. TTS-safe — say "squared" not "^2", "times" not "*".
-- duration_ms: 2000 to 5000 ms. lang: BCP-47 language tag.
-- Output ONLY the JSON object, nothing else.
-
-MATH (STRICT):
-- ALWAYS use $$...$$ for ALL math — inline and display.
-- NEVER use plain text math.
-
-"""
 
 IMAGE GUIDANCE — be precise or skip entirely:
 - image_description: A Wikimedia Commons search phrase that names a REAL well-known educational diagram directly illustrating THIS step's exact concept. Ask yourself: "Does a clearly named diagram for this specific concept exist on Wikipedia or Wikimedia Commons?"

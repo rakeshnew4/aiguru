@@ -15,6 +15,7 @@ Firestore collection: users_table/{uid}
   counter fields (chat_questions_today, bb_sessions_today, questions_updated_at).
 """
 
+
 from __future__ import annotations
 
 import time
