@@ -18,8 +18,14 @@ object BlackboardGenerator {
         val highlight: List<String> = emptyList(),
         val speech: String,
         val durationMs: Long = 2000,
-        val frameType: String = "concept",  // concept | quiz | memory | summary
-        val quizAnswer: String = ""
+        // concept | quiz | memory | summary | quiz_mcq | quiz_typed | quiz_voice
+        val frameType: String = "concept",
+        val quizAnswer: String = "",          // legacy tap-to-reveal answer (frame_type "quiz")
+        // ── Interactive quiz fields ───────────────────────────────────────────
+        val quizOptions: List<String> = emptyList(),  // quiz_mcq: exactly 4 choices
+        val quizCorrectIndex: Int = -1,               // quiz_mcq: 0–3 index of correct option
+        val quizModelAnswer: String = "",             // quiz_typed/voice: reference answer for AI grading
+        val quizKeywords: List<String> = emptyList()  // keywords the student answer must cover
     )
 
     data class BlackboardStep(
@@ -90,13 +96,19 @@ object BlackboardGenerator {
                         val frames = (0 until framesArr.length()).map { j ->
                             val frameObj = framesArr.getJSONObject(j)
                             val hlArr = frameObj.optJSONArray("highlight")
+                            val optsArr = frameObj.optJSONArray("quiz_options")
+                            val kwArr   = frameObj.optJSONArray("quiz_keywords")
                             BlackboardFrame(
-                                text       = frameObj.getString("text"),
-                                highlight  = if (hlArr != null) (0 until hlArr.length()).map { hlArr.getString(it) } else emptyList(),
-                                speech     = frameObj.optString("speech", ""),
-                                durationMs = frameObj.optLong("duration_ms", 2000),
-                                frameType  = frameObj.optString("frame_type", "concept"),
-                                quizAnswer = frameObj.optString("quiz_answer", "")
+                                text              = frameObj.getString("text"),
+                                highlight         = if (hlArr != null) (0 until hlArr.length()).map { hlArr.getString(it) } else emptyList(),
+                                speech            = frameObj.optString("speech", ""),
+                                durationMs        = frameObj.optLong("duration_ms", 2000),
+                                frameType         = frameObj.optString("frame_type", "concept"),
+                                quizAnswer        = frameObj.optString("quiz_answer", ""),
+                                quizOptions       = if (optsArr != null) (0 until optsArr.length()).map { optsArr.getString(it) } else emptyList(),
+                                quizCorrectIndex  = frameObj.optInt("quiz_correct_index", -1),
+                                quizModelAnswer   = frameObj.optString("quiz_model_answer", ""),
+                                quizKeywords      = if (kwArr != null) (0 until kwArr.length()).map { kwArr.getString(it) } else emptyList()
                             )
                         }
                         BlackboardStep(
@@ -193,12 +205,20 @@ object BlackboardGenerator {
                 val framesArr = stepObj.getJSONArray("frames")
                 val frames = (0 until framesArr.length()).map { j ->
                     val frameObj = framesArr.getJSONObject(j)
-                    val hlArr = frameObj.optJSONArray("highlight")
+                    val hlArr   = frameObj.optJSONArray("highlight")
+                    val optsArr = frameObj.optJSONArray("quiz_options")
+                    val kwArr   = frameObj.optJSONArray("quiz_keywords")
                     BlackboardFrame(
-                        text       = frameObj.getString("text"),
-                        highlight  = if (hlArr != null) (0 until hlArr.length()).map { hlArr.getString(it) } else emptyList(),
-                        speech     = frameObj.optString("speech", ""),
-                        durationMs = frameObj.optLong("duration_ms", 2000)
+                        text             = frameObj.getString("text"),
+                        highlight        = if (hlArr != null) (0 until hlArr.length()).map { hlArr.getString(it) } else emptyList(),
+                        speech           = frameObj.optString("speech", ""),
+                        durationMs       = frameObj.optLong("duration_ms", 2000),
+                        frameType        = frameObj.optString("frame_type", "concept"),
+                        quizAnswer       = frameObj.optString("quiz_answer", ""),
+                        quizOptions      = if (optsArr != null) (0 until optsArr.length()).map { optsArr.getString(it) } else emptyList(),
+                        quizCorrectIndex = frameObj.optInt("quiz_correct_index", -1),
+                        quizModelAnswer  = frameObj.optString("quiz_model_answer", ""),
+                        quizKeywords     = if (kwArr != null) (0 until kwArr.length()).map { kwArr.getString(it) } else emptyList()
                     )
                 }
                 BlackboardStep(
@@ -223,7 +243,11 @@ object BlackboardGenerator {
                                     .put("speech", frame.speech)
                                     .put("duration_ms", frame.durationMs)
                                     .put("frame_type", frame.frameType)
-                                    .put("quiz_answer", frame.quizAnswer))
+                                    .put("quiz_answer", frame.quizAnswer)
+                                    .put("quiz_options", JSONArray(frame.quizOptions))
+                                    .put("quiz_correct_index", frame.quizCorrectIndex)
+                                    .put("quiz_model_answer", frame.quizModelAnswer)
+                                    .put("quiz_keywords", JSONArray(frame.quizKeywords)))
                             }
                         }
                         put(JSONObject()

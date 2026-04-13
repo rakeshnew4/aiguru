@@ -28,6 +28,7 @@ import com.aiguruapp.student.utils.WikimediaUtils
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.lifecycleScope
+import com.aiguruapp.student.bb.BbInteractivePopup
 import com.aiguruapp.student.chat.BlackboardGenerator
 import com.aiguruapp.student.config.AdminConfigRepository
 import com.aiguruapp.student.config.PlanEnforcer
@@ -101,6 +102,10 @@ class BlackboardActivity : AppCompatActivity() {
 
     // Cached user metadata for quota checks
     private var cachedMetadata = UserMetadata()
+
+    // ── Interactive quiz score tracking ────────────────────────────────────────
+    private var quizTotal   = 0
+    private var quizCorrect = 0
 
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -1035,6 +1040,103 @@ class BlackboardActivity : AppCompatActivity() {
 
     // ── TTS ───────────────────────────────────────────────────────────────────
 
+    // ── Interactive quiz ──────────────────────────────────────────────────────
+
+    private fun showInteractiveQuiz(
+        frame: BlackboardGenerator.BlackboardFrame,
+        stepIdx: Int,
+        frameIdx: Int
+    ) {
+        isPaused = true
+        val serverUrl = AdminConfigRepository.effectiveServerUrl()
+        BbInteractivePopup.show(
+            activity    = this,
+            frame       = frame,
+            serverUrl   = serverUrl,
+            languageTag = preferredLanguageTag,
+            onResult    = { result ->
+                quizTotal++
+                if (result.correct) quizCorrect++
+                isPaused = false
+                advanceFrame()
+            }
+        )
+    }
+
+    /** Show a summary score card at the end of the lesson when quizzes were played. */
+    private fun showScoreCard() {
+        val dp     = resources.displayMetrics.density
+        val caveat = ResourcesCompat.getFont(this, R.font.kalam)
+        val pct    = if (quizTotal > 0) (quizCorrect * 100) / quizTotal else 0
+        val emoji  = when {
+            pct >= 90 -> "🏆"
+            pct >= 70 -> "🎉"
+            pct >= 50 -> "👍"
+            else      -> "📚"
+        }
+        val msg = when {
+            pct >= 90 -> "Outstanding! You've mastered this topic."
+            pct >= 70 -> "Great job! Review the ones you missed."
+            pct >= 50 -> "Good effort! Practice a bit more."
+            else      -> "Keep going — revisit the lesson to improve."
+        }
+
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundColor(Color.parseColor("#1A2B1A"))
+            setPadding((24 * dp).toInt(), (28 * dp).toInt(), (24 * dp).toInt(), (20 * dp).toInt())
+        }
+
+        fun tv(text: String, sizeSp: Float, colorHex: String, bold: Boolean = false) =
+            TextView(this).apply {
+                this.text = text
+                textSize  = sizeSp
+                gravity   = Gravity.CENTER
+                setTextColor(Color.parseColor(colorHex))
+                typeface  = if (bold) android.graphics.Typeface.create(caveat, android.graphics.Typeface.BOLD) else caveat
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { bottomMargin = (10 * dp).toInt() }
+            }
+
+        root.addView(tv(emoji,                           52f, "#F5E3A0"))
+        root.addView(tv("Lesson Complete!",              22f, "#F5E3A0", bold = true))
+        root.addView(tv("$quizCorrect / $quizTotal correct  ($pct%)", 18f, "#A8D8A8"))
+        root.addView(tv(msg,                             14f, "#B0C8B0"))
+
+        val closeBtn = TextView(this).apply {
+            text = "Done ✓"
+            textSize = 16f
+            gravity   = Gravity.CENTER
+            setTextColor(Color.parseColor("#1A1A0A"))
+            typeface  = caveat
+            background = GradientDrawable().apply {
+                shape        = GradientDrawable.RECTANGLE
+                cornerRadius = 20 * dp
+                setColor(Color.parseColor("#F5E3A0"))
+            }
+            setPadding((24 * dp).toInt(), (12 * dp).toInt(), (24 * dp).toInt(), (12 * dp).toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (16 * dp).toInt() }
+        }
+        root.addView(closeBtn)
+
+        val dialog = android.app.Dialog(this, R.style.Theme_BB_QuizDialog).apply {
+            setContentView(root)
+            setCancelable(true)
+            window?.setLayout(
+                (resources.displayMetrics.widthPixels * 0.88).toInt(),
+                android.view.WindowManager.LayoutParams.WRAP_CONTENT
+            )
+            window?.setBackgroundDrawableResource(android.R.color.transparent)
+        }
+        closeBtn.setOnClickListener { dialog.dismiss() }
+        dialog.show()
+    }
+
     private fun makeTtsCallback(stepIdx: Int, frameIdx: Int) = object : TTSCallback {
 
         override fun onStart() { /* no-op */ }
@@ -1042,13 +1144,26 @@ class BlackboardActivity : AppCompatActivity() {
         override fun onComplete() {
             if (!isPaused && currentStepIdx == stepIdx && currentFrameIdx == frameIdx) {
                 val f = steps.getOrNull(stepIdx)?.frames?.getOrNull(frameIdx)
-                if (f?.frameType == "quiz" && f.quizAnswer.isNotBlank()) {
-                    // Quiz frame: show reveal button instead of auto-advancing
-                    runOnUiThread {
-                        quizRevealBtn?.animate()?.alpha(1f)?.setDuration(400)?.start()
+                when {
+                    f?.frameType == "quiz" && f.quizAnswer.isNotBlank() -> {
+                        // Legacy tap-to-reveal quiz
+                        runOnUiThread {
+                            quizRevealBtn?.animate()?.alpha(1f)?.setDuration(400)?.start()
+                        }
                     }
-                } else {
-                    stepsScrollView.postDelayed({ advanceFrame() }, 300)
+                    f?.frameType in setOf("quiz_mcq", "quiz_typed", "quiz_voice") && f != null -> {
+                        // Interactive quiz popup — pause lesson until student answers
+                        runOnUiThread { showInteractiveQuiz(f, stepIdx, frameIdx) }
+                    }
+                    else -> {
+                        val isLastFrame = stepIdx == steps.size - 1 &&
+                            frameIdx == (steps.lastOrNull()?.frames?.size ?: 1) - 1
+                        if (isLastFrame && quizTotal > 0) {
+                            stepsScrollView.postDelayed({ showScoreCard() }, 600)
+                        } else {
+                            stepsScrollView.postDelayed({ advanceFrame() }, 300)
+                        }
+                    }
                 }
             }
         }

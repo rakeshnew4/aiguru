@@ -41,6 +41,13 @@
     </style>
 
 
+    <!-- Blackboard quiz popup — dark green chalk theme -->
+    <style name="Theme.BB.QuizDialog" parent="Theme.MaterialComponents.Dialog">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="colorSurface">#1A2B1A</item>
+    </style>
+
     <!-- Dialog theme -->
     <style name="ThemeOverlay.AIGuru.MaterialAlertDialog"
         parent="ThemeOverlay.Material3.MaterialAlertDialog">
