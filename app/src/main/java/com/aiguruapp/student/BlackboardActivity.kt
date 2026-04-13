@@ -1129,26 +1129,27 @@ class BlackboardActivity : AppCompatActivity() {
         val topic = frame.quizModelAnswer.ifBlank { frame.text }.take(200)
         val serverUrl = AdminConfigRepository.effectiveServerUrl()
         val cfg = AdminConfigRepository.config
-        val client = com.aiguruapp.student.chat.ServerProxyClient(
-            serverUrl = serverUrl,
-            modelName = "",
-            apiKey    = cfg.serverApiKey
-        )
-        val remedPrompt = "Give a single clear 1-sentence re-explanation of: $topic"
-        val buffer = StringBuilder()
-        val latch  = java.util.concurrent.CountDownLatch(1)
-        client.streamChat(
-            question     = remedPrompt,
-            pageId       = "bb_remediation",
-            mode         = "blackboard",
-            languageTag  = preferredLanguageTag,
-            studentLevel = 5,
-            history      = emptyList(),
-            onToken      = { t -> buffer.append(t) },
-            onDone       = { _, _, _ -> latch.countDown() },
-            onError      = { latch.countDown() }
-        )
+
         lifecycleScope.launch(Dispatchers.IO) {
+            val client = com.aiguruapp.student.chat.ServerProxyClient(
+                serverUrl = serverUrl,
+                modelName = "",
+                apiKey    = cfg.serverApiKey
+            )
+            val remedPrompt = "Give a single clear 1-sentence re-explanation of: $topic"
+            val buffer = StringBuilder()
+            val latch  = java.util.concurrent.CountDownLatch(1)
+            client.streamChat(
+                question     = remedPrompt,
+                pageId       = "bb_remediation",
+                mode         = "blackboard",
+                languageTag  = preferredLanguageTag,
+                studentLevel = 5,
+                history      = emptyList(),
+                onToken      = { t -> buffer.append(t) },
+                onDone       = { _, _, _ -> latch.countDown() },
+                onError      = { latch.countDown() }
+            )
             latch.await(20, java.util.concurrent.TimeUnit.SECONDS)
             val explanation = buffer.toString().trim().take(300)
             if (explanation.isBlank()) return@launch

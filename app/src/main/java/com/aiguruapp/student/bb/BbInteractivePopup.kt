@@ -6,6 +6,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -13,6 +14,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
@@ -137,6 +139,9 @@ object BbInteractivePopup {
 
         val root = buildRootLayout(activity)
 
+        val timerTv = buildTimerLabel(activity, caveat)
+        root.addView(timerTv)
+
         // Question
         root.addView(textView(activity, "❓  ${frame.text}", 17f, "#F0EDD0", caveat).apply {
             layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { bottomMargin = (20 * dp).toInt() }
@@ -154,6 +159,7 @@ object BbInteractivePopup {
         continueBtn.visibility = View.GONE
 
         var answered = false
+        var timer: CountDownTimer? = null
 
         frame.quizOptions.forEachIndexed { idx, option ->
             val label = listOf("A", "B", "C", "D").getOrElse(idx) { "${idx + 1}" }
@@ -169,6 +175,8 @@ object BbInteractivePopup {
             optBtn.setOnClickListener {
                 if (answered) return@setOnClickListener
                 answered = true
+                timer?.cancel()
+                timerTv.visibility = View.GONE
                 val correct = idx == frame.quizCorrectIndex
                 val bg = if (correct) "#2E7D32" else "#B71C1C"
                 optBtn.background = roundedBorder(activity, bg, 12f, fill = true)
@@ -200,6 +208,15 @@ object BbInteractivePopup {
         for (i in 0 until container.childCount) {
             container.getChildAt(i).tag = dialog
         }
+
+        timer = startQuizTimer(timerTv, onTick = null) {
+            if (!answered) {
+                answered = true
+                dialog.dismiss()
+                onResult(QuizResult(false, 0, "Time's up"))
+            }
+        }
+        dialog.setOnDismissListener { timer.cancel() }
         dialog.show()
     }
 
@@ -215,6 +232,9 @@ object BbInteractivePopup {
         val caveat = ResourcesCompat.getFont(activity, R.font.kalam)
 
         val root = buildRootLayout(activity)
+
+        val timerTv = buildTimerLabel(activity, caveat)
+        root.addView(timerTv)
 
         root.addView(textView(activity, "✏️  ${frame.text}", 17f, "#F0EDD0", caveat).apply {
             layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { bottomMargin = (16 * dp).toInt() }
@@ -259,6 +279,7 @@ object BbInteractivePopup {
         root.addView(skipButton(activity, dp, caveat) { onResult(QuizResult(false, 0, "Skipped")) })
 
         var gradeResult: QuizResult? = null
+        var timer: CountDownTimer? = null
         val dialog = buildDialog(activity, ScrollView(activity).apply { addView(root) })
 
         actionBtn.setOnClickListener {
@@ -271,6 +292,8 @@ object BbInteractivePopup {
                 return@setOnClickListener
             }
 
+            timer?.cancel()
+            timerTv.visibility = View.GONE
             editText.isEnabled = false
             progressBar.visibility = View.VISIBLE
             actionBtn.isEnabled = false
@@ -291,6 +314,13 @@ object BbInteractivePopup {
             }
         }
 
+        timer = startQuizTimer(timerTv, onTick = null) {
+            if (gradeResult == null) {
+                dialog.dismiss()
+                onResult(QuizResult(false, 0, "Time's up"))
+            }
+        }
+        dialog.setOnDismissListener { timer.cancel() }
         dialog.show()
         dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
     }
@@ -313,7 +343,10 @@ object BbInteractivePopup {
             layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { bottomMargin = (20 * dp).toInt() }
         })
 
-        val statusTv = textView(activity, "Tap 🎤 to speak", 13f, "#88857070", caveat).apply {
+        val timerTv = buildTimerLabel(activity, caveat)
+        root.addView(timerTv)
+
+        val statusTv = textView(activity, "🎙️ Starting mic…", 13f, "#88857070", caveat).apply {
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { bottomMargin = (12 * dp).toInt() }
         }
@@ -328,7 +361,8 @@ object BbInteractivePopup {
         }
         root.addView(transcriptTv)
 
-        val micBtn = textView(activity, "🎤", 40f, "#F0EDD0", null).apply {
+        // Animated mic indicator (pulse ring around the mic emoji)
+        val micBtn = textView(activity, "🎙️", 44f, "#69F0AE", null).apply {
             gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { bottomMargin = (8 * dp).toInt() }
         }
@@ -356,22 +390,40 @@ object BbInteractivePopup {
 
         var gradeResult: QuizResult? = null
         var recognizer: SpeechRecognizer? = null
+        var voiceTimer: CountDownTimer? = null
 
         val dialog = buildDialog(activity, ScrollView(activity).apply { addView(root) })
-        dialog.setOnDismissListener { recognizer?.destroy() }
+        dialog.setOnDismissListener {
+            recognizer?.destroy()
+            voiceTimer?.cancel()
+        }
 
         fun startListening() {
             recognizer?.destroy()
             recognizer = SpeechRecognizer.createSpeechRecognizer(activity)
             recognizer?.setRecognitionListener(object : RecognitionListener {
                 override fun onReadyForSpeech(p: Bundle?) {
-                    activity.runOnUiThread { statusTv.text = "Listening… speak now" }
+                    activity.runOnUiThread {
+                        statusTv.text = "🔴 Listening… speak now"
+                        micBtn.setTextColor(Color.parseColor("#FF5252"))
+                        // Start 10-second countdown while listening
+                        voiceTimer?.cancel()
+                        voiceTimer = startQuizTimer(timerTv, onTick = null) {
+                            // Time up — stop recognizer, it will fire onResults or onError
+                            recognizer?.stopListening()
+                        }
+                    }
                 }
                 override fun onBeginningOfSpeech() {}
                 override fun onRmsChanged(v: Float) {}
                 override fun onBufferReceived(b: ByteArray?) {}
                 override fun onEndOfSpeech() {
-                    activity.runOnUiThread { statusTv.text = "Processing…" }
+                    activity.runOnUiThread {
+                        voiceTimer?.cancel()
+                        timerTv.visibility = View.GONE
+                        statusTv.text = "Processing…"
+                        micBtn.setTextColor(Color.parseColor("#F0EDD0"))
+                    }
                 }
                 override fun onPartialResults(r: Bundle?) {}
                 override fun onEvent(t: Int, p: Bundle?) {}
@@ -404,9 +456,12 @@ object BbInteractivePopup {
 
                 override fun onError(error: Int) {
                     activity.runOnUiThread {
-                        statusTv.text = "Couldn't hear you — tap 🎤 to retry"
+                        voiceTimer?.cancel()
+                        timerTv.visibility = View.GONE
+                        statusTv.text = "Couldn't hear — tap 🎙️ to retry"
                         statusTv.visibility = View.VISIBLE
                         micBtn.alpha = 1f
+                        micBtn.setTextColor(Color.parseColor("#F0EDD0"))
                     }
                 }
             })
@@ -416,10 +471,13 @@ object BbInteractivePopup {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, languageTag)
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, languageTag)
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 3000L)
+                putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 3000L)
             }
             recognizer?.startListening(intent)
         }
 
+        // Tap mic to retry after error
         micBtn.setOnClickListener {
             if (gradeResult == null) startListening()
         }
@@ -429,6 +487,8 @@ object BbInteractivePopup {
         }
 
         dialog.show()
+        // Auto-start mic after a short delay so the dialog is fully laid out
+        micBtn.postDelayed({ startListening() }, 400)
     }
 
     // ── Fill-in-the-blank ────────────────────────────────────────────────────
@@ -442,6 +502,8 @@ object BbInteractivePopup {
         val caveat = ResourcesCompat.getFont(activity, R.font.kalam)
 
         val root = buildRootLayout(activity)
+        val timerTv = buildTimerLabel(activity, caveat)
+        root.addView(timerTv)
 
         // Render text with blanks highlighted and EditTexts below each blank label
         val blanksCount = frame.fillBlanks.size.coerceAtLeast(1)
@@ -489,10 +551,13 @@ object BbInteractivePopup {
         root.addView(skipButton(activity, dp, caveat) { onResult(QuizResult(false, 0, "Skipped")) })
 
         var checked = false
+        var timer: CountDownTimer? = null
         val dialog = buildDialog(activity, ScrollView(activity).apply { addView(root) })
 
         actionBtn.setOnClickListener {
             if (checked) { dialog.dismiss(); return@setOnClickListener }
+            timer?.cancel()
+            timerTv.visibility = View.GONE
 
             val answers = editTexts.map { it.text.toString().trim() }
             val corrects = frame.fillBlanks
@@ -536,6 +601,14 @@ object BbInteractivePopup {
 
         dialog.show()
         dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
+        timer = startQuizTimer(timerTv, null) {
+            if (!checked) {
+                checked = true
+                dialog.dismiss()
+                onResult(QuizResult(false, 0, "Time's up"))
+            }
+        }
+        dialog.setOnDismissListener { timer?.cancel() }
     }
 
     // ── Order steps ──────────────────────────────────────────────────────────
@@ -549,6 +622,9 @@ object BbInteractivePopup {
         val caveat = ResourcesCompat.getFont(activity, R.font.kalam)
 
         val root = buildRootLayout(activity)
+        val timerTv = buildTimerLabel(activity, caveat)
+        root.addView(timerTv)
+        var orderTimer: CountDownTimer? = null
 
         root.addView(textView(activity, "🔢  Tap the steps in the correct order:", 17f, "#F0EDD0", caveat).apply {
             layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { bottomMargin = (6 * dp).toInt() }
@@ -613,6 +689,8 @@ object BbInteractivePopup {
                         feedbackTv.setTextColor(Color.parseColor("#FF8A80"))
                     }
                     feedbackTv.visibility = View.VISIBLE
+                    orderTimer?.cancel()
+                    timerTv.visibility = View.GONE
                 }
             }
         }
@@ -644,9 +722,14 @@ object BbInteractivePopup {
         }
 
         dialog.show()
+        orderTimer = startQuizTimer(timerTv, null) {
+            if (feedbackTv.visibility != View.VISIBLE) {
+                dialog.dismiss()
+                onResult(QuizResult(false, 0, "Time's up"))
+            }
+        }
+        dialog.setOnDismissListener { orderTimer?.cancel() }
     }
-
-    // ── AI grading  ──────────────────────────────────────────────────────────
 
     private fun gradeAnswer(
         serverUrl: String,
@@ -711,6 +794,45 @@ object BbInteractivePopup {
             ratio >= 0.40f -> QuizResult(false, 45, "Partially right. Key idea: $modelAnswer")
             else           -> QuizResult(false, 10, "Not quite. The answer is: $modelAnswer")
         }
+    }
+
+    // ── Timer helpers ─────────────────────────────────────────────────────────
+
+    private fun buildTimerLabel(activity: Activity, typeface: android.graphics.Typeface?): TextView {
+        val dp = activity.resources.displayMetrics.density
+        return TextView(activity).apply {
+            text = "⏱  10s"
+            textSize = 13f
+            gravity = Gravity.END
+            setTextColor(Color.parseColor("#F9A825"))
+            if (typeface != null) this.typeface = typeface
+            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
+                bottomMargin = (4 * dp).toInt()
+            }
+        }
+    }
+
+    private fun startQuizTimer(
+        timerTv: TextView,
+        onTick: ((secondsLeft: Int) -> Unit)?,
+        onFinish: () -> Unit
+    ): CountDownTimer {
+        val timer = object : CountDownTimer(10_000L, 1_000L) {
+            override fun onTick(millisUntilFinished: Long) {
+                val s = (millisUntilFinished / 1000).toInt() + 1
+                timerTv.text = "⏱  ${s}s"
+                timerTv.setTextColor(Color.parseColor(if (s <= 3) "#FF5252" else "#F9A825"))
+                onTick?.invoke(s)
+            }
+            override fun onFinish() {
+                timerTv.text = "⏱  0s"
+                timerTv.setTextColor(Color.parseColor("#FF5252"))
+                timerTv.postDelayed({ timerTv.visibility = View.GONE }, 300)
+                onFinish()
+            }
+        }
+        timer.start()
+        return timer
     }
 
     // ── UI helpers ────────────────────────────────────────────────────────────

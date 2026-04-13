@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from app.services.context_service import get_context
-from app.services.prompt_service import build_prompt
+from app.services.prompt_service import build_prompt, build_intent_classifier_prompt
 from app.services.llm_service import generate_response
 from app.services.strands_agent import run_agent
 from app.services import user_service
@@ -96,6 +96,35 @@ def _merge_context_with_image_data(base_context: Any, image_data: Optional[Dict[
     if not extra_parts:
         return context_str
     return f"{context_str}\n\n" + "\n\n".join(extra_parts)
+
+
+def _classify_intent(question: str, has_image: bool, last_reply: str) -> dict:
+    """
+    Fast intent classification using the 'faster' model tier (gemini-2.0-flash).
+    Returns {"intent": str, "complexity": str}.
+    Falls back to {"intent": "explain", "complexity": "medium"} on any error.
+    """
+    try:
+        classifier_prompt = build_intent_classifier_prompt(
+            question=question,
+            has_image=has_image,
+            last_reply=last_reply,
+        )
+        raw = generate_response(classifier_prompt, [], tier="faster")
+        text = (raw.get("text") or "").strip()
+        parsed = extract_json_safe(text)
+        intent = parsed.get("intent", "explain")
+        complexity = parsed.get("complexity", "medium")
+        valid_intents = {"greet", "explain", "calculate", "image_explain",
+                         "followup", "definition", "practice", "other"}
+        if intent not in valid_intents:
+            intent = "explain"
+        if complexity not in {"low", "medium", "high"}:
+            complexity = "medium"
+        return {"intent": intent, "complexity": complexity}
+    except Exception as exc:
+        logger.warning("Intent classification failed (%s) — defaulting to explain/medium", exc)
+        return {"intent": "explain", "complexity": "medium"}
 
 
 def _extract_page_transcript(
@@ -209,11 +238,33 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                 },
             )
 
-            # 1) context fetch
+            # 1) context fetch + image normalisation
             context = get_context(req.page_id)
-            merged_context = _merge_context_with_image_data(context, req.image_data)
+            normalized_images = _normalize_images(req)
+            has_image = bool(normalized_images)
 
-            # 2) prompt build
+            # 2) classify intent (fast ~200ms, uses 'faster' model)
+            last_reply = ""
+            for h in reversed(req.history or []):
+                if h.startswith("assistant:"):
+                    last_reply = h[10:130]
+                    break
+            intent_result = await asyncio.get_event_loop().run_in_executor(
+                None,
+                lambda: _classify_intent(req.question, has_image, last_reply),
+            )
+            intent = intent_result["intent"]
+            complexity = intent_result["complexity"]
+            logger.info("Intent=%s complexity=%s has_image=%s", intent, complexity, has_image)
+
+            # 3) merge context — when a fresh image is attached, skip stale transcript
+            #    injection so the LLM reads the real image rather than an old extract
+            if has_image:
+                merged_context = str(context) if context else ""
+            else:
+                merged_context = _merge_context_with_image_data(context, req.image_data)
+
+            # 4) build prompt routed by intent
             prompt = build_prompt(
                 context=merged_context,
                 question=req.question,
@@ -221,16 +272,18 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                 history=req.history,
                 language=req.language_tag or req.language,
                 mode=req.mode,
+                intent=intent,
+                complexity=complexity,
             )
             with open("prompt.txt", "w") as f:
                 f.write(prompt)
-            # 3) image normalisation
-            normalized_images = _normalize_images(req)
 
-            # 3b) determine model tier based on user plan
-            model_tier = _get_model_tier(req.user_plan or "free")
-            model_tier = "faster"
-            logger.info(f"User plan: {req.user_plan} → Model tier: {model_tier}")
+            # 5) model tier — greetings use faster model; everything else follows user plan
+            if intent == "greet":
+                model_tier = "faster"
+            else:
+                model_tier = _get_model_tier(req.user_plan or "free")
+            logger.info("User plan: %s → model_tier: %s", req.user_plan, model_tier)
 
             # 4) LLM call — use Strands agent or direct LLM based on config
             loop = asyncio.get_event_loop()

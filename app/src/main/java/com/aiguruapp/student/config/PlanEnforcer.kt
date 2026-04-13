@@ -120,6 +120,7 @@ object PlanEnforcer {
             }
         }
 
+
         // ── Daily token budget ────────────────────────────────────────────────
         if (limits.dailyTokenLimit > 0) {
             val todayTokens = getTodayTokens(metadata)
