@@ -118,10 +118,7 @@ def extract_json_safe(text: str) -> Dict:
 
 
 async def search_wikimedia_images(query: str, limit: int = 10) -> List[str]:
-    """
-    Async search for Wikimedia Commons images.
-    Returns list of matching image titles.
-    """
+    """Async search for Wikimedia Commons images. Returns list of matching image titles."""
     url = "https://commons.wikimedia.org/w/api.php"
     params = {
         "action": "query",
@@ -162,84 +159,154 @@ async def search_wikimedia_images(query: str, limit: int = 10) -> List[str]:
         return []
 
 
-async def get_titles(query: str) -> str:
+def _pick_titles_sync(steps: list, all_candidates: list) -> Dict[int, str]:
     """
-    Main async function to process query and find matching image titles.
-    Runs image searches in parallel for better performance.
-    ROBUST: Never fails - returns original query on any error.
+    Sync LLM-based image title picker.
+    For each high-confidence step, asks the 'faster' model to pick the best
+    Wikimedia title from all_candidates.  Falls back to word-overlap on failure.
+    Returns {step_index: title_string}.
+    """
+    from app.services.llm_service import generate_response
+
+    # Gather steps that actually need an image
+    needs_image = []
+    for i, step in enumerate(steps):
+        if not isinstance(step, dict):
+            continue
+        score = step.get("image_show_confidencescore") or 0
+        if score < 0.5:
+            continue
+        desc = (step.get("image_description") or "").strip()
+        if not desc:
+            continue
+        needs_image.append({"idx": i, "title": (step.get("title") or "")[:60], "desc": desc})
+
+    if not needs_image:
+        return {}
+
+    clean = [t.replace("File:", "").strip() for t in all_candidates if t and isinstance(t, str)][:30]
+    if not clean:
+        return {}
+
+    steps_text = "\n".join(
+        f'[{s["idx"]}] Step "{s["title"]}" — image needed for: "{s["desc"]}"'
+        for s in needs_image
+    )
+    picker_prompt = (
+        "You are selecting the best matching Wikimedia Commons image for each blackboard lesson step.\n"
+        "Pick ONE title per step from the candidates list. If no candidate is a good match, use null.\n"
+        "Output ONLY valid JSON mapping step index (string key) to the EXACT title string or null.\n\n"
+        f"Steps needing images:\n{steps_text}\n\n"
+        "Available Wikimedia titles:\n"
+        + "\n".join(f"- {t}" for t in clean)
+        + '\n\nOutput example: {"0": "Photosynthesis diagram.svg", "3": null, "5": "Newton laws.png"}'
+    )
+    try:
+        raw = generate_response(picker_prompt, [], tier="faster")
+        text = (raw.get("text") or "").strip()
+        parsed = extract_json_safe(text)
+        result: Dict[int, str] = {}
+        for k, v in parsed.items():
+            try:
+                idx = int(k)
+                if v and isinstance(v, str):
+                    result[idx] = v.replace("File:", "").strip()
+            except (ValueError, TypeError):
+                pass
+        logger.info("LLM image picker assigned %d images", len(result))
+        return result
+    except Exception as exc:
+        logger.warning("LLM image picker failed (%s) — falling back to word-overlap", exc)
+        # Fallback: word-overlap scoring (original algorithm)
+        fallback: Dict[int, str] = {}
+        for item in needs_image:
+            best = _best_title_match(item["desc"], all_candidates)
+            if best:
+                fallback[item["idx"]] = best.replace("File:", "").strip()
+        return fallback
+
+
+async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -> str:
+    """
+    Process BB JSON and attach the best Wikimedia image title to each high-confidence step.
+    Uses LLM-based selection (much more accurate than word-overlap).
+
+    extra_candidates: pre-fetched titles from the BB planner's image_search_terms
+                      (these arrive while the main BB LLM is running, so they're free).
     """
     try:
-        # Parse input JSON
         try:
             data = extract_json_safe(query)
         except Exception as e:
-            logger.error(f"Failed to parse input JSON: {e}. Returning original query.")
+            logger.error("Failed to parse BB JSON: %s — returning original", e)
             return query
 
         if "steps" not in data or not isinstance(data["steps"], list):
-            logger.error("Invalid input: missing 'steps' array")
-            return query  # Return original if structure is wrong
+            return query
 
-        # Collect all image descriptions
+        # Collect per-step image descriptions (only high-confidence steps)
         descriptions = []
         for step in data["steps"]:
             if isinstance(step, dict):
-                image_desc = step.get("image_description")
-                # Skip None, empty, or non-string values
-                if image_desc and isinstance(image_desc, str):
-                    if step.get("image_show_confidencescore", 0) > 0.5:
-                        desc = image_desc.strip()
-                        # Skip very generic or empty descriptions
-                        if desc and len(desc) > 3 and desc.lower() not in ["image", "picture", "photo"]:
-                            descriptions.append(desc)
-                        else:
-                            descriptions.append("")  # Placeholder to maintain index alignment
-                    else:
-                        descriptions.append("")  # Placeholder for low confidence
+                desc = (step.get("image_description") or "").strip()
+                score = step.get("image_show_confidencescore") or 0
+                if desc and len(desc) > 3 and score > 0.5:
+                    descriptions.append(desc)
                 else:
-                    descriptions.append("")  # Placeholder for None/missing descriptions
+                    descriptions.append("")
+            else:
+                descriptions.append("")
 
-        if not any(descriptions):  # Check if all are empty
-            logger.info("No valid image descriptions found in query")
-            return query
-
-        # Run searches in parallel (return empty list for blank descriptions)
+        # Run per-step Wikimedia searches in parallel
         async def search_or_skip(desc: str) -> List[str]:
-            if desc:
-                try:
-                    return await search_wikimedia_images(desc, limit=10)
-                except Exception as e:
-                    logger.warning(f"Image search for '{desc}' failed: {e}. Skipping.")
-                    return []
-            return []
-        
-        search_tasks = [search_or_skip(desc) for desc in descriptions]
-        all_titles = await asyncio.gather(*search_tasks)
+            if not desc:
+                return []
+            try:
+                return await search_wikimedia_images(desc, limit=8)
+            except Exception as e:
+                logger.warning("Image search failed for '%s': %s", desc, e)
+                return []
 
-        # Match each step's image_description to the best Wikimedia title using
-        # word-overlap scoring.  No LLM call needed — descriptions are already
-        # short (1-2 keywords) and the search results are the ground truth.
-        if "steps" in data:
-            for i, step in enumerate(data["steps"]):
-                if not isinstance(step, dict):
-                    continue
-                titles_for_step = all_titles[i] if i < len(all_titles) else []
-                image_desc = step.get("image_description")
-                if not image_desc or not isinstance(image_desc, str):
-                    continue
-                desc = image_desc.strip()
-                if not desc or len(desc) <= 3:
-                    continue
-                best = _best_title_match(desc, titles_for_step)
-                if best:
-                    step["image_description"] = best
-                    logger.info("Step %d: matched '%s' → '%s'", i, desc, best)
-                else:
+        per_step_results = await asyncio.gather(*[search_or_skip(d) for d in descriptions])
+
+        # Combine: per-step results + planner pre-fetches → one deduplicated pool
+        all_candidates: List[str] = []
+        for titles in per_step_results:
+            all_candidates.extend(titles)
+        if extra_candidates:
+            all_candidates.extend(extra_candidates)
+        all_candidates = list(dict.fromkeys(all_candidates))  # deduplicate, preserve order
+
+        if not all_candidates:
+            logger.info("No Wikimedia candidates found — clearing image descriptions")
+            for step in data["steps"]:
+                if isinstance(step, dict) and step.get("image_description"):
                     step.pop("image_description", None)
-                    logger.info("Step %d: no match for '%s', removed image", i, desc)
+            return json.dumps(data)
+
+        # Use LLM to pick best title per step (runs sync in executor)
+        loop = asyncio.get_event_loop()
+        picks: Dict[int, str] = await loop.run_in_executor(
+            None, lambda: _pick_titles_sync(data["steps"], all_candidates)
+        )
+
+        # Apply picks; clear image_description for steps that didn't get one
+        for i, step in enumerate(data["steps"]):
+            if not isinstance(step, dict):
+                continue
+            score = step.get("image_show_confidencescore") or 0
+            if score <= 0:
+                continue
+            if i in picks:
+                step["image_description"] = picks[i]
+                logger.info("Step %d → image: %s", i, picks[i])
+            elif (step.get("image_description") or ""):
+                # Had a description but no match found — remove to avoid bad fallback image
+                step.pop("image_description", None)
+                logger.info("Step %d: no image match, description cleared", i)
 
         return json.dumps(data)
 
     except Exception as e:
-        logger.exception(f"Error in get_titles: {e}")
-        return query  # Always return something valid
+        logger.exception("Error in get_titles: %s", e)
+        return query

@@ -6,7 +6,12 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from app.services.context_service import get_context
-from app.services.prompt_service import build_prompt, build_intent_classifier_prompt
+from app.services.prompt_service import (
+    build_prompt,
+    build_intent_classifier_prompt,
+    build_bb_planner_prompt,
+    build_bb_main_prompt,
+)
 from app.services.llm_service import generate_response
 from app.services.strands_agent import run_agent
 from app.services import user_service
@@ -127,6 +132,60 @@ def _classify_intent(question: str, has_image: bool, last_reply: str) -> dict:
         return {"intent": "explain", "complexity": "medium"}
 
 
+async def _bb_plan(question: str, context: str, history: list, level: int) -> dict:
+    """
+    Fast BB lesson planner (~150ms, 'faster' model).
+    Returns plan dict with topic_type, scope, steps_count, key_concepts, image_search_terms.
+    Falls back to safe defaults on any error.
+    """
+    defaults = {
+        "topic_type": "other",
+        "scope": "medium",
+        "key_concepts": [],
+        "steps_count": 5,
+        "image_search_terms": [],
+    }
+    try:
+        planner_prompt = build_bb_planner_prompt(question, context, history, level)
+        loop = asyncio.get_event_loop()
+        raw = await loop.run_in_executor(
+            None, lambda: generate_response(planner_prompt, [], tier="faster")
+        )
+        text = (raw.get("text") or "").strip()
+        plan = extract_json_safe(text)
+        if not isinstance(plan, dict):
+            return defaults
+        plan["steps_count"] = max(4, min(6, int(plan.get("steps_count") or 5)))
+        if not isinstance(plan.get("key_concepts"), list):
+            plan["key_concepts"] = []
+        if not isinstance(plan.get("image_search_terms"), list):
+            plan["image_search_terms"] = []
+        return plan
+    except Exception as exc:
+        logger.warning("BB planner failed (%s) — using defaults", exc)
+        return defaults
+
+
+async def _prefetch_wikimedia(search_terms: list) -> list:
+    """
+    Fetch Wikimedia image titles for the planner's search terms in parallel.
+    Runs in the background while the main BB LLM call is pending — effectively free.
+    """
+    if not search_terms:
+        return []
+    try:
+        tasks = [search_wikimedia_images(term, limit=8) for term in search_terms[:4]]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        titles = []
+        for r in results:
+            if isinstance(r, list):
+                titles.extend(r)
+        return titles
+    except Exception as exc:
+        logger.warning("Wikimedia prefetch failed: %s", exc)
+        return []
+
+
 def _extract_page_transcript(
     result: Dict[str, Any],
     images: List[str],
@@ -238,52 +297,88 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                 },
             )
 
-            # 1) context fetch + image normalisation
+            # 1) context fetch + image normalisation (both modes)
             context = get_context(req.page_id)
             normalized_images = _normalize_images(req)
             has_image = bool(normalized_images)
+            loop = asyncio.get_event_loop()
+            lang = req.language_tag or req.language or "en-US"
 
-            # 2) classify intent (fast ~200ms, uses 'faster' model)
-            last_reply = ""
-            for h in reversed(req.history or []):
-                if h.startswith("assistant:"):
-                    last_reply = h[10:130]
-                    break
-            intent_result = await asyncio.get_event_loop().run_in_executor(
-                None,
-                lambda: _classify_intent(req.question, has_image, last_reply),
-            )
-            intent = intent_result["intent"]
-            complexity = intent_result["complexity"]
-            logger.info("Intent=%s complexity=%s has_image=%s", intent, complexity, has_image)
+            if req.mode == "blackboard":
+                # ── BLACKBOARD PIPELINE ────────────────────────────────────────
+                # B1) Fast planner (150ms, faster model) — decides scope + key concepts
+                plan = await _bb_plan(
+                    req.question,
+                    str(context) if context else "",
+                    req.history or [],
+                    req.student_level or 5,
+                )
+                logger.info(
+                    "BB plan: type=%s scope=%s steps=%d concepts=%s",
+                    plan.get("topic_type"), plan.get("scope"),
+                    plan.get("steps_count", 5), plan.get("key_concepts"),
+                )
 
-            # 3) merge context — when a fresh image is attached, skip stale transcript
-            #    injection so the LLM reads the real image rather than an old extract
-            if has_image:
-                merged_context = str(context) if context else ""
-            else:
-                merged_context = _merge_context_with_image_data(context, req.image_data)
+                # B2) Start Wikimedia pre-fetch NOW — runs while BB LLM is running (free)
+                wiki_task = asyncio.ensure_future(
+                    _prefetch_wikimedia(plan.get("image_search_terms", []))
+                )
 
-            # 4) build prompt routed by intent
-            prompt = build_prompt(
-                context=merged_context,
-                question=req.question,
-                student_level=req.student_level,
-                history=req.history,
-                language=req.language_tag or req.language,
-                mode=req.mode,
-                intent=intent,
-                complexity=complexity,
-            )
-            with open("prompt.txt", "w") as f:
-                f.write(prompt)
-
-            # 5) model tier — greetings use faster model; everything else follows user plan
-            if intent == "greet":
-                model_tier = "faster"
-            else:
+                # B3) Build context-enriched BB prompt
+                prompt = build_bb_main_prompt(
+                    context=str(context) if context else "",
+                    question=req.question,
+                    level=req.student_level or 5,
+                    history=req.history or [],
+                    plan=plan,
+                    lang=lang,
+                )
                 model_tier = _get_model_tier(req.user_plan or "free")
-            logger.info("User plan: %s → model_tier: %s", req.user_plan, model_tier)
+
+            else:
+                # ── NORMAL CHAT PIPELINE ──────────────────────────────────────
+                # N1) Classify intent (200ms, faster model)
+                last_reply = ""
+                for h in reversed(req.history or []):
+                    if h.startswith("assistant:"):
+                        last_reply = h[10:130]
+                        break
+                intent_result = await loop.run_in_executor(
+                    None,
+                    lambda: _classify_intent(req.question, has_image, last_reply),
+                )
+                intent = intent_result["intent"]
+                complexity = intent_result["complexity"]
+                logger.info("Intent=%s complexity=%s has_image=%s", intent, complexity, has_image)
+
+                # N2) Merge context (skip stale transcript injection when fresh image present)
+                if has_image:
+                    merged_context = str(context) if context else ""
+                else:
+                    merged_context = _merge_context_with_image_data(context, req.image_data)
+
+                # N3) Build intent-routed prompt
+                prompt = build_prompt(
+                    context=merged_context,
+                    question=req.question,
+                    student_level=req.student_level,
+                    history=req.history,
+                    language=lang,
+                    mode=req.mode,
+                    intent=intent,
+                    complexity=complexity,
+                )
+
+                # N4) Model tier
+                model_tier = "faster" if intent == "greet" else _get_model_tier(req.user_plan or "free")
+                logger.info("User plan: %s → model_tier: %s", req.user_plan, model_tier)
+
+            # Debug dump
+            try:
+                with open("prompt.txt", "w") as f:
+                    f.write(prompt)
+            except Exception:
+                pass
 
             # 4) LLM call — use Strands agent or direct LLM based on config
             loop = asyncio.get_event_loop()
@@ -341,13 +436,14 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     yield f"data: {json.dumps({'error': str(e)})}\n\n"
                     return
             
-            # 4b) Async image title matching — only for blackboard mode (steps-based output)
+            # BB post-processing: image title matching (LLM-powered + pre-fetched Wikimedia)
             if req.mode == "blackboard":
                 try:
-                    # result['text'] = await get_titles(result['text'])```````````````````````````````````````  `
-                    result['text'] =result['text']
+                    extra_wiki = await wiki_task  # pre-fetched while BB LLM was running
+                    result["text"] = await get_titles(result["text"], extra_candidates=extra_wiki)
+                    logger.info("BB image matching complete")
                 except Exception as e:
-                    logger.warning(f"Image title matching failed: {e}. Continuing with original text.")
+                    logger.warning("BB image matching failed: %s — using raw LLM output", e)
             # 5) Emit page_transcript BEFORE the answer so Android can persist
             #    it to Firestore system-context as early as possible.
             try:

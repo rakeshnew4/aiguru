@@ -51,6 +51,33 @@ INTENT_CLASSIFIER_PROMPT = (
     "- high   -> multi-concept question, multi-step derivation, compare and contrast"
 )
 
+# ---BB Planner Prompt---
+# Run with tier="faster". Returns plan JSON (~120 tokens).
+# Tells the main BB LLM exactly how many steps to generate and what concepts to cover.
+
+BB_PLANNER_PROMPT = (
+    "You are a lesson planner for a visual animated blackboard school app.\n"
+    "Given the student's question, return a concise lesson plan. Output ONLY valid JSON — nothing else.\n\n"
+    'Question: "{question}"\n'
+    'Chapter context (excerpt): "{context_snippet}"\n'
+    'Prior lesson excerpt (last reply): "{last_reply}"\n'
+    "Student class: {level}\n\n"
+    "Output (one JSON object, NOTHING else):\n"
+    '{{"topic_type":"<math_formula|science_process|definition|comparison|history|programming|other>",'
+    '"scope":"<simple|medium|complex>",'
+    '"key_concepts":["term1","term2"],'
+    '"steps_count":<4|5|6>,'
+    '"image_search_terms":["wikimedia phrase 1","wikimedia phrase 2"]}}\n\n'
+    "Rules:\n"
+    "- simple (4 steps): single self-contained concept\n"
+    "- medium (5 steps): standard topic with 1-2 sub-concepts\n"
+    "- complex (6 steps): multi-concept, sequential process, or continuation of prior lesson\n"
+    "- image_search_terms: 2-3 SPECIFIC Wikimedia Commons search phrases for this exact topic\n"
+    '  GOOD: "mitosis phases cell division", "Newton second law force mass diagram"\n'
+    '  BAD: "biology", "science concept", "diagram"\n'
+    "- key_concepts: 2-4 core ideas the lesson MUST cover (actual concept names, not topic labels)"
+)
+
 # ---Blackboard Prompt---
 
 blackboard_prompt = (
@@ -324,3 +351,68 @@ def build_prompt(
         core = _explain_prompt(ctx, history_text, question, lvl, cmp)
 
     return core + language_instructions.get(lang, "")
+
+
+def build_bb_planner_prompt(
+    question: str,
+    context: str,
+    history: list,
+    level: int,
+) -> str:
+    """Returns the formatted BB planner prompt for the 'faster' model tier."""
+    ctx_snippet = (context or "")[:500].strip()
+    last_reply = ""
+    for h in reversed(history or []):
+        if h.startswith("assistant:"):
+            last_reply = h[10:200].strip()
+            break
+    return BB_PLANNER_PROMPT.format(
+        question=question[:300],
+        context_snippet=ctx_snippet,
+        last_reply=last_reply[:200],
+        level=level or 5,
+    )
+
+
+def build_bb_main_prompt(
+    context: str,
+    question: str,
+    level: int,
+    history: list,
+    plan: dict,
+    lang: str,
+) -> str:
+    """
+    Build the context-enriched blackboard lesson prompt using the planner's output.
+    Injects chapter context, recent conversation, and lesson plan so the BB LLM
+    generates focused content without having to figure out structure itself.
+    """
+    topic_type = plan.get("topic_type", "other")
+    scope = plan.get("scope", "medium")
+    key_concepts = plan.get("key_concepts") or []
+    steps_count = max(4, min(6, int(plan.get("steps_count") or 5)))
+
+    concepts_str = ", ".join(str(c) for c in key_concepts) if key_concepts else ""
+    ctx_snippet = (context or "")[:800].strip()
+    history_text = "\n".join((history or [])[-6:])  # last 3 turns
+    hist_snippet = history_text[-400:] if history_text else ""
+    lang_instr = language_instructions.get(lang or "en-US", "")
+
+    parts = [blackboard_prompt, "\n\n---LESSON BRIEF (follow these instructions exactly)---\n"]
+    parts.append(f"Student question: {question}\n")
+    parts.append(f"Student level: Class {level}\n")
+    parts.append(f"Topic type: {topic_type} | Scope: {scope}\n")
+    if concepts_str:
+        parts.append(f"Key concepts to cover (ALL of these): {concepts_str}\n")
+    parts.append(f"Generate EXACTLY {steps_count} steps — no more, no less.\n")
+
+    if ctx_snippet:
+        parts.append(f"\nCHAPTER CONTEXT (ground the lesson in this content):\n{ctx_snippet}\n")
+
+    if hist_snippet:
+        parts.append(f"\nRECENT CONVERSATION (avoid re-teaching what was already covered):\n{hist_snippet}\n")
+
+    parts.append("\n---END LESSON BRIEF---\n")
+    parts.append(lang_instr)
+
+    return "".join(parts)
