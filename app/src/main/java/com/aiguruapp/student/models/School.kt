@@ -9,7 +9,8 @@ data class SchoolBranding(
     val headerSubtextColor: String,
     val bodyTextPrimaryColor: String,
     val logoText: String,
-    val logoEmoji: String
+    val logoEmoji: String,
+    val logoUrl: String = ""        // Optional school logo image URL (Firebase Storage or CDN)
 )
 
 data class SchoolPlan(

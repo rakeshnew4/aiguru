@@ -76,14 +76,13 @@ import java.util.UUID
  */
 class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
-    private enum class LiveMicMode { PARTIAL, FULL }
-
     // ── UI Views ──────────────────────────────────────────────────────────────
     private lateinit var messagesRecyclerView: RecyclerView
     private lateinit var messageAdapter: MessageAdapter
     private lateinit var messageInput: EditText
     private lateinit var sendButton: MaterialButton
     private lateinit var loadingLayout: LinearLayout
+    private lateinit var loadingStatusText: TextView
     private lateinit var voiceButton: MaterialButton
     private lateinit var imageButton: MaterialButton
     private lateinit var saveNotesButton: MaterialButton
@@ -125,7 +124,6 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
     // ── Interactive Voice Chat Mode ────────────────────────────────────────────
     private var isVoiceModeActive = false
-    private var liveMicMode = LiveMicMode.PARTIAL
     private lateinit var voiceChatButton: MaterialButton
     private lateinit var voiceChatBar: LinearLayout
     private lateinit var voiceChatStatus: TextView
@@ -572,6 +570,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         messageInput = view.findViewById(R.id.messageInput)
         sendButton = view.findViewById(R.id.sendButton)
         loadingLayout = view.findViewById(R.id.loadingLayout)
+        loadingStatusText = view.findViewById(R.id.loadingStatusText)
         voiceButton = view.findViewById(R.id.voiceButton)
         imageButton = view.findViewById(R.id.imageButton)
         saveNotesButton = view.findViewById(R.id.saveNotesButton)
@@ -632,7 +631,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     private fun setupButtons(view: View) {
         voiceChatButton = view.findViewById(R.id.voiceChatButton)
         voiceChatButton.setOnClickListener {
-            if (isVoiceModeActive) stopVoiceMode() else showLiveModePickerAndStart()
+            if (isVoiceModeActive) stopVoiceMode() else startVoiceMode()
         }
 
         autoExplainButton = view.findViewById(R.id.autoExplainButton)
@@ -1353,6 +1352,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         messageAdapter.addMessage(userMessage)
         messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
         showLoading(true)
+        sendButton.isEnabled = false
 
         val sysPrompt = TutorController.buildSystemPrompt(tutorSession) +
                 PromptRepository.getLanguageInstruction(currentLang)
@@ -1369,6 +1369,9 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         val streamingMsg = Message(id = streamingId, content = "", isUser = false)
         val accumulated = StringBuilder()
         var loadingHidden = false
+        val onStatus: (String, Int) -> Unit = { message, _ ->
+            act.runOnUiThread { loadingStatusText.text = message }
+        }
 
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -1460,6 +1463,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                             chatQuestionsToday = if (isNewQuotaDay) 1 else cachedMetadata.chatQuestionsToday + 1,
                             questionsUpdatedAt = System.currentTimeMillis()
                         )
+                        sendButton.isEnabled = true
                         showLoading(false)
                         val rawResponse = accumulated.toString()
                         if (rawResponse.isNotEmpty()) {
@@ -1492,26 +1496,17 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
                             if ((lastInputWasVoice || isVoiceModeActive) && !isAutoExplainActive) {
                                 lastInputWasVoice = false
-                                val voiceText = if (isVoiceModeActive && liveMicMode == LiveMicMode.FULL)
-                                    TutorController.prepareSpeechText(reply.response)
-                                else
-                                    TutorController.prepareSpeechTextBrief(reply.response)
+                                val voiceText = TutorController.prepareSpeechText(reply.response)
                                 if (isVoiceModeActive) {
                                     currentTTSText = voiceText
-                                    val speakingLabel = if (liveMicMode == LiveMicMode.FULL)
-                                        "🔊 AI is speaking (Full Live)…"
-                                    else "🔊 AI is speaking (Partial Live)…"
-                                    setVoiceModeStatus(speakingLabel, "#1565C0")
+                                    setVoiceModeStatus("🔊 AI is speaking…", "#1565C0")
                                 }
                                 ttsManager.setLocale(Locale.forLanguageTag(currentLang))
                                 ttsManager.speak(voiceText, object : TTSCallback {
                                     override fun onStart() {
-                                        if (isVoiceModeActive && liveMicMode == LiveMicMode.FULL) {
+                                        if (isVoiceModeActive) {
                                             Handler(Looper.getMainLooper()).postDelayed({
-                                                if (isVoiceModeActive &&
-                                                    liveMicMode == LiveMicMode.FULL &&
-                                                    ttsManager.isSpeaking()
-                                                ) {
+                                                if (isVoiceModeActive && ttsManager.isSpeaking()) {
                                                     voiceManager.startInterruptListening(
                                                         interruptCallback, currentLang
                                                     )
@@ -1549,7 +1544,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                 }
 
                 val onError: (String) -> Unit = { err ->
-                    act.runOnUiThread { showLoading(false); showError("Error: $err") }
+                    act.runOnUiThread { sendButton.isEnabled = true; showLoading(false); showError("Error: $err") }
                 }
 
                 val client = buildAiClient()
@@ -1562,7 +1557,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                                 studentLevel, historyStrings, imageDataJson, b64,
                                 { transcript -> serverPageTranscript = transcript },
                                 { bb -> serverSuggestBlackboard = bb },
-                                onToken, onDone, onError)
+                                onStatus, onToken, onDone, onError)
                         } else {
                             if (b64 != null) client.streamWithImage(sysPrompt, ctxMessage, b64,
                                 onToken, onDone, onError)
@@ -1575,7 +1570,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                                 studentLevel, historyStrings, imageDataJson, capturedPdfBase64,
                                 { transcript -> serverPageTranscript = transcript },
                                 { bb -> serverSuggestBlackboard = bb },
-                                onToken, onDone, onError)
+                                onStatus, onToken, onDone, onError)
                         else
                             client.streamWithImage(sysPrompt, ctxMessage, capturedPdfBase64,
                                 onToken, onDone, onError)
@@ -1585,13 +1580,13 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                                 studentLevel, historyStrings, null, null,
                                 { transcript -> serverPageTranscript = transcript },
                                 { bb -> serverSuggestBlackboard = bb },
-                                onToken, onDone, onError)
+                                onStatus, onToken, onDone, onError)
                         else
                             client.streamText(sysPrompt, ctxMessage, onToken, onDone, onError)
                 }
             } catch (e: Exception) {
                 android.util.Log.e("FullChatFragment", "sendMessage crash: ${e.message}", e)
-                act.runOnUiThread { showLoading(false); showError("Error: ${e.message}") }
+                act.runOnUiThread { sendButton.isEnabled = true; showLoading(false); showError("Error: ${e.message}") }
             }
         }
     }
@@ -1790,6 +1785,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
     private fun showLoading(show: Boolean) {
         loadingLayout.visibility = if (show) View.VISIBLE else View.GONE
+        if (show) loadingStatusText.text = "AI is thinking..."
     }
 
     private fun showError(msg: String) {
@@ -1857,31 +1853,6 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
     // ── Interactive Voice Chat Mode ───────────────────────────────────────────
 
-    private fun showLiveModePickerAndStart() {
-        AlertDialog.Builder(requireContext())
-            .setTitle("Select Live Mic Mode")
-            .setItems(arrayOf(
-                "Full Live (stop-words can interrupt)",
-                "Partial Live (no interruptions)"
-            )) { _, which ->
-                liveMicMode = if (which == 0) LiveMicMode.FULL else LiveMicMode.PARTIAL
-                updateLiveModeUi()
-                if (liveMicMode == LiveMicMode.FULL) {
-                    AlertDialog.Builder(requireContext())
-                        .setTitle("Full Live Enabled")
-                        .setMessage("To stop TTS while it is speaking, say: 'stop it' or 'wait wait'.")
-                        .setPositiveButton("Start") { _, _ -> startVoiceMode() }
-                        .setNegativeButton("Cancel", null)
-                        .show()
-                } else {
-                    voiceManager.stopInterruptListening()
-                    startVoiceMode()
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
     private fun startVoiceMode() {
         if (ContextCompat.checkSelfPermission(
                 requireContext(), android.Manifest.permission.RECORD_AUDIO
@@ -1896,14 +1867,12 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         }
         isVoiceModeActive = true
         isInterrupted = false
-        if (liveMicMode == LiveMicMode.PARTIAL) voiceManager.stopInterruptListening()
         voiceButton.isEnabled = false
         voiceChatBar.visibility = View.VISIBLE
         listeningIndicator.visibility = View.GONE
         voiceChatButton.backgroundTintList =
             ColorStateList.valueOf(android.graphics.Color.parseColor("#E53935"))
-        val modeLabel = if (liveMicMode == LiveMicMode.FULL) "Full Live" else "Partial Live"
-        Toast.makeText(requireContext(), "🎙️ Voice mode ON ($modeLabel)", Toast.LENGTH_SHORT).show()
+        Toast.makeText(requireContext(), "🎙️ Live Mic ON", Toast.LENGTH_SHORT).show()
         updateLiveModeUi()
         startVoiceLoopListening()
     }
@@ -1927,24 +1896,18 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     private fun startVoiceLoopListening() {
         if (!isVoiceModeActive) return
         isListening = true
-        val listeningLabel = if (liveMicMode == LiveMicMode.FULL)
-            "🎙️ Full Live listening… say stop it / wait wait to interrupt"
-        else "🎙️ Partial Live listening… no interruptions"
-        setVoiceModeStatus(listeningLabel, "#2E7D32")
+        setVoiceModeStatus("🎙️ Listening… say 'stop it' to interrupt", "#2E7D32")
         voiceManager.startListening(this, currentLang)
         startMicPulse()
     }
 
     private fun updateLiveModeUi() {
-        val isFull = liveMicMode == LiveMicMode.FULL
-        liveModeChip.text = if (isFull) "Live: Full" else ""
-        voiceModeBadge.text = if (isFull) "FULL" else "PARTIAL"
-        val chipBg = if (isFull) "#FFF3E0" else "#EAF2FF"
-        val chipText = if (isFull) "#B45309" else "#0B4AA2"
-        liveModeChip.setBackgroundColor(android.graphics.Color.parseColor(chipBg))
-        liveModeChip.setTextColor(android.graphics.Color.parseColor(chipText))
-        voiceModeBadge.setBackgroundColor(android.graphics.Color.parseColor(chipBg))
-        voiceModeBadge.setTextColor(android.graphics.Color.parseColor(chipText))
+        liveModeChip.text = "Live"
+        voiceModeBadge.text = "LIVE"
+        liveModeChip.setBackgroundColor(android.graphics.Color.parseColor("#FFF3E0"))
+        liveModeChip.setTextColor(android.graphics.Color.parseColor("#B45309"))
+        voiceModeBadge.setBackgroundColor(android.graphics.Color.parseColor("#FFF3E0"))
+        voiceModeBadge.setTextColor(android.graphics.Color.parseColor("#B45309"))
     }
 
     private fun setVoiceModeStatus(text: String, colorHex: String) {
@@ -1979,9 +1942,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         val heard = text.lowercase().trim()
         if (heard.isBlank()) return false
         val normalizedTTS = currentTTSText.lowercase()
-        return if (liveMicMode == LiveMicMode.FULL) {
-            voiceStopWords.any { heard.contains(it) } && !normalizedTTS.contains(heard)
-        } else false
+        return voiceStopWords.any { heard.contains(it) } && !normalizedTTS.contains(heard)
     }
 
     private fun triggerBargein() {

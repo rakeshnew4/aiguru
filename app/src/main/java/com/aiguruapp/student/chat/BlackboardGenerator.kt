@@ -57,6 +57,7 @@ object BlackboardGenerator {
         userId: String? = null,
         conversationId: String? = null,
         preferredLanguageTag: String? = null,
+        onStatus: ((String, Int) -> Unit)? = null,
         onSuccess: (List<BlackboardStep>) -> Unit,
         onError: (String) -> Unit
     ) {
@@ -192,6 +193,7 @@ object BlackboardGenerator {
             studentLevel = 5,
             history      = emptyList(),
             onToken      = { token -> buffer.append(token) },
+            onStatus     = onStatus,
             onDone       = { _, _, _ -> latch.countDown() },
             onError      = { err -> streamErr = err; latch.countDown() }
         )

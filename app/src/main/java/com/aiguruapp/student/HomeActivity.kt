@@ -8,9 +8,12 @@ import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.widget.EditText
+import android.view.View
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import com.bumptech.glide.Glide
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -210,6 +213,21 @@ class HomeActivity : BaseActivity() {
         findViewById<TextView?>(R.id.schoolNameSubtitle)?.setTextColor(
             android.graphics.Color.parseColor("#FFFFFFCC"))
         findViewById<TextView?>(R.id.planBadgeText)?.setTextColor(headerTextColor)
+
+        // School logo — load from URL if available, otherwise hide
+        val logoUrl = school?.branding?.logoUrl ?: ""
+        val logoImageView = findViewById<ImageView?>(R.id.schoolLogoImage)
+        if (logoUrl.isNotBlank() && logoImageView != null) {
+            logoImageView.visibility = View.VISIBLE
+            Glide.with(this)
+                .load(logoUrl)
+                .circleCrop()
+                .placeholder(R.drawable.ic_school_placeholder)
+                .error(R.drawable.ic_school_placeholder)
+                .into(logoImageView)
+        } else {
+            logoImageView?.visibility = View.GONE
+        }
     }
 
     private fun setupStudentInfo() {

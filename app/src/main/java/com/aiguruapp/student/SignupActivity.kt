@@ -103,7 +103,15 @@ class SignupActivity : BaseActivity() {
     }
 
     private fun goHome() {
-        startActivity(Intent(this, HomeActivity::class.java).apply {
+        // After first signup, show the optional school join screen
+        // If already linked to a real school (not "google"), go directly home
+        val schoolId = SessionManager.getSchoolId(this)
+        val target = if (schoolId.isBlank() || schoolId == "google") {
+            SchoolJoinActivity::class.java
+        } else {
+            HomeActivity::class.java
+        }
+        startActivity(Intent(this, target).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         })
         finish()

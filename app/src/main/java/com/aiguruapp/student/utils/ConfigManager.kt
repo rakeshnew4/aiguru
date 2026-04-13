@@ -30,6 +30,12 @@ object ConfigManager {
     fun getSchool(context: Context, schoolId: String): School? =
         getSchools(context).find { it.id == schoolId }
 
+    /** Find a school by its short code (case-insensitive). Used in SchoolJoinActivity. */
+    fun findSchoolByCode(context: Context, code: String): School? {
+        if (code.length < 2) return null
+        return getSchools(context).find { it.code.equals(code, ignoreCase = true) }
+    }
+
     fun searchSchools(context: Context, query: String): List<School> {
         if (query.isBlank()) return getSchools(context)
         val q = query.lowercase()
@@ -81,7 +87,8 @@ object ConfigManager {
                 headerSubtextColor = b.optString("headerSubtextColor", "#B3C5FF"),
                 bodyTextPrimaryColor = b.optString("bodyTextPrimaryColor", "#1A237E"),
                 logoText = b.optString("logoText", ""),
-                logoEmoji = b.optString("logoEmoji", "🏫")
+                logoEmoji = b.optString("logoEmoji", "🏫"),
+                logoUrl = b.optString("logoUrl", "")
             )
         }
 

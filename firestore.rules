@@ -46,6 +46,13 @@ service cloud.firestore {
     match /schools/{schoolId} {
       allow read: if true;
       allow write: if false;
+
+      // Student login verification — signed-in user may read exactly their own
+      // student document to verify username + password. No listing allowed.
+      match /students/{username} {
+        allow get: if isSignedIn();
+        allow list, write: if false;
+      }
     }
 
     // Subscription plans — shown on paywall before/after login

@@ -174,7 +174,8 @@ object AppStartRepository {
                                 headerSubtextColor   = b["headerSubtextColor"] as? String ?: "#90CAF9",
                                 bodyTextPrimaryColor = b["bodyTextPrimaryColor"] as? String ?: "#1565C0",
                                 logoText             = b["logoText"] as? String ?: "",
-                                logoEmoji            = b["logoEmoji"] as? String ?: "🏫"
+                                logoEmoji            = b["logoEmoji"] as? String ?: "🏫",
+                                logoUrl              = b["logoUrl"] as? String ?: ""
                             ),
                             plans         = plansRaw.map { p ->
                                 SchoolPlan(

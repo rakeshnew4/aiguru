@@ -227,6 +227,9 @@ class BlackboardActivity : AppCompatActivity() {
                 userId         = userId,
                 conversationId = conversationId,
                 preferredLanguageTag = preferredLanguageTag,
+                onStatus = { statusMsg, _ ->
+                    runOnUiThread { loadingText.text = statusMsg }
+                },
                 onSuccess = { generated ->
                     if (recordSession && !userId.isNullOrBlank()) {
                         val isNewQuotaDay = cachedMetadata.questionsUpdatedAt > 0L &&

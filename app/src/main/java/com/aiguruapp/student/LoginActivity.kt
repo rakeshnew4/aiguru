@@ -92,11 +92,6 @@ class LoginActivity : BaseActivity() {
             }
         }
 
-        // School login
-        findViewById<Button>(R.id.schoolLoginButton).setOnClickListener {
-            startActivity(Intent(this, SchoolLoginActivity::class.java))
-        }
-
         // Email sign-in
         findViewById<Button>(R.id.emailSignInButton).setOnClickListener {
             startActivity(Intent(this, EmailAuthActivity::class.java))

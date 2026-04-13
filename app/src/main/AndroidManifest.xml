@@ -81,6 +81,7 @@
             android:configChanges="orientation|screenSize"
             android:label="NCERT Textbook" />
         <activity android:name=".SignupActivity" android:exported="false" />
+        <activity android:name=".SchoolJoinActivity" android:exported="false" />
         <activity android:name=".UserProfileActivity" android:exported="false" />
         <!-- exported + singleTop required for Razorpay UPI redirect (PhonePe etc.)
              to return control to this activity after payment completes. -->
