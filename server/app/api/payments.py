@@ -34,10 +34,20 @@ def _now_ms() -> int:
 
 # ── Razorpay client ──────────────────────────────────────────────────────────────
 def get_razorpay_client() -> razorpay.Client:
-    if not getattr(settings, "RAZORPAY_KEY_ID", None) or \
-       not getattr(settings, "RAZORPAY_KEY_SECRET", None):
+    key_id = getattr(settings, "RAZORPAY_KEY_ID", "") or ""
+    key_secret = getattr(settings, "RAZORPAY_KEY_SECRET", "") or ""
+    if not key_id or not key_secret:
+        logger.error(
+            "Razorpay credentials not configured: "
+            "RAZORPAY_KEY_ID=%r, RAZORPAY_KEY_SECRET=%s",
+            key_id or "(empty)",
+            "(set)" if key_secret else "(empty)",
+        )
         raise HTTPException(status_code=500, detail="Razorpay credentials not configured")
-    return razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+    # Log key_id prefix/suffix so you can verify which key is active without exposing it
+    masked_key = f"{key_id[:8]}...{key_id[-4:]}" if len(key_id) > 12 else key_id[:4] + "..."
+    logger.info("Razorpay client created with key_id=%s", masked_key)
+    return razorpay.Client(auth=(key_id, key_secret))
 
 
 # ── Pydantic models ──────────────────────────────────────────────────────────────
