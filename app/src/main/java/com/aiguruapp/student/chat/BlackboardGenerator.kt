@@ -19,13 +19,19 @@ object BlackboardGenerator {
         val speech: String,
         val durationMs: Long = 2000,
         // concept | quiz | memory | summary | quiz_mcq | quiz_typed | quiz_voice
+        // | quiz_fill (fill-in-the-blank) | quiz_order (drag to order steps)
         val frameType: String = "concept",
         val quizAnswer: String = "",          // legacy tap-to-reveal answer (frame_type "quiz")
         // ── Interactive quiz fields ───────────────────────────────────────────
-        val quizOptions: List<String> = emptyList(),  // quiz_mcq: exactly 4 choices
+        val quizOptions: List<String> = emptyList(),  // quiz_mcq / quiz_order: option texts
         val quizCorrectIndex: Int = -1,               // quiz_mcq: 0–3 index of correct option
         val quizModelAnswer: String = "",             // quiz_typed/voice: reference answer for AI grading
-        val quizKeywords: List<String> = emptyList()  // keywords the student answer must cover
+        val quizKeywords: List<String> = emptyList(), // keywords the student answer must cover
+        // ── quiz_fill specific ────────────────────────────────────────────────
+        val fillBlanks: List<String> = emptyList(),   // correct words for each blank in text
+        // ── quiz_order specific ───────────────────────────────────────────────
+        // quizOptions holds the steps in SHUFFLED order; quizCorrectOrder holds correct 0-based indices
+        val quizCorrectOrder: List<Int> = emptyList()
     )
 
     data class BlackboardStep(
@@ -95,9 +101,11 @@ object BlackboardGenerator {
                         val framesArr = stepObj.getJSONArray("frames")
                         val frames = (0 until framesArr.length()).map { j ->
                             val frameObj = framesArr.getJSONObject(j)
-                            val hlArr = frameObj.optJSONArray("highlight")
-                            val optsArr = frameObj.optJSONArray("quiz_options")
-                            val kwArr   = frameObj.optJSONArray("quiz_keywords")
+                            val hlArr    = frameObj.optJSONArray("highlight")
+                            val optsArr  = frameObj.optJSONArray("quiz_options")
+                            val kwArr    = frameObj.optJSONArray("quiz_keywords")
+                            val fillArr  = frameObj.optJSONArray("fill_blanks")
+                            val orderArr = frameObj.optJSONArray("quiz_correct_order")
                             BlackboardFrame(
                                 text              = frameObj.getString("text"),
                                 highlight         = if (hlArr != null) (0 until hlArr.length()).map { hlArr.getString(it) } else emptyList(),
@@ -108,7 +116,9 @@ object BlackboardGenerator {
                                 quizOptions       = if (optsArr != null) (0 until optsArr.length()).map { optsArr.getString(it) } else emptyList(),
                                 quizCorrectIndex  = frameObj.optInt("quiz_correct_index", -1),
                                 quizModelAnswer   = frameObj.optString("quiz_model_answer", ""),
-                                quizKeywords      = if (kwArr != null) (0 until kwArr.length()).map { kwArr.getString(it) } else emptyList()
+                                quizKeywords      = if (kwArr != null) (0 until kwArr.length()).map { kwArr.getString(it) } else emptyList(),
+                                fillBlanks        = if (fillArr != null) (0 until fillArr.length()).map { fillArr.getString(it) } else emptyList(),
+                                quizCorrectOrder  = if (orderArr != null) (0 until orderArr.length()).map { orderArr.getInt(it) } else emptyList()
                             )
                         }
                         BlackboardStep(
@@ -205,9 +215,11 @@ object BlackboardGenerator {
                 val framesArr = stepObj.getJSONArray("frames")
                 val frames = (0 until framesArr.length()).map { j ->
                     val frameObj = framesArr.getJSONObject(j)
-                    val hlArr   = frameObj.optJSONArray("highlight")
-                    val optsArr = frameObj.optJSONArray("quiz_options")
-                    val kwArr   = frameObj.optJSONArray("quiz_keywords")
+                    val hlArr    = frameObj.optJSONArray("highlight")
+                    val optsArr  = frameObj.optJSONArray("quiz_options")
+                    val kwArr    = frameObj.optJSONArray("quiz_keywords")
+                    val fillArr  = frameObj.optJSONArray("fill_blanks")
+                    val orderArr = frameObj.optJSONArray("quiz_correct_order")
                     BlackboardFrame(
                         text             = frameObj.getString("text"),
                         highlight        = if (hlArr != null) (0 until hlArr.length()).map { hlArr.getString(it) } else emptyList(),
@@ -218,7 +230,9 @@ object BlackboardGenerator {
                         quizOptions      = if (optsArr != null) (0 until optsArr.length()).map { optsArr.getString(it) } else emptyList(),
                         quizCorrectIndex = frameObj.optInt("quiz_correct_index", -1),
                         quizModelAnswer  = frameObj.optString("quiz_model_answer", ""),
-                        quizKeywords     = if (kwArr != null) (0 until kwArr.length()).map { kwArr.getString(it) } else emptyList()
+                        quizKeywords     = if (kwArr != null) (0 until kwArr.length()).map { kwArr.getString(it) } else emptyList(),
+                        fillBlanks       = if (fillArr != null) (0 until fillArr.length()).map { fillArr.getString(it) } else emptyList(),
+                        quizCorrectOrder = if (orderArr != null) (0 until orderArr.length()).map { orderArr.getInt(it) } else emptyList()
                     )
                 }
                 BlackboardStep(
@@ -247,7 +261,9 @@ object BlackboardGenerator {
                                     .put("quiz_options", JSONArray(frame.quizOptions))
                                     .put("quiz_correct_index", frame.quizCorrectIndex)
                                     .put("quiz_model_answer", frame.quizModelAnswer)
-                                    .put("quiz_keywords", JSONArray(frame.quizKeywords)))
+                                    .put("quiz_keywords", JSONArray(frame.quizKeywords))
+                                    .put("fill_blanks", JSONArray(frame.fillBlanks))
+                                    .put("quiz_correct_order", JSONArray(frame.quizCorrectOrder)))
                             }
                         }
                         put(JSONObject()

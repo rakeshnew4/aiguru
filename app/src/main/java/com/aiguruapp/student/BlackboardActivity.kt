@@ -5,6 +5,10 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.app.AlertDialog
 import android.graphics.Color
+import android.view.animation.AlphaAnimation
+import android.view.animation.AnimationSet
+import android.view.animation.ScaleAnimation
+import android.widget.FrameLayout
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -104,8 +108,11 @@ class BlackboardActivity : AppCompatActivity() {
     private var cachedMetadata = UserMetadata()
 
     // ── Interactive quiz score tracking ────────────────────────────────────────
-    private var quizTotal   = 0
-    private var quizCorrect = 0
+    private var quizTotal       = 0
+    private var quizCorrect     = 0
+    private var currentStreak   = 0
+    // Each bookmark: Triple(stepIdx, frameIdx, stepTitle)
+    private val bookmarkedFrames = mutableListOf<Triple<Int, Int, String>>()
 
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -1056,11 +1063,110 @@ class BlackboardActivity : AppCompatActivity() {
             languageTag = preferredLanguageTag,
             onResult    = { result ->
                 quizTotal++
-                if (result.correct) quizCorrect++
+                if (result.correct) {
+                    quizCorrect++
+                    currentStreak++
+                    if (currentStreak >= 3) showStreakOverlay(currentStreak)
+                } else {
+                    currentStreak = 0
+                    // Bookmark the frame automatically on wrong answer
+                    val stepTitle = steps.getOrNull(stepIdx)?.title ?: "Step ${stepIdx + 1}"
+                    val key = Triple(stepIdx, frameIdx, stepTitle)
+                    if (key !in bookmarkedFrames) bookmarkedFrames.add(key)
+                    // Adaptive remediation: insert an extra explanation frame
+                    triggerAdaptiveRemediation(frame, stepIdx, frameIdx)
+                }
                 isPaused = false
                 advanceFrame()
             }
         )
+    }
+
+    /** Brief full-screen streak overlay that fades in and scales out. */
+    private fun showStreakOverlay(streak: Int) {
+        val dp = resources.displayMetrics.density
+        val root = window.decorView.findViewById<FrameLayout>(android.R.id.content)
+
+        val overlay = TextView(this).apply {
+            text = "🔥 $streak in a row!"
+            textSize = 32f
+            gravity = Gravity.CENTER
+            setTextColor(Color.parseColor("#FFD700"))
+            typeface = ResourcesCompat.getFont(this@BlackboardActivity, R.font.kalam)
+            setBackgroundColor(Color.parseColor("#CC1A2B1A"))
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        }
+        root.addView(overlay)
+
+        val fadeIn  = AlphaAnimation(0f, 1f).apply { duration = 300 }
+        val fadeOut = AlphaAnimation(1f, 0f).apply { duration = 600; startOffset = 900 }
+        val scale   = ScaleAnimation(0.8f, 1.1f, 0.8f, 1.1f,
+            ScaleAnimation.RELATIVE_TO_SELF, 0.5f,
+            ScaleAnimation.RELATIVE_TO_SELF, 0.5f).apply { duration = 300 }
+        val anim = AnimationSet(true).apply {
+            addAnimation(fadeIn)
+            addAnimation(scale)
+        }
+        overlay.startAnimation(anim)
+        overlay.postDelayed({
+            overlay.startAnimation(fadeOut)
+            overlay.postDelayed({ root.removeView(overlay) }, 700)
+        }, 1000)
+    }
+
+    /**
+     * On a wrong answer, sends a mini LLM request to generate one extra
+     * "re-explanation" concept frame and inserts it as the next frame.
+     */
+    private fun triggerAdaptiveRemediation(
+        frame: BlackboardGenerator.BlackboardFrame,
+        stepIdx: Int,
+        frameIdx: Int
+    ) {
+        val topic = frame.quizModelAnswer.ifBlank { frame.text }.take(200)
+        val serverUrl = AdminConfigRepository.effectiveServerUrl()
+        val cfg = AdminConfigRepository.config
+        val client = com.aiguruapp.student.chat.ServerProxyClient(
+            serverUrl = serverUrl,
+            modelName = "",
+            apiKey    = cfg.serverApiKey
+        )
+        val remedPrompt = "Give a single clear 1-sentence re-explanation of: $topic"
+        val buffer = StringBuilder()
+        val latch  = java.util.concurrent.CountDownLatch(1)
+        client.streamChat(
+            question     = remedPrompt,
+            pageId       = "bb_remediation",
+            mode         = "blackboard",
+            languageTag  = preferredLanguageTag,
+            studentLevel = 5,
+            history      = emptyList(),
+            onToken      = { t -> buffer.append(t) },
+            onDone       = { _, _, _ -> latch.countDown() },
+            onError      = { latch.countDown() }
+        )
+        lifecycleScope.launch(Dispatchers.IO) {
+            latch.await(20, java.util.concurrent.TimeUnit.SECONDS)
+            val explanation = buffer.toString().trim().take(300)
+            if (explanation.isBlank()) return@launch
+            val remedFrame = BlackboardGenerator.BlackboardFrame(
+                text      = "💡 Quick recap: $explanation",
+                speech    = explanation,
+                frameType = "concept",
+                durationMs = 3000
+            )
+            lifecycleScope.launch(Dispatchers.Main) {
+                val step = steps.getOrNull(stepIdx) ?: return@launch
+                val mutableFrames = step.frames.toMutableList()
+                mutableFrames.add(frameIdx + 1, remedFrame)
+                val mutableSteps = steps.toMutableList()
+                mutableSteps[stepIdx] = step.copy(frames = mutableFrames)
+                steps = mutableSteps
+            }
+        }
     }
 
     /** Show a summary score card at the end of the lesson when quizzes were played. */
@@ -1104,6 +1210,11 @@ class BlackboardActivity : AppCompatActivity() {
         root.addView(tv("Lesson Complete!",              22f, "#F5E3A0", bold = true))
         root.addView(tv("$quizCorrect / $quizTotal correct  ($pct%)", 18f, "#A8D8A8"))
         root.addView(tv(msg,                             14f, "#B0C8B0"))
+
+        if (bookmarkedFrames.isNotEmpty()) {
+            root.addView(tv("📌 ${bookmarkedFrames.size} frame${if (bookmarkedFrames.size > 1) "s" else ""} bookmarked for review",
+                12f, "#FFD54F"))
+        }
 
         val closeBtn = TextView(this).apply {
             text = "Done ✓"
@@ -1151,7 +1262,7 @@ class BlackboardActivity : AppCompatActivity() {
                             quizRevealBtn?.animate()?.alpha(1f)?.setDuration(400)?.start()
                         }
                     }
-                    f?.frameType in setOf("quiz_mcq", "quiz_typed", "quiz_voice") && f != null -> {
+                    f?.frameType in setOf("quiz_mcq", "quiz_typed", "quiz_voice", "quiz_fill", "quiz_order") && f != null -> {
                         // Interactive quiz popup — pause lesson until student answers
                         runOnUiThread { showInteractiveQuiz(f, stepIdx, frameIdx) }
                     }

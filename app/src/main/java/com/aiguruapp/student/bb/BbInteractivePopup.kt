@@ -34,6 +34,10 @@ import java.util.concurrent.TimeUnit
  * Supports:  quiz_mcq   — 4-option MCQ, immediate local validation
  *            quiz_typed — typed open answer, AI-graded via /bb/grade
  *            quiz_voice — spoken answer  , AI-graded via /bb/grade
+ *            quiz_fill  — fill-in-the-blank with per-blank EditTexts
+ *            quiz_order — tap-to-order shuffled steps
+ *
+ * A confidence meter is shown before every quiz popup.
  */
 object BbInteractivePopup {
 
@@ -61,12 +65,64 @@ object BbInteractivePopup {
         languageTag: String = "en-US",
         onResult: (QuizResult) -> Unit
     ) {
-        when (frame.frameType) {
-            "quiz_mcq"   -> showMcq(activity, frame, onResult)
-            "quiz_typed" -> showTyped(activity, frame, serverUrl, onResult)
-            "quiz_voice" -> showVoice(activity, frame, serverUrl, languageTag, onResult)
-            else         -> onResult(QuizResult(true))
+        val quizTypes = setOf("quiz_mcq", "quiz_typed", "quiz_voice", "quiz_fill", "quiz_order")
+        if (frame.frameType !in quizTypes) { onResult(QuizResult(true)); return }
+
+        showConfidenceMeter(activity) {
+            when (frame.frameType) {
+                "quiz_mcq"   -> showMcq(activity, frame, onResult)
+                "quiz_typed" -> showTyped(activity, frame, serverUrl, onResult)
+                "quiz_voice" -> showVoice(activity, frame, serverUrl, languageTag, onResult)
+                "quiz_fill"  -> showFillBlank(activity, frame, onResult)
+                "quiz_order" -> showOrderSteps(activity, frame, onResult)
+                else         -> onResult(QuizResult(true))
+            }
         }
+    }
+
+    // ── Confidence meter ──────────────────────────────────────────────────────
+
+    /**
+     * Shows a brief pre-quiz confidence check. Calls [onReady] once the user
+     * picks a confidence level (or after a short timeout).
+     */
+    fun showConfidenceMeter(activity: Activity, onReady: (confidence: Int) -> Unit) {
+        val dp     = activity.resources.displayMetrics.density
+        val caveat = ResourcesCompat.getFont(activity, R.font.kalam)
+
+        val root = buildRootLayout(activity)
+
+        root.addView(textView(activity, "Before you answer…", 14f, "#88857070", caveat).apply {
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { bottomMargin = (6 * dp).toInt() }
+        })
+        root.addView(textView(activity, "How confident are you?", 17f, "#F0EDD0", caveat).apply {
+            gravity = Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { bottomMargin = (20 * dp).toInt() }
+        })
+
+        val dialog = buildDialog(activity, root)
+
+        fun pick(confidence: Int) { dialog.dismiss(); onReady(confidence) }
+
+        data class Btn(val label: String, val color: String, val value: Int)
+        listOf(
+            Btn("🟢  I know this!",    "#2E7D32", 3),
+            Btn("🟡  Not sure…",       "#F9A825", 2),
+            Btn("🔴  Just guessing",   "#B71C1C", 1)
+        ).forEach { btn ->
+            root.addView(textView(activity, btn.label, 15f, "#F0EDD0", caveat).apply {
+                gravity = Gravity.CENTER
+                background = roundedBorder(activity, btn.color, 12f, fill = true).apply {
+                    alpha = 200
+                }
+                setPadding((16 * dp).toInt(), (13 * dp).toInt(), (16 * dp).toInt(), (13 * dp).toInt())
+                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { bottomMargin = (10 * dp).toInt() }
+                setOnClickListener { pick(btn.value) }
+            })
+        }
+
+        dialog.show()
     }
 
     // ── MCQ ────────────────────────────────────────────────────────────────────
@@ -359,7 +415,6 @@ object BbInteractivePopup {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, languageTag)
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, languageTag)
-                putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_MATCHES, false)
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
             }
             recognizer?.startListening(intent)
@@ -371,6 +426,221 @@ object BbInteractivePopup {
         continueBtn.setOnClickListener {
             dialog.dismiss()
             onResult(gradeResult ?: QuizResult(false))
+        }
+
+        dialog.show()
+    }
+
+    // ── Fill-in-the-blank ────────────────────────────────────────────────────
+
+    private fun showFillBlank(
+        activity: Activity,
+        frame: BlackboardFrame,
+        onResult: (QuizResult) -> Unit
+    ) {
+        val dp     = activity.resources.displayMetrics.density
+        val caveat = ResourcesCompat.getFont(activity, R.font.kalam)
+
+        val root = buildRootLayout(activity)
+
+        // Render text with blanks highlighted and EditTexts below each blank label
+        val blanksCount = frame.fillBlanks.size.coerceAtLeast(1)
+        // Replace each [_] placeholder in the text with a numbered blank marker
+        var displayText = frame.text
+        for (i in 1..blanksCount) {
+            displayText = displayText.replaceFirst("___", "(${i})")
+        }
+
+        root.addView(textView(activity, "📝  $displayText", 16f, "#F0EDD0", caveat).apply {
+            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { bottomMargin = (16 * dp).toInt() }
+        })
+
+        val editTexts = mutableListOf<EditText>()
+        for (i in 0 until blanksCount) {
+            root.addView(textView(activity, "Blank ${i + 1}:", 13f, "#88857070", caveat).apply {
+                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = (8 * dp).toInt() }
+            })
+            val et = EditText(activity).apply {
+                hint = "Fill in blank ${i + 1}"
+                textSize = 15f
+                setTextColor(Color.parseColor("#F0EDD0"))
+                setHintTextColor(Color.parseColor("#88857070"))
+                typeface = caveat
+                setBackgroundColor(Color.parseColor("#0D1F0D"))
+                setPadding((12 * dp).toInt(), (8 * dp).toInt(), (12 * dp).toInt(), (8 * dp).toInt())
+                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { bottomMargin = (4 * dp).toInt() }
+            }
+            root.addView(et)
+            editTexts.add(et)
+        }
+
+        val feedbackTv = textView(activity, "", 14f, "#69F0AE", caveat).apply {
+            visibility = View.GONE
+            setLineSpacing(0f, 1.3f)
+            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
+                topMargin    = (12 * dp).toInt()
+                bottomMargin = (8 * dp).toInt()
+            }
+        }
+        root.addView(feedbackTv)
+
+        val actionBtn = actionButton(activity, "Check Answer", dp, caveat)
+        root.addView(actionBtn)
+        root.addView(skipButton(activity, dp, caveat) { onResult(QuizResult(false, 0, "Skipped")) })
+
+        var checked = false
+        val dialog = buildDialog(activity, ScrollView(activity).apply { addView(root) })
+
+        actionBtn.setOnClickListener {
+            if (checked) { dialog.dismiss(); return@setOnClickListener }
+
+            val answers = editTexts.map { it.text.toString().trim() }
+            val corrects = frame.fillBlanks
+            var allCorrect = true
+            val feedback = StringBuilder()
+
+            corrects.forEachIndexed { i, expected ->
+                val given = answers.getOrElse(i) { "" }
+                val ok = given.equals(expected, ignoreCase = true) ||
+                         given.lowercase().contains(expected.lowercase())
+                if (!ok) {
+                    allCorrect = false
+                    feedback.append("Blank ${i + 1}: expected \"$expected\"\n")
+                }
+            }
+
+            checked = true
+            editTexts.forEach { it.isEnabled = false }
+
+            if (allCorrect) {
+                feedbackTv.text = "✅  All blanks correct! Well done."
+                feedbackTv.setTextColor(Color.parseColor("#69F0AE"))
+            } else {
+                feedbackTv.text = "❌  Not quite:\n${feedback.toString().trimEnd()}"
+                feedbackTv.setTextColor(Color.parseColor("#FF8A80"))
+            }
+            feedbackTv.visibility = View.VISIBLE
+            actionBtn.text = "Continue →"
+
+            val score = if (allCorrect) 100
+                        else (answers.zip(corrects).count { (a, e) ->
+                            a.equals(e, ignoreCase = true) || a.lowercase().contains(e.lowercase())
+                        } * 100 / corrects.size.coerceAtLeast(1))
+
+            actionBtn.setOnClickListener {
+                dialog.dismiss()
+                onResult(QuizResult(correct = allCorrect, score = score,
+                    feedback = if (allCorrect) "All blanks correct!" else feedback.toString().trimEnd()))
+            }
+        }
+
+        dialog.show()
+        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
+    }
+
+    // ── Order steps ──────────────────────────────────────────────────────────
+
+    private fun showOrderSteps(
+        activity: Activity,
+        frame: BlackboardFrame,
+        onResult: (QuizResult) -> Unit
+    ) {
+        val dp     = activity.resources.displayMetrics.density
+        val caveat = ResourcesCompat.getFont(activity, R.font.kalam)
+
+        val root = buildRootLayout(activity)
+
+        root.addView(textView(activity, "🔢  Tap the steps in the correct order:", 17f, "#F0EDD0", caveat).apply {
+            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { bottomMargin = (6 * dp).toInt() }
+        })
+        root.addView(textView(activity, frame.text, 14f, "#88857070", caveat).apply {
+            setLineSpacing(0f, 1.3f)
+            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { bottomMargin = (16 * dp).toInt() }
+        })
+
+        val stepTexts = frame.quizOptions  // shuffled texts from LLM
+        val correctOrder = frame.quizCorrectOrder  // indices into stepTexts mapping to correct positions
+
+        val selectedOrder = mutableListOf<Int>()  // indices in stepTexts in tap-order
+
+        val stepBtns = mutableListOf<TextView>()
+        val feedbackTv = textView(activity, "", 14f, "#69F0AE", caveat).apply {
+            visibility = View.GONE
+            setLineSpacing(0f, 1.3f)
+            layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply {
+                topMargin    = (12 * dp).toInt()
+                bottomMargin = (8 * dp).toInt()
+            }
+        }
+
+        stepTexts.forEachIndexed { idx, stepText ->
+            val btn = textView(activity, stepText, 14f, "#F0EDD0", caveat).apply {
+                background = roundedBorder(activity, "#5C5BD4", 10f)
+                setPadding((14 * dp).toInt(), (11 * dp).toInt(), (14 * dp).toInt(), (11 * dp).toInt())
+                layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { bottomMargin = (8 * dp).toInt() }
+            }
+            root.addView(btn)
+            stepBtns.add(btn)
+
+            btn.setOnClickListener {
+                if (idx in selectedOrder || feedbackTv.visibility == View.VISIBLE) return@setOnClickListener
+                selectedOrder.add(idx)
+                val pos = selectedOrder.size
+                btn.text = "${pos}. $stepText"
+                btn.background = roundedBorder(activity, "#F9A825", 10f, fill = false)
+
+                // All steps tapped — evaluate
+                if (selectedOrder.size == stepTexts.size) {
+                    val isCorrect = if (correctOrder.size == stepTexts.size) {
+                        selectedOrder == correctOrder
+                    } else {
+                        // Fallback: treat selected order as indices 0..n-1
+                        selectedOrder.mapIndexed { i, v -> v == i }.all { it }
+                    }
+
+                    stepBtns.forEachIndexed { i, b ->
+                        val tappedPos = selectedOrder.indexOf(i)
+                        val expectedPos = if (correctOrder.size == stepTexts.size) correctOrder.indexOf(i) else i
+                        val stepOk = tappedPos == expectedPos
+                        b.background = roundedBorder(activity, if (stepOk) "#2E7D32" else "#B71C1C", 10f, fill = true)
+                    }
+
+                    if (isCorrect) {
+                        feedbackTv.text = "✅  Perfect order! Well done."
+                        feedbackTv.setTextColor(Color.parseColor("#69F0AE"))
+                    } else {
+                        feedbackTv.text = "❌  Not quite. Review the highlighted steps."
+                        feedbackTv.setTextColor(Color.parseColor("#FF8A80"))
+                    }
+                    feedbackTv.visibility = View.VISIBLE
+                }
+            }
+        }
+
+        root.addView(feedbackTv)
+        val continueBtn = actionButton(activity, "Continue →", dp, caveat).apply { visibility = View.GONE }
+        root.addView(continueBtn)
+        root.addView(skipButton(activity, dp, caveat) { onResult(QuizResult(false, 0, "Skipped")) })
+
+        val dialog = buildDialog(activity, ScrollView(activity).apply { addView(root) })
+
+        // Show continue button once all steps are tapped
+        feedbackTv.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+            if (feedbackTv.visibility == View.VISIBLE && continueBtn.visibility == View.GONE) {
+                continueBtn.visibility = View.VISIBLE
+                val isCorrect = if (correctOrder.size == stepTexts.size)
+                    selectedOrder == correctOrder
+                else
+                    selectedOrder.mapIndexed { i, v -> v == i }.all { it }
+                continueBtn.setOnClickListener {
+                    dialog.dismiss()
+                    onResult(QuizResult(
+                        correct  = isCorrect,
+                        score    = if (isCorrect) 100 else 40,
+                        feedback = if (isCorrect) "Steps in correct order!" else "Order wasn't quite right."
+                    ))
+                }
+            }
         }
 
         dialog.show()
