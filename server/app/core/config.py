@@ -76,9 +76,9 @@ class Settings(BaseSettings):
     LITELLM_DATABASE_URL: str = "postgresql://litellm:litellm_secure_password_2024@localhost:5432/litellm_db"
 
     # ── Authentication & Security ────────────────────────────────────────────
-    # Set to True to enforce Firebase ID token authentication
-    # Set to False to allow development/testing without tokens (UNSAFE FOR PRODUCTION)
-    AUTH_REQUIRED: bool = False
+    # Set to True to enforce Firebase ID token authentication (required in production)
+    # Set to False only for local development/testing without tokens
+    AUTH_REQUIRED: bool = True
 
 
     class Config:

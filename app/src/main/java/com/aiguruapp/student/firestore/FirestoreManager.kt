@@ -83,6 +83,21 @@ object FirestoreManager {
             .set(docData, SetOptions.merge())
             .addOnSuccessListener { onSuccess() }
             .addOnFailureListener { onFailure(it) }
+
+        // Mirror identity fields to /users/{userId} so the legacy collection
+        // document exists for conversation subcollections and any legacy reads.
+        val identityData = mapOf(
+            "userId"     to userId,
+            "name"       to docData.name,
+            "email"      to (docData.email ?: ""),
+            "grade"      to docData.grade,
+            "schoolId"   to docData.schoolId,
+            "schoolName" to docData.schoolName,
+            "updatedAt"  to now
+        )
+        db.collection("users").document(userId)
+            .set(identityData, SetOptions.merge())
+            // fire-and-forget — don't propagate failure to callers of saveUserMetadata
     }
 
     /**

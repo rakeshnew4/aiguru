@@ -62,24 +62,23 @@ async def require_auth(
     from app.core.config import settings
     
     # 🚨 DEVELOPMENT/BYPASS MODE: Skip validation, allow all requests
-    if not getattr(settings, "AUTH_REQUIRED", False):
-        # In dev mode, use any provided token/uid, or generate a dev user ID
+    if not getattr(settings, "AUTH_REQUIRED", True):
+        # In dev mode, try to decode the UID from the JWT payload without verifying
+        # the signature — so ownership checks (auth.uid == req.user_id) still work.
+        dev_uid = "dev-user"
         if credentials and credentials.credentials:
-            # For development: use the token as the UID (so it matches userId in requests)
-            dev_uid = credentials.credentials
-            # Try to extract a reasonable length ID
-            if len(dev_uid) > 50:
-                dev_uid = dev_uid[:30]
-        else:
-            # No token provided - generate a guest ID
-            import uuid
-            dev_uid = f"guest-{str(uuid.uuid4())[:12]}"
-        
-        logger.info(f"🚨 AUTH BYPASS (DEV MODE): User ID = {dev_uid}")
-        return AuthUser(
-            uid=dev_uid,
-            email="dev@local",
-        )
+            try:
+                import base64, json as _json
+                # JWT is header.payload.signature — decode payload (no sig check)
+                parts = credentials.credentials.split(".")
+                if len(parts) == 3:
+                    padded = parts[1] + "==" * ((-len(parts[1])) % 4)
+                    payload = _json.loads(base64.urlsafe_b64decode(padded))
+                    dev_uid = payload.get("user_id") or payload.get("sub") or dev_uid
+            except Exception:
+                pass  # fall back to dev-user
+        logger.info(f"🚨 AUTH BYPASS (DEV MODE): uid={dev_uid}")
+        return AuthUser(uid=dev_uid, email="dev@local")
     
     # 🔒 PRODUCTION MODE: Verify Firebase token strictly
     if credentials is None or not credentials.credentials:

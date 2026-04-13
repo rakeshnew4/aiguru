@@ -90,14 +90,19 @@ def create_user_if_missing(
         return
 
     now = _now_ms()
-    ref.set({
-        # ── Identity ──────────────────────────────────────────────────────────
+    identity = {
         "userId": uid,
         "name": name,
         "email": email,
         "grade": grade,
         "schoolId": school_id,
         "schoolName": school_name,
+        "created_at": now,
+        "updated_at": now,
+    }
+
+    ref.set({
+        **identity,
         # ── Plan (free defaults) ─────────────────────────────────────────────
         "planId": "free",
         "planName": "Free",
@@ -124,11 +129,13 @@ def create_user_if_missing(
         # ── Referral ─────────────────────────────────────────────────────────
         "referredBy": "",
         "bonus_questions_today": 0,
-        # ── Timestamps ───────────────────────────────────────────────────────
-        "created_at": now,
-        "updated_at": now,
     })
     logger.info("create_user_if_missing: created users_table/%s", uid)
+
+    # Mirror identity fields to /users/{uid} so it exists for conversation
+    # subcollections and any legacy reads.
+    db.collection("users").document(uid).set(identity, merge=True)
+    logger.info("create_user_if_missing: mirrored identity to users/%s", uid)
 
 
 def activate_plan(
