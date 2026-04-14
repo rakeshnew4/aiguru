@@ -548,6 +548,8 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                             .putExtra(BlackboardActivity.EXTRA_USER_ID, userId)
                             .putExtra(BlackboardActivity.EXTRA_CONVERSATION_ID, convId)
                             .putExtra(BlackboardActivity.EXTRA_LANGUAGE_TAG, currentLang)
+                            .putExtra(BlackboardActivity.EXTRA_SUBJECT, subjectName)
+                            .putExtra(BlackboardActivity.EXTRA_CHAPTER, chapterName)
                     )
                 }
             },
@@ -1437,6 +1439,13 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                         cachedMetadata = cachedMetadata.copy(
                             chatQuestionsToday = if (isNewQuotaDay) 1 else cachedMetadata.chatQuestionsToday + 1,
                             questionsUpdatedAt = System.currentTimeMillis()
+                        )
+                        // Track message in student progress stats
+                        com.aiguruapp.student.firestore.StudentStatsManager.recordMessage(
+                            userId  = userId,
+                            subject = subjectName,
+                            chapter = chapterName,
+                            context = ctx
                         )
                         sendButton.isEnabled = true
                         showLoading(false)

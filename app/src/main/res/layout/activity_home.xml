@@ -150,6 +150,22 @@
                 android:layout_marginEnd="8dp" />
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/teacherDashboardButton"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:text="👩‍🏫 Teacher"
+                android:textAllCaps="false"
+                android:textSize="13sp"
+                android:textColor="#5C35B5"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                app:backgroundTint="#EDE7F6"
+                app:cornerRadius="18dp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:layout_marginEnd="8dp" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/langChipButton"
                 android:layout_width="wrap_content"
                 android:layout_height="40dp"

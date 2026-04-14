@@ -22,8 +22,22 @@ class QuizResultActivity : BaseActivity() {
         val timeTakenSec  = intent.getLongExtra("timeTakenSec", 0L)
         val difficulty    = intent.getStringExtra("difficulty") ?: "medium"
         val chapterTitle  = intent.getStringExtra("chapterTitle") ?: ""
+        val subjectName   = intent.getStringExtra("subjectName") ?: ""
         val quizJson      = intent.getStringExtra("quizJson") ?: ""
         val answersJson   = intent.getStringExtra("answersJson") ?: "[]"
+
+        // ── Record quiz stats
+        val userId = com.aiguruapp.student.utils.SessionManager.getFirestoreUserId(this)
+        if (userId.isNotBlank() && subjectName.isNotBlank() && chapterTitle.isNotBlank()) {
+            com.aiguruapp.student.firestore.StudentStatsManager.recordQuiz(
+                userId   = userId,
+                subject  = subjectName,
+                chapter  = chapterTitle,
+                answered = totalCount,
+                correct  = correctCount,
+                context  = this
+            )
+        }
 
         // ── Header subtitle
         findViewById<TextView>(R.id.resultSubtitle).text =

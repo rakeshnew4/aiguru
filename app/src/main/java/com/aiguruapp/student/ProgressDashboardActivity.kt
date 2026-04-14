@@ -12,6 +12,8 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.aiguruapp.student.firestore.StudentStatsManager
+import com.aiguruapp.student.models.StudentStats
 import com.aiguruapp.student.utils.SessionManager
 import java.util.concurrent.TimeUnit
 
@@ -37,23 +39,48 @@ class ProgressDashboardActivity : BaseActivity() {
     }
 
     private fun loadProgress() {
-        // Progress data requires Firestore — will be re-enabled later
-        showEmpty()
+        val userId = SessionManager.getFirestoreUserId(this)
+        if (userId.isBlank() || userId == "guest_user") { showEmpty(); return }
+        findViewById<View>(R.id.loadingLayout).visibility = View.VISIBLE
+        StudentStatsManager.fetchStudentStats(
+            userId    = userId,
+            onSuccess = { stats -> runOnUiThread { populateFromStats(stats) } },
+            onFailure = { runOnUiThread { showEmpty() } }
+        )
+    }
+
+    private fun populateFromStats(stats: StudentStats?) {
+        if (stats == null || stats.subjects.isEmpty()) { showEmpty(); return }
+
+        // ── Top stat cards ──────────────────────────────────────────────────────
+        findViewById<TextView>(R.id.totalChaptersCount).text = stats.streakDays.toString()
+        val acc = stats.quizAccuracy
+        findViewById<TextView>(R.id.avgMasteryScore).text = if (acc >= 0) "$acc%" else "—"
+        findViewById<TextView>(R.id.totalTimeText).text = stats.appTimeFormatted
+
+        // ── Flatten subjects → chapters → ChapterSummary ────────────────────────
+        val summaries = stats.subjects.values.flatMap { subj ->
+            val subjDisplay = subj.subjectName.ifBlank { "General" }
+            subj.chapters.values.map { ch ->
+                ChapterSummary(
+                    subject          = subjDisplay,
+                    chapter          = ch.chapterName.ifBlank { "Chapter" },
+                    masteryScore     = ch.masteryScore,
+                    totalTimeSeconds = (ch.appTimeMs / 1_000L).toInt(),
+                    quizAttempts     = ch.quizzesAnswered,
+                    lastAccessed     = ch.lastActiveAt
+                )
+            }
+        }.sortedByDescending { it.lastAccessed }
+
+        displayData(summaries)
     }
 
     private fun displayData(data: List<ChapterSummary>) {
         if (data.isEmpty()) { showEmpty(); return }
 
-        // Update summary stats
-        val totalTime = data.sumOf { it.totalTimeSeconds }
-        val avgMastery = data.map { it.masteryScore }.average().toInt()
-        findViewById<TextView>(R.id.totalChaptersCount).text = data.size.toString()
-        findViewById<TextView>(R.id.avgMasteryScore).text = "$avgMastery%"
-        findViewById<TextView>(R.id.totalTimeText).text = formatTime(totalTime)
-
         // Group by subject, sort mastery desc within each group
-        val grouped = data.groupBy { it.subject }
-            .toSortedMap()
+        val grouped = data.groupBy { it.subject }.toSortedMap()
 
         val container = findViewById<LinearLayout>(R.id.chapterListContainer)
         container.removeAllViews()

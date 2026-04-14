@@ -71,6 +71,8 @@ class BlackboardActivity : AppCompatActivity() {
         const val EXTRA_USER_ID         = "extra_user_id"
         const val EXTRA_CONVERSATION_ID = "extra_conversation_id"
         const val EXTRA_LANGUAGE_TAG    = "extra_language_tag"
+        const val EXTRA_SUBJECT         = "extra_subject"
+        const val EXTRA_CHAPTER         = "extra_chapter"
     }
 
     // ── Views ─────────────────────────────────────────────────────────────────
@@ -260,6 +262,15 @@ class BlackboardActivity : AppCompatActivity() {
                         cachedMetadata = cachedMetadata.copy(
                             bbSessionsToday = if (isNewQuotaDay) 1 else cachedMetadata.bbSessionsToday + 1,
                             questionsUpdatedAt = System.currentTimeMillis()
+                        )
+                        // Track BB session in student progress stats
+                        val bbSubject = intent.getStringExtra(EXTRA_SUBJECT) ?: "General"
+                        val bbChapter = intent.getStringExtra(EXTRA_CHAPTER) ?: "General"
+                        com.aiguruapp.student.firestore.StudentStatsManager.recordBbSession(
+                            userId  = userId,
+                            subject = bbSubject,
+                            chapter = bbChapter,
+                            context = this@BlackboardActivity
                         )
                         lifecycleScope.launch(Dispatchers.Main) { updateBbQuotaChip(userId) }
                     }
@@ -1094,6 +1105,19 @@ class BlackboardActivity : AppCompatActivity() {
             languageTag = preferredLanguageTag,
             onResult    = { result ->
                 quizTotal++
+                val bbUserId = intent.getStringExtra(EXTRA_USER_ID) ?: ""
+                val bbSubject = intent.getStringExtra(EXTRA_SUBJECT) ?: "General"
+                val bbChapter = intent.getStringExtra(EXTRA_CHAPTER) ?: "General"
+                if (bbUserId.isNotBlank()) {
+                    com.aiguruapp.student.firestore.StudentStatsManager.recordQuiz(
+                        userId   = bbUserId,
+                        subject  = bbSubject,
+                        chapter  = bbChapter,
+                        answered = 1,
+                        correct  = if (result.correct) 1 else 0,
+                        context  = this@BlackboardActivity
+                    )
+                }
                 if (result.correct) {
                     quizCorrect++
                     currentStreak++

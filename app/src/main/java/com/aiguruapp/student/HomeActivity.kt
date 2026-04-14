@@ -92,6 +92,9 @@ class HomeActivity : BaseActivity() {
         findViewById<MaterialButton>(R.id.progressButton).setOnClickListener {
             startActivity(Intent(this, ProgressDashboardActivity::class.java))
         }
+        findViewById<MaterialButton>(R.id.teacherDashboardButton).setOnClickListener {
+            startActivity(Intent(this, TeacherDashboardActivity::class.java))
+        }
         setupLangChip()
         findViewById<TextView?>(R.id.profileButton)?.setOnClickListener {
             startActivity(Intent(this, UserProfileActivity::class.java))

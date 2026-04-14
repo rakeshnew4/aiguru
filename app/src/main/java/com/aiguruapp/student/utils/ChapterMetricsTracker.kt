@@ -1,6 +1,7 @@
 package com.aiguruapp.student.utils
 
 import android.content.Context
+import com.aiguruapp.student.firestore.StudentStatsManager
 import java.util.UUID
 
 /**
@@ -33,48 +34,59 @@ class ChapterMetricsTracker(
     private var imageCount = 0
     private var notesCount = 0
     private var flashcardCount = 0
-  
 
     private var sessionEnded = false
 
     // ── Public API ────────────────────────────────────────────────────────────
 
-    /**
-     * Record a learning event. Thread-safe (all writes are to in-memory fields).
-     * Only increments counters; Firestore write happens in endSession().
-     */
     fun recordEvent(type: EventType, detail: String = "") {
         messageCount++
         when (type) {
-            EventType.QUIZ_REQUESTED -> quizCount++
-            EventType.EXPLAIN_USED -> explainCount++
-            EventType.SUMMARIZE_USED -> summarizeCount++
-            EventType.FORMULA_USED -> formulaCount++
-            EventType.PRACTICE_USED -> practiceCount++
-            EventType.VOICE_INPUT -> voiceCount++
-            EventType.IMAGE_UPLOADED -> imageCount++
-            EventType.NOTES_SAVED -> notesCount++
-            EventType.FLASHCARD_GENERATED -> flashcardCount++
-
-            EventType.PAGE_VIEWED -> { /* handled by recordPageViewed */ }
+            EventType.QUIZ_REQUESTED       -> quizCount++
+            EventType.EXPLAIN_USED         -> explainCount++
+            EventType.SUMMARIZE_USED       -> summarizeCount++
+            EventType.FORMULA_USED         -> formulaCount++
+            EventType.PRACTICE_USED        -> practiceCount++
+            EventType.VOICE_INPUT          -> voiceCount++
+            EventType.IMAGE_UPLOADED       -> imageCount++
+            EventType.NOTES_SAVED          -> notesCount++
+            EventType.FLASHCARD_GENERATED  -> flashcardCount++
+            EventType.PAGE_VIEWED          -> { /* handled by recordPageViewed */ }
         }
     }
 
-    /** Track which PDF/image pages the student viewed. */
     fun recordPageViewed(pageNumber: Int) {
         pagesViewed.add(pageNumber)
     }
 
     /**
-     * Flush session data to Firestore + update rolling summary + recalculate mastery.
+     * Flush session data to Firestore via [StudentStatsManager].
      * Safe to call multiple times — only executes once.
-     *
-     * @param ctx      Android context for SessionManager
-     * @param totalPages Total page count of the chapter (0 if unknown)
      */
     fun endSession(ctx: Context, totalPages: Int = 0) {
         if (sessionEnded) return
         sessionEnded = true
-        // Metrics will be written to Firestore when re-enabled
+
+        val userId = SessionManager.getFirestoreUserId(ctx)
+        if (userId.isBlank() || userId == "guest_user") return
+
+        val durationMs = System.currentTimeMillis() - startTime
+
+        // Record app time for this chapter session
+        if (durationMs > 5_000) {  // only count sessions >5s to ignore accidental opens
+            StudentStatsManager.recordAppTime(
+                userId    = userId,
+                subject   = subjectName,
+                chapter   = chapterName,
+                durationMs = durationMs,
+                context   = ctx
+            )
+        }
+
+        // Record messages sent (minus the one auto-counted by recordEvent)
+        // messageCount is incremented for every event, so we only log it if > 0
+        if (messageCount > 0) {
+            StudentStatsManager.ensureProfile(ctx, userId)
+        }
     }
 }

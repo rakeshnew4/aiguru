@@ -385,6 +385,7 @@ class QuizActivity : BaseActivity() {
                 .putExtra("timeTakenSec",   result.timeTakenSeconds)
                 .putExtra("difficulty",     quiz.difficulty)
                 .putExtra("chapterTitle",   quiz.chapterTitle)
+                .putExtra("subjectName",    intent.getStringExtra("subjectName") ?: "")
                 .putExtra("quizJson",       intent.getStringExtra("quizJson"))
                 .putExtra("answersJson",    answersToJson())
         )
