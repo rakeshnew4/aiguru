@@ -70,15 +70,13 @@ object BbInteractivePopup {
         val quizTypes = setOf("quiz_mcq", "quiz_typed", "quiz_voice", "quiz_fill", "quiz_order")
         if (frame.frameType !in quizTypes) { onResult(QuizResult(true)); return }
 
-        showConfidenceMeter(activity) {
-            when (frame.frameType) {
-                "quiz_mcq"   -> showMcq(activity, frame, onResult)
-                "quiz_typed" -> showTyped(activity, frame, serverUrl, onResult)
-                "quiz_voice" -> showVoice(activity, frame, serverUrl, languageTag, onResult)
-                "quiz_fill"  -> showFillBlank(activity, frame, onResult)
-                "quiz_order" -> showOrderSteps(activity, frame, onResult)
-                else         -> onResult(QuizResult(true))
-            }
+        when (frame.frameType) {
+            "quiz_mcq"             -> showMcq(activity, frame, onResult)
+            "quiz_typed",
+            "quiz_voice"           -> showTyped(activity, frame, serverUrl, onResult)
+            "quiz_fill"            -> showFillBlank(activity, frame, onResult)
+            "quiz_order"           -> showOrderSteps(activity, frame, onResult)
+            else                   -> onResult(QuizResult(true))
         }
     }
 
@@ -731,7 +729,7 @@ object BbInteractivePopup {
         dialog.setOnDismissListener { orderTimer?.cancel() }
     }
 
-    private fun gradeAnswer(
+    internal fun gradeAnswer(
         serverUrl: String,
         question: String,
         studentAnswer: String,

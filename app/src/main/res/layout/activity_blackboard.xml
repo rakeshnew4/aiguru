@@ -115,6 +115,46 @@
             android:orientation="horizontal"
             android:gravity="center" />
 
+        <!-- Ask-question bar (hidden for now) -->
+        <LinearLayout
+            android:id="@+id/bbAskBar"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:visibility="gone"
+            android:orientation="horizontal"
+            android:background="#1A1A2E"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:gravity="center_vertical">
+
+            <EditText
+                android:id="@+id/bbAskInput"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:hint="Ask a question about this lesson…"
+                android:textColor="#F0EDD0"
+                android:textColorHint="#665557"
+                android:textSize="13sp"
+                android:background="#252840"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:imeOptions="actionSend"
+                android:inputType="text" />
+
+            <TextView
+                android:id="@+id/bbAskSend"
+                android:layout_width="44dp"
+                android:layout_height="40dp"
+                android:gravity="center"
+                android:text="↑"
+                android:textSize="20sp"
+                android:textColor="#5C5BD4"
+                android:layout_marginStart="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless" />
+
+        </LinearLayout>
+
         <!-- Controls -->
         <LinearLayout
             android:layout_width="match_parent"
