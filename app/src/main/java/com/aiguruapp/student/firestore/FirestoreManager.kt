@@ -257,8 +257,9 @@ object FirestoreManager {
     ) {
         // Fetch all docs without a compound query (avoids requiring a composite index).
         // Filter is_active and sort by display_order client-side.
+        // Always fetch from server to avoid stale Firestore cache.
         db.collection("app_offers")
-            .get()
+            .get(Source.SERVER)
             .addOnSuccessListener { snap ->
                 val offers = snap.documents
                     .mapNotNull { doc -> doc.toObject(FirestoreOffer::class.java)?.copy(id = doc.id) }

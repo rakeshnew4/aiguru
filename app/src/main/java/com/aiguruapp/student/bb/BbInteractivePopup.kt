@@ -65,17 +65,23 @@ object BbInteractivePopup {
         frame: BlackboardFrame,
         serverUrl: String,
         languageTag: String = "en-US",
-        onResult: (QuizResult) -> Unit
+        onResult: (QuizResult) -> Unit,
+        /**
+         * Called immediately after the quiz dialog is shown, with a lambda that the
+         * caller can invoke later to start the countdown timer.
+         * If null, the timer starts automatically when the dialog opens.
+         */
+        onTimerStart: ((startTimer: () -> Unit) -> Unit)? = null
     ) {
         val quizTypes = setOf("quiz_mcq", "quiz_typed", "quiz_voice", "quiz_fill", "quiz_order")
         if (frame.frameType !in quizTypes) { onResult(QuizResult(true)); return }
 
         when (frame.frameType) {
-            "quiz_mcq"             -> showMcq(activity, frame, onResult)
+            "quiz_mcq"             -> showMcq(activity, frame, onResult, onTimerStart)
             "quiz_typed",
-            "quiz_voice"           -> showTyped(activity, frame, serverUrl, onResult)
-            "quiz_fill"            -> showFillBlank(activity, frame, onResult)
-            "quiz_order"           -> showOrderSteps(activity, frame, onResult)
+            "quiz_voice"           -> showTyped(activity, frame, serverUrl, onResult, onTimerStart)
+            "quiz_fill"            -> showFillBlank(activity, frame, onResult, onTimerStart)
+            "quiz_order"           -> showOrderSteps(activity, frame, onResult, onTimerStart)
             else                   -> onResult(QuizResult(true))
         }
     }
@@ -130,7 +136,8 @@ object BbInteractivePopup {
     private fun showMcq(
         activity: Activity,
         frame: BlackboardFrame,
-        onResult: (QuizResult) -> Unit
+        onResult: (QuizResult) -> Unit,
+        onTimerStart: ((startTimer: () -> Unit) -> Unit)? = null
     ) {
         val dp     = activity.resources.displayMetrics.density
         val caveat = ResourcesCompat.getFont(activity, R.font.kalam)
@@ -207,24 +214,28 @@ object BbInteractivePopup {
             container.getChildAt(i).tag = dialog
         }
 
-        timer = startQuizTimer(timerTv, onTick = null) {
+        val startTimerFn = {
             if (!answered) {
-                answered = true
-                dialog.dismiss()
-                onResult(QuizResult(false, 0, "Time's up"))
+                timer = startQuizTimer(timerTv, onTick = null) {
+                    if (!answered) {
+                        answered = true
+                        dialog.dismiss()
+                        onResult(QuizResult(false, 0, "Time's up"))
+                    }
+                }
             }
         }
-        dialog.setOnDismissListener { timer.cancel() }
+        dialog.setOnDismissListener { timer?.cancel() }
+        if (onTimerStart != null) onTimerStart(startTimerFn) else startTimerFn()
         dialog.show()
     }
-
-    // ── Typed answer ─────────────────────────────────────────────────────────
 
     private fun showTyped(
         activity: Activity,
         frame: BlackboardFrame,
         serverUrl: String,
-        onResult: (QuizResult) -> Unit
+        onResult: (QuizResult) -> Unit,
+        onTimerStart: ((startTimer: () -> Unit) -> Unit)? = null
     ) {
         val dp     = activity.resources.displayMetrics.density
         val caveat = ResourcesCompat.getFont(activity, R.font.kalam)
@@ -312,13 +323,18 @@ object BbInteractivePopup {
             }
         }
 
-        timer = startQuizTimer(timerTv, onTick = null) {
+        val startTimerFn = {
             if (gradeResult == null) {
-                dialog.dismiss()
-                onResult(QuizResult(false, 0, "Time's up"))
+                timer = startQuizTimer(timerTv, onTick = null) {
+                    if (gradeResult == null) {
+                        dialog.dismiss()
+                        onResult(QuizResult(false, 0, "Time's up"))
+                    }
+                }
             }
         }
-        dialog.setOnDismissListener { timer.cancel() }
+        dialog.setOnDismissListener { timer?.cancel() }
+        if (onTimerStart != null) onTimerStart(startTimerFn) else startTimerFn()
         dialog.show()
         dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
     }
@@ -494,7 +510,8 @@ object BbInteractivePopup {
     private fun showFillBlank(
         activity: Activity,
         frame: BlackboardFrame,
-        onResult: (QuizResult) -> Unit
+        onResult: (QuizResult) -> Unit,
+        onTimerStart: ((startTimer: () -> Unit) -> Unit)? = null
     ) {
         val dp     = activity.resources.displayMetrics.density
         val caveat = ResourcesCompat.getFont(activity, R.font.kalam)
@@ -597,16 +614,21 @@ object BbInteractivePopup {
             }
         }
 
-        dialog.show()
-        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
-        timer = startQuizTimer(timerTv, null) {
+        val startTimerFn = {
             if (!checked) {
-                checked = true
-                dialog.dismiss()
-                onResult(QuizResult(false, 0, "Time's up"))
+                timer = startQuizTimer(timerTv, null) {
+                    if (!checked) {
+                        checked = true
+                        dialog.dismiss()
+                        onResult(QuizResult(false, 0, "Time's up"))
+                    }
+                }
             }
         }
         dialog.setOnDismissListener { timer?.cancel() }
+        if (onTimerStart != null) onTimerStart(startTimerFn) else startTimerFn()
+        dialog.show()
+        dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
     }
 
     // ── Order steps ──────────────────────────────────────────────────────────
@@ -614,7 +636,8 @@ object BbInteractivePopup {
     private fun showOrderSteps(
         activity: Activity,
         frame: BlackboardFrame,
-        onResult: (QuizResult) -> Unit
+        onResult: (QuizResult) -> Unit,
+        onTimerStart: ((startTimer: () -> Unit) -> Unit)? = null
     ) {
         val dp     = activity.resources.displayMetrics.density
         val caveat = ResourcesCompat.getFont(activity, R.font.kalam)
@@ -719,14 +742,19 @@ object BbInteractivePopup {
             }
         }
 
-        dialog.show()
-        orderTimer = startQuizTimer(timerTv, null) {
+        val startTimerFn = {
             if (feedbackTv.visibility != View.VISIBLE) {
-                dialog.dismiss()
-                onResult(QuizResult(false, 0, "Time's up"))
+                orderTimer = startQuizTimer(timerTv, null) {
+                    if (feedbackTv.visibility != View.VISIBLE) {
+                        dialog.dismiss()
+                        onResult(QuizResult(false, 0, "Time's up"))
+                    }
+                }
             }
         }
         dialog.setOnDismissListener { orderTimer?.cancel() }
+        if (onTimerStart != null) onTimerStart(startTimerFn) else startTimerFn()
+        dialog.show()
     }
 
     internal fun gradeAnswer(

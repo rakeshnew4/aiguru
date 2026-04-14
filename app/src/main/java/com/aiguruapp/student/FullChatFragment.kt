@@ -1252,29 +1252,9 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             return
         }
 
-        // FAST PATH: check question quota synchronously against the in-memory-accurate
-        // cachedMetadata (updated in onDone after each successful response).
-        // This blocks exhausted users immediately without waiting for Firestore.
-        val fastQuotaCheck = PlanEnforcer.checkQuestionsQuota(cachedMetadata, effectiveLimits, isBlackboard = false)
-        if (!fastQuotaCheck.allowed) {
-            if (imageUri != null) selectedImageUri = imageUri
-            if (capturedPdfBase64 != null) pdfPageBase64 = capturedPdfBase64
-            if (capturedDisplayUri != null) pendingDisplayUri = capturedDisplayUri
-            android.util.Log.e("FullChatFragment",
-                "FAST QUOTA BLOCK: ${fastQuotaCheck.reason} (asked=${cachedMetadata.chatQuestionsToday}/${effectiveLimits.dailyChatQuestions})")
-            showError(fastQuotaCheck.upgradeMessage)
-            if (fastQuotaCheck.limitType == PlanEnforcer.LimitType.CHAT_QUESTIONS) {
-                Handler(Looper.getMainLooper()).postDelayed({
-                    startActivity(
-                        Intent(ctx, SubscriptionActivity::class.java)
-                            .putExtra("schoolId", SessionManager.getSchoolId(ctx))
-                    )
-                }, 1500)
-            }
-            return
-        }
-
-        // Refresh metadata from Firestore to catch cross-device / post-restart usage
+        // Always refresh metadata from Firestore before quota check
+        // so counters are never stale (e.g. after midnight rollover, plan upgrade,
+        // or quota increase by admin).
         FirestoreManager.getUserMetadata(userId, onSuccess = { freshMeta ->
             if (freshMeta != null) {
                 // Preserve the local userId in case Firestore deserialization leaves it blank,

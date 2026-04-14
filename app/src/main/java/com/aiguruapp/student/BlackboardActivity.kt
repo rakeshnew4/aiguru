@@ -1086,6 +1086,7 @@ class BlackboardActivity : AppCompatActivity() {
     ) {
         isPaused = true
         val serverUrl = AdminConfigRepository.effectiveServerUrl()
+        var startTimerFn: (() -> Unit)? = null
         BbInteractivePopup.show(
             activity    = this,
             frame       = frame,
@@ -1108,18 +1109,23 @@ class BlackboardActivity : AppCompatActivity() {
                 }
                 isPaused = false
                 advanceFrame()
-            }
+            },
+            onTimerStart = { fn -> startTimerFn = fn }
         )
-        // After popup settles, read the quiz question aloud so the student hears it
+        // After popup settles, read the quiz question aloud so the student hears it.
+        // Start the countdown timer only AFTER TTS finishes reading.
         if (frame.speech.isNotBlank()) {
             stepsScrollView.postDelayed({
                 tts.setLocale(Locale.forLanguageTag(preferredLanguageTag))
                 tts.speak(frame.speech, object : TTSCallback {
                     override fun onStart() {}
-                    override fun onComplete() {}
-                    override fun onError(error: String) {}
+                    override fun onComplete() { startTimerFn?.invoke() }
+                    override fun onError(error: String) { startTimerFn?.invoke() }
                 })
             }, 400)
+        } else {
+            // No speech — start timer immediately
+            stepsScrollView.post { startTimerFn?.invoke() }
         }
     }
 

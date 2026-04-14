@@ -104,7 +104,7 @@ object AppStartRepository {
     private fun fetchOffers(onDone: () -> Unit) {
         db.collection("app_offers")
             .whereEqualTo("is_active", true)
-            .get(Source.DEFAULT)
+            .get(Source.SERVER)
             .addOnSuccessListener { snapshot ->
                 try {
                     offers = snapshot.documents.mapNotNull { doc ->
