@@ -66,8 +66,10 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = ""
 
     # ── TTS (Text-to-Speech) ──────────────────────────────────────────
-    # API key for Google Cloud TTS. Stored on server only — never in the APK.
-    GOOGLE_TTS_API_KEY: str = ""
+    # Google Cloud TTS now uses OAuth2 Service Account authentication (see main.py).
+    # The GOOGLE_APPLICATION_CREDENTIALS env var points to firebase_serviceaccount.json.
+    # GOOGLE_TTS_API_KEY is deprecated and no longer used (left for backward compatibility).
+    GOOGLE_TTS_API_KEY: str = ""  # DEPRECATED — use Service Account instead
     # Optional: ElevenLabs or OpenAI TTS fallback
     ELEVENLABS_API_KEY: str = ""
     OPENAI_TTS_API_KEY: str = ""

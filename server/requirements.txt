@@ -22,3 +22,6 @@ psycopg2-binary>=2.9.9
 google-genai
 strands-agents[litellm]
 strands-agents-tools
+
+# ── Google Cloud TTS (OAuth2 Service Account) ─────────────────────────────
+google-cloud-texttospeech>=2.14.0

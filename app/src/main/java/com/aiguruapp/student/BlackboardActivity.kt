@@ -214,13 +214,9 @@ class BlackboardActivity : AppCompatActivity() {
         tts.setLocale(Locale.forLanguageTag(preferredLanguageTag))
 
         val userId = intent.getStringExtra(EXTRA_USER_ID)
-        AdminConfigRepository.fetchIfStale { cfg ->
-            // Apply TTS credentials from Firestore as soon as config is loaded
-            aiTtsEngine.provider       = AdminConfigRepository.ttsBbProvider()
-            aiTtsEngine.googleApiKey   = cfg.ttsGoogleApiKey
-            aiTtsEngine.elevenLabsApiKey = cfg.ttsElevenLabsApiKey
-            aiTtsEngine.openAiApiKey   = cfg.ttsOpenAiApiKey
-            aiTtsEngine.selfHostedUrl  = AdminConfigRepository.ttsSelfHostedUrl()
+        AdminConfigRepository.fetchIfStale { _ ->
+            // Wire the server URL for AI TTS as soon as config is loaded
+            aiTtsEngine.selfHostedUrl = AdminConfigRepository.ttsSelfHostedUrl()
         }
         FirestoreManager.getUserMetadata(userId ?: "", onSuccess = { meta ->
             if (meta != null) {
@@ -320,18 +316,11 @@ class BlackboardActivity : AppCompatActivity() {
         }
     }
 
-    /** Load TTS keys from cached config (fast, no Firestore call if cache is warm). */
+    /** Ensure the server URL is loaded into the TTS engine (fast, no Firestore call if cache is warm). */
     private fun ensureTtsKeysLoaded() {
-        // If server URL is already set, skip
         if (aiTtsEngine.selfHostedUrl.isNotBlank()) return
-        
-        // Otherwise, load from AdminConfigRepository public accessors
         try {
-            aiTtsEngine.provider       = com.aiguruapp.student.config.AdminConfigRepository.ttsBbProvider()
-            aiTtsEngine.googleApiKey   = com.aiguruapp.student.config.AdminConfigRepository.ttsGoogleApiKey()
-            aiTtsEngine.elevenLabsApiKey = com.aiguruapp.student.config.AdminConfigRepository.ttsElevenLabsApiKey()
-            aiTtsEngine.openAiApiKey   = com.aiguruapp.student.config.AdminConfigRepository.ttsOpenAiApiKey()
-            aiTtsEngine.selfHostedUrl  = com.aiguruapp.student.config.AdminConfigRepository.ttsSelfHostedUrl()
+            aiTtsEngine.selfHostedUrl = com.aiguruapp.student.config.AdminConfigRepository.ttsSelfHostedUrl()
         } catch (e: Exception) {
             android.util.Log.w("BB_TTS", "ensureTtsKeysLoaded failed: ${e.message}")
         }

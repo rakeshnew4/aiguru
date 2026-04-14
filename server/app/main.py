@@ -35,6 +35,15 @@ from app.core.logger import get_logger
 
 logger = get_logger(__name__)
 
+# ── Google Cloud TTS: Auto-configure service account ──────────────────────────
+# If service account JSON exists at {project_root}/firebase_serviceaccount.json,
+# set GOOGLE_APPLICATION_CREDENTIALS env var for the Google Cloud SDK.
+_project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_service_account_json = os.path.join(_project_root, "firebase_serviceaccount.json")
+if os.path.isfile(_service_account_json) and not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = _service_account_json
+    logger.info(f"✓ Google Cloud TTS: using service account from {_service_account_json}")
+
 app = FastAPI(
     title="AI Teacher Backend",
     description="Production-grade AI backend — cache-enabled, structured, streamable.",

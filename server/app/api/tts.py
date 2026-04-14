@@ -14,11 +14,13 @@ Response: raw MP3 bytes (Content-Type: audio/mpeg)
 """
 
 import base64
+import os
 from typing import Optional
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
+from google.cloud import texttospeech
 
 from app.core.auth import require_auth, AuthUser
 from app.core.config import settings
@@ -69,28 +71,43 @@ def _google_voice(language_code: str, voice_name: str) -> dict:
 
 async def _google_tts(text: str, language_code: str, voice_name: str,
                       speaking_rate: float) -> Optional[bytes]:
-    api_key = settings.GOOGLE_TTS_API_KEY
-    if not api_key:
-        logger.warning("GOOGLE_TTS_API_KEY not configured")
+    """
+    Google Cloud TTS using OAuth2 Service Account authentication.
+    Expects GOOGLE_APPLICATION_CREDENTIALS env var pointing to service account JSON.
+    """
+    if not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
+        logger.warning("GOOGLE_APPLICATION_CREDENTIALS not set (service account JSON path)")
         return None
-    url = f"https://texttospeech.googleapis.com/v1/text:synthesize?key={api_key}"
-    payload = {
-        "input": {"text": text},
-        "voice": _google_voice(language_code, voice_name),
-        "audioConfig": {"audioEncoding": "MP3", "speakingRate": speaking_rate},
-    }
+    
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.post(url, json=payload)
-        if resp.status_code == 200:
-            audio_b64 = resp.json().get("audioContent", "")
-            if audio_b64:
-                logger.info(f"Google TTS OK: lang={language_code} chars={len(text)}")
-                return base64.b64decode(audio_b64)
-        logger.warning(f"Google TTS HTTP {resp.status_code}: {resp.text[:300]}")
+        client = texttospeech.TextToSpeechClient()
+        
+        voice_cfg = _google_voice(language_code, voice_name)
+        voice = texttospeech.VoiceSelectionParams(
+            language_code=voice_cfg["languageCode"],
+            name=voice_cfg.get("name", ""),
+            ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
+        )
+        
+        audio_config = texttospeech.AudioConfig(
+            audio_encoding=texttospeech.AudioEncoding.MP3,
+            speaking_rate=speaking_rate
+        )
+        
+        synthesis_input = texttospeech.SynthesisInput(text=text)
+        
+        response = client.synthesize_speech(
+            input=synthesis_input,
+            voice=voice,
+            audio_config=audio_config
+        )
+        
+        logger.info(f"Google Cloud TTS OK: lang={language_code} chars={len(text)} bytes={len(response.audio_content)}")
+        return response.audio_content
+        
     except Exception as e:
-        logger.error(f"Google TTS error: {e}")
-    return None
+        logger.error(f"Google Cloud TTS error: {e}")
+        return None
 
 
 async def _elevenlabs_tts(text: str) -> Optional[bytes]:
@@ -174,7 +191,7 @@ async def synthesize(
 async def tts_health():
     """Returns which TTS providers are configured on this server."""
     return {
-        "google":      bool(settings.GOOGLE_TTS_API_KEY),
+        "google":      bool(os.getenv("GOOGLE_APPLICATION_CREDENTIALS")),
         "elevenlabs":  bool(settings.ELEVENLABS_API_KEY),
         "openai":      bool(settings.OPENAI_TTS_API_KEY),
     }

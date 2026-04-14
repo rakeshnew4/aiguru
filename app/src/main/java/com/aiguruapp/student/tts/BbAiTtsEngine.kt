@@ -50,17 +50,9 @@ class BbAiTtsEngine(
     // ── MediaPlayer ────────────────────────────────────────────────────────────
     private var mediaPlayer: MediaPlayer? = null
 
-    // ── Provider selection ─────────────────────────────────────────────────────
-    /** Which AI provider to use. Switch this before starting playback. */
-    var provider: Provider = Provider.SELF_HOSTED
-
-    enum class Provider { GOOGLE, ELEVEN_LABS, OPENAI, SELF_HOSTED }
-
-    // ── Provider credentials / config (set before use) ─────────────────────────
-    var googleApiKey:    String = ""
-    var elevenLabsApiKey: String = ""
-    var openAiApiKey:    String = ""
-    var selfHostedUrl:   String = ""
+    // ── Server config (all TTS routes through the FastAPI server) ───────────────
+    /** Base URL of the FastAPI server, e.g. "http://108.181.187.227:8003" */
+    var selfHostedUrl: String = ""
 
     /** BCP-47 language code passed to the provider (e.g. "hi-IN", "en-IN") */
     var languageCode: String = "en-US"
@@ -181,39 +173,23 @@ class BbAiTtsEngine(
             try {
                 FileOutputStream(targetFile).use { it.write(bytes) }
                 audioCache[key] = targetFile.absolutePath
-                Log.d(TAG, "AI TTS cached: key=$key size=${bytes.size}B provider=$provider")
+                Log.d(TAG, "AI TTS cached: key=$key size=${bytes.size}B url=$selfHostedUrl")
             } catch (e: Exception) {
                 Log.e(TAG, "Cache write failed: ${e.message}")
             }
             onDone()
         }
         val onError: (String) -> Unit = { msg ->
-            Log.w(TAG, "AI TTS generation failed [$provider]: $msg")
+            Log.w(TAG, "AI TTS generation failed: $msg")
             onDone()
         }
 
-        when (provider) {
-            Provider.GOOGLE      -> AiTtsProvider.googleTts(
-                text, languageCode, apiKey = googleApiKey,
-                onSuccess = onSuccess, onError = onError
-            )
-            Provider.ELEVEN_LABS -> AiTtsProvider.elevenLabsTts(
-                text, apiKey = elevenLabsApiKey,
-                onSuccess = onSuccess, onError = onError
-            )
-            Provider.OPENAI      -> AiTtsProvider.openAiTts(
-                text, apiKey = openAiApiKey,
-                onSuccess = onSuccess, onError = onError
-            )
-            Provider.SELF_HOSTED -> {
-                // Fetch Firebase ID token on the IO thread (blocking call is safe here)
-                val token = TokenManager.getToken() ?: ""
-                AiTtsProvider.serverTts(
-                    text, languageCode, serverUrl = selfHostedUrl, authToken = token,
-                    onSuccess = onSuccess, onError = onError
-                )
-            }
-        }
+        // All TTS goes through the server — API keys never leave the server
+        val token = TokenManager.getToken() ?: ""
+        AiTtsProvider.serverTts(
+            text, languageCode, serverUrl = selfHostedUrl, authToken = token,
+            onSuccess = onSuccess, onError = onError
+        )
     }
 
     private fun textKey(text: String): String =

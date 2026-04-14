@@ -142,18 +142,6 @@ object AdminConfigRepository {
 
     // ── TTS credentials (fetched from Firestore, never kept in APK) ──────────
 
-    fun ttsBbProvider(): com.aiguruapp.student.tts.BbAiTtsEngine.Provider =
-        when (cachedConfig.ttsProvider.lowercase()) {
-            "google"      -> com.aiguruapp.student.tts.BbAiTtsEngine.Provider.GOOGLE
-            "elevenlabs"  -> com.aiguruapp.student.tts.BbAiTtsEngine.Provider.ELEVEN_LABS
-            "openai"      -> com.aiguruapp.student.tts.BbAiTtsEngine.Provider.OPENAI
-            "self_hosted" -> com.aiguruapp.student.tts.BbAiTtsEngine.Provider.SELF_HOSTED
-            else          -> com.aiguruapp.student.tts.BbAiTtsEngine.Provider.GOOGLE
-        }
-
-    fun ttsGoogleApiKey(): String = cachedConfig.ttsGoogleApiKey
-    fun ttsElevenLabsApiKey(): String = cachedConfig.ttsElevenLabsApiKey
-    fun ttsOpenAiApiKey(): String = cachedConfig.ttsOpenAiApiKey
     fun ttsSelfHostedUrl(): String =
         cachedConfig.ttsServerUrl.ifBlank { cachedConfig.serverUrl }
 
