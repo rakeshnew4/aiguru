@@ -83,7 +83,11 @@ data class PlanLimits(
     @field:PropertyName("tts_enabled")
     var ttsEnabled: Boolean = true,
 
-    /** AI-powered server-side TTS synthesis (premium only). */
+    /** AI-powered server-side TTS synthesis. */
     @field:PropertyName("ai_tts_enabled")
-    var aiTtsEnabled: Boolean = false
+    var aiTtsEnabled: Boolean = true,
+
+    /** Daily AI TTS character quota. 0 = disabled. */
+    @field:PropertyName("ai_tts_quota_chars")
+    var aiTtsQuotaChars: Int = 0
 )

@@ -128,6 +128,19 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // ── Student progress stats ─────────────────────────────────────────────────
+    // Collection: students_stats/{userId}
+    // Students read/write their own document.
+    // Teachers (any signed-in user) may run a school-filtered list query.
+    match /students_stats/{userId} {
+      // Owner: full read + write
+      allow read, write: if isOwner(userId);
+
+      // Teacher progress view: any signed-in user may list-query by school_id.
+      // The app always filters by school_id so results are school-scoped.
+      allow list: if isSignedIn();
+    }
+
     // ── Referral codes ─────────────────────────────────────────────────────────
     // Structure: referralCodes/{code} → { ownerUserId: string, ownerName: string }
     match /referralCodes/{code} {

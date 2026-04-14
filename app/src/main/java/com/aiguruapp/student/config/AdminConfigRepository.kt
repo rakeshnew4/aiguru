@@ -45,9 +45,18 @@ object AdminConfigRepository {
      * Non-blocking — results are cached for subsequent [config] reads.
      * Safe to call on every app launch.
      */
-    fun fetchIfStale() {
+    fun fetchIfStale() = fetchIfStale(null)
+
+    /**
+     * Same as [fetchIfStale] but calls [onReady] with the loaded (or cached) config
+     * once fetching is done. Useful when config values are needed immediately after load.
+     */
+    fun fetchIfStale(onReady: ((AdminConfig) -> Unit)?) {
         val age = System.currentTimeMillis() - lastFetchMs
-        if (age < cachedConfig.cacheMaxAgeMs || isFetching) return
+        if (age < cachedConfig.cacheMaxAgeMs || isFetching) {
+            onReady?.invoke(cachedConfig)
+            return
+        }
         isFetching = true
 
         // Fetch global config
@@ -67,6 +76,7 @@ object AdminConfigRepository {
                 }
                 lastFetchMs = System.currentTimeMillis()
                 isFetching  = false
+                onReady?.invoke(cachedConfig)
                 // Also fetch plans
                 fetchPlans()
             }
@@ -74,6 +84,7 @@ object AdminConfigRepository {
                 Log.w(TAG, "AdminConfig fetch failed, using cached: ${e.message}")
                 isFetching  = false
                 lastFetchMs = System.currentTimeMillis() // back-off — don't retry immediately
+                onReady?.invoke(cachedConfig)
                 fetchPlans() // still load plans even if admin config read fails
             }
     }
@@ -128,6 +139,23 @@ object AdminConfigRepository {
     /** Resolve the server model name for a given tier key. */
     fun modelNameForTier(tier: String): String =
         cachedConfig.modelTiers[tier] ?: cachedConfig.modelTiers["standard"] ?: ""
+
+    // ── TTS credentials (fetched from Firestore, never kept in APK) ──────────
+
+    fun ttsBbProvider(): com.aiguruapp.student.tts.BbAiTtsEngine.Provider =
+        when (cachedConfig.ttsProvider.lowercase()) {
+            "google"      -> com.aiguruapp.student.tts.BbAiTtsEngine.Provider.GOOGLE
+            "elevenlabs"  -> com.aiguruapp.student.tts.BbAiTtsEngine.Provider.ELEVEN_LABS
+            "openai"      -> com.aiguruapp.student.tts.BbAiTtsEngine.Provider.OPENAI
+            "self_hosted" -> com.aiguruapp.student.tts.BbAiTtsEngine.Provider.SELF_HOSTED
+            else          -> com.aiguruapp.student.tts.BbAiTtsEngine.Provider.GOOGLE
+        }
+
+    fun ttsGoogleApiKey(): String = cachedConfig.ttsGoogleApiKey
+    fun ttsElevenLabsApiKey(): String = cachedConfig.ttsElevenLabsApiKey
+    fun ttsOpenAiApiKey(): String = cachedConfig.ttsOpenAiApiKey
+    fun ttsSelfHostedUrl(): String =
+        cachedConfig.ttsServerUrl.ifBlank { cachedConfig.serverUrl }
 
     // ── Private ───────────────────────────────────────────────────────────────
 

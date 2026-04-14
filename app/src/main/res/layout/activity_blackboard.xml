@@ -208,6 +208,21 @@
                 android:textColor="#5C5BD4"
                 android:background="?attr/selectableItemBackgroundBorderless" />
 
+            <TextView
+                android:id="@+id/aiTtsToggleBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:gravity="center"
+                android:text="🔊 TTS"
+                android:textAllCaps="false"
+                android:textSize="12sp"
+                android:textColor="#AABBCC"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:layout_marginStart="10dp"
+                android:background="#333555"
+                android:minWidth="0dp" />
+
         </LinearLayout>
 
     </LinearLayout>

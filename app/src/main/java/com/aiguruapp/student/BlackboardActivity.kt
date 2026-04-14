@@ -92,6 +92,9 @@ class BlackboardActivity : AppCompatActivity() {
 
     // ── State ─────────────────────────────────────────────────────────────────
     private lateinit var tts: TextToSpeechManager
+    private lateinit var aiTtsEngine: com.aiguruapp.student.tts.BbAiTtsEngine
+    private var useAiTts = false
+    private lateinit var aiTtsToggleBtn: TextView
     private var steps            = listOf<BlackboardGenerator.BlackboardStep>()
     private var currentStepIdx   = 0
     private var currentFrameIdx  = 0
@@ -167,6 +170,42 @@ class BlackboardActivity : AppCompatActivity() {
 
         PromptRepository.init(this)
         tts = TextToSpeechManager(this)
+        aiTtsEngine = com.aiguruapp.student.tts.BbAiTtsEngine(this, tts)
+        aiTtsToggleBtn = findViewById(R.id.aiTtsToggleBtn)
+
+        // Restore AI TTS preference
+        val prefs = getSharedPreferences("bb_prefs", MODE_PRIVATE)
+        useAiTts = prefs.getBoolean("use_ai_tts", false)
+        updateAiTtsToggleUi()
+
+        aiTtsToggleBtn.setOnClickListener {
+            useAiTts = !useAiTts
+            prefs.edit().putBoolean("use_ai_tts", useAiTts).apply()
+            updateAiTtsToggleUi()
+            if (useAiTts) {
+                // Immediately check plan permission
+                val limits = AdminConfigRepository.resolveEffectiveLimits(
+                    cachedMetadata.planId, cachedMetadata.planLimits
+                )
+                val check = PlanEnforcer.check(
+                    cachedMetadata, limits, com.aiguruapp.student.config.PlanEnforcer.FeatureType.AI_TTS
+                )
+                if (!check.allowed) {
+                    useAiTts = false
+                    prefs.edit().putBoolean("use_ai_tts", false).apply()
+                    updateAiTtsToggleUi()
+                    android.widget.Toast.makeText(this, check.upgradeMessage, android.widget.Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
+                }
+                // Preload current + next 2 speech texts with new setting
+                preloadUpcoming(currentStepIdx, currentFrameIdx, count = 3)
+                android.widget.Toast.makeText(this, "🎙 AI Voice ON — preloading…", android.widget.Toast.LENGTH_SHORT).show()
+            } else {
+                aiTtsEngine.stop()
+                android.widget.Toast.makeText(this, "🔊 Android TTS", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+
         // Prefer SessionManager lang (set from HomeActivity) over the intent extra so that
         // language changes made after the fragment launched are always reflected.
         val intentLang = intent.getStringExtra(EXTRA_LANGUAGE_TAG)?.takeIf { it.isNotBlank() } ?: "en-US"
@@ -175,7 +214,14 @@ class BlackboardActivity : AppCompatActivity() {
         tts.setLocale(Locale.forLanguageTag(preferredLanguageTag))
 
         val userId = intent.getStringExtra(EXTRA_USER_ID)
-        AdminConfigRepository.fetchIfStale()
+        AdminConfigRepository.fetchIfStale { cfg ->
+            // Apply TTS credentials from Firestore as soon as config is loaded
+            aiTtsEngine.provider       = AdminConfigRepository.ttsBbProvider()
+            aiTtsEngine.googleApiKey   = cfg.ttsGoogleApiKey
+            aiTtsEngine.elevenLabsApiKey = cfg.ttsElevenLabsApiKey
+            aiTtsEngine.openAiApiKey   = cfg.ttsOpenAiApiKey
+            aiTtsEngine.selfHostedUrl  = AdminConfigRepository.ttsSelfHostedUrl()
+        }
         FirestoreManager.getUserMetadata(userId ?: "", onSuccess = { meta ->
             if (meta != null) {
                 cachedMetadata = meta
@@ -231,8 +277,64 @@ class BlackboardActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         typeAnimator?.cancel()
-        tts.destroy()
+        aiTtsEngine.destroy()
+        // tts is owned by aiTtsEngine.androidTts — already destroyed above
         super.onDestroy()
+    }
+
+    private fun updateAiTtsToggleUi() {
+        if (useAiTts) {
+            aiTtsToggleBtn.text  = "🎙 AI"
+            aiTtsToggleBtn.setTextColor(android.graphics.Color.parseColor("#A0FFD0"))
+            aiTtsToggleBtn.setBackgroundColor(android.graphics.Color.parseColor("#224433"))
+        } else {
+            aiTtsToggleBtn.text  = "🔊 TTS"
+            aiTtsToggleBtn.setTextColor(android.graphics.Color.parseColor("#AABBCC"))
+            aiTtsToggleBtn.setBackgroundColor(android.graphics.Color.parseColor("#333555"))
+        }
+    }
+
+    /**
+     * Preload AI TTS audio for the next [count] frames starting from [stepIdx]/[frameIdx].
+     * Called after steps are ready and whenever the frame advances.
+     */
+    private fun preloadUpcoming(stepIdx: Int, frameIdx: Int, count: Int = 2) {
+        if (!useAiTts) return
+        
+        // Ensure TTS keys are loaded from config (returns immediately if cached)
+        ensureTtsKeysLoaded()
+        
+        var remaining = count
+        var si = stepIdx
+        var fi = frameIdx
+        while (remaining > 0) {
+            val speech = steps.getOrNull(si)?.frames?.getOrNull(fi)?.speech ?: break
+            if (speech.isNotBlank()) {
+                aiTtsEngine.languageCode = preferredLanguageTag
+                aiTtsEngine.preload(speech)
+            }
+            fi++
+            if (fi >= (steps.getOrNull(si)?.frames?.size ?: 0)) { si++; fi = 0 }
+            if (si >= steps.size) break
+            remaining--
+        }
+    }
+
+    /** Load TTS keys from cached config (fast, no Firestore call if cache is warm). */
+    private fun ensureTtsKeysLoaded() {
+        // If server URL is already set, skip
+        if (aiTtsEngine.selfHostedUrl.isNotBlank()) return
+        
+        // Otherwise, load from AdminConfigRepository public accessors
+        try {
+            aiTtsEngine.provider       = com.aiguruapp.student.config.AdminConfigRepository.ttsBbProvider()
+            aiTtsEngine.googleApiKey   = com.aiguruapp.student.config.AdminConfigRepository.ttsGoogleApiKey()
+            aiTtsEngine.elevenLabsApiKey = com.aiguruapp.student.config.AdminConfigRepository.ttsElevenLabsApiKey()
+            aiTtsEngine.openAiApiKey   = com.aiguruapp.student.config.AdminConfigRepository.ttsOpenAiApiKey()
+            aiTtsEngine.selfHostedUrl  = com.aiguruapp.student.config.AdminConfigRepository.ttsSelfHostedUrl()
+        } catch (e: Exception) {
+            android.util.Log.w("BB_TTS", "ensureTtsKeysLoaded failed: ${e.message}")
+        }
     }
 
     // ── Generation ────────────────────────────────────────────────────────────
@@ -281,6 +383,8 @@ class BlackboardActivity : AppCompatActivity() {
                         contentGroup.visibility = View.VISIBLE
                         buildDots()
                         setupBoard()
+                        // Preload first 3 frames' AI audio in background
+                        preloadUpcoming(0, 0, count = 3)
                         showFrame(0, 0)
                     }
                 },
@@ -751,8 +855,44 @@ class BlackboardActivity : AppCompatActivity() {
             showInteractiveQuiz(frame, stepIdx, frameIdx)
             return
         }
-        tts.setLocale(Locale.forLanguageTag(step.languageTag))
-        tts.speak(frame.speech, makeTtsCallback(stepIdx, frameIdx))
+        // Preload the next 2 frames' audio in background while this frame plays
+        preloadUpcoming(stepIdx, frameIdx + 1, count = 2)
+
+        if (useAiTts && frame.speech.isNotBlank()) {
+            // Check AI TTS quota before speaking
+            val limits = com.aiguruapp.student.config.AdminConfigRepository.resolveEffectiveLimits(
+                cachedMetadata.planId, cachedMetadata.planLimits
+            )
+            val quotaCheck = com.aiguruapp.student.config.PlanEnforcer.checkAiTtsQuota(
+                cachedMetadata, limits, frame.speech.length
+            )
+            if (!quotaCheck.allowed) {
+                android.widget.Toast.makeText(this, quotaCheck.upgradeMessage, android.widget.Toast.LENGTH_LONG).show()
+                // Fallback to regular TTS
+                tts.setLocale(Locale.forLanguageTag(step.languageTag))
+                tts.speak(frame.speech, makeTtsCallback(stepIdx, frameIdx))
+                return
+            }
+
+            // Ensure keys are loaded before calling play()
+            ensureTtsKeysLoaded()
+
+            aiTtsEngine.languageCode = step.languageTag
+            aiTtsEngine.play(
+                text    = frame.speech,
+                langTag = step.languageTag,
+                callback = makeTtsCallback(stepIdx, frameIdx),
+                onUsedAi = { wasAi ->
+                    if (wasAi) {
+                        val uid = intent.getStringExtra(EXTRA_USER_ID) ?: ""
+                        com.aiguruapp.student.config.PlanEnforcer.recordAiTtsUsed(uid, frame.speech.length)
+                    }
+                }
+            )
+        } else {
+            tts.setLocale(Locale.forLanguageTag(step.languageTag))
+            tts.speak(frame.speech, makeTtsCallback(stepIdx, frameIdx))
+        }
     }
 
     /** Advance to next frame in current step, or first frame of next step. */
@@ -770,7 +910,7 @@ class BlackboardActivity : AppCompatActivity() {
     private fun nextStep() = advanceFrame()
 
     private fun prevStep() {
-        tts.stop()
+        aiTtsEngine.stop()
         typeAnimator?.cancel()
         handWriter.visibility = View.INVISIBLE
         when {
@@ -878,7 +1018,7 @@ class BlackboardActivity : AppCompatActivity() {
     }
 
     private fun reSpeakCurrent() {
-        tts.stop()
+        aiTtsEngine.stop()
         if (!isPaused) speakFrame(currentStepIdx, currentFrameIdx)
     }
 
@@ -886,7 +1026,7 @@ class BlackboardActivity : AppCompatActivity() {
         isPaused = !isPaused
         pauseBtn.text = if (isPaused) "▶" else "⏸"
         if (isPaused) {
-            tts.stop()
+            aiTtsEngine.stop()
         } else {
             speakFrame(currentStepIdx, currentFrameIdx)
         }

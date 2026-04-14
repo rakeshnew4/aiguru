@@ -324,6 +324,41 @@
 
             </LinearLayout>
 
+            <!-- Divider -->
+            <View
+                android:layout_width="1dp"
+                android:layout_height="match_parent"
+                android:background="@color/colorDivider"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="4dp" />
+
+            <!-- AI TTS chars left -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center">
+
+                <TextView
+                    android:id="@+id/quotaAiTtsChars"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="—"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorPrimary"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🎙 AI voice chars"
+                    android:textSize="11sp"
+                    android:textColor="@color/colorTextSecondary" />
+
+            </LinearLayout>
+
         </LinearLayout>
 
         <!-- ── "My Subjects" header ──────────────────────────────────── -->

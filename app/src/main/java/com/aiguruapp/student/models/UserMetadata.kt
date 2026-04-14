@@ -136,6 +136,14 @@ data class UserMetadata(
     @field:PropertyName("plan_ai_tts_enabled")
     val planAiTtsEnabled: Boolean = false,
 
+    /** AI TTS characters used today (UTC calendar day). Reset on day rollover. */
+    @field:PropertyName("ai_tts_chars_used_today")
+    val aiTtsCharsUsedToday: Int = 0,
+
+    /** Epoch-ms of last AI TTS counter update — used to detect day rollover. */
+    @field:PropertyName("ai_tts_updated_at")
+    val aiTtsUpdatedAt: Long = 0L,
+
     /** Whether the visual Blackboard mode is enabled for the user's plan. */
     @field:PropertyName("plan_blackboard_enabled")
     val planBlackboardEnabled: Boolean = true,

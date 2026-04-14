@@ -430,4 +430,63 @@ object PlanEnforcer {
             .update(updates)
             .addOnFailureListener { Log.e(TAG, "recordQuestionAsked failed uid=$userId: ${it.message}") }
     }
+
+    /**
+     * Increment the AI TTS usage counter in Firestore.
+     * Called once per text spoken via AI TTS (with character count).
+     * Fields reset daily via server logic (same pattern as token counters).
+     */
+    fun recordAiTtsUsed(userId: String, charsUsed: Int = 0) {
+        if (userId.isBlank() || userId == "guest_user") return
+        val updates = mutableMapOf<String, Any>(
+            "ai_tts_chars_used_today" to FieldValue.increment(charsUsed.toLong()),
+            "ai_tts_updated_at" to System.currentTimeMillis()
+        )
+        db.collection("users_table").document(userId)
+            .update(updates)
+            .addOnFailureListener { Log.w(TAG, "recordAiTtsUsed failed uid=$userId charsUsed=$charsUsed: ${it.message}") }
+    }
+
+    /**
+     * Check if user has exceeded their daily AI TTS character quota.
+     * Returns CheckResult.allowed = false if exceeded.
+     */
+    fun checkAiTtsQuota(
+        metadata: UserMetadata,
+        limits: PlanLimits,
+        charsAboutToUse: Int
+    ): CheckResult {
+        val quotaLimit = limits.aiTtsQuotaChars
+        if (quotaLimit <= 0) return CheckResult(allowed = true)  // 0 or negative = unlimited
+
+        val isSameDay = metadata.aiTtsUpdatedAt > 0L &&
+            utcDayOf(metadata.aiTtsUpdatedAt) == utcDayOf(System.currentTimeMillis())
+
+        val charsUsedToday = if (isSameDay) metadata.aiTtsCharsUsedToday else 0
+        val charsRemaining = (quotaLimit - charsUsedToday).coerceAtLeast(0)
+
+        if (charsAboutToUse > charsRemaining) {
+            return CheckResult(
+                allowed        = false,
+                reason         = "AI TTS quota exceeded ($charsUsedToday / $quotaLimit chars)",
+                upgradeMessage = "AI voice quota reached! You have $charsRemaining chars remaining today.\nUpgrade your plan for more AI voice! 🎙️",
+                limitType      = LimitType.FEATURE_AI_TTS
+            )
+        }
+        return CheckResult(allowed = true)
+    }
+
+    /**
+     * Get AI TTS characters remaining today (or -1 if unlimited).
+     */
+    fun getAiTtsCharsRemaining(metadata: UserMetadata, limits: PlanLimits): Int {
+        val quotaLimit = limits.aiTtsQuotaChars
+        if (quotaLimit <= 0) return -1  // unlimited
+
+        val isSameDay = metadata.aiTtsUpdatedAt > 0L &&
+            utcDayOf(metadata.aiTtsUpdatedAt) == utcDayOf(System.currentTimeMillis())
+
+        val charsUsedToday = if (isSameDay) metadata.aiTtsCharsUsedToday else 0
+        return (quotaLimit - charsUsedToday).coerceAtLeast(0)
+    }
 }

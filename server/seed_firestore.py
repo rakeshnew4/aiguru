@@ -300,6 +300,7 @@ PLANS = [
             "flashcards_enabled": False,
             "tts_enabled": True,
             "ai_tts_enabled": False,
+            "ai_tts_quota_chars": 0,
             "daily_chat_questions": 12,
             "daily_bb_sessions": 2,
             "max_quiz_questions": 10,
@@ -337,7 +338,8 @@ PLANS = [
             "blackboard_enabled": True,
             "flashcards_enabled": True,
             "tts_enabled": True,
-            "ai_tts_enabled": False,
+            "ai_tts_enabled": True,
+            "ai_tts_quota_chars": 5000,
             "daily_chat_questions": 50,
             "daily_bb_sessions": 10,
             "max_quiz_questions": 20,
@@ -377,6 +379,7 @@ PLANS = [
             "flashcards_enabled": True,
             "tts_enabled": True,
             "ai_tts_enabled": True,
+            "ai_tts_quota_chars": 50000,
             "daily_chat_questions": 0,
             "daily_bb_sessions": 0,
             "max_quiz_questions": 30,
@@ -537,6 +540,15 @@ ADMIN_CONFIG_GLOBAL = {
     "gemini_live_enabled": True,
     "flashcards_globally_enabled": True,
     "cache_max_age_ms": 3600000,
+
+    # ── AI TTS credentials (never embed in APK — fetched from Firestore) ──────
+    # Set the provider and paste the real API key here, then re-run this script.
+    # Options: "android" (no AI TTS), "google", "elevenlabs", "openai", "self_hosted"
+    "tts_provider": "android",
+    "tts_google_api_key": "",          # Google Cloud TTS API key
+    "tts_elevenlabs_api_key": "",     # ElevenLabs secret key
+    "tts_openai_api_key": "",         # OpenAI sk-...
+    "tts_server_url": "",             # Self-hosted TTS server URL (leave blank to reuse server_url)
 }
 
 # ══════════════════════════════════════════════════════════════════════════════

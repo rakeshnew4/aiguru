@@ -65,6 +65,13 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed CORS origins. Empty = own server IP only.
     ALLOWED_ORIGINS: str = ""
 
+    # ── TTS (Text-to-Speech) ──────────────────────────────────────────
+    # API key for Google Cloud TTS. Stored on server only — never in the APK.
+    GOOGLE_TTS_API_KEY: str = ""
+    # Optional: ElevenLabs or OpenAI TTS fallback
+    ELEVENLABS_API_KEY: str = ""
+    OPENAI_TTS_API_KEY: str = ""
+
     # ── LiteLLM Proxy Configuration ──────────────────────────────────────────
     # URL for LiteLLM proxy (per-user API key management)
     LITELLM_PROXY_URL: str = "http://localhost:8005"

@@ -70,5 +70,23 @@ data class AdminConfig(
 
     /** How many milliseconds to cache this config in-memory before re-fetching. */
     @field:PropertyName("cache_max_age_ms")
-    val cacheMaxAgeMs: Long = 60 * 60 * 1000L  // 1 hour
+    val cacheMaxAgeMs: Long = 60 * 60 * 1000L,  // 1 hour
+
+    // ── AI TTS credentials (never bundle in APK — fetched from Firestore) ─────
+    /** Which TTS provider to use. One of: "google", "elevenlabs", "openai", "self_hosted" */
+    @field:PropertyName("tts_provider")
+    val ttsProvider: String = "android",
+
+    @field:PropertyName("tts_google_api_key")
+    val ttsGoogleApiKey: String = "",
+
+    @field:PropertyName("tts_elevenlabs_api_key")
+    val ttsElevenLabsApiKey: String = "",
+
+    @field:PropertyName("tts_openai_api_key")
+    val ttsOpenAiApiKey: String = "",
+
+    /** Used when ttsProvider == "self_hosted". Defaults to ttsServerUrl if blank. */
+    @field:PropertyName("tts_server_url")
+    val ttsServerUrl: String = ""
 )

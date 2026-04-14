@@ -143,13 +143,17 @@ class HomeActivity : BaseActivity() {
 
                 val chatToday = userDoc.getLong("chat_questions_today")?.toInt() ?: 0
                 val bbToday   = userDoc.getLong("bb_sessions_today")?.toInt() ?: 0
+                val aiTtsCharsUsedToday = userDoc.getLong("ai_tts_chars_used_today")?.toInt() ?: 0
                 val updatedAt = userDoc.getLong("questions_updated_at") ?: 0L
+                val aiTtsUpdatedAt = userDoc.getLong("ai_tts_updated_at") ?: 0L
                 val planId    = (userDoc.getString("planId") ?: "").ifBlank { "free" }
 
                 // Only count today's usage if the counters are from the current UTC day
                 val isSameDay = updatedAt > 0L && !PlanEnforcer.isNewQuotaDay(updatedAt)
+                val aiTtsSameDay = aiTtsUpdatedAt > 0L && !PlanEnforcer.isNewQuotaDay(aiTtsUpdatedAt)
                 val chatUsed  = if (isSameDay) chatToday else 0
                 val bbUsed    = if (isSameDay) bbToday else 0
+                val aiTtsCharsUsed = if (aiTtsSameDay) aiTtsCharsUsedToday else 0
 
                 // Step 2: fetch plan limits directly from plans/ collection
                 db.collection("plans").document(planId).get()
@@ -158,24 +162,26 @@ class HomeActivity : BaseActivity() {
                         val limitsMap = planDoc.get("limits") as? Map<String, Any>
                         val chatLimit = (limitsMap?.get("daily_chat_questions") as? Long)?.toInt() ?: 12
                         val bbLimit   = (limitsMap?.get("daily_bb_sessions") as? Long)?.toInt() ?: 2
+                        val aiTtsQuotaChars = (limitsMap?.get("ai_tts_quota_chars") as? Long)?.toInt() ?: 0
 
                         val chatLeft = if (chatLimit <= 0) -1 else (chatLimit - chatUsed).coerceAtLeast(0)
                         val bbLeft   = if (bbLimit   <= 0) -1 else (bbLimit   - bbUsed).coerceAtLeast(0)
+                        val aiTtsCharsLeft = if (aiTtsQuotaChars <= 0) -1 else (aiTtsQuotaChars - aiTtsCharsUsed).coerceAtLeast(0)
 
-                        runOnUiThread { updateQuotaStripUI(chatLeft, bbLeft) }
+                        runOnUiThread { updateQuotaStripUI(chatLeft, bbLeft, aiTtsCharsLeft) }
                     }
                     .addOnFailureListener {
                         // Plan fetch failed — show with free plan defaults
                         val chatLeft = (12 - chatUsed).coerceAtLeast(0)
                         val bbLeft   = (2  - bbUsed).coerceAtLeast(0)
-                        runOnUiThread { updateQuotaStripUI(chatLeft, bbLeft) }
+                        runOnUiThread { updateQuotaStripUI(chatLeft, bbLeft, 0) }
                     }
             }
     }
 
-    private fun updateQuotaStripUI(chatLeft: Int, bbLeft: Int) {
+    private fun updateQuotaStripUI(chatLeft: Int, bbLeft: Int, aiTtsCharsLeft: Int) {
         val strip = findViewById<LinearLayout?>(R.id.quotaStripCard) ?: return
-        if (chatLeft < 0 && bbLeft < 0) {
+        if (chatLeft < 0 && bbLeft < 0 && aiTtsCharsLeft < 0) {
             strip.visibility = android.view.View.GONE
             return
         }
@@ -188,6 +194,14 @@ class HomeActivity : BaseActivity() {
         val bbView = findViewById<TextView?>(R.id.quotaBbCount)
         bbView?.text = if (bbLeft < 0) "∞" else bbLeft.toString()
         bbView?.setTextColor(Color.parseColor(if (bbLeft in 0..1) "#BF360C" else "#1565C0"))
+
+        // AI TTS credits
+        val aiTtsView = findViewById<TextView?>(R.id.quotaAiTtsChars)
+        if (aiTtsView != null) {
+            aiTtsView.visibility = if (aiTtsCharsLeft == 0) android.view.View.GONE else android.view.View.VISIBLE
+            aiTtsView.text = if (aiTtsCharsLeft < 0) "🎙 ∞" else "🎙 ${aiTtsCharsLeft}c"
+            aiTtsView.setTextColor(Color.parseColor(if (aiTtsCharsLeft in 0..1000) "#BF360C" else "#00796B"))
+        }
     }
 
     private fun applySchoolBranding() {
