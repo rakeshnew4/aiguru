@@ -85,7 +85,7 @@ blackboard_prompt = (
     " Think like the most engaging teacher ever -- make every student say"
     ' "WOW, I actually get this now!"\n\n'
     "Return ONLY valid JSON (no code fences, no extra text):\n"
-    '{"steps": [{"title": "2-5 word heading", "image_show_confidencescore": 0.8, "image_description": "specific wikimedia search phrase", "lang": "en-US", "frames": [{"frame_type": "concept", "text": "board content max 3 lines", "highlight": ["key term"], "speech": "teacher says 1-2 sentences", "duration_ms": 2500, "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1, "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": []}]}]}\n\n'
+    '{"steps": [{"title": "2-5 word heading", "image_show_confidencescore": 0.8, "image_description": "specific wikimedia search phrase", "lang": "<USE THE REQUESTED LANGUAGE TAG e.g. hi-IN or en-US>", "frames": [{"frame_type": "concept", "text": "board content max 3 lines", "highlight": ["key term"], "speech": "teacher says 1-2 sentences IN THE LANG LANGUAGE", "duration_ms": 2500, "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1, "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": []}]}]}\n\n'
     "FRAME TYPES -- mix ALL of these for maximum engagement:\n"
     "concept    -> Core teaching: formula, definition, step, key fact. Use **bold**. Most common type.\n"
     "memory     -> Mnemonic, rhyme, acronym, or fun trick. Make it catchy and unforgettable!\n"
@@ -119,8 +119,9 @@ blackboard_prompt = (
     "- MANDATORY: Last step ends with a quiz frame THEN a summary frame.\n"
     "- text: Board keywords, formulas with arrows (->), **bold** key terms. Max 2 lines. Always English.\n"
     "- highlight: Exact substrings from text to chalk-highlight. Can be [].\n"
-    '- speech: Friendly teacher voice in chosen language. TTS-safe -- say "squared" not "^2".\n'
-    "- duration_ms: 2000 to 5000 ms per frame. lang: BCP-47 language tag.\n"
+    '- speech: Friendly teacher voice in the language matching the lang field. If lang=hi-IN speak Hindi; if lang=te-IN speak Telugu; if lang=en-US speak English. TTS-safe -- say "squared" not "^2".\n'
+    "- duration_ms: 2000 to 5000 ms per frame.\n"
+    "- lang: BCP-47 tag from the OUTPUT LANGUAGE instruction. Set ALL step lang fields to the same requested tag. NEVER default to en-US when another language is requested.\n"
     "- ALL math in $$...$$ -- NEVER plain text math.\n"
     "- Output ONLY the JSON object."
 )
@@ -326,7 +327,12 @@ def build_prompt(
     """
     lang = language or "en-US"
     if mode == "blackboard":
-        return blackboard_prompt + question + language_instructions.get(lang, "")
+        lang_tag_instr = (
+            f'\n\nOUTPUT LANGUAGE: Set ALL step "lang" fields to "{lang}". '
+            f'Write ALL "speech" fields in the language for tag "{lang}" '
+            f'(hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.).'
+        )
+        return blackboard_prompt + question + language_instructions.get(lang, "") + lang_tag_instr
 
     history_text = "\n".join(history or [])
     ctx = context or ""
@@ -423,5 +429,12 @@ def build_bb_main_prompt(
 
     parts.append("\n---END LESSON BRIEF---\n")
     parts.append(lang_instr)
+    resolved_lang = lang or "en-US"
+    parts.append(
+        f'\nOUTPUT LANGUAGE: Set ALL step "lang" fields to "{resolved_lang}". '
+        f'Write ALL "speech" fields in the language for tag "{resolved_lang}" '
+        f'(hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.). '
+        f'Board "text" field stays in English (formulas/keywords only).'
+    )
 
     return "".join(parts)

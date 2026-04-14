@@ -22,6 +22,8 @@ import android.view.Gravity
 import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.EditText
+import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
 import android.webkit.WebView
@@ -34,6 +36,7 @@ import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.lifecycleScope
 import com.aiguruapp.student.bb.BbInteractivePopup
 import com.aiguruapp.student.chat.BlackboardGenerator
+import com.aiguruapp.student.chat.ServerProxyClient
 import com.aiguruapp.student.config.AdminConfigRepository
 import com.aiguruapp.student.config.PlanEnforcer
 import com.aiguruapp.student.firestore.FirestoreManager
@@ -101,6 +104,16 @@ class BlackboardActivity : AppCompatActivity() {
     // Reveal button reference for the current quiz frame (set in showFrame, used by TTS callback)
     private var quizRevealBtn: android.widget.TextView? = null
 
+    // Inline quiz card added to board in showFrame(), made visible after TTS completes
+    private var pendingQuizCard: View? = null
+
+    // Interactive chat history from the BB-screen ask bar
+    private val bbChatHistory = mutableListOf<String>()
+
+    // Ask-bar views
+    private lateinit var bbAskInput: EditText
+    private lateinit var bbAskSendBtn: TextView
+
     // Quota chip in the top bar
     private lateinit var bbQuotaChip: android.widget.TextView
 
@@ -134,6 +147,15 @@ class BlackboardActivity : AppCompatActivity() {
         nextBtn         = findViewById(R.id.nextButton)
         handWriter      = findViewById(R.id.handWriter)
         bbQuotaChip     = findViewById(R.id.bbQuotaChip)
+        bbAskInput      = findViewById(R.id.bbAskInput)
+        bbAskSendBtn    = findViewById(R.id.bbAskSend)
+
+        val sendBbQuestion = {
+            val q = bbAskInput.text.toString().trim()
+            if (q.isNotBlank()) { bbAskInput.setText(""); sendBbChat(q) }
+        }
+        bbAskSendBtn.setOnClickListener { sendBbQuestion() }
+        bbAskInput.setOnEditorActionListener { _, _, _ -> sendBbQuestion(); true }
 
         closeBtn.setOnClickListener  { finish() }
         prevBtn.setOnClickListener   { prevStep() }
@@ -713,6 +735,11 @@ class BlackboardActivity : AppCompatActivity() {
         if (currentStepIdx != stepIdx || currentFrameIdx != frameIdx) return
         val step  = steps.getOrNull(stepIdx) ?: return
         val frame = step.frames.getOrNull(frameIdx) ?: return
+        // Interactive quiz frames: show popup immediately, then read question inside it
+        if (frame.frameType in setOf("quiz_mcq", "quiz_typed", "quiz_voice", "quiz_fill", "quiz_order")) {
+            showInteractiveQuiz(frame, stepIdx, frameIdx)
+            return
+        }
         tts.setLocale(Locale.forLanguageTag(step.languageTag))
         tts.speak(frame.speech, makeTtsCallback(stepIdx, frameIdx))
     }
@@ -1083,6 +1110,17 @@ class BlackboardActivity : AppCompatActivity() {
                 advanceFrame()
             }
         )
+        // After popup settles, read the quiz question aloud so the student hears it
+        if (frame.speech.isNotBlank()) {
+            stepsScrollView.postDelayed({
+                tts.setLocale(Locale.forLanguageTag(preferredLanguageTag))
+                tts.speak(frame.speech, object : TTSCallback {
+                    override fun onStart() {}
+                    override fun onComplete() {}
+                    override fun onError(error: String) {}
+                })
+            }, 400)
+        }
     }
 
     /** Brief full-screen streak overlay that fades in and scales out. */
@@ -1267,7 +1305,7 @@ class BlackboardActivity : AppCompatActivity() {
                         }
                     }
                     f?.frameType in setOf("quiz_mcq", "quiz_typed", "quiz_voice", "quiz_fill", "quiz_order") && f != null -> {
-                        // Interactive quiz popup — pause lesson until student answers
+                        // Safety fallback — normally handled by speakFrame() routing
                         runOnUiThread { showInteractiveQuiz(f, stepIdx, frameIdx) }
                     }
                     else -> {
@@ -1286,6 +1324,523 @@ class BlackboardActivity : AppCompatActivity() {
         override fun onError(error: String) {
             android.util.Log.w("Blackboard", "TTS: $error")
         }
+    }
+
+    // ── Inline quiz builders ──────────────────────────────────────────────────
+
+    private fun buildInlineQuizCard(
+        frame: BlackboardGenerator.BlackboardFrame,
+        dp: Float,
+        caveat: Typeface?
+    ): LinearLayout {
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 16 * dp
+                setColor(Color.parseColor("#121A12"))
+                setStroke((1 * dp).toInt(), Color.parseColor("#306050"))
+            }
+            setPadding((16 * dp).toInt(), (16 * dp).toInt(), (16 * dp).toInt(), (16 * dp).toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (20 * dp).toInt() }
+        }
+        when (frame.frameType) {
+            "quiz_mcq"             -> addMcqOptions(card, frame, dp, caveat)
+            "quiz_typed", "quiz_voice" -> addTypedInput(card, frame, dp, caveat)
+            "quiz_fill"            -> addFillBlanks(card, frame, dp, caveat)
+            "quiz_order"           -> addOrderItems(card, frame, dp, caveat)
+        }
+        return card
+    }
+
+    private fun addMcqOptions(
+        container: LinearLayout,
+        frame: BlackboardGenerator.BlackboardFrame,
+        dp: Float,
+        caveat: Typeface?
+    ) {
+        var answered = false
+        val optViews = mutableListOf<TextView>()
+        frame.quizOptions.forEachIndexed { idx, option ->
+            val label = listOf("A", "B", "C", "D").getOrElse(idx) { "${idx + 1}" }
+            val optView = TextView(this).apply {
+                text = "$label.  $option"
+                textSize = computedFontSp - 4f
+                typeface = caveat
+                setTextColor(Color.parseColor("#F0EDD0"))
+                gravity = Gravity.START
+                setPadding((16 * dp).toInt(), (12 * dp).toInt(), (16 * dp).toInt(), (12 * dp).toInt())
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE
+                    cornerRadius = 12 * dp
+                    setStroke((1 * dp).toInt(), Color.parseColor("#4050A0"))
+                    setColor(Color.parseColor("#1E2050"))
+                }
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { bottomMargin = (8 * dp).toInt() }
+            }
+            container.addView(optView)
+            optViews.add(optView)
+            optView.setOnClickListener {
+                if (answered) return@setOnClickListener
+                answered = true
+                val correct = idx == frame.quizCorrectIndex
+                optViews.forEachIndexed { i, v ->
+                    (v.background as? GradientDrawable)?.apply {
+                        setStroke(0, Color.TRANSPARENT)
+                        setColor(Color.parseColor(when {
+                            i == frame.quizCorrectIndex -> "#1B5E20"
+                            i == idx && !correct        -> "#B71C1C"
+                            else                        -> "#1E2050"
+                        }))
+                    }
+                }
+                quizTotal++
+                if (correct) { quizCorrect++; currentStreak++ } else { currentStreak = 0 }
+                if (currentStreak >= 3) showStreakOverlay(currentStreak)
+                val continueBtn = TextView(this).apply {
+                    text = if (correct) "✅  Correct!  Continue →" else "❌  Wrong!  Continue →"
+                    textSize = 15f
+                    typeface = caveat
+                    gravity = Gravity.CENTER
+                    setTextColor(Color.parseColor("#1A1A0A"))
+                    background = GradientDrawable().apply {
+                        shape = GradientDrawable.RECTANGLE
+                        cornerRadius = 20 * dp
+                        setColor(Color.parseColor(if (correct) "#4CAF50" else "#F44336"))
+                    }
+                    setPadding((24 * dp).toInt(), (12 * dp).toInt(), (24 * dp).toInt(), (12 * dp).toInt())
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply { topMargin = (16 * dp).toInt() }
+                }
+                container.addView(continueBtn)
+                stepsScrollView.postDelayed({ stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 200)
+                continueBtn.setOnClickListener {
+                    if (!correct) {
+                        val stepTitle = steps.getOrNull(currentStepIdx)?.title ?: "Step ${currentStepIdx + 1}"
+                        val key = Triple(currentStepIdx, currentFrameIdx, stepTitle)
+                        if (key !in bookmarkedFrames) bookmarkedFrames.add(key)
+                    }
+                    isPaused = false
+                    advanceFrame()
+                }
+            }
+        }
+    }
+
+    private fun addTypedInput(
+        container: LinearLayout,
+        frame: BlackboardGenerator.BlackboardFrame,
+        dp: Float,
+        caveat: Typeface?
+    ) {
+        val editText = EditText(this).apply {
+            hint = "Type your answer here…"
+            textSize = computedFontSp - 6f
+            typeface = caveat
+            setTextColor(Color.parseColor("#F0EDD0"))
+            setHintTextColor(Color.parseColor("#665070"))
+            setBackgroundColor(Color.parseColor("#0D1F0D"))
+            setPadding((12 * dp).toInt(), (10 * dp).toInt(), (12 * dp).toInt(), (10 * dp).toInt())
+            gravity = Gravity.TOP
+            minLines = 2
+            maxLines = 5
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        container.addView(editText)
+
+        val progressBar = ProgressBar(this).apply {
+            visibility = View.GONE
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { gravity = Gravity.CENTER_HORIZONTAL; topMargin = (8 * dp).toInt() }
+        }
+        container.addView(progressBar)
+
+        val feedbackTv = TextView(this).apply {
+            visibility = View.GONE
+            textSize = 14f
+            typeface = caveat
+            setLineSpacing(0f, 1.3f)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (12 * dp).toInt(); bottomMargin = (8 * dp).toInt() }
+        }
+        container.addView(feedbackTv)
+
+        var graded = false
+        val serverUrl = AdminConfigRepository.effectiveServerUrl()
+        val checkBtn = TextView(this).apply {
+            text = "Check Answer"
+            textSize = 15f
+            typeface = caveat
+            gravity = Gravity.CENTER
+            setTextColor(Color.parseColor("#1A1A0A"))
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 20 * dp
+                setColor(Color.parseColor("#F5E3A0"))
+            }
+            setPadding((24 * dp).toInt(), (12 * dp).toInt(), (24 * dp).toInt(), (12 * dp).toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (12 * dp).toInt() }
+        }
+        container.addView(checkBtn)
+
+        checkBtn.setOnClickListener {
+            if (graded) { isPaused = false; advanceFrame(); return@setOnClickListener }
+            val answer = editText.text.toString().trim()
+            if (answer.isBlank()) return@setOnClickListener
+            editText.isEnabled = false
+            progressBar.visibility = View.VISIBLE
+            checkBtn.isEnabled = false
+            checkBtn.alpha = 0.5f
+            lifecycleScope.launch(Dispatchers.IO) {
+                BbInteractivePopup.gradeAnswer(
+                    serverUrl, frame.text, answer, frame.quizModelAnswer, frame.quizKeywords
+                ) { result ->
+                    runOnUiThread {
+                        graded = true
+                        progressBar.visibility = View.GONE
+                        quizTotal++
+                        if (result.correct) { quizCorrect++; currentStreak++ } else { currentStreak = 0 }
+                        if (currentStreak >= 3) showStreakOverlay(currentStreak)
+                        feedbackTv.text = "${if (result.correct) "✅" else "❌"}  ${result.feedback}"
+                        feedbackTv.setTextColor(Color.parseColor(if (result.correct) "#69F0AE" else "#FF8A80"))
+                        feedbackTv.visibility = View.VISIBLE
+                        checkBtn.text = "Continue →"
+                        checkBtn.isEnabled = true
+                        checkBtn.alpha = 1f
+                        stepsScrollView.postDelayed(
+                            { stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 200
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun addFillBlanks(
+        container: LinearLayout,
+        frame: BlackboardGenerator.BlackboardFrame,
+        dp: Float,
+        caveat: Typeface?
+    ) {
+        val blanksCount = frame.fillBlanks.size.coerceAtLeast(1)
+        var displayText = frame.text
+        for (i in 1..blanksCount) displayText = displayText.replaceFirst("___", "($i)")
+        container.addView(TextView(this).apply {
+            text = "📝  $displayText"
+            textSize = computedFontSp - 6f
+            typeface = caveat
+            setTextColor(Color.parseColor("#F0EDD0"))
+            setLineSpacing(0f, 1.4f)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (16 * dp).toInt() }
+        })
+        val editTexts = mutableListOf<EditText>()
+        for (i in 0 until blanksCount) {
+            container.addView(TextView(this).apply {
+                text = "Blank ${i + 1}:"
+                textSize = 13f
+                typeface = caveat
+                setTextColor(Color.parseColor("#88905070"))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = (8 * dp).toInt() }
+            })
+            val et = EditText(this).apply {
+                hint = "Fill in blank ${i + 1}…"
+                textSize = computedFontSp - 8f
+                typeface = caveat
+                setTextColor(Color.parseColor("#F0EDD0"))
+                setHintTextColor(Color.parseColor("#665570"))
+                setBackgroundColor(Color.parseColor("#0D1F0D"))
+                setPadding((12 * dp).toInt(), (8 * dp).toInt(), (12 * dp).toInt(), (8 * dp).toInt())
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { bottomMargin = (4 * dp).toInt() }
+            }
+            container.addView(et)
+            editTexts.add(et)
+        }
+        val feedbackTv = TextView(this).apply {
+            visibility = View.GONE
+            textSize = 14f
+            typeface = caveat
+            setLineSpacing(0f, 1.3f)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (12 * dp).toInt(); bottomMargin = (8 * dp).toInt() }
+        }
+        container.addView(feedbackTv)
+        var checked = false
+        val checkBtn = TextView(this).apply {
+            text = "Check Answers"
+            textSize = 15f
+            typeface = caveat
+            gravity = Gravity.CENTER
+            setTextColor(Color.parseColor("#1A1A0A"))
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 20 * dp
+                setColor(Color.parseColor("#F5E3A0"))
+            }
+            setPadding((24 * dp).toInt(), (12 * dp).toInt(), (24 * dp).toInt(), (12 * dp).toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (12 * dp).toInt() }
+        }
+        container.addView(checkBtn)
+        checkBtn.setOnClickListener {
+            if (checked) { isPaused = false; advanceFrame(); return@setOnClickListener }
+            checked = true
+            editTexts.forEach { it.isEnabled = false }
+            var allCorrect = true
+            val feedback = StringBuilder()
+            frame.fillBlanks.forEachIndexed { i, expected ->
+                val given = editTexts.getOrNull(i)?.text?.toString()?.trim() ?: ""
+                val ok = given.equals(expected, ignoreCase = true) ||
+                         given.lowercase().contains(expected.lowercase())
+                if (!ok) { allCorrect = false; feedback.append("Blank ${i + 1}: expected \"$expected\"\n") }
+            }
+            quizTotal++
+            if (allCorrect) { quizCorrect++; currentStreak++ } else { currentStreak = 0 }
+            feedbackTv.text = if (allCorrect) "✅  All blanks correct!" else "❌  Not quite:\n${feedback.trimEnd()}"
+            feedbackTv.setTextColor(Color.parseColor(if (allCorrect) "#69F0AE" else "#FF8A80"))
+            feedbackTv.visibility = View.VISIBLE
+            checkBtn.text = "Continue →"
+            stepsScrollView.postDelayed({ stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 200)
+        }
+    }
+
+    private fun addOrderItems(
+        container: LinearLayout,
+        frame: BlackboardGenerator.BlackboardFrame,
+        dp: Float,
+        caveat: Typeface?
+    ) {
+        container.addView(TextView(this).apply {
+            text = "🔢  Tap the steps in the correct order:"
+            textSize = computedFontSp - 6f
+            typeface = caveat
+            setTextColor(Color.parseColor("#F0EDD0"))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (12 * dp).toInt() }
+        })
+        val stepTexts = frame.quizOptions
+        val correctOrder = frame.quizCorrectOrder
+        val selectedOrder = mutableListOf<Int>()
+        val itemViews = mutableListOf<TextView>()
+        stepTexts.forEachIndexed { idx, stepText ->
+            val v = TextView(this).apply {
+                text = stepText
+                textSize = computedFontSp - 8f
+                typeface = caveat
+                setTextColor(Color.parseColor("#F0EDD0"))
+                gravity = Gravity.START
+                setPadding((14 * dp).toInt(), (10 * dp).toInt(), (14 * dp).toInt(), (10 * dp).toInt())
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE
+                    cornerRadius = 10 * dp
+                    setStroke((1 * dp).toInt(), Color.parseColor("#4050A0"))
+                    setColor(Color.parseColor("#1E2050"))
+                }
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { bottomMargin = (8 * dp).toInt() }
+            }
+            container.addView(v)
+            itemViews.add(v)
+            v.setOnClickListener {
+                if (idx in selectedOrder) return@setOnClickListener
+                selectedOrder.add(idx)
+                val num = selectedOrder.size
+                (v.background as? GradientDrawable)?.setColor(Color.parseColor("#1E3A50"))
+                v.text = "$num. $stepText"
+                if (selectedOrder.size == stepTexts.size) {
+                    val isCorrect = correctOrder.size == stepTexts.size && selectedOrder == correctOrder
+                    itemViews.forEachIndexed { i, btn ->
+                        val tappedPos = selectedOrder.indexOf(i)
+                        val expectedPos = if (correctOrder.size == stepTexts.size) correctOrder.indexOf(i) else i
+                        (btn.background as? GradientDrawable)?.setColor(
+                            Color.parseColor(if (tappedPos == expectedPos) "#1B5E20" else "#B71C1C")
+                        )
+                    }
+                    quizTotal++
+                    if (isCorrect) { quizCorrect++; currentStreak++ } else { currentStreak = 0 }
+                    val resultTv = TextView(this).apply {
+                        text = if (isCorrect) "✅  Perfect order!" else "❌  Not quite. Review the highlighted steps."
+                        textSize = 14f
+                        typeface = caveat
+                        setTextColor(Color.parseColor(if (isCorrect) "#69F0AE" else "#FF8A80"))
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply { topMargin = (12 * dp).toInt() }
+                    }
+                    container.addView(resultTv)
+                    val contBtn = TextView(this).apply {
+                        text = "Continue →"
+                        textSize = 15f
+                        typeface = caveat
+                        gravity = Gravity.CENTER
+                        setTextColor(Color.parseColor("#1A1A0A"))
+                        background = GradientDrawable().apply {
+                            shape = GradientDrawable.RECTANGLE
+                            cornerRadius = 20 * dp
+                            setColor(Color.parseColor(if (isCorrect) "#4CAF50" else "#FF5722"))
+                        }
+                        setPadding((24 * dp).toInt(), (12 * dp).toInt(), (24 * dp).toInt(), (12 * dp).toInt())
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        ).apply { topMargin = (8 * dp).toInt() }
+                    }
+                    container.addView(contBtn)
+                    contBtn.setOnClickListener { isPaused = false; advanceFrame() }
+                    stepsScrollView.postDelayed(
+                        { stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 200
+                    )
+                }
+            }
+        }
+    }
+
+    // ── Interactive board chat ────────────────────────────────────────────────
+
+    private fun sendBbChat(question: String) {
+        val dp = resources.displayMetrics.density
+        val caveat = ResourcesCompat.getFont(this, R.font.kalam)
+        val board = boardLayout ?: return
+
+        val questionCard = buildChatCard("❓  $question", "#1A1A3A", "#B3C8FF", caveat, dp)
+        board.addView(questionCard)
+        stepsScrollView.postDelayed({ stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 200)
+
+        val responseInner = TextView(this).apply {
+            text = "…"
+            textSize = computedFontSp - 6f
+            setTextColor(Color.parseColor("#A8D8A8"))
+            typeface = caveat
+            setLineSpacing(0f, 1.5f)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        val responseCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 12 * dp
+                setColor(Color.parseColor("#0A1A0A"))
+                setStroke((1 * dp).toInt(), Color.parseColor("#30508050"))
+            }
+            setPadding((16 * dp).toInt(), (12 * dp).toInt(), (16 * dp).toInt(), (12 * dp).toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (8 * dp).toInt() }
+            addView(responseInner)
+        }
+        board.addView(responseCard)
+        stepsScrollView.postDelayed({ stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 300)
+
+        val lessonTopic = steps.firstOrNull()?.title
+            ?: intent.getStringExtra(EXTRA_MESSAGE)?.take(100)
+            ?: "this lesson"
+        val history = mutableListOf("system: Lesson topic: $lessonTopic").apply { addAll(bbChatHistory) }
+        val userId = intent.getStringExtra(EXTRA_USER_ID) ?: ""
+        val pageId = intent.getStringExtra(EXTRA_CONVERSATION_ID) ?: "bb_chat"
+        val client = ServerProxyClient(
+            serverUrl = AdminConfigRepository.effectiveServerUrl(),
+            modelName = "",
+            userId    = userId
+        )
+        val responseText = StringBuilder()
+        lifecycleScope.launch(Dispatchers.IO) {
+            client.streamChat(
+                question     = question,
+                pageId       = pageId,
+                mode         = "normal",
+                languageTag  = preferredLanguageTag,
+                studentLevel = 7,
+                history      = history,
+                onToken      = { token ->
+                    responseText.append(token)
+                    val display = TutorController.extractAnswerForDisplay(responseText.toString())
+                    runOnUiThread { responseInner.text = display }
+                },
+                onDone = { _, _, _ ->
+                    val final = TutorController.extractAnswerForDisplay(responseText.toString())
+                    bbChatHistory.add("user: $question")
+                    bbChatHistory.add("assistant: ${final.take(600)}")
+                    runOnUiThread {
+                        responseInner.text = final
+                        stepsScrollView.postDelayed(
+                            { stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 200
+                        )
+                    }
+                },
+                onError = { err -> runOnUiThread { responseInner.text = "⚠️ $err" } }
+            )
+        }
+    }
+
+    private fun buildChatCard(
+        text: String,
+        bgColor: String,
+        textColor: String,
+        caveat: Typeface?,
+        dp: Float
+    ): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = 12 * dp
+            setColor(Color.parseColor(bgColor))
+            setStroke((1 * dp).toInt(), Color.parseColor("#30707090"))
+        }
+        setPadding((16 * dp).toInt(), (12 * dp).toInt(), (16 * dp).toInt(), (12 * dp).toInt())
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = (12 * dp).toInt() }
+        addView(TextView(this@BlackboardActivity).apply {
+            this.text = text
+            textSize = computedFontSp - 6f
+            setTextColor(Color.parseColor(textColor))
+            typeface = caveat
+            setLineSpacing(0f, 1.5f)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        })
     }
 
     // ── Progress dots ─────────────────────────────────────────────────────────
