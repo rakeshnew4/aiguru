@@ -1378,41 +1378,36 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                 historyRepo.saveMessage(userMessage)
 
                 val recentHistory =
-                    recentMsgs.map { msg ->
+                    recentMsgs.mapIndexed { idx, msg ->
                         if (msg.isUser) {
-                            "user: ${msg.content}"
-                        } else {
-                            // Build a compact history entry for the LLM.
-                            // - extractAnswerForDisplay already appends extra_details, so we
-                            //   do NOT add a separate [extra_summary] tag (avoids duplication).
-                            // - Collapse excessive blank lines to prevent \n\n\n\n echoing.
-                            // - Only include attachment_transcription when not sending a fresh
-                            //   visual attachment (old transcription would conflict with new image).
-                            buildString {
-                                val answerText = TutorController.extractAnswerForDisplay(msg.content)
-                                    .replace(Regex("\\n{3,}"), "\n\n") // collapse 3+ newlines → 2
-                                    .trim()
-                                append("assistant: $answerText")
-                                if (!hadVisualAttachment && msg.transcription.isNotBlank())
-                                    append("\n[attachment_transcription: ${msg.transcription.take(500).replace(Regex("\\n{3,}"), "\n\n")}]")
+                            // When this user message was paired with an image response, embed
+                            // the transcription here (not in the assistant entry) — the image
+                            // was part of the user's turn.  Skip on fresh-attachment turns so
+                            // stale content never conflicts with the new image.
+                            val pairedTranscription = if (!hadVisualAttachment) {
+                                recentMsgs.getOrNull(idx + 1)
+                                    ?.takeIf { !it.isUser }
+                                    ?.transcription
+                                    ?.takeIf { it.isNotBlank() }
+                            } else null
+
+                            if (pairedTranscription != null) {
+                                "user: [Image:\n${pairedTranscription.take(500).replace(Regex("\\n{3,}"), "\n\n")}]\n${msg.content}"
+                            } else {
+                                "user: ${msg.content}"
                             }
+                        } else {
+                            // Assistant entry: answer text only — transcription moved to user entry.
+                            val answerText = TutorController.extractAnswerForDisplay(msg.content)
+                                .replace(Regex("\\n{3,}"), "\n\n")
+                                .trim()
+                            "assistant: $answerText"
                         }
                     }
 
-                // When a fresh image/PDF is attached, do NOT inject the old page
-                // transcript as system_context — the server will derive fresh context
-                // directly from the new attachment.  Injecting stale context causes
-                // the LLM to answer based on the previous image instead of the new one.
-                val pageContextEntry: List<String> = if (
-                    !hadVisualAttachment && tutorSession.latestPageContext.isNotBlank()
-                ) {
-                    listOf("system_context: Page transcript: ${
-                        tutorSession.latestPageContext.take(500)
-                            .replace(Regex("\\n{3,}"), "\n\n")
-                            .let { if (tutorSession.latestPageContext.length > 500) "$it…" else it }
-                    }")
-                } else emptyList()
-                val historyStrings = pageContextEntry + recentHistory
+                // Transcription is embedded in the relevant user history entry above;
+                // no separate system_context injection is needed.
+                val historyStrings = recentHistory
 
                 val onToken: (String) -> Unit = { token ->
                     accumulated.append(token)

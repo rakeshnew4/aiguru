@@ -351,19 +351,24 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
 
             else:
                 # ── NORMAL CHAT PIPELINE ──────────────────────────────────────
-                # N1) Classify intent (200ms, faster model)
-                last_reply = ""
-                for h in reversed(req.history or []):
-                    if h.startswith("assistant:"):
-                        last_reply = h[10:130]
-                        break
-                intent_result = await loop.run_in_executor(
-                    None,
-                    lambda: _classify_intent(req.question, has_image, last_reply),
-                )
-                intent = intent_result["intent"]
-                complexity = intent_result["complexity"]
-                logger.info("Intent=%s complexity=%s has_image=%s", intent, complexity, has_image)
+                # N1) Classify intent — skip when image is attached (always image_explain)
+                if has_image:
+                    intent = "image_explain"
+                    complexity = "high"
+                    logger.info("Intent=image_explain (image attached — skipped classifier)")
+                else:
+                    last_reply = ""
+                    for h in reversed(req.history or []):
+                        if h.startswith("assistant:"):
+                            last_reply = h[10:130]
+                            break
+                    intent_result = await loop.run_in_executor(
+                        None,
+                        lambda: _classify_intent(req.question, has_image, last_reply),
+                    )
+                    intent = intent_result["intent"]
+                    complexity = intent_result["complexity"]
+                    logger.info("Intent=%s complexity=%s has_image=%s", intent, complexity, has_image)
 
                 # N2) Merge context (skip stale transcript injection when fresh image present)
                 if has_image:

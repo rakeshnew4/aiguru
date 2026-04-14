@@ -22,8 +22,9 @@
         android:paddingBottom="14dp"
         android:elevation="2dp">
 
+
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="161dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical">
@@ -33,26 +34,26 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Good morning"
-                android:textSize="12sp"
-                android:textColor="@color/colorTextSecondary" />
+                android:textColor="@color/colorTextSecondary"
+                android:textSize="12sp" />
 
             <TextView
                 android:id="@+id/userNameText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="👨‍🎤  Student"
+                android:textColor="@color/colorTextPrimary"
                 android:textSize="21sp"
-                android:textStyle="bold"
-                android:textColor="@color/colorTextPrimary" />
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/schoolNameSubtitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
                 android:text="School"
-                android:textSize="11sp"
                 android:textColor="@color/colorTextSecondary"
-                android:layout_marginTop="1dp" />
+                android:textSize="11sp" />
 
         </LinearLayout>
 
@@ -75,13 +76,13 @@
         <!-- School logo — shown only when school has a logoUrl; hidden otherwise -->
         <ImageView
             android:id="@+id/schoolLogoImage"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="150dp"
+            android:layout_height="16dp"
             android:layout_marginEnd="10dp"
-            android:scaleType="centerCrop"
             android:background="@drawable/bg_avatar_circle"
-            android:visibility="gone"
-            android:contentDescription="School logo" />
+            android:contentDescription="School logo"
+            android:scaleType="centerCrop"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/profileButton"
@@ -136,7 +137,7 @@
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/progressButton"
                 android:layout_width="wrap_content"
-                android:layout_height="36dp"
+                android:layout_height="40dp"
                 android:text="Progress"
                 android:textSize="13sp"
                 android:textColor="@color/colorSuccess"
