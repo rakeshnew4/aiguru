@@ -408,18 +408,25 @@ def _call_litellm_proxy(
     model_config,
     images: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
-    """Call LLM through the LiteLLM proxy using the tier name as the model."""
+    """Call LLM through the LiteLLM proxy using OpenAI-compatible vision format."""
     from urllib.parse import urlparse
     proxy_url = settings.LITELLM_PROXY_URL  # e.g. http://localhost:8005
     parsed = urlparse(proxy_url)
     host = parsed.hostname
     port = parsed.port or 80
 
-    # Use tier name as the model alias (configured in litellm_config.yaml)
-    model_name = getattr(model_config, "_tier_name", "cheaper")
+    # Build message content — multimodal when images are present.
+    # LiteLLM translates this OpenAI vision format to Gemini's native Part format.
+    if images:
+        content: Any = (
+            [{"type": "image_url", "image_url": {"url": img}} for img in images]
+            + [{"type": "text", "text": prompt}]
+        )
+        logger.info(f"LiteLLM multimodal request: {len(images)} image(s) + text")
+    else:
+        content = prompt
 
-    # Build messages — text only (images go direct when LiteLLM can't handle them)
-    messages = [{"role": "user", "content": prompt}]
+    messages = [{"role": "user", "content": content}]
 
     body = json.dumps({
         "model": "gemini-2.5-flash-lite",
@@ -428,7 +435,7 @@ def _call_litellm_proxy(
         "max_tokens": model_config.max_tokens,
     }).encode()
 
-    logger.debug(f"LiteLLM proxy request: model={model_name}, prompt_len={len(prompt)}")
+    logger.debug(f"LiteLLM proxy request: model=gemini-2.5-flash-lite, prompt_len={len(prompt)}, images={len(images) if images else 0}")
 
     try:
         conn = http.client.HTTPConnection(host, port, timeout=300)
@@ -463,9 +470,9 @@ def _call_litellm_proxy(
                 "totalTokens": usage.get("total_tokens", 0),
             },
             "provider": "litellm",
-            "model": data.get("model", model_name),
+            "model": data.get("model", "gemini-2.5-flash-lite"),
         }
-        logger.info(f"LiteLLM success: model={model_name} | tokens={result['tokens']['totalTokens']}")
+        logger.info(f"LiteLLM success: model={result['model']} | tokens={result['tokens']['totalTokens']}")
         return result
         
     except json.JSONDecodeError as e:
