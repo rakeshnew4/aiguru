@@ -147,3 +147,4 @@ server/app/__pycache__
 
 
 git pull --rebase origin main
+server/google_tts_serviceaccount.json
