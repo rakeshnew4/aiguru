@@ -180,6 +180,7 @@ class BlackboardActivity : AppCompatActivity() {
 
         aiTtsToggleBtn.setOnClickListener {
             useAiTts = !useAiTts
+            android.util.Log.d("BB_TTS_TOGGLE", "AI TTS button clicked: useAiTts=$useAiTts")
             prefs.edit().putBoolean("use_ai_tts", useAiTts).apply()
             updateAiTtsToggleUi()
             if (useAiTts) {
@@ -191,6 +192,7 @@ class BlackboardActivity : AppCompatActivity() {
                     cachedMetadata, limits, com.aiguruapp.student.config.PlanEnforcer.FeatureType.AI_TTS
                 )
                 if (!check.allowed) {
+                    android.util.Log.w("BB_TTS_TOGGLE", "❌ Plan check failed: ${check.upgradeMessage}")
                     useAiTts = false
                     prefs.edit().putBoolean("use_ai_tts", false).apply()
                     updateAiTtsToggleUi()
@@ -198,9 +200,11 @@ class BlackboardActivity : AppCompatActivity() {
                     return@setOnClickListener
                 }
                 // Preload current + next 2 speech texts with new setting
+                android.util.Log.d("BB_TTS_TOGGLE", "✓ AI TTS enabled, preloading...")
                 preloadUpcoming(currentStepIdx, currentFrameIdx, count = 3)
                 android.widget.Toast.makeText(this, "🎙 AI Voice ON — preloading…", android.widget.Toast.LENGTH_SHORT).show()
             } else {
+                android.util.Log.d("BB_TTS_TOGGLE", "✗ AI TTS disabled")
                 aiTtsEngine.stop()
                 android.widget.Toast.makeText(this, "🔊 Android TTS", android.widget.Toast.LENGTH_SHORT).show()
             }
@@ -296,18 +300,24 @@ class BlackboardActivity : AppCompatActivity() {
      */
     private fun preloadUpcoming(stepIdx: Int, frameIdx: Int, count: Int = 2) {
         if (!useAiTts) return
-        
+
         // Ensure TTS keys are loaded from config (returns immediately if cached)
         ensureTtsKeysLoaded()
-        
+
         var remaining = count
         var si = stepIdx
         var fi = frameIdx
         while (remaining > 0) {
-            val speech = steps.getOrNull(si)?.frames?.getOrNull(fi)?.speech ?: break
+            val frame  = steps.getOrNull(si)?.frames?.getOrNull(fi) ?: break
+            val speech = frame.speech
             if (speech.isNotBlank()) {
-                aiTtsEngine.languageCode = preferredLanguageTag
-                aiTtsEngine.preload(speech)
+                val engine = frame.ttsEngine.ifBlank {
+                    BlackboardGenerator.smartAssignTts(frame.frameType).first
+                }
+                if (engine != "android") {
+                    aiTtsEngine.languageCode = preferredLanguageTag
+                    aiTtsEngine.preload(speech, engine)
+                }
             }
             fi++
             if (fi >= (steps.getOrNull(si)?.frames?.size ?: 0)) { si++; fi = 0 }
@@ -839,6 +849,21 @@ class BlackboardActivity : AppCompatActivity() {
         if (currentStepIdx != stepIdx || currentFrameIdx != frameIdx) return
         val step  = steps.getOrNull(stepIdx) ?: return
         val frame = step.frames.getOrNull(frameIdx) ?: return
+
+        // Determine effective TTS engine for this frame:
+        //   - First frame of the whole lesson → android (zero-delay guaranteed start)
+        //   - useAiTts master toggle OFF       → android (user preference)
+        //   - otherwise                        → use the per-frame engine assigned by the LLM
+        val effectiveEngine: String = when {
+            stepIdx == 0 && frameIdx == 0 -> "android"
+            !useAiTts                     -> "android"
+            else -> frame.ttsEngine.ifBlank {
+                BlackboardGenerator.smartAssignTts(frame.frameType).first
+            }
+        }
+        android.util.Log.d("BB_SPEAK",
+            "→ speakFrame: step=$stepIdx frame=$frameIdx engine=$effectiveEngine role=${frame.voiceRole} speech_len=${frame.speech.length}")
+
         // Interactive quiz frames: show popup immediately, then read question inside it
         if (frame.frameType in setOf("quiz_mcq", "quiz_typed", "quiz_voice", "quiz_fill", "quiz_order")) {
             showInteractiveQuiz(frame, stepIdx, frameIdx)
@@ -847,7 +872,8 @@ class BlackboardActivity : AppCompatActivity() {
         // Preload the next 2 frames' audio in background while this frame plays
         preloadUpcoming(stepIdx, frameIdx + 1, count = 2)
 
-        if (useAiTts && frame.speech.isNotBlank()) {
+        if (effectiveEngine != "android" && frame.speech.isNotBlank()) {
+            android.util.Log.d("BB_SPEAK", "  ↳ AI TTS mode: engine=$effectiveEngine")
             // Check AI TTS quota before speaking
             val limits = com.aiguruapp.student.config.AdminConfigRepository.resolveEffectiveLimits(
                 cachedMetadata.planId, cachedMetadata.planLimits
@@ -856,22 +882,23 @@ class BlackboardActivity : AppCompatActivity() {
                 cachedMetadata, limits, frame.speech.length
             )
             if (!quotaCheck.allowed) {
+                android.util.Log.w("BB_SPEAK", "  ✗ Quota check FAILED: ${quotaCheck.upgradeMessage}")
                 android.widget.Toast.makeText(this, quotaCheck.upgradeMessage, android.widget.Toast.LENGTH_LONG).show()
-                // Fallback to regular TTS
                 tts.setLocale(Locale.forLanguageTag(step.languageTag))
                 tts.speak(frame.speech, makeTtsCallback(stepIdx, frameIdx))
                 return
             }
 
-            // Ensure keys are loaded before calling play()
             ensureTtsKeysLoaded()
-
             aiTtsEngine.languageCode = step.languageTag
+            android.util.Log.d("BB_SPEAK", "  ✓ Calling aiTtsEngine.play() lang=${step.languageTag} engine=$effectiveEngine")
             aiTtsEngine.play(
-                text    = frame.speech,
-                langTag = step.languageTag,
-                callback = makeTtsCallback(stepIdx, frameIdx),
-                onUsedAi = { wasAi ->
+                text      = frame.speech,
+                langTag   = step.languageTag,
+                callback  = makeTtsCallback(stepIdx, frameIdx),
+                ttsEngine = effectiveEngine,
+                onUsedAi  = { wasAi ->
+                    android.util.Log.d("BB_SPEAK", "  ↳ onUsedAi=$wasAi")
                     if (wasAi) {
                         val uid = intent.getStringExtra(EXTRA_USER_ID) ?: ""
                         com.aiguruapp.student.config.PlanEnforcer.recordAiTtsUsed(uid, frame.speech.length)

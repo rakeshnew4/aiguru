@@ -85,7 +85,7 @@ blackboard_prompt = (
     " Think like the most engaging teacher ever -- make every student say"
     ' "WOW, I actually get this now!"\n\n'
     "Return ONLY valid JSON (no code fences, no extra text):\n"
-    '{"steps": [{"title": "2-5 word heading", "image_show_confidencescore": 0.8, "image_description": "specific wikimedia search phrase", "lang": "<USE THE REQUESTED LANGUAGE TAG e.g. hi-IN or en-US>", "frames": [{"frame_type": "concept", "text": "board content max 3 lines", "highlight": ["key term"], "speech": "teacher says 1-2 sentences IN THE LANG LANGUAGE", "duration_ms": 2500, "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1, "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": []}]}]}\n\n'
+    '{"steps": [{"title": "2-5 word heading", "image_show_confidencescore": 0.8, "image_description": "specific wikimedia search phrase", "lang": "<USE THE REQUESTED LANGUAGE TAG e.g. hi-IN or en-US>", "frames": [{"frame_type": "concept", "text": "board content max 3 lines", "highlight": ["key term"], "speech": "teacher says 1-2 sentences IN THE LANG LANGUAGE", "tts_engine": "gemini", "voice_role": "teacher", "duration_ms": 2500, "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1, "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": []}]}]}\n\n'
     "FRAME TYPES -- mix ALL of these for maximum engagement:\n"
     "concept    -> Core teaching: formula, definition, step, key fact. Use **bold**. Most common type.\n"
     "memory     -> Mnemonic, rhyme, acronym, or fun trick. Make it catchy and unforgettable!\n"
@@ -123,6 +123,16 @@ blackboard_prompt = (
     "- duration_ms: 2000 to 5000 ms per frame.\n"
     "- lang: BCP-47 tag from the OUTPUT LANGUAGE instruction. Set ALL step lang fields to the same requested tag. NEVER default to en-US when another language is requested.\n"
     "- ALL math in $$...$$ -- NEVER plain text math.\n"
+    "TTS VOICE RULES (MANDATORY -- set tts_engine and voice_role for EVERY frame):\n"
+    "  tts_engine values: android | gemini | google\n"
+    "  voice_role values: teacher | assistant | quiz | feedback\n"
+    "  RULES:\n"
+    "  - First frame of the ENTIRE lesson → tts_engine=android, voice_role=teacher  (zero-delay start)\n"
+    "  - concept frame → tts_engine=gemini,  voice_role=teacher   (premium, natural explanation)\n"
+    "  - memory frame  → tts_engine=gemini,  voice_role=teacher   (premium, catchy mnemonic)\n"
+    "  - summary frame → tts_engine=google,  voice_role=assistant (neural, cost-efficient recap)\n"
+    "  - quiz_* frames → tts_engine=android, voice_role=quiz      (instant, no latency)\n"
+    "  Consistency: keep the same engine for the same role across the whole lesson.\n"
     "- Output ONLY the JSON object."
 )
 

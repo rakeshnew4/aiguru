@@ -293,17 +293,21 @@ object AiTtsProvider {
 
     // ── Server TTS (aiguru FastAPI server — keys never leave server) ───────────
     // POST <serverUrl>/api/tts/synthesize
-    // Body:     { "text": "...", "language_code": "hi-IN" }
+    // Body:     { "text": "...", "language_code": "hi-IN", "tts_engine": "gemini", "voice_role": "teacher" }
     // Headers:  Authorization: Bearer <firebase-id-token>
-    // Response: raw MP3 bytes (audio/mpeg)
+    // Response: raw WAV/MP3 bytes (audio/mpeg)  OR 204 for android engine
     //
-    // The server tries Google → ElevenLabs → OpenAI in order.
-    // Returns 503 if all providers fail; app falls back to Android TTS.
+    // Engine routing on the server:
+    //   gemini  → Gemini 2.5 Flash TTS (premium natural voice)
+    //   google  → Google Cloud TTS     (neural, cost-efficient)
+    //   android → 204 No Content       (client uses device TTS)
     fun serverTts(
         text: String,
         languageCode: String = "en-US",
         serverUrl: String    = "",      // e.g. "http://108.181.187.227:8003"
         authToken: String    = "",      // Firebase ID token (without "Bearer " prefix)
+        ttsEngine: String    = "google",// android | gemini | google
+        voiceRole: String    = "teacher",
         onSuccess: (ByteArray) -> Unit,
         onError: (String) -> Unit
     ) {
@@ -311,8 +315,10 @@ object AiTtsProvider {
         if (authToken.isBlank()) { onError("Firebase auth token not available"); return }
         try {
             val body = JSONObject().apply {
-                put("text", text)
+                put("text",          text)
                 put("language_code", languageCode)
+                put("tts_engine",    ttsEngine)
+                put("voice_role",    voiceRole)
             }.toString()
 
             val url  = URL("$serverUrl/api/tts/synthesize")
@@ -326,14 +332,22 @@ object AiTtsProvider {
                 outputStream.use { it.write(body.toByteArray(Charset.forName("UTF-8"))) }
             }
             val code = conn.responseCode
-            if (code == 200) {
-                val bytes = conn.inputStream.readBytes()
-                Log.d(TAG, "serverTts OK: ${bytes.size} bytes lang=$languageCode")
-                onSuccess(bytes)
-            } else {
-                val err = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $code"
-                Log.w(TAG, "serverTts error: $err")
-                onError("Server TTS HTTP $code: $err")
+            when (code) {
+                200 -> {
+                    val bytes = conn.inputStream.readBytes()
+                    Log.d(TAG, "serverTts OK: ${bytes.size} bytes lang=$languageCode engine=$ttsEngine")
+                    onSuccess(bytes)
+                }
+                204 -> {
+                    // android engine — server intentionally returns no audio
+                    Log.d(TAG, "serverTts 204: android engine — client handles TTS locally")
+                    onError("android_tts")   // caller checks for this sentinel
+                }
+                else -> {
+                    val err = conn.errorStream?.bufferedReader()?.readText() ?: "HTTP $code"
+                    Log.w(TAG, "serverTts error: $err engine=$ttsEngine")
+                    onError("Server TTS HTTP $code: $err")
+                }
             }
             conn.disconnect()
         } catch (e: IOException) {

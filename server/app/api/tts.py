@@ -4,13 +4,16 @@ api/tts.py — Server-side Text-to-Speech endpoint.
 The Android app calls POST /api/tts/synthesize with the text + language.
 This server holds the API keys; the app never sees them.
 
-Supported backends (tried in order, first success wins):
-  1. Google Cloud TTS  — best multilingual quality (Indian languages supported)
-  2. ElevenLabs        — best English/Hindi quality (if ELEVENLABS_API_KEY set)
-  3. OpenAI TTS        — fast, good English (if OPENAI_TTS_API_KEY set)
-  4. 503               — app falls back to Android TTS
+Supported backends (selected by tts_engine request field):
+  gemini  → Gemini 2.5 Flash TTS  (premium, natural voice — concept/memory frames)
+  google  → Google Cloud TTS       (neural quality, cost-efficient — summary frames)
+  android → 204 No Content         (client uses its own TTS — quiz/instant frames)
+
+  When tts_engine is not supplied the legacy fallback chain is used:
+    Google Cloud TTS → ElevenLabs → OpenAI TTS → 503
 
 Response: raw MP3 bytes (Content-Type: audio/mpeg)
+          or 204 No Content when tts_engine == "android"
 """
 
 import base64
@@ -37,6 +40,13 @@ class TtsSynthesizeRequest(BaseModel):
     language_code: str = "en-US"    # BCP-47 e.g. "hi-IN", "ta-IN", "en-US"
     voice_name: str = ""            # Optional: specific Google voice name
     speaking_rate: float = 1.0      # 0.25 – 4.0
+    # Hybrid voice engine fields (set per-frame by the LLM):
+    #   android → client uses its own TTS (server returns 204)
+    #   gemini  → Gemini 2.5 Flash TTS (premium, natural voice)
+    #   google  → Google Cloud TTS (neural, cost-efficient)
+    #   ""      → legacy fallback chain (google → elevenlabs → openai)
+    tts_engine: str = ""            # android | gemini | google | "" (legacy)
+    voice_role: str = "teacher"     # teacher | assistant | quiz | feedback (informational)
 
 
 # ── Voice selection ───────────────────────────────────────────────────────────
@@ -155,6 +165,85 @@ async def _openai_tts(text: str) -> Optional[bytes]:
     return None
 
 
+async def _gemini_tts(text: str, language_code: str) -> Optional[bytes]:
+    """
+    Gemini 2.5 Flash TTS — premium natural voice.
+
+    Uses the Gemini API with responseModalities=AUDIO.
+    Returns raw MP3 bytes or None on failure.
+    Voice is selected based on language_code for best Indian-language quality.
+    """
+    api_key = settings.GEMINI_API_KEY
+    if not api_key:
+        logger.warning("GEMINI_API_KEY not set — cannot use Gemini TTS")
+        return None
+
+    # Pick a voice that suits the language / role (Gemini voices are language-agnostic
+    # but some sound better for certain scripts)
+    voice_name = "Aoede"   # warm, natural — good for Indian-language speech
+
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        f"gemini-2.5-flash-preview-tts:generateContent?key={api_key}"
+    )
+    payload = {
+        "contents": [{"parts": [{"text": text}]}],
+        "generationConfig": {
+            "responseModalities": ["AUDIO"],
+            "speechConfig": {
+                "voiceConfig": {
+                    "prebuiltVoiceConfig": {"voiceName": voice_name}
+                }
+            },
+        },
+    }
+    try:
+        async with httpx.AsyncClient(timeout=25.0) as client:
+            resp = await client.post(url, json=payload)
+        if resp.status_code == 200:
+            data = resp.json()
+            b64 = (
+                data["candidates"][0]["content"]["parts"][0]
+                ["inlineData"]["data"]
+            )
+            import base64 as _b64
+            raw_pcm = _b64.b64decode(b64)
+            # Gemini returns raw 24 kHz 16-bit PCM — wrap in a minimal WAV so
+            # MediaPlayer can play it without re-encoding.
+            mp3_bytes = _pcm_to_wav(raw_pcm, sample_rate=24000)
+            logger.info(f"Gemini TTS OK: lang={language_code} chars={len(text)} wav_bytes={len(mp3_bytes)}")
+            return mp3_bytes
+        logger.warning(f"Gemini TTS HTTP {resp.status_code}: {resp.text[:300]}")
+    except Exception as e:
+        logger.error(f"Gemini TTS error: {e}")
+    return None
+
+
+def _pcm_to_wav(pcm_data: bytes, sample_rate: int = 24000, num_channels: int = 1, bits_per_sample: int = 16) -> bytes:
+    """Wrap raw PCM bytes in a WAV container (no external library required)."""
+    import struct
+    data_size     = len(pcm_data)
+    byte_rate     = sample_rate * num_channels * bits_per_sample // 8
+    block_align   = num_channels * bits_per_sample // 8
+    header = struct.pack(
+        "<4sI4s4sIHHIIHH4sI",
+        b"RIFF",
+        36 + data_size,
+        b"WAVE",
+        b"fmt ",
+        16,                # PCM chunk size
+        1,                 # PCM format
+        num_channels,
+        sample_rate,
+        byte_rate,
+        block_align,
+        bits_per_sample,
+        b"data",
+        data_size,
+    )
+    return header + pcm_data
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/synthesize")
@@ -163,8 +252,15 @@ async def synthesize(
     auth: AuthUser = Depends(require_auth),
 ):
     """
-    Synthesize speech from text. Returns raw MP3 bytes (audio/mpeg).
-    Tries: Google TTS → ElevenLabs → OpenAI TTS.
+    Synthesize speech from text.
+
+    Engine routing (per tts_engine field):
+      android → 204 No Content  (client uses its own on-device TTS — zero network cost)
+      gemini  → Gemini 2.5 Flash TTS, fallback to Google Cloud TTS
+      google  → Google Cloud TTS, fallback to ElevenLabs → OpenAI TTS
+      ""  (legacy) → Google → ElevenLabs → OpenAI
+
+    Returns raw WAV/MP3 bytes (audio/mpeg) or 204 for android engine.
     Returns 503 if all providers fail (Android app falls back to built-in TTS).
     """
     text = req.text.strip()
@@ -173,24 +269,58 @@ async def synthesize(
     if len(text) > 5000:
         raise HTTPException(status_code=400, detail="text too long (max 5000 chars)")
 
-    mp3 = await _google_tts(text, req.language_code, req.voice_name, req.speaking_rate)
-    if mp3 is None:
-        mp3 = await _elevenlabs_tts(text)
-    if mp3 is None:
-        mp3 = await _openai_tts(text)
+    engine = req.tts_engine.lower().strip()
 
-    if mp3 is None:
-        logger.error(f"All TTS providers failed uid={auth.uid} lang={req.language_code}")
+    # Android engine: client handles it — no audio generation needed
+    if engine == "android":
+        return Response(status_code=204)
+
+    audio: Optional[bytes] = None
+
+    if engine == "gemini":
+        audio = await _gemini_tts(text, req.language_code)
+        if audio is None:
+            # Graceful fallback: Gemini down → Google Cloud TTS
+            logger.warning(f"Gemini TTS failed uid={auth.uid}, falling back to Google TTS")
+            audio = await _google_tts(text, req.language_code, req.voice_name, req.speaking_rate)
+
+    elif engine == "google":
+        audio = await _google_tts(text, req.language_code, req.voice_name, req.speaking_rate)
+        if audio is None:
+            audio = await _elevenlabs_tts(text)
+        if audio is None:
+            audio = await _openai_tts(text)
+
+    else:
+        # Legacy / unrecognised engine: original priority chain
+        audio = await _google_tts(text, req.language_code, req.voice_name, req.speaking_rate)
+        if audio is None:
+            audio = await _elevenlabs_tts(text)
+        if audio is None:
+            audio = await _openai_tts(text)
+
+    if audio is None:
+        logger.error(
+            f"All TTS providers failed uid={auth.uid} engine={engine} lang={req.language_code}"
+        )
         raise HTTPException(status_code=503, detail="TTS unavailable")
 
-    return Response(content=mp3, media_type="audio/mpeg",
-                    headers={"X-TTS-Bytes": str(len(mp3))})
+    return Response(
+        content=audio,
+        media_type="audio/mpeg",
+        headers={
+            "X-TTS-Bytes":  str(len(audio)),
+            "X-TTS-Engine": engine or "legacy",
+            "X-Voice-Role": req.voice_role,
+        },
+    )
 
 
 @router.get("/health")
 async def tts_health():
     """Returns which TTS providers are configured on this server."""
     return {
+        "gemini":      bool(settings.GEMINI_API_KEY),
         "google":      bool(os.getenv("GOOGLE_APPLICATION_CREDENTIALS")),
         "elevenlabs":  bool(settings.ELEVENLABS_API_KEY),
         "openai":      bool(settings.OPENAI_TTS_API_KEY),

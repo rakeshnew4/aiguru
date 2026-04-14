@@ -61,22 +61,36 @@ class BbAiTtsEngine(
 
     /**
      * Start generating audio for [text] in the background and cache the result.
-     * Safe to call multiple times for the same text — duplicate generation is suppressed.
+     * [ttsEngine] selects which provider the server should use (gemini | google | android).
+     * Safe to call multiple times for the same text+engine — duplicate generation is suppressed.
      */
-    fun preload(text: String) {
+    fun preload(text: String, ttsEngine: String = "google") {
         if (text.isBlank()) return
-        val key  = textKey(text)
+        if (ttsEngine == "android") return   // nothing to cache for device TTS
+        val key  = textKey(text, ttsEngine)
         val file = cachedFile(key)
-        if (file.exists()) { audioCache[key] = file.absolutePath; return }
-        if (pendingKeys.contains(key)) return
+        Log.d(TAG, "→ preload() called: key=$key engine=$ttsEngine text_len=${text.length} file=${file.absolutePath}")
+        if (file.exists()) {
+            audioCache[key] = file.absolutePath
+            Log.d(TAG, "  ↳ Already cached, skipping: ${file.length()}B")
+            return
+        }
+        if (pendingKeys.contains(key)) {
+            Log.d(TAG, "  ↳ Already pending, skipping")
+            return
+        }
         pendingKeys.add(key)
-        scope.launch { generateAndCache(text, key) { pendingKeys.remove(key) } }
+        Log.d(TAG, "  ↳ Spawning background job to synthesize (engine=$ttsEngine)...")
+        scope.launch { generateAndCache(text, key, ttsEngine) { pendingKeys.remove(key) } }
     }
 
     /**
      * Play [text] using AI TTS if the audio is already cached;
      * otherwise falls back to [androidTts] immediately and schedules preloading for next time.
      *
+     * [ttsEngine] android | gemini | google — controls which provider generates audio.
+     *             When "android" the caller should not call this function, but if it does
+     *             we fall through to Android TTS safely.
      * [langTag]   BCP-47 locale for the Android TTS fallback (e.g. "hi-IN")
      * [onUsedAi]  called with `true` if the AI cached audio was actually played
      *             (so the caller can charge credits)
@@ -85,21 +99,28 @@ class BbAiTtsEngine(
         text: String,
         langTag: String,
         callback: TTSCallback,
+        ttsEngine: String = "google",
         onUsedAi: (Boolean) -> Unit = {}
     ) {
         if (text.isBlank()) { callback.onComplete(); return }
+        if (ttsEngine == "android") {
+            androidTts.setLocale(java.util.Locale.forLanguageTag(langTag))
+            androidTts.speak(text, callback)
+            return
+        }
         stop()
-        val key        = textKey(text)
+        val key        = textKey(text, ttsEngine)
+        Log.d(TAG, "→ play() called: key=$key engine=$ttsEngine text_len=${text.length}")
         val cachedPath = resolveCache(key)
         if (cachedPath != null) {
-            Log.d(TAG, "Playing cached AI audio: key=$key")
+            Log.d(TAG, "✓✓✓ Playing cached AI audio (HIT): key=$key file=$cachedPath")
             onUsedAi(true)
             playFile(cachedPath, langTag, text, callback)
         } else {
             // Not ready — immediately use Android TTS so the student isn't kept waiting
-            Log.d(TAG, "AI audio not ready for key=$key; using Android TTS fallback")
+            Log.d(TAG, "✗✗✗ AI audio not ready (MISS): key=$key engine=$ttsEngine; FALLBACK to Android TTS")
             onUsedAi(false)
-            preload(text)   // cache it for next session
+            preload(text, ttsEngine)   // cache it for next session
             androidTts.setLocale(java.util.Locale.forLanguageTag(langTag))
             androidTts.speak(text, callback)
         }
@@ -134,9 +155,18 @@ class BbAiTtsEngine(
     // ── Private ────────────────────────────────────────────────────────────────
 
     private fun resolveCache(key: String): String? {
-        audioCache[key]?.let { return it }
+        audioCache[key]?.let { 
+            Log.d(TAG, "✓ Cache HIT (memory): key=$key path=${it}")
+            return it 
+        }
         val file = cachedFile(key)
-        if (file.exists()) { audioCache[key] = file.absolutePath; return file.absolutePath }
+        Log.d(TAG, "Cache check (disk): key=$key file=${file.absolutePath} exists=${file.exists()}")
+        if (file.exists()) { 
+            audioCache[key] = file.absolutePath
+            Log.d(TAG, "✓ Cache HIT (disk): key=$key size=${file.length()}B")
+            return file.absolutePath 
+        }
+        Log.d(TAG, "✗ Cache MISS: key=$key")
         return null
     }
 
@@ -144,56 +174,73 @@ class BbAiTtsEngine(
 
     private fun playFile(path: String, langTag: String, text: String, callback: TTSCallback) {
         try {
+            Log.d(TAG, "▶️  playFile START: path=$path file_exists=${File(path).exists()} file_size=${File(path).length()}B")
             mediaPlayer?.run { if (isPlaying) stop(); reset() }
             mediaPlayer = MediaPlayer().apply {
                 setDataSource(path)
                 prepare()
-                setOnCompletionListener { callback.onComplete() }
+                Log.d(TAG, "  ↳ MediaPlayer prepared, duration=${duration}ms")
+                setOnCompletionListener { 
+                    Log.d(TAG, "✅ playFile COMPLETED")
+                    callback.onComplete() 
+                }
                 setOnErrorListener { _, what, _ ->
-                    Log.e(TAG, "MediaPlayer error: $what — falling back to Android TTS")
+                    Log.e(TAG, "❌ MediaPlayer ERROR ($what) — fallback to Android TTS")
                     androidTts.setLocale(java.util.Locale.forLanguageTag(langTag))
                     androidTts.speak(text, callback)
                     true
                 }
                 start()
+                Log.d(TAG, "✅ playFile STARTED, playing AI audio")
             }
             callback.onStart()
         } catch (e: Exception) {
-            Log.e(TAG, "playFile failed: ${e.message} — falling back to Android TTS")
+            Log.e(TAG, "❌ playFile EXCEPTION: ${e.message} — fallback to Android TTS")
             androidTts.setLocale(java.util.Locale.forLanguageTag(langTag))
             androidTts.speak(text, callback)
         }
     }
 
     /** Blocking — runs on [Dispatchers.IO] coroutine. */
-    private fun generateAndCache(text: String, key: String, onDone: () -> Unit) {
+    private fun generateAndCache(text: String, key: String, ttsEngine: String, onDone: () -> Unit) {
         val targetFile = cachedFile(key)
+        Log.d(TAG, "▶️  generateAndCache START: key=$key engine=$ttsEngine file=${targetFile.absolutePath}")
 
         val onSuccess: (ByteArray) -> Unit = { bytes ->
             try {
                 FileOutputStream(targetFile).use { it.write(bytes) }
                 audioCache[key] = targetFile.absolutePath
-                Log.d(TAG, "AI TTS cached: key=$key size=${bytes.size}B url=$selfHostedUrl")
+                Log.d(TAG, "✅ generateAndCache WRITE OK: key=$key size=${bytes.size}B file=${targetFile.absolutePath}")
             } catch (e: Exception) {
-                Log.e(TAG, "Cache write failed: ${e.message}")
+                Log.e(TAG, "❌ Cache write FAILED: ${e.message}")
             }
             onDone()
         }
         val onError: (String) -> Unit = { msg ->
-            Log.w(TAG, "AI TTS generation failed: $msg")
+            Log.w(TAG, "❌ generateAndCache ERROR (engine=$ttsEngine): [$msg]")
             onDone()
         }
 
         // All TTS goes through the server — API keys never leave the server
         val token = TokenManager.getToken() ?: ""
+        Log.d(TAG, "  ↳ Calling serverTts engine=$ttsEngine token=${token.take(20)}... url=$selfHostedUrl")
         AiTtsProvider.serverTts(
-            text, languageCode, serverUrl = selfHostedUrl, authToken = token,
-            onSuccess = onSuccess, onError = onError
+            text          = text,
+            languageCode  = languageCode,
+            serverUrl     = selfHostedUrl,
+            authToken     = token,
+            ttsEngine     = ttsEngine,
+            onSuccess     = onSuccess,
+            onError       = onError
         )
     }
 
-    private fun textKey(text: String): String =
+    /**
+     * Cache key = MD5(normalised_text + "|" + engine).
+     * Including the engine prevents serving Google audio for a Gemini key or vice versa.
+     */
+    private fun textKey(text: String, ttsEngine: String = "google"): String =
         MessageDigest.getInstance("MD5")
-            .digest(text.trim().lowercase().toByteArray())
+            .digest("${text.trim().lowercase()}|$ttsEngine".toByteArray())
             .joinToString("") { "%02x".format(it) }
 }

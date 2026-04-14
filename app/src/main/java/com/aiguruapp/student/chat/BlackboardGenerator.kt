@@ -21,6 +21,14 @@ object BlackboardGenerator {
         // concept | quiz | memory | summary | quiz_mcq | quiz_typed | quiz_voice
         // | quiz_fill (fill-in-the-blank) | quiz_order (drag to order steps)
         val frameType: String = "concept",
+        // ── Voice Engine & Role ───────────────────────────────────────────────
+        // ttsEngine: android | gemini | google
+        //   android = instant built-in TTS (quiz frames, first frame)
+        //   gemini  = premium AI voice (concept / memory frames)
+        //   google  = neural cloud voice (summary / assistant frames)
+        // voiceRole: teacher | assistant | quiz | feedback
+        val ttsEngine: String = "",           // "" = auto-assign via smartAssignTts()
+        val voiceRole: String = "",           // "" = auto-assign via smartAssignTts()
         val quizAnswer: String = "",          // legacy tap-to-reveal answer (frame_type "quiz")
         // ── Interactive quiz fields ───────────────────────────────────────────
         val quizOptions: List<String> = emptyList(),  // quiz_mcq / quiz_order: option texts
@@ -41,6 +49,26 @@ object BlackboardGenerator {
         val image_description: String = "",
         val imageConfidenceScore: Float = 0f   // 0.0 = skip, 0.4–0.69 = tap-only, ≥0.7 = inline
     )
+
+    /**
+     * Returns (ttsEngine, voiceRole) for a frame that lacks explicit values.
+     *
+     * Rules:
+     *   concept / memory  → gemini  / teacher   (premium feel — LLM explains)
+     *   summary           → google  / assistant  (neural but cheap — brief recap)
+     *   quiz_*            → android / quiz       (instant, no latency during quiz)
+     *   everything else   → android / teacher    (safe default)
+     *
+     * The very first frame of a lesson is always overridden to android/teacher
+     * in BlackboardActivity.speakFrame() to guarantee zero-latency playback.
+     */
+    fun smartAssignTts(frameType: String): Pair<String, String> = when {
+        frameType == "concept"              -> Pair("gemini",  "teacher")
+        frameType == "memory"               -> Pair("gemini",  "teacher")
+        frameType == "summary"              -> Pair("google",  "assistant")
+        frameType.startsWith("quiz")        -> Pair("android", "quiz")
+        else                                -> Pair("android", "teacher")
+    }
 
     // System prompt is loaded from assets/tutor_prompts.json → "blackboard_system_prompt"
 
@@ -107,12 +135,19 @@ object BlackboardGenerator {
                             val kwArr    = frameObj.optJSONArray("quiz_keywords")
                             val fillArr  = frameObj.optJSONArray("fill_blanks")
                             val orderArr = frameObj.optJSONArray("quiz_correct_order")
+                            val fType    = frameObj.optString("frame_type", "concept")
+                            // Parse engine/role; fall back to smart assignment for old/cached frames
+                            val rawEngine = frameObj.optString("tts_engine", "")
+                            val rawRole   = frameObj.optString("voice_role",  "")
+                            val (assignedEngine, assignedRole) = smartAssignTts(fType)
                             BlackboardFrame(
                                 text              = frameObj.getString("text"),
                                 highlight         = if (hlArr != null) (0 until hlArr.length()).map { hlArr.getString(it) } else emptyList(),
                                 speech            = frameObj.optString("speech", ""),
                                 durationMs        = frameObj.optLong("duration_ms", 2000),
-                                frameType         = frameObj.optString("frame_type", "concept"),
+                                frameType         = fType,
+                                ttsEngine         = rawEngine.ifBlank { assignedEngine },
+                                voiceRole         = rawRole.ifBlank { assignedRole },
                                 quizAnswer        = frameObj.optString("quiz_answer", ""),
                                 quizOptions       = if (optsArr != null) (0 until optsArr.length()).map { optsArr.getString(it) } else emptyList(),
                                 quizCorrectIndex  = frameObj.optInt("quiz_correct_index", -1),
@@ -222,12 +257,18 @@ object BlackboardGenerator {
                     val kwArr    = frameObj.optJSONArray("quiz_keywords")
                     val fillArr  = frameObj.optJSONArray("fill_blanks")
                     val orderArr = frameObj.optJSONArray("quiz_correct_order")
+                    val fType2   = frameObj.optString("frame_type", "concept")
+                    val rawEng2  = frameObj.optString("tts_engine", "")
+                    val rawRole2 = frameObj.optString("voice_role",  "")
+                    val (aEng2, aRole2) = smartAssignTts(fType2)
                     BlackboardFrame(
                         text             = frameObj.getString("text"),
                         highlight        = if (hlArr != null) (0 until hlArr.length()).map { hlArr.getString(it) } else emptyList(),
                         speech           = frameObj.optString("speech", ""),
                         durationMs       = frameObj.optLong("duration_ms", 2000),
-                        frameType        = frameObj.optString("frame_type", "concept"),
+                        frameType        = fType2,
+                        ttsEngine        = rawEng2.ifBlank { aEng2 },
+                        voiceRole        = rawRole2.ifBlank { aRole2 },
                         quizAnswer       = frameObj.optString("quiz_answer", ""),
                         quizOptions      = if (optsArr != null) (0 until optsArr.length()).map { optsArr.getString(it) } else emptyList(),
                         quizCorrectIndex = frameObj.optInt("quiz_correct_index", -1),
@@ -259,6 +300,8 @@ object BlackboardGenerator {
                                     .put("speech", frame.speech)
                                     .put("duration_ms", frame.durationMs)
                                     .put("frame_type", frame.frameType)
+                                    .put("tts_engine", frame.ttsEngine)
+                                    .put("voice_role", frame.voiceRole)
                                     .put("quiz_answer", frame.quizAnswer)
                                     .put("quiz_options", JSONArray(frame.quizOptions))
                                     .put("quiz_correct_index", frame.quizCorrectIndex)
