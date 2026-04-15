@@ -6,6 +6,7 @@ This server holds the API keys; the app never sees them.
 
 Supported backends (selected by tts_engine request field):
   gemini  → Gemini 2.5 Flash TTS  (premium, natural voice — concept/memory frames)
+            Uses Vertex AI + service account (GOOGLE_APPLICATION_CREDENTIALS JSON)
   google  → Google Cloud TTS       (neural quality, cost-efficient — summary frames)
   android → 204 No Content         (client uses its own TTS — quiz/instant frames)
 
@@ -53,7 +54,7 @@ class TtsSynthesizeRequest(BaseModel):
 
 _GOOGLE_VOICE_MAP = {
     "hi":       "hi-IN-Neural2-A",
-    "en-in":    "en-IN-Neural2-A",
+    "en-in":    "en-IN-Neural2-F",
     "en":       "en-US-Neural2-F",
     "ta":       "ta-IN-Neural2-A",
     "te":       "te-IN-Standard-A",
@@ -64,6 +65,7 @@ _GOOGLE_VOICE_MAP = {
     "gu":       "gu-IN-Wavenet-A",
     "pa":       "pa-Guru-IN-Wavenet-A",
 }
+
 
 def _google_voice(language_code: str, voice_name: str) -> dict:
     if voice_name:
@@ -96,7 +98,7 @@ async def _google_tts(text: str, language_code: str, voice_name: str,
         voice = texttospeech.VoiceSelectionParams(
             language_code=voice_cfg["languageCode"],
             name=voice_cfg.get("name", ""),
-            ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
+            # ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
         )
         
         audio_config = texttospeech.AudioConfig(
@@ -167,59 +169,68 @@ async def _openai_tts(text: str) -> Optional[bytes]:
 
 async def _gemini_tts(text: str, language_code: str, voice_role: str = "teacher") -> Optional[bytes]:
     """
-    Gemini 2.5 Flash TTS — premium natural voice.
-
-    Uses the Gemini API with responseModalities=AUDIO.
-    Returns raw MP3 bytes or None on failure.
-    Voice is selected based on voice_role for best expressiveness.
+    Gemini 2.5 Flash TTS via Vertex AI (service account auth).
+    Uses GOOGLE_APPLICATION_CREDENTIALS service account JSON — no API key needed.
+    Routes through aiplatform.googleapis.com, not the blocked generativelanguage.googleapis.com.
     """
-    api_key = settings.GEMINI_API_KEY
-    if not api_key:
-        logger.warning("GEMINI_API_KEY not set — cannot use Gemini TTS")
+    sa_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    if not sa_file or not os.path.exists(sa_file):
+        logger.warning("GOOGLE_APPLICATION_CREDENTIALS not set or file missing — cannot use Gemini TTS")
         return None
 
-    # Map voice role to Gemini built-in voice names
-    # Available: Aoede, Puck, Charon, Kore, Fenrir, Leda, Orus, Zephyr
+    # Available voices: Aoede, Puck, Charon, Kore, Fenrir, Leda, Orus, Zephyr
     voice_map = {
-        "teacher":   "Aoede",    # warm, natural — good for teaching
+        "teacher":   "Aoede",    # warm, natural
         "assistant": "Kore",     # clear, helpful
-        "quiz":      "Puck",     # energetic, engaging
+        "quiz":      "Puck",     # energetic
         "feedback":  "Charon",   # calm, reassuring
     }
     voice_name = voice_map.get(voice_role.lower(), "Aoede")
 
-    url = (
-        "https://generativelanguage.googleapis.com/v1beta/models/"
-        f"gemini-2.5-flash-preview-tts:generateContent?key={api_key}"
-    )
-    payload = {
-        "contents": [{"parts": [{"text": text}]}],
-        "generationConfig": {
-            "responseModalities": ["AUDIO"],
-            "speechConfig": {
-                "voiceConfig": {
-                    "prebuiltVoiceConfig": {"voiceName": voice_name}
-                }
-            },
-        },
-    }
     try:
-        async with httpx.AsyncClient(timeout=25.0) as client:
-            resp = await client.post(url, json=payload)
-        if resp.status_code == 200:
-            data = resp.json()
-            b64 = (
-                data["candidates"][0]["content"]["parts"][0]
-                ["inlineData"]["data"]
-            )
-            import base64 as _b64
-            raw_pcm = _b64.b64decode(b64)
-            # Gemini returns raw 24 kHz 16-bit PCM — wrap in a minimal WAV so
-            # MediaPlayer can play it without re-encoding.
-            mp3_bytes = _pcm_to_wav(raw_pcm, sample_rate=24000)
-            logger.info(f"Gemini TTS OK: lang={language_code} chars={len(text)} wav_bytes={len(mp3_bytes)}")
-            return mp3_bytes
-        logger.warning(f"Gemini TTS HTTP {resp.status_code}: {resp.text[:300]}")
+        import json as _json
+        from google import genai
+        from google.genai import types
+        from google.oauth2 import service_account as _sa
+
+        # Read project_id from the service account file itself
+        with open(sa_file) as f:
+            sa_info = _json.load(f)
+        project_id = sa_info.get("project_id", "")
+        if not project_id:
+            logger.error("project_id missing from service account JSON")
+            return None
+
+        credentials = _sa.Credentials.from_service_account_info(
+            sa_info,
+            scopes=["https://www.googleapis.com/auth/cloud-platform"],
+        )
+
+        # Vertex AI mode — uses aiplatform.googleapis.com (not blocked generativelanguage API)
+        client = genai.Client(
+            vertexai=True,
+            project=project_id,
+            location="us-central1",
+            credentials=credentials,
+        )
+        response = await client.aio.models.generate_content(
+            model="gemini-2.5-flash-preview-tts",
+            contents=text,
+            config=types.GenerateContentConfig(
+                response_modalities=["AUDIO"],
+                speech_config=types.SpeechConfig(
+                    voice_config=types.VoiceConfig(
+                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                            voice_name=voice_name
+                        )
+                    )
+                ),
+            ),
+        )
+        raw_pcm = response.candidates[0].content.parts[0].inline_data.data
+        wav_bytes = _pcm_to_wav(raw_pcm, sample_rate=24000)
+        logger.info(f"Gemini TTS OK: project={project_id} lang={language_code} voice={voice_name} chars={len(text)} wav_bytes={len(wav_bytes)}")
+        return wav_bytes
     except Exception as e:
         logger.error(f"Gemini TTS error: {e}")
     return None
@@ -326,7 +337,7 @@ async def synthesize(
 async def tts_health():
     """Returns which TTS providers are configured on this server."""
     return {
-        "gemini":      bool(settings.GEMINI_API_KEY),
+        "gemini":      bool(os.getenv("GOOGLE_APPLICATION_CREDENTIALS")),
         "google":      bool(os.getenv("GOOGLE_APPLICATION_CREDENTIALS")),
         "elevenlabs":  bool(settings.ELEVENLABS_API_KEY),
         "openai":      bool(settings.OPENAI_TTS_API_KEY),

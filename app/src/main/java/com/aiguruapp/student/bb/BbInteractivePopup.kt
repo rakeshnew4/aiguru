@@ -76,13 +76,23 @@ object BbInteractivePopup {
         val quizTypes = setOf("quiz_mcq", "quiz_typed", "quiz_voice", "quiz_fill", "quiz_order")
         if (frame.frameType !in quizTypes) { onResult(QuizResult(true)); return }
 
+        // Guard: ensure onResult is called at most once, regardless of which path fires
+        // (skip button, timer expiry, and continue button can all race each other).
+        var resultDelivered = false
+        val safeResult: (QuizResult) -> Unit = { result ->
+            if (!resultDelivered) {
+                resultDelivered = true
+                onResult(result)
+            }
+        }
+
         when (frame.frameType) {
-            "quiz_mcq"             -> showMcq(activity, frame, onResult, onTimerStart)
+            "quiz_mcq"             -> showMcq(activity, frame, safeResult, onTimerStart)
             "quiz_typed",
-            "quiz_voice"           -> showTyped(activity, frame, serverUrl, onResult, onTimerStart)
-            "quiz_fill"            -> showFillBlank(activity, frame, onResult, onTimerStart)
-            "quiz_order"           -> showOrderSteps(activity, frame, onResult, onTimerStart)
-            else                   -> onResult(QuizResult(true))
+            "quiz_voice"           -> showTyped(activity, frame, serverUrl, safeResult, onTimerStart)
+            "quiz_fill"            -> showFillBlank(activity, frame, safeResult, onTimerStart)
+            "quiz_order"           -> showOrderSteps(activity, frame, safeResult, onTimerStart)
+            else                   -> safeResult(QuizResult(true))
         }
     }
 
