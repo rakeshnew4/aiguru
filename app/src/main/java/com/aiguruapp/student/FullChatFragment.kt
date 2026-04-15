@@ -85,10 +85,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     private lateinit var loadingStatusText: TextView
     private lateinit var voiceButton: MaterialButton
     private lateinit var imageButton: MaterialButton
-    private lateinit var saveNotesButton: MaterialButton
-    private lateinit var viewNotesButton: MaterialButton
-    private lateinit var formulaButton: MaterialButton
-    private lateinit var practiceButton: MaterialButton
+    private lateinit var askDoubtButton: MaterialButton
     private lateinit var imagePreviewStrip: LinearLayout
     private lateinit var imagePreviewThumbnail: ImageView
     private lateinit var imagePreviewLabel: TextView
@@ -119,7 +116,6 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
     // ── Auto Explain / Blackboard Mode ────────────────────────────────────────
     private var isAutoExplainActive = true
-    private lateinit var autoExplainButton: MaterialButton
     private var blackboardNudgeSnackbar: Snackbar? = null
 
     // ── Interactive Voice Chat Mode ────────────────────────────────────────────
@@ -575,10 +571,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         loadingStatusText = view.findViewById(R.id.loadingStatusText)
         voiceButton = view.findViewById(R.id.voiceButton)
         imageButton = view.findViewById(R.id.imageButton)
-        saveNotesButton = view.findViewById(R.id.saveNotesButton)
-        viewNotesButton = view.findViewById(R.id.viewNotesButton)
-        formulaButton = view.findViewById(R.id.formulaButton)
-        practiceButton = view.findViewById(R.id.practiceButton)
+        askDoubtButton = view.findViewById(R.id.askDoubtButton)
         imagePreviewStrip = view.findViewById(R.id.imagePreviewStrip)
         imagePreviewThumbnail = view.findViewById(R.id.imagePreviewThumbnail)
         imagePreviewLabel = view.findViewById(R.id.imagePreviewLabel)
@@ -636,32 +629,11 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             if (isVoiceModeActive) stopVoiceMode() else startVoiceMode()
         }
 
-        autoExplainButton = view.findViewById(R.id.autoExplainButton)
-        autoExplainButton.setOnClickListener {
-            val limits = AdminConfigRepository.resolveEffectiveLimits(
-                cachedMetadata.planId, cachedMetadata.planLimits
-            )
-            val check =
-                PlanEnforcer.check(cachedMetadata, limits, PlanEnforcer.FeatureType.BLACKBOARD)
-            if (!check.allowed) { showError(check.upgradeMessage); return@setOnClickListener }
-            isAutoExplainActive = !isAutoExplainActive
-            requireContext().getSharedPreferences("user_prefs", android.content.Context.MODE_PRIVATE)
-                .edit().putBoolean("blackboard_mode_on", isAutoExplainActive).apply()
-            updateAutoExplainButton()
-            Toast.makeText(
-                requireContext(),
-                if (isAutoExplainActive) "Blackboard mode on" else "Blackboard mode off",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-        updateAutoExplainButton()
-
         voiceButton.setOnClickListener {
             if (isListening) voiceManager.stopListening() else checkPermissionAndStartListening()
         }
         imageButton.setOnClickListener { showImageSourceDialog() }
-        saveNotesButton.setOnClickListener { saveLastAIMessageAsNotes() }
-        viewNotesButton.setOnClickListener { viewSavedNotes() }
+        askDoubtButton.setOnClickListener { showAskDoubtDialog() }
 
         imagePreviewThumbnail.setOnLongClickListener {
             val curUri = selectedImageUri ?: pendingDisplayUri
@@ -700,16 +672,6 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             bottomDescribeButton.visibility = View.GONE
         }
 
-        formulaButton.setOnClickListener {
-            metricsTracker.recordEvent(ChapterMetricsTracker.EventType.FORMULA_USED)
-            sendMessage(PromptRepository.getQuickAction("formula", subjectName, chapterName))
-            closeQuickActions()
-        }
-        practiceButton.setOnClickListener {
-            metricsTracker.recordEvent(ChapterMetricsTracker.EventType.PRACTICE_USED)
-            sendMessage(PromptRepository.getQuickAction("practice", subjectName, chapterName))
-            closeQuickActions()
-        }
         bottomDescribeButton.setOnClickListener {
             metricsTracker.recordEvent(ChapterMetricsTracker.EventType.EXPLAIN_USED)
             sendMessage(PromptRepository.getQuickAction("describe_image", subjectName, chapterName))
@@ -723,36 +685,32 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     }
 
     private fun setupQuickActions(view: View) {
-        mapOf(
-            R.id.explainButton to "explain",
-            R.id.notesButton to "notes"
-        ).forEach { (id, key) ->
-            view.findViewById<MaterialButton>(id).setOnClickListener {
-                sendMessage(PromptRepository.getQuickAction(key, subjectName, chapterName))
-                closeQuickActions()
-            }
-        }
+        // Quick actions panel now only contains: Camera, Live, Ask Doubt, Clear
+        // All handled in setupButtons() and clearChatButton listener below
+    }
 
-        view.findViewById<MaterialButton>(R.id.quizButton).setOnClickListener {
-            closeQuickActions()
-            val chapterId =
-                "${subjectName}_${chapterName}".replace(" ", "_").lowercase().take(64)
-            startActivity(
-                Intent(requireContext(), QuizSetupActivity::class.java)
-                    .putExtra("subjectName", subjectName)
-                    .putExtra("chapterId", chapterId)
-                    .putExtra("chapterTitle", chapterName)
-            )
+    private fun showAskDoubtDialog() {
+        closeQuickActions()
+        val input = android.widget.EditText(requireContext()).apply {
+            hint = "What would you like to ask about $chapterName?"
+            setPadding(40, 24, 40, 24)
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            maxLines = 4
         }
-        view.findViewById<MaterialButton>(R.id.flashcardsButton).setOnClickListener {
-            generateFlashcards()
-            closeQuickActions()
-        }
-        view.findViewById<MaterialButton>(R.id.createPageButton).setOnClickListener {
-            saveNextPickedImageToChapter = true
-            closeQuickActions()
-            showImageSourceDialog()
-        }
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("🙋 Ask Doubt")
+            .setMessage("Quick question about $chapterName")
+            .setView(input)
+            .setPositiveButton("Ask") { _, _ ->
+                val q = input.text.toString().trim()
+                if (q.isNotEmpty()) {
+                    sendMessage(q)
+                    messageInput.setText("")
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     // ── Quick Actions Panel ───────────────────────────────────────────────────
@@ -984,14 +942,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     }
 
     private fun updateAutoExplainButton() {
-        autoExplainButton.backgroundTintList = ColorStateList.valueOf(
-            android.graphics.Color.parseColor(if (isAutoExplainActive) "#FFF9C4" else "#F3F4F6")
-        )
-        autoExplainButton.setTextColor(
-            android.graphics.Color.parseColor(if (isAutoExplainActive) "#E65100" else "#757575")
-        )
-        autoExplainButton.contentDescription =
-            if (isAutoExplainActive) "Blackboard mode on" else "Blackboard mode off"
+        // autoExplainButton removed from UI; BB mode stays always-on by default
     }
 
     // ── Image Preview & PDF Page ──────────────────────────────────────────────
@@ -1125,7 +1076,6 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             val uCrop = UCrop.of(sourceUri, Uri.fromFile(destFile))
                 .withOptions(options)
                 .withMaxResultSize(1920, 1920)
-                .withAspectRatio(cropRatioX, cropRatioY)  // pre-positions crop box to ~30% area
             cropLauncher.launch(uCrop.getIntent(requireContext()))
         } catch (e: Exception) {
             android.util.Log.w("FullChatFragment", "UCrop launch failed: ${e.message}")

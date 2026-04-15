@@ -532,7 +532,16 @@ class ChapterActivity : BaseActivity() {
                     pageListAdapter.notifyDataSetChanged()
                     hideDownloadOverlay()
                     Toast.makeText(this@ChapterActivity, "✅ $count pages ready!", Toast.LENGTH_SHORT).show()
-                    switchToChat()
+                    // Auto-open PDF viewer at page 1 immediately after download
+                    startActivity(
+                        Intent(this@ChapterActivity, PageViewerActivity::class.java)
+                            .putExtra("subjectName", subjectName)
+                            .putExtra("chapterName", chapterName)
+                            .putExtra("pdfId", pdfId)
+                            .putExtra("pdfAssetPath", pdfAssetPath)
+                            .putExtra("pageCount", count)
+                            .putExtra("startPage", 0)
+                    )
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {

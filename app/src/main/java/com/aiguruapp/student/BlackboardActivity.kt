@@ -93,7 +93,9 @@ class BlackboardActivity : AppCompatActivity() {
     // ── State ─────────────────────────────────────────────────────────────────
     private lateinit var tts: TextToSpeechManager
     private lateinit var aiTtsEngine: com.aiguruapp.student.tts.BbAiTtsEngine
-    private var useAiTts = false
+    /** 0 = Standard (Android), 1 = Premium (Google Cloud TTS), 2 = Ultra (AI/Gemini) */
+    private var ttsVoiceMode = 0
+    private val useAiTts: Boolean get() = ttsVoiceMode > 0
     private lateinit var aiTtsToggleBtn: TextView
     private var steps            = listOf<BlackboardGenerator.BlackboardStep>()
     private var currentStepIdx   = 0
@@ -173,40 +175,57 @@ class BlackboardActivity : AppCompatActivity() {
         aiTtsEngine = com.aiguruapp.student.tts.BbAiTtsEngine(this, tts)
         aiTtsToggleBtn = findViewById(R.id.aiTtsToggleBtn)
 
-        // Restore AI TTS preference
+        // Restore TTS voice mode preference (0=Standard, 1=Premium, 2=Ultra)
         val prefs = getSharedPreferences("bb_prefs", MODE_PRIVATE)
-        useAiTts = prefs.getBoolean("use_ai_tts", false)
+        ttsVoiceMode = prefs.getInt("tts_voice_mode",
+            if (prefs.getBoolean("use_ai_tts", false)) 1 else 0)  // migrate old pref
         updateAiTtsToggleUi()
 
         aiTtsToggleBtn.setOnClickListener {
-            useAiTts = !useAiTts
-            android.util.Log.d("BB_TTS_TOGGLE", "AI TTS button clicked: useAiTts=$useAiTts")
-            prefs.edit().putBoolean("use_ai_tts", useAiTts).apply()
+            // Cycle: Standard(0) -> Premium(1) -> Ultra(2) -> Standard(0)
+            ttsVoiceMode = (ttsVoiceMode + 1) % 3
+            android.util.Log.d("BB_TTS_TOGGLE", "TTS mode changed: ttsVoiceMode=$ttsVoiceMode")
+            prefs.edit().putInt("tts_voice_mode", ttsVoiceMode).apply()
             updateAiTtsToggleUi()
-            if (useAiTts) {
-                // Immediately check plan permission
-                val limits = AdminConfigRepository.resolveEffectiveLimits(
-                    cachedMetadata.planId, cachedMetadata.planLimits
-                )
-                val check = PlanEnforcer.check(
-                    cachedMetadata, limits, com.aiguruapp.student.config.PlanEnforcer.FeatureType.AI_TTS
-                )
-                if (!check.allowed) {
-                    android.util.Log.w("BB_TTS_TOGGLE", "❌ Plan check failed: ${check.upgradeMessage}")
-                    useAiTts = false
-                    prefs.edit().putBoolean("use_ai_tts", false).apply()
-                    updateAiTtsToggleUi()
-                    android.widget.Toast.makeText(this, check.upgradeMessage, android.widget.Toast.LENGTH_LONG).show()
-                    return@setOnClickListener
+            when (ttsVoiceMode) {
+                0 -> {
+                    aiTtsEngine.stop()
+                    android.widget.Toast.makeText(this, "Standard (Android TTS)", android.widget.Toast.LENGTH_SHORT).show()
                 }
-                // Preload current + next 2 speech texts with new setting
-                android.util.Log.d("BB_TTS_TOGGLE", "✓ AI TTS enabled, preloading...")
-                preloadUpcoming(currentStepIdx, currentFrameIdx, count = 3)
-                android.widget.Toast.makeText(this, "🎙 AI Voice ON — preloading…", android.widget.Toast.LENGTH_SHORT).show()
-            } else {
-                android.util.Log.d("BB_TTS_TOGGLE", "✗ AI TTS disabled")
-                aiTtsEngine.stop()
-                android.widget.Toast.makeText(this, "🔊 Android TTS", android.widget.Toast.LENGTH_SHORT).show()
+                1 -> {
+                    val limits = AdminConfigRepository.resolveEffectiveLimits(
+                        cachedMetadata.planId, cachedMetadata.planLimits
+                    )
+                    val check = PlanEnforcer.check(
+                        cachedMetadata, limits, com.aiguruapp.student.config.PlanEnforcer.FeatureType.AI_TTS
+                    )
+                    if (!check.allowed) {
+                        ttsVoiceMode = 0
+                        prefs.edit().putInt("tts_voice_mode", 0).apply()
+                        updateAiTtsToggleUi()
+                        android.widget.Toast.makeText(this, check.upgradeMessage, android.widget.Toast.LENGTH_LONG).show()
+                    } else {
+                        preloadUpcoming(currentStepIdx, currentFrameIdx, count = 3)
+                        android.widget.Toast.makeText(this, "Premium (Google TTS) — preloading…", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+                2 -> {
+                    val limits = AdminConfigRepository.resolveEffectiveLimits(
+                        cachedMetadata.planId, cachedMetadata.planLimits
+                    )
+                    val check = PlanEnforcer.check(
+                        cachedMetadata, limits, com.aiguruapp.student.config.PlanEnforcer.FeatureType.AI_TTS
+                    )
+                    if (!check.allowed) {
+                        ttsVoiceMode = 0
+                        prefs.edit().putInt("tts_voice_mode", 0).apply()
+                        updateAiTtsToggleUi()
+                        android.widget.Toast.makeText(this, check.upgradeMessage, android.widget.Toast.LENGTH_LONG).show()
+                    } else {
+                        preloadUpcoming(currentStepIdx, currentFrameIdx, count = 3)
+                        android.widget.Toast.makeText(this, "Ultra AI Voice — preloading…", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
         }
 
@@ -283,14 +302,22 @@ class BlackboardActivity : AppCompatActivity() {
     }
 
     private fun updateAiTtsToggleUi() {
-        if (useAiTts) {
-            aiTtsToggleBtn.text  = "🎙 AI"
-            aiTtsToggleBtn.setTextColor(android.graphics.Color.parseColor("#A0FFD0"))
-            aiTtsToggleBtn.setBackgroundColor(android.graphics.Color.parseColor("#224433"))
-        } else {
-            aiTtsToggleBtn.text  = "🔊 TTS"
-            aiTtsToggleBtn.setTextColor(android.graphics.Color.parseColor("#AABBCC"))
-            aiTtsToggleBtn.setBackgroundColor(android.graphics.Color.parseColor("#333555"))
+        when (ttsVoiceMode) {
+            0 -> {
+                aiTtsToggleBtn.text = "Standard"
+                aiTtsToggleBtn.setTextColor(android.graphics.Color.parseColor("#AABBCC"))
+                aiTtsToggleBtn.setBackgroundColor(android.graphics.Color.parseColor("#333555"))
+            }
+            1 -> {
+                aiTtsToggleBtn.text = "Premium"
+                aiTtsToggleBtn.setTextColor(android.graphics.Color.parseColor("#A0D4FF"))
+                aiTtsToggleBtn.setBackgroundColor(android.graphics.Color.parseColor("#1A3355"))
+            }
+            2 -> {
+                aiTtsToggleBtn.text = "Ultra"
+                aiTtsToggleBtn.setTextColor(android.graphics.Color.parseColor("#A0FFD0"))
+                aiTtsToggleBtn.setBackgroundColor(android.graphics.Color.parseColor("#224433"))
+            }
         }
     }
 
@@ -852,11 +879,13 @@ class BlackboardActivity : AppCompatActivity() {
 
         // Determine effective TTS engine for this frame:
         //   - First frame of the whole lesson → android (zero-delay guaranteed start)
-        //   - useAiTts master toggle OFF       → android (user preference)
-        //   - otherwise                        → use the per-frame engine assigned by the LLM
+        //   - ttsVoiceMode == 0 (Standard)    → android (user preference)
+        //   - ttsVoiceMode == 1 (Premium)      → google (Google Cloud TTS)
+        //   - ttsVoiceMode == 2 (Ultra)        → smartAssignTts (gemini/google per frame type)
         val effectiveEngine: String = when {
             stepIdx == 0 && frameIdx == 0 -> "android"
-            !useAiTts                     -> "android"
+            ttsVoiceMode == 0             -> "android"
+            ttsVoiceMode == 1             -> "google"
             else -> frame.ttsEngine.ifBlank {
                 BlackboardGenerator.smartAssignTts(frame.frameType).first
             }

@@ -223,7 +223,7 @@
                 android:background="#FFFFFF"
                 android:paddingStart="12dp"
                 android:paddingEnd="12dp"
-                android:paddingTop="12dp"
+                android:paddingTop="10dp"
                 android:paddingBottom="8dp"
                 android:visibility="gone">
 
@@ -232,167 +232,9 @@
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:background="@color/colorDivider"
-                    android:layout_marginBottom="10dp" />
+                    android:layout_marginBottom="8dp" />
 
-                <!-- Section label -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="AI ACTIONS"
-                    android:textSize="10sp"
-                    android:textColor="@color/colorTextHint"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.1"
-                    android:layout_marginBottom="6dp" />
-
-                <!-- Row 1: Explain, Quiz, Formulas, Practice -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="6dp">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/explainButton"
-                        android:layout_width="0dp"
-                        android:layout_height="36dp"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="5dp"
-                        android:minHeight="0dp"
-                        android:paddingStart="4dp"
-                        android:paddingEnd="4dp"
-                        android:text="💡 Explain"
-                        android:textColor="@color/colorPrimary"
-                        android:textSize="11sp"
-                        app:backgroundTint="@color/colorPrimaryLight"
-                        app:cornerRadius="18dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/quizButton"
-                        android:layout_width="0dp"
-                        android:layout_height="36dp"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="5dp"
-                        android:minHeight="0dp"
-                        android:paddingStart="4dp"
-                        android:paddingEnd="4dp"
-                        android:text="🎯 Quiz"
-                        android:textColor="@color/colorSuccess"
-                        android:textSize="11sp"
-                        app:backgroundTint="@color/colorSuccessLight"
-                        app:cornerRadius="18dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/formulaButton"
-                        android:layout_width="0dp"
-                        android:layout_height="36dp"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="5dp"
-                        android:minHeight="0dp"
-                        android:paddingStart="4dp"
-                        android:paddingEnd="4dp"
-                        android:text="∑ Formula"
-                        android:textColor="@color/colorError"
-                        android:textSize="11sp"
-                        app:backgroundTint="@color/colorErrorLight"
-                        app:cornerRadius="18dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/practiceButton"
-                        android:layout_width="0dp"
-                        android:layout_height="36dp"
-                        android:layout_weight="1"
-                        android:minHeight="0dp"
-                        android:paddingStart="4dp"
-                        android:paddingEnd="4dp"
-                        android:text="✏️ Practice"
-                        android:textColor="@color/colorPrimary"
-                        android:textSize="11sp"
-                        app:backgroundTint="@color/colorPrimaryLight"
-                        app:cornerRadius="18dp" />
-
-                </LinearLayout>
-
-                <!-- Row 2: Flashcards, Notes, Save Notes, View Notes -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="10dp">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/flashcardsButton"
-                        android:layout_width="0dp"
-                        android:layout_height="36dp"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="5dp"
-                        android:minHeight="0dp"
-                        android:paddingStart="4dp"
-                        android:paddingEnd="4dp"
-                        android:text="🃏 Cards"
-                        android:textColor="@color/colorError"
-                        android:textSize="11sp"
-                        app:backgroundTint="@color/colorErrorLight"
-                        app:cornerRadius="18dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/notesButton"
-                        android:layout_width="0dp"
-                        android:layout_height="36dp"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="5dp"
-                        android:minHeight="0dp"
-                        android:paddingStart="4dp"
-                        android:paddingEnd="4dp"
-                        android:text="📝 Notes"
-                        android:textColor="@color/colorSuccess"
-                        android:textSize="11sp"
-                        app:backgroundTint="@color/colorSuccessLight"
-                        app:cornerRadius="18dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/saveNotesButton"
-                        android:layout_width="0dp"
-                        android:layout_height="36dp"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="5dp"
-                        android:minHeight="0dp"
-                        android:paddingStart="4dp"
-                        android:paddingEnd="4dp"
-                        android:text="💾 Save"
-                        android:textColor="@color/colorPrimary"
-                        android:textSize="11sp"
-                        app:backgroundTint="@color/colorPrimaryLight"
-                        app:cornerRadius="18dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/viewNotesButton"
-                        android:layout_width="0dp"
-                        android:layout_height="36dp"
-                        android:layout_weight="1"
-                        android:minHeight="0dp"
-                        android:paddingStart="4dp"
-                        android:paddingEnd="4dp"
-                        android:text="� My Notes"
-                        android:textColor="@color/colorPrimary"
-                        android:textSize="11sp"
-                        app:backgroundTint="@color/colorPrimaryLight"
-                        app:cornerRadius="18dp" />
-
-                </LinearLayout>
-
-                <!-- Section label 2 -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="TOOLS"
-                    android:textSize="10sp"
-                    android:textColor="@color/colorTextHint"
-                    android:textStyle="bold"
-                    android:letterSpacing="0.1"
-                    android:layout_marginBottom="6dp" />
-
-                <!-- Row 3: Tool icon buttons -->
+                <!-- Row: Camera, Live, Ask Doubt, Clear -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -400,7 +242,7 @@
                     android:gravity="center_vertical"
                     android:layout_marginBottom="4dp">
 
-                    <!-- Image picker -->
+                    <!-- Camera / Image picker -->
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/imageButton"
                         android:layout_width="0dp"
@@ -408,7 +250,7 @@
                         android:layout_weight="1"
                         android:layout_marginEnd="5dp"
                         android:padding="0dp"
-                        android:text="📷 Image"
+                        android:text="📷 Camera"
                         android:textSize="11sp"
                         android:textColor="@color/colorTextSecondary"
                         android:minWidth="0dp"
@@ -416,24 +258,6 @@
                         app:backgroundTint="@color/colorBackground"
                         app:strokeColor="@color/colorDivider"
                         app:strokeWidth="1dp"
-                        app:cornerRadius="18dp" />
-
-                    <!-- Blackboard / Auto-Explain -->
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/autoExplainButton"
-                        android:layout_width="0dp"
-                        android:layout_height="40dp"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="5dp"
-                        android:padding="0dp"
-                        android:text="📋 Board"
-                        android:textStyle="bold"
-                        android:textSize="11sp"
-                        android:textColor="@color/colorPrimary"
-                        android:minWidth="0dp"
-                        android:minHeight="0dp"
-                        app:backgroundTint="@color/colorPrimaryLight"
-                        app:strokeWidth="0dp"
                         app:cornerRadius="18dp" />
 
                     <!-- Live voice chat -->
@@ -450,6 +274,23 @@
                         android:minWidth="0dp"
                         android:minHeight="0dp"
                         app:backgroundTint="@color/colorErrorLight"
+                        app:strokeWidth="0dp"
+                        app:cornerRadius="18dp" />
+
+                    <!-- Ask Doubt / Quick chat with Tutor -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/askDoubtButton"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="5dp"
+                        android:padding="0dp"
+                        android:text="🙋 Doubt"
+                        android:textSize="11sp"
+                        android:textColor="@color/colorSuccess"
+                        android:minWidth="0dp"
+                        android:minHeight="0dp"
+                        app:backgroundTint="@color/colorSuccessLight"
                         app:strokeWidth="0dp"
                         app:cornerRadius="18dp" />
 
@@ -488,22 +329,6 @@
                     app:cornerRadius="18dp"
                     android:layout_marginTop="6dp"
                     android:visibility="gone" />
-
-                <!-- 📷 Create chat page — save photo as a named page and attach to chat -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/createPageButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="36dp"
-                    android:minHeight="0dp"
-                    android:text="📷 Create Chat Page"
-                    android:textSize="12sp"
-                    android:textColor="@color/colorPrimary"
-                    android:paddingStart="10dp"
-                    android:paddingEnd="10dp"
-                    app:backgroundTint="@color/colorPrimaryLight"
-                    app:strokeWidth="0dp"
-                    app:cornerRadius="18dp"
-                    android:layout_marginTop="6dp" />
 
                 <!-- Hidden utility elements (code-only, not visible) -->
                 <TextView

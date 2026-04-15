@@ -2,12 +2,16 @@ package com.aiguruapp.student
 
 import android.app.AlertDialog
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.aiguruapp.student.adapters.ChapterAdapter
@@ -17,6 +21,9 @@ import com.aiguruapp.student.utils.SessionManager
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
@@ -28,6 +35,17 @@ class SubjectActivity : BaseActivity() {
     private lateinit var subjectName: String
     private lateinit var subjectId: String    // Firestore subject_id (e.g. "math_9th")
     private lateinit var userId: String
+
+    // Pending chapter name for PDF picker
+    private var pendingPdfChapterName: String? = null
+
+    private val pickPdfLauncher =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+            val chapterName = pendingPdfChapterName ?: return@registerForActivityResult
+            pendingPdfChapterName = null
+            if (uri == null) return@registerForActivityResult
+            importPdfChapter(chapterName, uri)
+        }
 
     // ncertUrlMap: chapter order (1-based) → direct PDF URL from Firestore
     private val ncertUrlMap = mutableMapOf<Int, String>()
@@ -207,6 +225,19 @@ class SubjectActivity : BaseActivity() {
     // ─── Add chapter ──────────────────────────────────────────────────────────
 
     private fun showManualChapterDialog() {
+        val options = arrayOf("📖 Text/Image Chapter", "📄 Upload PDF Chapter")
+        AlertDialog.Builder(this)
+            .setTitle("Add Chapter")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> showTextChapterNameDialog()
+                    1 -> showPdfChapterNameDialog()
+                }
+            }
+            .show()
+    }
+
+    private fun showTextChapterNameDialog() {
         val input = EditText(this).apply {
             hint = "e.g. Chapter 1 - Introduction"
             setPadding(40, 24, 40, 24)
@@ -220,6 +251,81 @@ class SubjectActivity : BaseActivity() {
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    private fun showPdfChapterNameDialog() {
+        val input = EditText(this).apply {
+            hint = "e.g. Chapter 2 - Motion"
+            setPadding(40, 24, 40, 24)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("📄 PDF Chapter Name")
+            .setMessage("Enter a name, then pick your PDF file.")
+            .setView(input)
+            .setPositiveButton("Pick PDF") { _, _ ->
+                val name = input.text.toString().trim()
+                if (name.isNotEmpty()) {
+                    pendingPdfChapterName = name
+                    pickPdfLauncher.launch("application/pdf")
+                } else {
+                    Toast.makeText(this, "Chapter name cannot be empty", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    /**
+     * Copies the chosen PDF into the app's private cache, saves chapter metadata,
+     * then opens ChapterActivity so the user can immediately read and ask questions.
+     */
+    private fun importPdfChapter(chapterName: String, sourceUri: Uri) {
+        val progressDialog = AlertDialog.Builder(this)
+            .setTitle("Importing PDF…")
+            .setMessage("Copying your PDF, please wait.")
+            .setCancelable(false)
+            .create()
+        progressDialog.show()
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val pdfId = "custom_${subjectName}_${chapterName}"
+                    .replace(" ", "_").replace("/", "_").take(60)
+                val destDir = java.io.File(cacheDir, "pdf_cache").also { it.mkdirs() }
+                val destFile = java.io.File(destDir, "$pdfId.pdf")
+                contentResolver.openInputStream(sourceUri)?.use { input ->
+                    destFile.outputStream().use { output -> input.copyTo(output) }
+                } ?: throw Exception("Cannot read selected file")
+
+                withContext(Dispatchers.Main) {
+                    progressDialog.dismiss()
+                    // Persist chapter
+                    val chapters = loadChaptersLocally()
+                    if (!chapters.contains(chapterName)) chapters.add(chapterName)
+                    saveChaptersLocally(chapters)
+                    // Mark as PDF with empty assetPath (cached file is used directly)
+                    saveChapterMeta(chapterName, isPdf = true, pdfAssetPath = "", pdfId = pdfId)
+                    FirestoreManager.saveChapter(userId, subjectName, chapterName, isPdf = true)
+                    chaptersListData.clear()
+                    chaptersListData.addAll(chapters.mapIndexed { idx, n ->
+                        ChapterItem(name = n, ncertPdfUrl = ncertUrlMap[idx + 1])
+                    })
+                    chapterAdapter.notifyDataSetChanged()
+                    Toast.makeText(this@SubjectActivity, "✅ PDF added: $chapterName", Toast.LENGTH_SHORT).show()
+                    // Open chapter immediately
+                    startActivity(
+                        Intent(this@SubjectActivity, ChapterActivity::class.java)
+                            .putExtra("subjectName", subjectName)
+                            .putExtra("chapterName", chapterName)
+                    )
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    progressDialog.dismiss()
+                    Toast.makeText(this@SubjectActivity, "Import failed: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
     }
 
     // ─── Chapter persistence ───────────────────────────────────────────────────
