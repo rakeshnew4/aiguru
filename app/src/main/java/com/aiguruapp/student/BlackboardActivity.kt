@@ -241,6 +241,36 @@ class BlackboardActivity : AppCompatActivity() {
             // Wire the server URL for AI TTS as soon as config is loaded
             aiTtsEngine.selfHostedUrl = AdminConfigRepository.ttsSelfHostedUrl()
         }
+        
+        // GUEST QUOTA CHECK — if user is in guest mode
+        if (com.aiguruapp.student.utils.SessionManager.isGuestMode(this)) {
+            val deviceId = com.aiguruapp.student.utils.SessionManager.getDeviceId(this)
+            com.aiguruapp.student.config.PlanEnforcer.checkGuestQuota(deviceId, isBlackboard = true) { checkResult ->
+                if (!checkResult.allowed) {
+                    loadingGroup.visibility = android.view.View.GONE
+                    loadingText.text = checkResult.upgradeMessage
+                    loadingText.visibility = android.view.View.VISIBLE
+                    android.widget.Toast.makeText(this, checkResult.upgradeMessage, android.widget.Toast.LENGTH_LONG).show()
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        startActivity(
+                            android.content.Intent(this, com.aiguruapp.student.LoginActivity::class.java)
+                                .putExtra("show_login_hint", true)
+                                .setFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                        )
+                    }, 2000)
+                    return@checkGuestQuota
+                }
+                // Guest BB quota OK, proceed with generation
+                generateStepsGuest(
+                    message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
+                    messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
+                    deviceId       = deviceId,
+                    conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID)
+                )
+            }
+            return
+        }
+        
         FirestoreManager.getUserMetadata(userId ?: "", onSuccess = { meta ->
             if (meta != null) {
                 cachedMetadata = meta
@@ -402,6 +432,51 @@ class BlackboardActivity : AppCompatActivity() {
                         )
                         lifecycleScope.launch(Dispatchers.Main) { updateBbQuotaChip(userId) }
                     }
+                    lifecycleScope.launch(Dispatchers.Main) {
+                        steps = generated
+                        computedFontSp = computeFontSize(steps)
+                        loadingGroup.visibility = View.GONE
+                        contentGroup.visibility = View.VISIBLE
+                        buildDots()
+                        setupBoard()
+                        // Preload first 3 frames' AI audio in background
+                        preloadUpcoming(0, 0, count = 3)
+                        showFrame(0, 0)
+                    }
+                },
+                onError = { err ->
+                    lifecycleScope.launch(Dispatchers.Main) {
+                        loadingText.text = "Couldn't build lesson. Please try again."
+                        android.util.Log.e("Blackboard", "Generation error: $err")
+                    }
+                }
+            )
+        }
+    }
+
+    /**
+     * Guest variant of generateSteps — records usage in /devices collection.
+     */
+    private fun generateStepsGuest(
+        message: String,
+        messageId: String? = null,
+        deviceId: String,
+        conversationId: String? = null
+    ) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            BlackboardGenerator.generate(
+                messageContent = message,
+                messageId      = messageId,
+                userId         = null,  // No user ID for guests
+                conversationId = conversationId,
+                preferredLanguageTag = preferredLanguageTag,
+                onStatus = { statusMsg, _ ->
+                    runOnUiThread { loadingText.text = statusMsg }
+                },
+                onSuccess = { generated ->
+                    // Record guest BB session usage
+                    PlanEnforcer.recordGuestUsage(deviceId, isBlackboard = true)
+                    
                     lifecycleScope.launch(Dispatchers.Main) {
                         steps = generated
                         computedFontSp = computeFontSize(steps)

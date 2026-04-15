@@ -656,5 +656,85 @@ object FirestoreManager {
             }
     }
 
+    // ── Guest Device Management ───────────────────────────────────────────────
+
+    /**
+     * Initialize a guest device in /devices collection with initial quota.
+     * Called when user taps "Continue as Guest".
+     */
+    fun initializeGuestDevice(
+        deviceId: String,
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        val deviceData = mapOf(
+            "device_id" to deviceId,
+            "created_at" to System.currentTimeMillis(),
+            "guest_chat_used" to 0,
+            "guest_bb_used" to 0,
+            "guest_signup_date" to System.currentTimeMillis(),
+            "linked_user_id" to null,
+            "linked_at" to null
+        )
+        db.collection("devices").document(deviceId)
+            .set(deviceData, SetOptions.merge())
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * Fetch guest device quota usage.
+     */
+    fun getGuestDeviceQuota(
+        deviceId: String,
+        onSuccess: (guestChatUsed: Int, guestBbUsed: Int) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        db.collection("devices").document(deviceId).get()
+            .addOnSuccessListener { snap ->
+                val chatUsed = snap.getLong("guest_chat_used")?.toInt() ?: 0
+                val bbUsed = snap.getLong("guest_bb_used")?.toInt() ?: 0
+                onSuccess(chatUsed, bbUsed)
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * Increment guest quota after successful question/blackboard session.
+     */
+    fun recordGuestUsage(
+        deviceId: String,
+        isBlackboard: Boolean,
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        val fieldToIncrement = if (isBlackboard) "guest_bb_used" else "guest_chat_used"
+        db.collection("devices").document(deviceId)
+            .update(fieldToIncrement, FieldValue.increment(1))
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * When user logs in from guest mode, link the device to their account.
+     */
+    fun linkDeviceToUser(
+        deviceId: String,
+        userId: String,
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        db.collection("devices").document(deviceId)
+            .update(
+                mapOf(
+                    "linked_user_id" to userId,
+                    "linked_at" to System.currentTimeMillis()
+                )
+            )
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { onFailure(it) }
+    }
+
 }
+
 

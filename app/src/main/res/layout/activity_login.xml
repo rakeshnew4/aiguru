@@ -64,11 +64,24 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Sign in to continue"
+                    android:text="Start learning"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:textColor="@color/colorTextPrimary"
                     android:layout_marginBottom="20dp" />
+
+                <!-- Continue as Guest -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/guestButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:text="🚀 Continue as Guest"
+                    android:textSize="15sp"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold"
+                    app:backgroundTint="#FF6B35"
+                    app:cornerRadius="14dp"
+                    android:layout_marginBottom="16dp" />
 
                 <!-- Google Sign In -->
                 <com.google.android.material.button.MaterialButton
@@ -82,7 +95,8 @@
                     app:backgroundTint="@color/colorPrimary"
                     app:cornerRadius="14dp"
                     app:icon="@android:drawable/ic_dialog_info"
-                    app:iconGravity="textStart" />
+                    app:iconGravity="textStart"
+                    android:layout_marginBottom="12dp" />
 
                 <!-- Email Sign In -->
                 <com.google.android.material.button.MaterialButton
@@ -92,9 +106,50 @@
                     android:text="Continue with Email"
                     android:textSize="15sp"
                     android:textColor="@color/colorPrimary"
-                    android:layout_marginTop="12dp"
                     app:backgroundTint="@color/colorPrimaryLight"
                     app:cornerRadius="14dp" />
+
+                <!-- Divider with text -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="20dp"
+                    android:layout_marginBottom="16dp">
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1"
+                        android:background="@color/colorDivider" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Guest Benefits"
+                        android:textSize="12sp"
+                        android:textColor="@color/colorTextSecondary"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp" />
+
+                    <View
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1"
+                        android:background="@color/colorDivider" />
+
+                </LinearLayout>
+
+                <!-- Guest benefits info -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="✓ 10 AI chat questions\n✓ 3 visual blackboard lessons\n✓ No registration needed\n✓ Login anytime for daily free quota"
+                    android:textSize="12sp"
+                    android:textColor="@color/colorTextSecondary"
+                    android:lineSpacingMultiplier="1.5"
+                    android:layout_marginBottom="16dp" />
 
                 <com.aiguruapp.student.widget.BoxSpinnerView
                     android:id="@+id/loginProgressBar"

@@ -14,6 +14,8 @@ object SessionManager {
 
     private const val PREF_NAME = "aiguru_session"
     private const val KEY_LOGGED_IN = "is_logged_in"
+    private const val KEY_IS_GUEST = "is_guest"
+    private const val KEY_DEVICE_ID = "device_id"
     private const val KEY_SCHOOL_ID = "school_id"
     private const val KEY_SCHOOL_NAME = "school_name"
     private const val KEY_STUDENT_ID = "student_id"
@@ -26,12 +28,17 @@ object SessionManager {
     private const val KEY_SIGNUP_COMPLETE = "signup_complete"
     private const val KEY_FIREBASE_UID = "firebase_uid"
     private const val KEY_PREF_LANG = "pref_lang"
+    private const val KEY_GUEST_QUOTA_USED = "guest_quota_used_ms"
 
     private fun prefs(context: Context): SharedPreferences =
         context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
 
     // ── Login / Logout ────────────────────────────────────────────────────────
 
+    /**
+     * Login as authenticated user (Google, Email, or School).
+     * Clears guest mode flag.
+     */
     fun login(
         context: Context,
         schoolId: String,
@@ -41,6 +48,7 @@ object SessionManager {
     ) {
         prefs(context).edit().apply {
             putBoolean(KEY_LOGGED_IN, true)
+            putBoolean(KEY_IS_GUEST, false)  // No longer a guest
             putString(KEY_SCHOOL_ID, schoolId)
             putString(KEY_SCHOOL_NAME, schoolName)
             putString(KEY_STUDENT_ID, studentId)
@@ -53,6 +61,24 @@ object SessionManager {
         }
     }
 
+    /**
+     * Login as guest using device ID.
+     * Guest gets initial quota (10 chat + 3 BB) per device.
+     */
+    fun loginAsGuest(context: Context, deviceId: String) {
+        prefs(context).edit().apply {
+            putBoolean(KEY_LOGGED_IN, true)
+            putBoolean(KEY_IS_GUEST, true)
+            putString(KEY_DEVICE_ID, deviceId)
+            putString(KEY_SCHOOL_ID, "guest")
+            putString(KEY_SCHOOL_NAME, "Guest")
+            putString(KEY_STUDENT_ID, deviceId)
+            putString(KEY_STUDENT_NAME, "Guest User")
+            putLong(KEY_LOGIN_TIME, System.currentTimeMillis())
+            apply()
+        }
+    }
+
     fun logout(context: Context) {
         prefs(context).edit().clear().apply()
     }
@@ -61,6 +87,13 @@ object SessionManager {
 
     fun isLoggedIn(context: Context): Boolean =
         prefs(context).getBoolean(KEY_LOGGED_IN, false)
+
+    /**
+     * Returns true if the user is logged in as a guest (device-based).
+     * False for authenticated users or not logged in at all.
+     */
+    fun isGuestMode(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_IS_GUEST, false)
 
     fun hasSubscription(context: Context): Boolean =
         prefs(context).getString(KEY_PLAN_ID, "").isNullOrBlank().not()
@@ -201,4 +234,36 @@ object SessionManager {
     /** Returns the BCP-47 lang code (e.g. "hi-IN"), or empty string if not set. */
     fun getPreferredLang(context: Context): String =
         prefs(context).getString(KEY_PREF_LANG, "") ?: ""
+
+    // ── Device ID Management ──────────────────────────────────────────────────
+
+    /**
+     * Save the unique device ID (generated once, persists forever).
+     * Use for guest quota tracking and device linking.
+     */
+    fun saveDeviceId(context: Context, deviceId: String) {
+        prefs(context).edit().putString(KEY_DEVICE_ID, deviceId).apply()
+    }
+
+    /**
+     * Get the unique device ID. If not yet saved, generates and saves a new one.
+     */
+    fun getDeviceId(context: Context): String {
+        var deviceId = prefs(context).getString(KEY_DEVICE_ID, "") ?: ""
+        if (deviceId.isBlank()) {
+            // First time — generate using Android ID or UUID
+            deviceId = try {
+                val androidId = android.provider.Settings.Secure.getString(
+                    context.contentResolver,
+                    android.provider.Settings.Secure.ANDROID_ID
+                )
+                androidId.takeIf { it.isNotBlank() }
+                    ?: java.util.UUID.randomUUID().toString()
+            } catch (e: Exception) {
+                java.util.UUID.randomUUID().toString()
+            }
+            saveDeviceId(context, deviceId)
+        }
+        return deviceId
+    }
 }

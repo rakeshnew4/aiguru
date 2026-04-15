@@ -145,6 +145,12 @@ object AdminConfigRepository {
     fun ttsSelfHostedUrl(): String =
         cachedConfig.ttsServerUrl.ifBlank { cachedConfig.serverUrl }
 
+    /**
+     * Returns the shared guest Firebase UID from admin config.
+     * Guests sign in with this UID so the server can apply the guest plan limits.
+     */
+    fun guestId(): String = cachedConfig.guestId.ifBlank { "BujsVJE2cMX6wU7Jg3acMUlRChm1" }
+
     // ── Private ───────────────────────────────────────────────────────────────
 
     private fun fetchPlans() {

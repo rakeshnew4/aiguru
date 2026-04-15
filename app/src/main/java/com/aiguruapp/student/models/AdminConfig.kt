@@ -88,5 +88,13 @@ data class AdminConfig(
 
     /** Used when ttsProvider == "self_hosted". Defaults to ttsServerUrl if blank. */
     @field:PropertyName("tts_server_url")
-    val ttsServerUrl: String = ""
+    val ttsServerUrl: String = "",
+
+    /**
+     * Firebase UID used for all guest (unauthenticated) users.
+     * Loaded from admin_config/global.guest_id.
+     * Defaults to the shared guest account UID.
+     */
+    @field:PropertyName("guest_id")
+    val guestId: String = "BujsVJE2cMX6wU7Jg3acMUlRChm1"
 )

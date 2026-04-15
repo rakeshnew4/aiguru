@@ -1245,10 +1245,36 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     ) {
         val act = requireActivity()
         val ctx = requireContext()
-        var serverPageTranscript: String? = null
-        var serverSuggestBlackboard = false
 
-        // Check daily question quota using the FRESHLY REFRESHED metadata
+        // GUEST QUOTA CHECK — if user is in guest mode
+        if (com.aiguruapp.student.utils.SessionManager.isGuestMode(ctx)) {
+            val deviceId = com.aiguruapp.student.utils.SessionManager.getDeviceId(ctx)
+            com.aiguruapp.student.config.PlanEnforcer.checkGuestQuota(deviceId, isBlackboard = false) { checkResult ->
+                if (!checkResult.allowed) {
+                    selectedImageUri = imageUri
+                    pdfPageBase64 = capturedPdfBase64
+                    pendingDisplayUri = capturedDisplayUri
+                    android.util.Log.e("FullChatFragment", "GUEST QUOTA BLOCKED: ${checkResult.reason}")
+                    showError(checkResult.upgradeMessage)
+                    Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        startActivity(
+                            Intent(ctx, com.aiguruapp.student.LoginActivity::class.java)
+                                .putExtra("show_login_hint", true)
+                                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                        )
+                    }, 1500)
+                    return@checkGuestQuota
+                }
+                // Guest quota OK, proceed with sending
+                proceedWithMessageSendAfterQuotaCheck(
+                    userText, autoSaveNotes, imageUri, capturedPdfBase64, capturedImageBase64,
+                    capturedDisplayUri, hadVisualAttachment, deviceId, true
+                )
+            }
+            return
+        }
+
+        // REGULAR QUOTA CHECK — for logged-in users
         val questionCheck = PlanEnforcer.checkQuestionsQuota(cachedMetadata, effectiveLimits, isBlackboard = false)
         if (!questionCheck.allowed) {
             selectedImageUri = imageUri
@@ -1269,6 +1295,33 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             }
             return
         }
+
+        // Proceed with sending
+        proceedWithMessageSendAfterQuotaCheck(
+            userText, autoSaveNotes, imageUri, capturedPdfBase64, capturedImageBase64,
+            capturedDisplayUri, hadVisualAttachment, userId, false
+        )
+    }
+
+    /**
+     * Shared logic for proceeding after all quota checks pass.
+     */
+    private fun proceedWithMessageSendAfterQuotaCheck(
+        userText: String,
+        autoSaveNotes: Boolean,
+        imageUri: android.net.Uri?,
+        capturedPdfBase64: String?,
+        capturedImageBase64: String?,
+        capturedDisplayUri: android.net.Uri?,
+        hadVisualAttachment: Boolean,
+        userIdOrDeviceId: String,
+        isGuest: Boolean
+    ) {
+        val act = requireActivity()
+        val ctx = requireContext()
+
+        var serverPageTranscript: String? = null
+        var serverSuggestBlackboard = false
 
         imagePreviewStrip.visibility = View.GONE
         bottomDescribeButton.visibility = View.GONE
@@ -1386,6 +1439,12 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                         val isNewQuotaDay = cachedMetadata.questionsUpdatedAt > 0L &&
                             PlanEnforcer.isNewQuotaDay(cachedMetadata.questionsUpdatedAt)
                         PlanEnforcer.recordQuestionAsked(userId, isBlackboard = false, previousUpdatedAt = cachedMetadata.questionsUpdatedAt)
+                        
+                        // GUEST: Record usage in /devices collection
+                        if (isGuest) {
+                            PlanEnforcer.recordGuestUsage(userIdOrDeviceId, isBlackboard = false)
+                        }
+                        
                         cachedMetadata = cachedMetadata.copy(
                             chatQuestionsToday = if (isNewQuotaDay) 1 else cachedMetadata.chatQuestionsToday + 1,
                             questionsUpdatedAt = System.currentTimeMillis()

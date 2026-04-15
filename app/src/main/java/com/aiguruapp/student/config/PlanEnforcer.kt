@@ -431,10 +431,74 @@ object PlanEnforcer {
             .addOnFailureListener { Log.e(TAG, "recordQuestionAsked failed uid=$userId: ${it.message}") }
     }
 
+    // ── Guest Quota Checking ───────────────────────────────────────────────────
+
+    /**
+     * Check whether a guest device has quota remaining.
+     * Guests get 10 chat questions + 3 blackboard sessions per device.
+     */
+    fun checkGuestQuota(
+        deviceId: String,
+        isBlackboard: Boolean,
+        callback: (CheckResult) -> Unit
+    ) {
+        db.collection("devices").document(deviceId).get()
+            .addOnSuccessListener { snap ->
+                if (!snap.exists()) {
+                    // Device doesn't exist yet — allow
+                    callback(CheckResult(allowed = true))
+                    return@addOnSuccessListener
+                }
+                val chatUsed = snap.getLong("guest_chat_used")?.toInt() ?: 0
+                val bbUsed = snap.getLong("guest_bb_used")?.toInt() ?: 0
+
+                if (isBlackboard) {
+                    val limit = 3
+                    if (bbUsed >= limit) {
+                        callback(CheckResult(
+                            allowed = false,
+                            reason = "Guest blackboard quota exhausted ($bbUsed / $limit)",
+                            upgradeMessage = "You've used all 3 blackboard sessions 🎓\nLogin or upgrade for more!",
+                            limitType = LimitType.BB_SESSIONS
+                        ))
+                    } else {
+                        callback(CheckResult(allowed = true))
+                    }
+                } else {
+                    val limit = 10
+                    if (chatUsed >= limit) {
+                        callback(CheckResult(
+                            allowed = false,
+                            reason = "Guest chat quota exhausted ($chatUsed / $limit)",
+                            upgradeMessage = "You've used all 10 chat questions 💬\nLogin to get daily free questions!",
+                            limitType = LimitType.CHAT_QUESTIONS
+                        ))
+                    } else {
+                        callback(CheckResult(allowed = true))
+                    }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "checkGuestQuota failed: ${e.message}")
+                // On failure, allow to not block user experience
+                callback(CheckResult(allowed = true))
+            }
+    }
+
+    /**
+     * Record a guest's question or blackboard session in Firestore.
+     * Call after successful AI response.
+     */
+    fun recordGuestUsage(deviceId: String, isBlackboard: Boolean) {
+        val fieldToIncrement = if (isBlackboard) "guest_bb_used" else "guest_chat_used"
+        db.collection("devices").document(deviceId)
+            .update(fieldToIncrement, FieldValue.increment(1))
+            .addOnFailureListener { Log.e(TAG, "recordGuestUsage failed: ${it.message}") }
+    }
+
     /**
      * Increment the AI TTS usage counter in Firestore.
      * Called once per text spoken via AI TTS (with character count).
-     * Fields reset daily via server logic (same pattern as token counters).
      */
     fun recordAiTtsUsed(userId: String, charsUsed: Int = 0) {
         if (userId.isBlank() || userId == "guest_user") return
