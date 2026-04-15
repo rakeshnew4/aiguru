@@ -30,6 +30,7 @@ class LoginActivity : BaseActivity() {
 
     private lateinit var googleSignInClient: GoogleSignInClient
     private lateinit var signInButton: Button
+    private lateinit var guestButton: Button
     private lateinit var loadingBar: BoxSpinnerView
     private val auth = FirebaseAuth.getInstance()
 
@@ -56,6 +57,7 @@ class LoginActivity : BaseActivity() {
         setContentView(R.layout.activity_login)
 
         signInButton = findViewById(R.id.googleSignInButton)
+        guestButton = findViewById(R.id.guestButton)
         loadingBar   = findViewById(R.id.loginProgressBar)
 
         // Already logged in — go straight home
@@ -84,6 +86,40 @@ class LoginActivity : BaseActivity() {
             .requestEmail()
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, gso)
+
+        // Guest button — sign in anonymously with Firebase + use shared guest_id as Firestore user
+        guestButton.setOnClickListener {
+            setLoading(true)
+            // Fetch guest_id from admin config (falls back to hardcoded default)
+            val guestUid = AdminConfigRepository.guestId()
+            val deviceId = SessionManager.getDeviceId(this)
+
+            // Sign in anonymously so Firebase Auth is active (needed for Firestore rules)
+            auth.signInAnonymously()
+                .addOnSuccessListener {
+                    Log.d(TAG, "Anonymous sign-in for guest, guestUid=$guestUid, deviceId=$deviceId")
+                    // Store the shared guest_id as the Firestore userId so quota is keyed correctly
+                    SessionManager.loginAsGuest(this, deviceId)
+                    SessionManager.saveFirebaseUid(this, guestUid)  // guest plan keyed to shared UID
+                    // Create device record (tracks per-device quota)
+                    FirestoreManager.initializeGuestDevice(deviceId, onSuccess = {
+                        Log.d(TAG, "Guest device initialized: $deviceId")
+                    }, onFailure = { e ->
+                        Log.w(TAG, "Guest device init failed (non-blocking): ${e?.message}")
+                    })
+                    setLoading(false)
+                    goHome()
+                }
+                .addOnFailureListener { e ->
+                    Log.w(TAG, "Anonymous sign-in failed, proceeding as offline guest: ${e.message}")
+                    // Still allow guest mode even without Firebase (offline mode)
+                    SessionManager.loginAsGuest(this, deviceId)
+                    SessionManager.saveFirebaseUid(this, guestUid)
+                    FirestoreManager.initializeGuestDevice(deviceId)
+                    setLoading(false)
+                    goHome()
+                }
+        }
 
         signInButton.setOnClickListener {
             setLoading(true)
@@ -148,7 +184,12 @@ class LoginActivity : BaseActivity() {
     }
 
     private fun goHome() {
-        val nextActivity = if (SessionManager.isSignupComplete(this)) {
+        val nextActivity = if (SessionManager.isGuestMode(this)) {
+            // Guests skip signup entirely — send to SignupActivity with guest flag to collect
+            // just name + language (no grade required)
+            if (SessionManager.isSignupComplete(this)) HomeActivity::class.java
+            else SignupActivity::class.java
+        } else if (SessionManager.isSignupComplete(this)) {
             HomeActivity::class.java
         } else {
             SignupActivity::class.java

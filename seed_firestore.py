@@ -268,6 +268,47 @@ SCHOOLS = [
 # Fields must match FirestorePlan (UI display) + SubscriptionPlan (access control)
 PLANS = [
     {
+        # ── Guest plan — shared across all unauthenticated users ────────────────
+        # Keyed to the shared guest Firebase UID (BujsVJE2cMX6wU7Jg3acMUlRChm1).
+        # Per-device quota enforcement is done via the /devices collection (10 chat, 3 BB).
+        "id": "guest",
+        "name": "Guest",
+        "badge": "",
+        "priceInr": 0,
+        "duration": "One-time",
+        "validityDays": 0,
+        "isActive": True,
+        "displayOrder": -1,  # Not shown in subscription UI
+        "accentColor": "#FF6B35",
+        "features": [
+            "10 AI chat questions (one-time)",
+            "3 visual blackboard sessions (one-time)",
+            "No registration needed",
+            "Login anytime for daily free quota",
+        ],
+        "tagline": "Try before you sign up",
+        "priceDisplay": "Free",
+        "isPublic": False,  # Hidden from subscription page
+        "limits": {
+            "daily_token_limit": 20000,
+            "monthly_token_limit": 0,
+            "context_window_messages": 10,
+            "context_window_chars": 4000,
+            "image_upload_enabled": False,
+            "voice_mode_enabled": False,
+            "pdf_enabled": False,
+            "blackboard_enabled": True,
+            "flashcards_enabled": False,
+            "tts_enabled": True,
+            "ai_tts_enabled": False,
+            "ai_tts_quota_chars": 0,
+            # Per-device limits enforced in /devices collection (not daily rolling)
+            "daily_chat_questions": 10,
+            "daily_bb_sessions": 3,
+            "max_quiz_questions": 5,
+        },
+    },
+    {
         "id": "free",
         # FirestorePlan fields (used by SubscriptionActivity UI)
         # Keys are camelCase to match Kotlin property names directly (no @PropertyName needed)
@@ -551,6 +592,11 @@ ADMIN_CONFIG_GLOBAL = {
     "tts_elevenlabs_api_key": "",     # ElevenLabs secret key
     "tts_openai_api_key": "",         # OpenAI sk-...
     "tts_server_url": "",             # Self-hosted TTS server URL (leave blank to reuse server_url)
+
+    # ── Guest UID ──────────────────────────────────────────────────────────────
+    # Shared Firebase UID used for all unauthenticated guest sessions.
+    # The /plans/guest document defines quota limits for this UID.
+    "guest_id": "BujsVJE2cMX6wU7Jg3acMUlRChm1",
 }
 
 # ══════════════════════════════════════════════════════════════════════════════

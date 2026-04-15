@@ -79,12 +79,16 @@ class HomeActivity : BaseActivity() {
         findViewById<MaterialButton>(R.id.addSubjectButton).setOnClickListener {
             showAddSubjectDialog()
         }
-        findViewById<MaterialButton>(R.id.generalChatButton).setOnClickListener {
-            startActivity(
-                Intent(this, ChatHostActivity::class.java)
-                    .putExtra("subjectName", "General")
-                    .putExtra("chapterName", "General Chat")
-            )
+        findViewById<MaterialButton>(R.id.generalChatButton).let { btn ->
+            btn.setOnClickListener {
+                startActivity(
+                    Intent(this, ChatHostActivity::class.java)
+                        .putExtra("subjectName", "General")
+                        .putExtra("chapterName", "General Chat")
+                )
+            }
+            // Animated color-cycling for the prominent Quick Chat button
+            startQuickChatPulseAnimation(btn)
         }
         findViewById<MaterialButton>(R.id.libraryButton).setOnClickListener {
             startActivity(Intent(this, LibraryActivity::class.java))
@@ -215,13 +219,11 @@ class HomeActivity : BaseActivity() {
         // Header background (LinearLayout — set color directly)
         SchoolTheme.setBackground(findViewById(R.id.homeHeader))
 
-        // Quick-action chips
-        SchoolTheme.tintLight(findViewById(R.id.generalChatButton))
+        // Quick-action chips (only tint addSubjectButton; generalChatButton uses animation)
         SchoolTheme.tint(findViewById(R.id.addSubjectButton))
 
-        // Chip text colors to match school primary
-        val primary = SchoolTheme.primaryColor
-        findViewById<MaterialButton?>(R.id.generalChatButton)?.setTextColor(primary)
+        // Quick-chat button text color stays white — don't override from school theme
+        // (its background is controlled by the ValueAnimator, so tinting here would fight it)
 
         // Header text: use white if primary is dark enough, else use primaryDark
         val headerTextColor = android.graphics.Color.WHITE
@@ -292,6 +294,37 @@ class HomeActivity : BaseActivity() {
     private val langShort = arrayOf(
         "English", "Hindi", "Telugu", "Tamil", "Kannada", "Marathi", "Bengali", "Gujarati"
     )
+
+    /** Cycles the Quick-Chat banner button through a looping gradient of brand colours. */
+    private fun startQuickChatPulseAnimation(button: MaterialButton) {
+        val colors = intArrayOf(
+            android.graphics.Color.parseColor("#FF6B35"),  // vibrant orange
+            android.graphics.Color.parseColor("#5C5BD4"),  // indigo-blue
+            android.graphics.Color.parseColor("#E91E8C"),  // pink-magenta
+            android.graphics.Color.parseColor("#00897B"),  // teal
+            android.graphics.Color.parseColor("#FF6B35"),  // back to orange (loop)
+        )
+        val animator = android.animation.ValueAnimator.ofFloat(0f, (colors.size - 1).toFloat()).apply {
+            duration = 5000L * (colors.size - 1)
+            interpolator = android.view.animation.LinearInterpolator()
+            repeatCount = android.animation.ValueAnimator.INFINITE
+            addUpdateListener { anim ->
+                val fraction = anim.animatedValue as Float
+                val from = fraction.toInt().coerceIn(0, colors.size - 2)
+                val to = from + 1
+                val t = fraction - from
+                val blended = android.graphics.Color.argb(
+                    android.graphics.Color.alpha(colors[from]) + ((android.graphics.Color.alpha(colors[to]) - android.graphics.Color.alpha(colors[from])) * t).toInt(),
+                    android.graphics.Color.red(colors[from]) + ((android.graphics.Color.red(colors[to]) - android.graphics.Color.red(colors[from])) * t).toInt(),
+                    android.graphics.Color.green(colors[from]) + ((android.graphics.Color.green(colors[to]) - android.graphics.Color.green(colors[from])) * t).toInt(),
+                    android.graphics.Color.blue(colors[from]) + ((android.graphics.Color.blue(colors[to]) - android.graphics.Color.blue(colors[from])) * t).toInt(),
+                )
+                button.backgroundTintList = android.content.res.ColorStateList.valueOf(blended)
+            }
+        }
+        animator.start()
+        button.tag = animator   // keep reference so we can cancel on destroy if needed
+    }
 
     private fun setupLangChip() {
         val chip = findViewById<MaterialButton?>(R.id.langChipButton) ?: return
