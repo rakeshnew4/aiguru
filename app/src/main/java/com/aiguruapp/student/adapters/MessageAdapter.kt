@@ -218,13 +218,35 @@ class MessageAdapter(
                 }
                 explainBtn = actionButton("BB") { onExplainClick(message) }.apply {
                     setTextColor(Color.WHITE)
+                    typeface = android.graphics.Typeface.DEFAULT_BOLD
                     val bg = GradientDrawable().apply {
                         shape = GradientDrawable.RECTANGLE
                         cornerRadius = 10f * dp
-                        setColor(Color.parseColor("#111827"))
+                        setColor(Color.parseColor("#5C35B5"))  // deep purple — stands out as a button
                     }
                     background = bg
-                    setPadding((10 * dp).toInt(), (4 * dp).toInt(), (10 * dp).toInt(), (4 * dp).toInt())
+                    setPadding((12 * dp).toInt(), (6 * dp).toInt(), (12 * dp).toInt(), (6 * dp).toInt())
+                    elevation = 6f * dp
+                    outlineProvider = android.view.ViewOutlineProvider.BACKGROUND
+                    clipToOutline = true
+                }
+
+                // 10-second tooltip shown once per message to guide the user
+                val bbTooltip = TextView(context).apply {
+                    text = "💡 Tap BB for Blackboard Explanation"
+                    textSize = 11f
+                    setTextColor(Color.parseColor("#5C35B5"))
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply {
+                        topMargin = (4 * dp).toInt()
+                    }
+                    visibility = android.view.View.VISIBLE
+                    // Auto-hide after 10 seconds
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        visibility = android.view.View.GONE
+                    }, 10_000L)
                 }
 
                 speakRow.addView(copyBtn)
@@ -233,6 +255,7 @@ class MessageAdapter(
                 speakRow.addView(saveNoteBtn)
                 speakRow.addView(explainBtn)
                 bubble.addView(speakRow)
+                bubble.addView(bbTooltip)
             }
 
             row.addView(bubble)

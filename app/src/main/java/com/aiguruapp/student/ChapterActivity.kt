@@ -532,16 +532,7 @@ class ChapterActivity : BaseActivity() {
                     pageListAdapter.notifyDataSetChanged()
                     hideDownloadOverlay()
                     Toast.makeText(this@ChapterActivity, "✅ $count pages ready!", Toast.LENGTH_SHORT).show()
-                    // Auto-open PDF viewer at page 1 immediately after download
-                    startActivity(
-                        Intent(this@ChapterActivity, PageViewerActivity::class.java)
-                            .putExtra("subjectName", subjectName)
-                            .putExtra("chapterName", chapterName)
-                            .putExtra("pdfId", pdfId)
-                            .putExtra("pdfAssetPath", pdfAssetPath)
-                            .putExtra("pageCount", count)
-                            .putExtra("startPage", 0)
-                    )
+                    // Do NOT auto-open the PDF viewer here — let the user tap a page
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -587,7 +578,7 @@ class ChapterActivity : BaseActivity() {
                     pagesListData.clear()
                     for (i in 1..count) pagesListData.add("📄  Page $i")
                     pageListAdapter.notifyDataSetChanged()
-                    switchToChat()
+                    // Stay on the pages tab — let the user tap a page to open it
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {

@@ -136,6 +136,7 @@ class EmailAuthActivity : BaseActivity() {
                                 studentName = user.displayName ?: "Student"
                             )
                             SessionManager.saveFirebaseUid(this, user.uid)
+                            SessionManager.completeSignup(this)  // existing user — skip signup
                         }
                         // Register with server to create LiteLLM key and server-side user record
                         Thread {
@@ -153,7 +154,7 @@ class EmailAuthActivity : BaseActivity() {
                         goHome()
                     },
                     onFailure = { e ->
-                        // Firestore failed — proceed with minimal session
+                        // Firestore failed — proceed with minimal session (don’t block existing users)
                         SessionManager.login(
                             context     = this,
                             schoolId    = "email",
@@ -162,6 +163,7 @@ class EmailAuthActivity : BaseActivity() {
                             studentName = user.displayName ?: "Student"
                         )
                         SessionManager.saveFirebaseUid(this, user.uid)
+                        SessionManager.completeSignup(this)  // skip signup on Firestore failure
                         // Still attempt server registration (fire-and-forget)
                         Thread {
                             ServerProxyClient.registerWithServer(

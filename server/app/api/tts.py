@@ -165,22 +165,28 @@ async def _openai_tts(text: str) -> Optional[bytes]:
     return None
 
 
-async def _gemini_tts(text: str, language_code: str) -> Optional[bytes]:
+async def _gemini_tts(text: str, language_code: str, voice_role: str = "teacher") -> Optional[bytes]:
     """
     Gemini 2.5 Flash TTS — premium natural voice.
 
     Uses the Gemini API with responseModalities=AUDIO.
     Returns raw MP3 bytes or None on failure.
-    Voice is selected based on language_code for best Indian-language quality.
+    Voice is selected based on voice_role for best expressiveness.
     """
     api_key = settings.GEMINI_API_KEY
     if not api_key:
         logger.warning("GEMINI_API_KEY not set — cannot use Gemini TTS")
         return None
 
-    # Pick a voice that suits the language / role (Gemini voices are language-agnostic
-    # but some sound better for certain scripts)
-    voice_name = "Aoede"   # warm, natural — good for Indian-language speech
+    # Map voice role to Gemini built-in voice names
+    # Available: Aoede, Puck, Charon, Kore, Fenrir, Leda, Orus, Zephyr
+    voice_map = {
+        "teacher":   "Aoede",    # warm, natural — good for teaching
+        "assistant": "Kore",     # clear, helpful
+        "quiz":      "Puck",     # energetic, engaging
+        "feedback":  "Charon",   # calm, reassuring
+    }
+    voice_name = voice_map.get(voice_role.lower(), "Aoede")
 
     url = (
         "https://generativelanguage.googleapis.com/v1beta/models/"
@@ -278,7 +284,7 @@ async def synthesize(
     audio: Optional[bytes] = None
 
     if engine == "gemini":
-        audio = await _gemini_tts(text, req.language_code)
+        audio = await _gemini_tts(text, req.language_code, req.voice_role)
         if audio is None:
             # Graceful fallback: Gemini down → Google Cloud TTS
             logger.warning(f"Gemini TTS failed uid={auth.uid}, falling back to Google TTS")

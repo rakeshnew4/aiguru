@@ -474,6 +474,11 @@ class FloatingCalculatorView(context: Context) : FrameLayout(context) {
         }
     }
 
+    /** Opens the calculator panel programmatically (e.g. from a toolbar button). */
+    fun openPanel() {
+        if (!panelVisible) togglePanel()
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // Drawable helpers
     // ─────────────────────────────────────────────────────────────────────────

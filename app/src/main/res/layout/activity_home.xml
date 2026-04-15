@@ -121,21 +121,6 @@
 
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/libraryButton"
-                android:layout_width="wrap_content"
-                android:layout_height="40dp"
-                android:text="Library"
-                android:textSize="13sp"
-                android:textColor="@color/colorError"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                app:backgroundTint="@color/colorErrorLight"
-                app:cornerRadius="18dp"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:layout_marginEnd="8dp" />
-
-            <com.google.android.material.button.MaterialButton
                 android:id="@+id/progressButton"
                 android:layout_width="wrap_content"
                 android:layout_height="40dp"
@@ -182,6 +167,23 @@
                 app:cornerRadius="18dp"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
+                android:layout_marginEnd="8dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/calcChipButton"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:text="🧮"
+                android:textAllCaps="false"
+                android:textSize="18sp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                app:backgroundTint="@color/colorBackground"
+                app:strokeColor="@color/colorDivider"
+                app:strokeWidth="1dp"
+                app:cornerRadius="20dp"
+                android:padding="0dp"
+                android:elevation="4dp"
                 android:layout_marginEnd="8dp" />
 
         </LinearLayout>
@@ -415,34 +417,8 @@
 
         </LinearLayout>
 
-        <!-- ── Prominent Quick Chat Button ────────────────────────────── -->
-        <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingStart="20dp"
-            android:paddingEnd="20dp"
-            android:paddingBottom="10dp">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/generalChatButton"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="🤖  Ask AI Anything — Quick Chat"
-                android:textAllCaps="false"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:textColor="#FFFFFF"
-                android:gravity="center"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                app:backgroundTint="#FF6B35"
-                app:cornerRadius="28dp"
-                android:paddingStart="20dp"
-                android:paddingEnd="20dp"
-                android:elevation="6dp" />
-
-        </FrameLayout>
-
+        
         <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
             android:id="@+id/homeSwipeRefresh"
             android:layout_width="match_parent"
@@ -460,7 +436,53 @@
                 android:clipToPadding="false" />
 
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="18dp"
+            android:paddingBottom="8dp">
+            <!-- ── Prominent Quick Chat Button ────────────────────────────── -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:paddingBottom="10dp">
 
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginEnd="20dp"
+                    android:layout_marginBottom="10dp"
+                    app:rippleColor="#33FFFFFF"
+                    app:cardCornerRadius="28dp"
+                    app:cardElevation="10dp"
+                    app:cardBackgroundColor="#1A1A2E">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/generalChatButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+
+                        android:text="✨  Ask Your Doubt — Quick Chat"
+                        android:textAllCaps="false"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="#FFFFFF"
+
+                        android:background="@android:color/transparent"
+                        android:gravity="center"/>
+
+                </com.google.android.material.card.MaterialCardView>
+
+            </FrameLayout>
+
+        </LinearLayout>
     </LinearLayout>
 
 </LinearLayout>

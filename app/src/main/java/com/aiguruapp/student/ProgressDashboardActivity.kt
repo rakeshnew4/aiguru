@@ -40,17 +40,17 @@ class ProgressDashboardActivity : BaseActivity() {
 
     private fun loadProgress() {
         val userId = SessionManager.getFirestoreUserId(this)
-        if (userId.isBlank() || userId == "guest_user") { showEmpty(); return }
+        if (userId.isBlank() || SessionManager.isGuestMode(this)) { showEmpty(isGuest = true); return }
         findViewById<View>(R.id.loadingLayout).visibility = View.VISIBLE
         StudentStatsManager.fetchStudentStats(
             userId    = userId,
             onSuccess = { stats -> runOnUiThread { populateFromStats(stats) } },
-            onFailure = { runOnUiThread { showEmpty() } }
+            onFailure = { runOnUiThread { showEmpty(isGuest = false) } }
         )
     }
 
     private fun populateFromStats(stats: StudentStats?) {
-        if (stats == null || stats.subjects.isEmpty()) { showEmpty(); return }
+        if (stats == null || stats.subjects.isEmpty()) { showEmpty(isGuest = false); return }
 
         // ── Top stat cards ──────────────────────────────────────────────────────
         findViewById<TextView>(R.id.totalChaptersCount).text = stats.streakDays.toString()
@@ -77,7 +77,7 @@ class ProgressDashboardActivity : BaseActivity() {
     }
 
     private fun displayData(data: List<ChapterSummary>) {
-        if (data.isEmpty()) { showEmpty(); return }
+        if (data.isEmpty()) { showEmpty(isGuest = false); return }
 
         // Group by subject, sort mastery desc within each group
         val grouped = data.groupBy { it.subject }.toSortedMap()
@@ -205,10 +205,18 @@ class ProgressDashboardActivity : BaseActivity() {
         return card
     }
 
-    private fun showEmpty() {
+    private fun showEmpty(isGuest: Boolean = false) {
         runOnUiThread {
             findViewById<View>(R.id.loadingLayout).visibility = View.GONE
-            findViewById<View>(R.id.emptyLayout).visibility = View.VISIBLE
+            val emptyLayout = findViewById<LinearLayout>(R.id.emptyLayout)
+            emptyLayout.visibility = View.VISIBLE
+            // Update message based on why there's no data
+            val msg = emptyLayout.getChildAt(0) as? TextView
+            msg?.text = if (isGuest) {
+                "Sign in to track your progress 📊\n\nYour streaks, quiz scores and study time\nwill appear here after you create an account."
+            } else {
+                "No progress yet 📚\n\nStart chatting with AI or try a blackboard lesson.\nYour learning data will appear here!"
+            }
         }
     }
 

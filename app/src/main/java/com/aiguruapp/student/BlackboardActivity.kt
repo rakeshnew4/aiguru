@@ -324,6 +324,12 @@ class BlackboardActivity : AppCompatActivity() {
         })
     }
 
+    override fun onPause() {
+        super.onPause()
+        // Stop all TTS engines immediately when the user leaves / minimizes the app
+        aiTtsEngine.stop()
+    }
+
     override fun onDestroy() {
         typeAnimator?.cancel()
         aiTtsEngine.destroy()

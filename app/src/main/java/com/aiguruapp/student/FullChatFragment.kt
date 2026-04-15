@@ -484,6 +484,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
     override fun onStop() {
         super.onStop()
+        ttsManager.stop()
         context?.let { metricsTracker.endSession(it, 0) }
     }
 
@@ -571,7 +572,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         loadingStatusText = view.findViewById(R.id.loadingStatusText)
         voiceButton = view.findViewById(R.id.voiceButton)
         imageButton = view.findViewById(R.id.imageButton)
-        askDoubtButton = view.findViewById(R.id.askDoubtButton)
+
         imagePreviewStrip = view.findViewById(R.id.imagePreviewStrip)
         imagePreviewThumbnail = view.findViewById(R.id.imagePreviewThumbnail)
         imagePreviewLabel = view.findViewById(R.id.imagePreviewLabel)
@@ -625,6 +626,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
     private fun setupButtons(view: View) {
         voiceChatButton = view.findViewById(R.id.voiceChatButton)
+        askDoubtButton = view.findViewById(R.id.askDoubtButton)
         voiceChatButton.setOnClickListener {
             if (isVoiceModeActive) stopVoiceMode() else startVoiceMode()
         }

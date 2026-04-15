@@ -90,10 +90,7 @@ class HomeActivity : BaseActivity() {
             // Animated color-cycling for the prominent Quick Chat button
             startQuickChatPulseAnimation(btn)
         }
-        findViewById<MaterialButton>(R.id.libraryButton).setOnClickListener {
-            startActivity(Intent(this, LibraryActivity::class.java))
-        }
-        findViewById<MaterialButton>(R.id.progressButton).setOnClickListener {
+findViewById<MaterialButton>(R.id.progressButton).setOnClickListener {
             startActivity(Intent(this, ProgressDashboardActivity::class.java))
         }
         findViewById<MaterialButton>(R.id.teacherDashboardButton).setOnClickListener {
@@ -295,41 +292,74 @@ class HomeActivity : BaseActivity() {
         "English", "Hindi", "Telugu", "Tamil", "Kannada", "Marathi", "Bengali", "Gujarati"
     )
 
-    /** Cycles the Quick-Chat banner button through a looping gradient of brand colours. */
+    /** Draws a rainbow gradient that continuously sweeps left→right across the button. */
     private fun startQuickChatPulseAnimation(button: MaterialButton) {
-        val colors = intArrayOf(
-            android.graphics.Color.parseColor("#FF6B35"),  // vibrant orange
-            android.graphics.Color.parseColor("#5C5BD4"),  // indigo-blue
-            android.graphics.Color.parseColor("#E91E8C"),  // pink-magenta
-            android.graphics.Color.parseColor("#00897B"),  // teal
-            android.graphics.Color.parseColor("#FF6B35"),  // back to orange (loop)
+        // Override Material tinting so our custom gradient background shows through
+        button.backgroundTintList = null
+
+        val rainbowColors = intArrayOf(
+            
+        //    android.graphics.Color.parseColor("#000000"),
+            android.graphics.Color.parseColor("#066526"),  // green
+            android.graphics.Color.parseColor("#1d87e3"),  // blue
+            // android.graphics.Color.parseColor("#ffffff"),  // violet
+     
         )
-        val animator = android.animation.ValueAnimator.ofFloat(0f, (colors.size - 1).toFloat()).apply {
-            duration = 5000L * (colors.size - 1)
-            interpolator = android.view.animation.LinearInterpolator()
-            repeatCount = android.animation.ValueAnimator.INFINITE
-            addUpdateListener { anim ->
-                val fraction = anim.animatedValue as Float
-                val from = fraction.toInt().coerceIn(0, colors.size - 2)
-                val to = from + 1
-                val t = fraction - from
-                val blended = android.graphics.Color.argb(
-                    android.graphics.Color.alpha(colors[from]) + ((android.graphics.Color.alpha(colors[to]) - android.graphics.Color.alpha(colors[from])) * t).toInt(),
-                    android.graphics.Color.red(colors[from]) + ((android.graphics.Color.red(colors[to]) - android.graphics.Color.red(colors[from])) * t).toInt(),
-                    android.graphics.Color.green(colors[from]) + ((android.graphics.Color.green(colors[to]) - android.graphics.Color.green(colors[from])) * t).toInt(),
-                    android.graphics.Color.blue(colors[from]) + ((android.graphics.Color.blue(colors[to]) - android.graphics.Color.blue(colors[from])) * t).toInt(),
+
+        // Custom drawable: draws a LinearGradient whose x-origin shifts continuously
+        var shiftFraction = 0f
+        val shimmerDrawable = object : android.graphics.drawable.Drawable() {
+            private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+
+            override fun draw(canvas: android.graphics.Canvas) {
+                val b = bounds
+                if (b.isEmpty) return
+                val w = b.width().toFloat()
+                val h = b.height().toFloat()
+                val cornerRadius = h / 2f  // pill shape
+                // Shift the gradient window across 2× the button width so colours flow
+                val startX = shiftFraction * w * 2f - w
+                val endX   = startX + w * 1.8f
+                paint.shader = android.graphics.LinearGradient(
+                    startX, 0f, endX, 0f,
+                    rainbowColors, null,
+                    android.graphics.Shader.TileMode.MIRROR
                 )
-                button.backgroundTintList = android.content.res.ColorStateList.valueOf(blended)
+                canvas.drawRoundRect(android.graphics.RectF(b), cornerRadius, cornerRadius, paint)
+            }
+
+            override fun setAlpha(alpha: Int) { paint.alpha = alpha }
+            override fun setColorFilter(cf: android.graphics.ColorFilter?) { paint.colorFilter = cf }
+            @Suppress("OVERRIDE_DEPRECATION")
+            override fun getOpacity() = android.graphics.PixelFormat.OPAQUE
+        }
+
+        button.background = shimmerDrawable
+        // Keep elevation so the shadow is visible above other views
+        button.elevation = resources.displayMetrics.density * 8f
+        button.stateListAnimator = null  // remove Material press animation so elevation stays stable
+
+        val animator = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 10000L
+            repeatCount = android.animation.ValueAnimator.INFINITE
+            interpolator = android.view.animation.LinearInterpolator()
+            addUpdateListener { anim ->
+                shiftFraction = anim.animatedValue as Float
+                shimmerDrawable.invalidateSelf()
             }
         }
         animator.start()
-        button.tag = animator   // keep reference so we can cancel on destroy if needed
+        button.tag = animator  // hold reference for lifecycle cleanup
     }
 
     private fun setupLangChip() {
         val chip = findViewById<MaterialButton?>(R.id.langChipButton) ?: return
         refreshLangChip(chip)
         chip.setOnClickListener { showLangPicker(chip) }
+
+        findViewById<MaterialButton?>(R.id.calcChipButton)?.setOnClickListener {
+            showCalculator()
+        }
     }
 
     private fun refreshLangChip(chip: MaterialButton) {
@@ -899,6 +929,12 @@ class HomeActivity : BaseActivity() {
                 Toast.makeText(this,
                     "\u2705 \"$subjectLabel\" added with $added NCERT chapters!",
                     Toast.LENGTH_LONG).show()
+                // Auto-navigate into the subject so the user can start immediately
+                startActivity(
+                    Intent(this, SubjectActivity::class.java)
+                        .putExtra("subjectName", subjectLabel)
+                        .putExtra("subjectId", resolveSubjectId(subjectLabel))
+                )
             }
             .setNegativeButton("Cancel", null)
             .show()

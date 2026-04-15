@@ -53,4 +53,9 @@ open class BaseActivity : AppCompatActivity() {
         // Re-apply in case SchoolTheme was loaded by a parent activity
         SchoolTheme.applyStatusBar(window)
     }
+
+    /** Opens the floating calculator panel (called from toolbar buttons in subclasses). */
+    fun showCalculator() {
+        floatingCalc?.openPanel()
+    }
 }
