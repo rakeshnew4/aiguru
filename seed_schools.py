@@ -108,6 +108,14 @@ SCHOOLS = [
             {"username": "demo",         "password": "demo1234", "name": "Demo Student",  "student_id": "DEMO",    "grade": "9",  "section": "A"},
             {"username": "testuser1",    "password": "test1234", "name": "Test User",     "student_id": "TEST001", "grade": "9",  "section": "A"},
         ],
+
+        # ── Teachers subcollection ─────────────────────────────────────────────
+        # Stored under schools/svps_mumbai/teachers/{username}
+        "teachers": [
+            {"username": "meera.sharma",  "password": "teach2024", "name": "Meera Sharma",  "teacher_id": "TSVPS01", "subjects": ["Physics", "Chemistry"]},
+            {"username": "james.dsouza",  "password": "teach2024", "name": "James D'Souza",  "teacher_id": "TSVPS02", "subjects": ["Mathematics"]},
+            {"username": "demo.teacher",  "password": "demo1234",  "name": "Demo Teacher",  "teacher_id": "TDEMO",   "subjects": []},
+        ],
     },
 
     {
@@ -172,6 +180,11 @@ SCHOOLS = [
             {"username": "pooja.reddy",   "password": "dps@2024", "name": "Pooja Reddy",   "student_id": "DPS106", "grade": "12", "section": "C"},
             {"username": "dpsdemo",       "password": "demo1234", "name": "DPS Demo",      "student_id": "DEMO",   "grade": "10", "section": "A"},
         ],
+
+        "teachers": [
+            {"username": "anita.khanna",   "password": "teach2024", "name": "Anita Khanna",  "teacher_id": "TDPS01", "subjects": ["Biology", "Chemistry"]},
+            {"username": "sunil.mathur",   "password": "teach2024", "name": "Sunil Mathur",  "teacher_id": "TDPS02", "subjects": ["History", "Civics"]},
+        ],
     },
 
     {
@@ -221,6 +234,10 @@ SCHOOLS = [
             {"username": "radha.patel",    "password": "kv@pune24", "name": "Radha Patel",    "student_id": "KV204", "grade": "10", "section": "B"},
             {"username": "kvdemo",         "password": "demo1234",  "name": "KV Demo",        "student_id": "DEMO",  "grade": "9",  "section": "A"},
         ],
+
+        "teachers": [
+            {"username": "priya.nambiar",   "password": "teach2024", "name": "Priya Nambiar",  "teacher_id": "TKV01", "subjects": ["Mathematics", "Physics"]},
+        ],
     },
 ]
 
@@ -232,10 +249,11 @@ SCHOOLS = [
 def seed_school(school_data: dict) -> None:
     school_id = school_data["id"]
     students  = school_data.pop("students", [])       # pull out before writing school doc
+    teachers  = school_data.pop("teachers", [])       # pull out teachers too
 
-    print(f"\n📚 Seeding school: {school_data['name']} ({school_id})")
+    print(f"\n\U0001f4da Seeding school: {school_data['name']} ({school_id})")
 
-    # Write the school document (all fields except students list)
+    # Write the school document (all fields except students/teachers lists)
     db.collection("schools").document(school_id).set(school_data, merge=True)
     print(f"   ✅ School doc written")
 
@@ -252,6 +270,19 @@ def seed_school(school_data: dict) -> None:
         print(f"   👤 Student: {username} ({student.get('name', '')})")
 
     print(f"   └── {len(students)} students seeded")
+
+    # Write each teacher into the teachers subcollection
+    if teachers:
+        teachers_ref = (
+            db.collection("schools")
+              .document(school_id)
+              .collection("teachers")
+        )
+        for teacher in teachers:
+            username = teacher["username"].lower()
+            teachers_ref.document(username).set(teacher, merge=True)
+            print(f"   👩‍🏫 Teacher: {username} ({teacher.get('name', '')})")
+        print(f"   └── {len(teachers)} teachers seeded")
 
 
 def main() -> None:

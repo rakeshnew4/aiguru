@@ -86,14 +86,18 @@ class BbSavedSessionsActivity : BaseActivity() {
     }
 
     private fun replaySession(session: Map<String, Any>) {
-        val topic  = session["topic"] as? String ?: return
-        val convId = session["conversation_id"] as? String
-        val msgId  = session["message_id"] as? String
+        val topic   = session["topic"] as? String ?: return
+        val convId  = session["conversation_id"] as? String
+        val msgId   = session["message_id"] as? String
+        @Suppress("UNCHECKED_CAST")
+        val ttsKeys = (session["tts_keys"] as? List<String>) ?: emptyList()
         val intent = Intent(this, BlackboardActivity::class.java).apply {
             putExtra(BlackboardActivity.EXTRA_MESSAGE, topic)
             putExtra(BlackboardActivity.EXTRA_USER_ID, userId)
             putExtra(BlackboardActivity.EXTRA_SUBJECT, subject)
             putExtra(BlackboardActivity.EXTRA_CHAPTER, chapter)
+            putExtra(BlackboardActivity.EXTRA_IS_REPLAY, true)
+            if (ttsKeys.isNotEmpty()) putExtra(BlackboardActivity.EXTRA_TTS_KEYS, ArrayList(ttsKeys))
             if (!convId.isNullOrBlank()) putExtra(BlackboardActivity.EXTRA_CONVERSATION_ID, convId)
             if (!msgId.isNullOrBlank())  putExtra(BlackboardActivity.EXTRA_MESSAGE_ID, msgId)
         }

@@ -43,10 +43,10 @@
             android:ellipsize="end" />
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/notesButton"
+            android:id="@+id/generateButton"
             android:layout_width="wrap_content"
             android:layout_height="36dp"
-            android:text="Notes"
+            android:text="✨ Generate"
             android:textSize="13sp"
             android:textColor="@color/colorPrimary"
             android:minWidth="0dp"
@@ -64,7 +64,7 @@
         android:layout_height="3dp"
         android:background="@color/colorPrimary" />
 
-    <!-- Tab strip: Pages | Chat -->
+    <!-- Tab strip: Saved | Pages | Chat -->
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/tabLayout"
         android:layout_width="match_parent"
@@ -76,6 +76,162 @@
         app:tabMode="fixed"
         app:tabGravity="fill"
         android:elevation="2dp" />
+
+    <!-- ── Pages tab content (Tab 1) ────────────────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/savedContent"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <!-- Saved sub-tabs: BB Sessions | Notes -->
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/savedSubTabLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#F8F8FF"
+            app:tabIndicatorColor="#5C35B5"
+            app:tabSelectedTextColor="#5C35B5"
+            app:tabTextColor="#888888"
+            app:tabMode="fixed"
+            app:tabGravity="fill"
+            app:tabTextAppearance="@style/TextAppearance.AppCompat.Caption"
+            android:minHeight="36dp" />
+
+        <!-- BB Sessions list -->
+        <FrameLayout
+            android:id="@+id/savedBbPanel"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/savedBbList"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingTop="8dp"
+                android:paddingBottom="16dp"
+                android:visibility="gone" />
+
+            <ProgressBar
+                android:id="@+id/savedBbLoading"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="center"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/savedBbEmpty"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🎓"
+                    android:textSize="40sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="No saved BB sessions yet"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorTextPrimary" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Tap 💾 inside any Blackboard session to save"
+                    android:textSize="12sp"
+                    android:textColor="@color/colorTextSecondary"
+                    android:gravity="center"
+                    android:paddingStart="24dp"
+                    android:paddingEnd="24dp" />
+
+            </LinearLayout>
+
+        </FrameLayout>
+
+        <!-- Notes content -->
+        <FrameLayout
+            android:id="@+id/savedNotesPanel"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:visibility="gone">
+
+            <androidx.core.widget.NestedScrollView
+                android:id="@+id/notesScrollView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/notesText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="14sp"
+                    android:textColor="@color/colorTextPrimary"
+                    android:lineSpacingExtra="4dp"
+                    android:padding="16dp" />
+
+            </androidx.core.widget.NestedScrollView>
+
+            <ProgressBar
+                android:id="@+id/notesLoading"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="center"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/notesEmpty"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📋"
+                    android:textSize="40sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="No notes yet"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorTextPrimary" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Go to Chat → tap ✨ Generate to create notes"
+                    android:textSize="12sp"
+                    android:textColor="@color/colorTextSecondary"
+                    android:gravity="center"
+                    android:paddingStart="24dp"
+                    android:paddingEnd="24dp" />
+
+            </LinearLayout>
+
+        </FrameLayout>
+
+    </LinearLayout>
 
     <!-- ── Pages tab content (Tab 0) ──────────────────────── -->
     <LinearLayout

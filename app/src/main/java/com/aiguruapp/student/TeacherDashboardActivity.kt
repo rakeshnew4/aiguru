@@ -5,7 +5,7 @@ import android.graphics.Color
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
-import android.view.inputmethod.InputMethodManager
+import android.widget.ArrayAdapter
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -13,21 +13,26 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.aiguruapp.student.firestore.StudentStatsManager
+import com.aiguruapp.student.models.School
 import com.aiguruapp.student.models.StudentStats
+import com.aiguruapp.student.utils.ConfigManager
 import com.aiguruapp.student.utils.SessionManager
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.MaterialAutoCompleteTextView
 import java.util.concurrent.TimeUnit
 
 class TeacherDashboardActivity : BaseActivity() {
 
-    private lateinit var schoolCodeInput: TextInputEditText
-    private lateinit var gradeInput: TextInputEditText
+    private lateinit var schoolCodeInput: MaterialAutoCompleteTextView
+    private lateinit var gradeInput: MaterialAutoCompleteTextView
     private lateinit var loadingLayout: View
     private lateinit var emptyLayout: View
     private lateinit var emptyText: TextView
     private lateinit var studentListContainer: LinearLayout
     private lateinit var swipeRefresh: SwipeRefreshLayout
+
+    private var selectedSchool: School? = null
+    private val grades = listOf("All", "6", "7", "8", "9", "10", "11", "12")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,11 +48,7 @@ class TeacherDashboardActivity : BaseActivity() {
         studentListContainer = findViewById(R.id.studentListContainer)
         swipeRefresh       = findViewById(R.id.swipeRefresh)
 
-        // Pre-fill from session if available
-        val sessionSchool = SessionManager.getSchoolId(this)
-        val sessionGrade  = SessionManager.getGrade(this)
-        if (sessionSchool.isNotBlank()) schoolCodeInput.setText(sessionSchool)
-        if (sessionGrade.isNotBlank())  gradeInput.setText(sessionGrade)
+        setupDropdowns()
 
         swipeRefresh.setColorSchemeColors(getColor(R.color.colorPrimary))
         swipeRefresh.setOnRefreshListener { loadClass(); swipeRefresh.isRefreshing = false }
@@ -55,6 +56,9 @@ class TeacherDashboardActivity : BaseActivity() {
         findViewById<MaterialButton>(R.id.loadClassButton).setOnClickListener { loadClass() }
 
         // Teacher action shortcuts
+        findViewById<MaterialButton>(R.id.btnTeacherChat).setOnClickListener {
+            startActivity(Intent(this, TeacherChatHostActivity::class.java))
+        }
         findViewById<MaterialButton>(R.id.btnChatReview).setOnClickListener {
             startActivity(Intent(this, TeacherChatReviewActivity::class.java))
         }
@@ -66,29 +70,49 @@ class TeacherDashboardActivity : BaseActivity() {
         }
     }
 
-    private fun loadClass() {
-        val schoolCode = schoolCodeInput.text?.toString()?.trim() ?: ""
-        val grade      = gradeInput.text?.toString()?.trim() ?: ""
+    private fun setupDropdowns() {
+        val schools = ConfigManager.getSchools(this)
+        val schoolNames = schools.map { it.name }
+        val schoolAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, schoolNames)
+        schoolCodeInput.setAdapter(schoolAdapter)
+        schoolCodeInput.setOnItemClickListener { _, _, pos, _ ->
+            selectedSchool = schools[pos]
+        }
 
-        if (schoolCode.isBlank()) {
-            schoolCodeInput.error = "Enter school code"
+        // Pre-select from session
+        val sessionSchoolId = SessionManager.getSchoolId(this)
+        if (sessionSchoolId.isNotBlank()) {
+            selectedSchool = schools.firstOrNull { it.id == sessionSchoolId }
+            selectedSchool?.let { schoolCodeInput.setText(it.name, false) }
+        }
+
+        val gradeAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, grades)
+        gradeInput.setAdapter(gradeAdapter)
+        gradeInput.setOnItemClickListener { _, _, _, _ ->
+            loadClass()   // auto-load when grade selected
+        }
+
+        val sessionGrade = SessionManager.getGrade(this)
+        if (sessionGrade.isNotBlank()) gradeInput.setText(sessionGrade, false)
+    }
+
+    private fun loadClass() {
+        val school = selectedSchool
+        if (school == null) {
+            Toast.makeText(this, "Please select a school first", Toast.LENGTH_SHORT).show()
             return
         }
-
-        // Hide keyboard
-        currentFocus?.let {
-            (getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager)
-                ?.hideSoftInputFromWindow(it.windowToken, 0)
-        }
+        val grade = gradeInput.text?.toString()?.trim() ?: ""
+        val gradeParam = if (grade == "All" || grade.isBlank()) "" else grade
 
         showLoading()
         StudentStatsManager.fetchSchoolStats(
-            schoolId  = schoolCode,
-            grade     = grade,
+            schoolId  = school.id,
+            grade     = gradeParam,
             onSuccess = { students -> runOnUiThread { displayStudents(students) } },
             onFailure = { e ->
                 runOnUiThread {
-                    showEmpty("Failed to load data. Check school code and connection.")
+                    showEmpty("Failed to load data. Check connection.")
                     Toast.makeText(this, "Error: ${e?.message ?: "unknown"}", Toast.LENGTH_SHORT).show()
                 }
             }

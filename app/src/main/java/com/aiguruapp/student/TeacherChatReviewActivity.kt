@@ -1,11 +1,13 @@
 package com.aiguruapp.student
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -21,6 +23,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
+import org.json.JSONObject
 
 /**
  * Teacher Chat Review screen.
@@ -53,6 +56,21 @@ class TeacherChatReviewActivity : BaseActivity() {
     private val dateFormat = SimpleDateFormat("d MMM, h:mm a", Locale.getDefault())
 
     private var lastGeneratedQuiz: Quiz? = null
+    private var lastSubject = ""
+    private var lastChapter = ""
+
+    // Launches quiz validation screen and receives the filtered quiz back
+    private val quizValidationLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val filteredJson = result.data
+                ?.getStringExtra(TeacherQuizValidationActivity.RESULT_FILTERED_QUIZ) ?: return@registerForActivityResult
+            val filteredQuiz = Quiz.fromJson(JSONObject(filteredJson))
+            lastGeneratedQuiz = filteredQuiz
+            showQuizReadyDialog(filteredQuiz, lastSubject, lastChapter)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -200,11 +218,18 @@ class TeacherChatReviewActivity : BaseActivity() {
                     )
                 }
                 lastGeneratedQuiz = quiz
+                lastSubject = subject
+                lastChapter = chapter
                 generateQuizButton.isEnabled = true
                 generateQuizButton.text = "🎯 Generate Quiz from Selected Messages"
 
-                // Show options: preview quiz or assign as task
-                showQuizReadyDialog(quiz, subject, chapter)
+                // Open validation screen so teacher can keep/remove questions
+                quizValidationLauncher.launch(
+                    Intent(this@TeacherChatReviewActivity, TeacherQuizValidationActivity::class.java)
+                        .putExtra(TeacherQuizValidationActivity.EXTRA_QUIZ_JSON, quiz.toTransferJson())
+                        .putExtra(TeacherQuizValidationActivity.EXTRA_SUBJECT_NAME, subject)
+                        .putExtra(TeacherQuizValidationActivity.EXTRA_CHAPTER_NAME, chapter)
+                )
             } catch (e: Exception) {
                 generateQuizButton.isEnabled = true
                 generateQuizButton.text = "🎯 Generate Quiz from Selected Messages"

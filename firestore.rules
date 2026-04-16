@@ -53,6 +53,13 @@ service cloud.firestore {
         allow get: if isSignedIn();
         allow list, write: if false;
       }
+
+      // Teacher login verification — same rules as students.
+      // Teacher records are admin-seeded; app only reads for authentication.
+      match /teachers/{username} {
+        allow get: if isSignedIn();
+        allow list, write: if false;
+      }
     }
 
     // Subscription plans — shown on paywall before/after login

@@ -45,7 +45,7 @@ class BbAiTtsEngine(
     private val audioCache  = ConcurrentHashMap<String, String>()
     /** Keys currently being generated (prevents duplicate jobs) */
     private val pendingKeys = ConcurrentHashMap.newKeySet<String>()!!
-    private val cacheDir = File(context.cacheDir, "bb_tts_cache").also { it.mkdirs() }
+    private val cacheDir = File(context.filesDir, "bb_tts").also { it.mkdirs() }
 
     // ── MediaPlayer ────────────────────────────────────────────────────────────
     private var mediaPlayer: MediaPlayer? = null
@@ -233,6 +233,26 @@ class BbAiTtsEngine(
             onSuccess     = onSuccess,
             onError       = onError
         )
+    }
+
+    /**
+     * Cache key = MD5(normalised_text + "|" + engine).
+     * Including the engine prevents serving Google audio for a Gemini key or vice versa.
+     * Public so callers can persist the key list alongside a saved session.
+     */
+    fun buildKey(text: String, ttsEngine: String = "google"): String = textKey(text, ttsEngine)
+
+    /**
+     * Pre-register a list of keys as already cached (loaded from saved session metadata).
+     * Calling this lets [play] serve from disk immediately without a fallback.
+     */
+    fun prewarmKeys(keys: List<String>) {
+        keys.forEach { key ->
+            val file = cachedFile(key)
+            if (file.exists() && !audioCache.containsKey(key)) {
+                audioCache[key] = file.absolutePath
+            }
+        }
     }
 
     /**

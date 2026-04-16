@@ -128,9 +128,9 @@ class ChapterActivity : BaseActivity() {
         findViewById<TextView>(R.id.chapterTitle).text = chapterName
         findViewById<ImageButton>(R.id.backButton).setOnClickListener { finish() }
 
-        // Notes button — always visible in header
-        findViewById<MaterialButton>(R.id.notesButton).setOnClickListener {
-            showNotesOptions()
+        // Generate button — always visible in header
+        findViewById<MaterialButton>(R.id.generateButton).setOnClickListener {
+            showGenerateOptions()
         }
 
         // Quiz button — launches AI-powered quiz for this chapter
@@ -217,32 +217,75 @@ class ChapterActivity : BaseActivity() {
     }
 
     private fun setupTabs() {
-        val tabLayout   = findViewById<TabLayout>(R.id.tabLayout)
-        val pagesContent  = findViewById<View>(R.id.pagesContent)
-        val chatContainer = findViewById<View>(R.id.chatTabContainer)
+        val tabLayout      = findViewById<TabLayout>(R.id.tabLayout)
+        val savedContent   = findViewById<View>(R.id.savedContent)
+        val pagesContent   = findViewById<View>(R.id.pagesContent)
+        val chatContainer  = findViewById<View>(R.id.chatTabContainer)
 
+        tabLayout.addTab(tabLayout.newTab().setText("📌  Saved"))
         tabLayout.addTab(tabLayout.newTab().setText("📄  Pages"))
         tabLayout.addTab(tabLayout.newTab().setText("💬  Chat"))
 
+        fun showOnly(visible: View) {
+            listOf(savedContent, pagesContent, chatContainer).forEach {
+                it.visibility = if (it === visible) View.VISIBLE else View.GONE
+            }
+        }
+
         tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
-                if (tab.position == 0) {
-                    chatContainer.animate().alpha(0f).setDuration(200).withEndAction {
-                        chatContainer.visibility = View.GONE
-                        chatContainer.alpha = 1f
-                        pagesContent.alpha = 0f
-                        pagesContent.visibility = View.VISIBLE
-                        pagesContent.animate().alpha(1f).setDuration(300).start()
-                    }.start()
-                } else {
-                    pagesContent.animate().alpha(0f).setDuration(200).withEndAction {
-                        pagesContent.visibility = View.GONE
-                        pagesContent.alpha = 1f
-                        chatContainer.alpha = 0f
-                        chatContainer.visibility = View.VISIBLE
+                when (tab.position) {
+                    0 -> {
+                        showOnly(savedContent)
+                        loadSavedTabIfNeeded()
+                    }
+                    1 -> showOnly(pagesContent)
+                    2 -> {
+                        showOnly(chatContainer)
                         getOrCreateChatFragment()
-                        chatContainer.animate().alpha(1f).setDuration(300).start()
-                    }.start()
+                    }
+                }
+            }
+            override fun onTabUnselected(tab: TabLayout.Tab) {}
+            override fun onTabReselected(tab: TabLayout.Tab) {}
+        })
+
+        // Start on Pages tab (index 1)
+        showOnly(pagesContent)
+        tabLayout.getTabAt(1)?.select()
+    }
+
+    // ─── Saved tab ────────────────────────────────────────────────────────────
+
+    private var savedTabLoaded = false
+
+    private fun loadSavedTabIfNeeded() {
+        if (savedTabLoaded) return
+        savedTabLoaded = true
+        setupSavedSubTabs()
+        loadSavedBbSessions()
+    }
+
+    private fun setupSavedSubTabs() {
+        val subTabs     = findViewById<TabLayout>(R.id.savedSubTabLayout)
+        val bbPanel     = findViewById<View>(R.id.savedBbPanel)
+        val notesPanel  = findViewById<View>(R.id.savedNotesPanel)
+
+        subTabs.addTab(subTabs.newTab().setText("🎓 BB Sessions"))
+        subTabs.addTab(subTabs.newTab().setText("📋 Notes"))
+
+        bbPanel.visibility    = View.VISIBLE
+        notesPanel.visibility = View.GONE
+
+        subTabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) {
+                if (tab.position == 0) {
+                    bbPanel.visibility    = View.VISIBLE
+                    notesPanel.visibility = View.GONE
+                } else {
+                    bbPanel.visibility    = View.GONE
+                    notesPanel.visibility = View.VISIBLE
+                    loadSavedNotesIfNeeded()
                 }
             }
             override fun onTabUnselected(tab: TabLayout.Tab) {}
@@ -250,10 +293,109 @@ class ChapterActivity : BaseActivity() {
         })
     }
 
+    // BB sessions inside the Saved tab
+    private val savedBbSessions = mutableListOf<Map<String, Any>>()
+    private var savedBbAdapter: com.aiguruapp.student.adapters.SavedBbMiniAdapter? = null
+
+    private fun loadSavedBbSessions() {
+        val bbList    = findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.savedBbList)
+        val bbLoading = findViewById<android.widget.ProgressBar>(R.id.savedBbLoading)
+        val bbEmpty   = findViewById<View>(R.id.savedBbEmpty)
+
+        bbLoading.visibility = View.VISIBLE
+        bbList.visibility    = View.GONE
+        bbEmpty.visibility   = View.GONE
+
+        val userId = com.aiguruapp.student.utils.SessionManager.getFirestoreUserId(this)
+        com.aiguruapp.student.firestore.FirestoreManager.loadBbSessions(
+            userId  = userId,
+            subject = subjectName,
+            chapter = chapterName,
+            onSuccess = { list ->
+                bbLoading.visibility = View.GONE
+                savedBbSessions.clear()
+                savedBbSessions.addAll(list)
+                if (savedBbAdapter == null) {
+                    savedBbAdapter = com.aiguruapp.student.adapters.SavedBbMiniAdapter(
+                        sessions = savedBbSessions,
+                        onReplay = { session ->
+                            val topic   = session["topic"] as? String ?: return@SavedBbMiniAdapter
+                            val convId  = session["conversation_id"] as? String
+                            val msgId   = session["message_id"] as? String
+                            @Suppress("UNCHECKED_CAST")
+                            val ttsKeys = (session["tts_keys"] as? List<String>) ?: emptyList()
+                            startActivity(
+                                android.content.Intent(this, BlackboardActivity::class.java).apply {
+                                    putExtra(BlackboardActivity.EXTRA_MESSAGE, topic)
+                                    putExtra(BlackboardActivity.EXTRA_USER_ID, userId)
+                                    putExtra(BlackboardActivity.EXTRA_SUBJECT, subjectName)
+                                    putExtra(BlackboardActivity.EXTRA_CHAPTER, chapterName)
+                                    putExtra(BlackboardActivity.EXTRA_IS_REPLAY, true)
+                                    if (ttsKeys.isNotEmpty()) putExtra(BlackboardActivity.EXTRA_TTS_KEYS, ArrayList(ttsKeys))
+                                    if (!convId.isNullOrBlank()) putExtra(BlackboardActivity.EXTRA_CONVERSATION_ID, convId)
+                                    if (!msgId.isNullOrBlank())  putExtra(BlackboardActivity.EXTRA_MESSAGE_ID, msgId)
+                                }
+                            )
+                        }
+                    )
+                    bbList.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
+                    bbList.adapter = savedBbAdapter
+                } else {
+                    savedBbAdapter!!.notifyDataSetChanged()
+                }
+                if (list.isEmpty()) {
+                    bbEmpty.visibility = View.VISIBLE
+                    bbList.visibility  = View.GONE
+                } else {
+                    bbEmpty.visibility = View.GONE
+                    bbList.visibility  = View.VISIBLE
+                }
+            },
+            onFailure = {
+                bbLoading.visibility = View.GONE
+                bbEmpty.visibility   = View.VISIBLE
+            }
+        )
+    }
+
+    // Notes inside the Saved tab
+    private var notesTabLoaded = false
+
+    private fun loadSavedNotesIfNeeded() {
+        if (notesTabLoaded) return
+        notesTabLoaded = true
+        val notesLoading = findViewById<android.widget.ProgressBar>(R.id.notesLoading)
+        val notesScroll  = findViewById<View>(R.id.notesScrollView)
+        val notesEmpty   = findViewById<View>(R.id.notesEmpty)
+        val notesText    = findViewById<android.widget.TextView>(R.id.notesText)
+
+        notesLoading.visibility = View.VISIBLE
+        notesScroll.visibility  = View.GONE
+        notesEmpty.visibility   = View.GONE
+
+        val userId = com.aiguruapp.student.utils.SessionManager.getFirestoreUserId(this)
+        val repo = com.aiguruapp.student.chat.NotesRepository(this, userId, subjectName, chapterName)
+        repo.loadAll(
+            onResult  = { text ->
+                notesLoading.visibility = View.GONE
+                notesText.text          = text
+                notesScroll.visibility  = View.VISIBLE
+            },
+            onEmpty   = {
+                notesLoading.visibility = View.GONE
+                notesEmpty.visibility   = View.VISIBLE
+            },
+            onFailure = {
+                notesLoading.visibility = View.GONE
+                notesEmpty.visibility   = View.VISIBLE
+            }
+        )
+    }
+
     /** Switch programmatically to the Chat tab (called by Ask AI buttons in the pages view). */
     fun switchToChat() {
         val tabLayout = findViewById<TabLayout>(R.id.tabLayout)
-        tabLayout.getTabAt(1)?.select()
+        tabLayout.getTabAt(2)?.select()
     }
 
     /** Returns the existing FullChatFragment or creates it synchronously if not yet loaded. */
@@ -277,30 +419,30 @@ class ChapterActivity : BaseActivity() {
         findViewById<View>(R.id.masteryCard).visibility = View.GONE
     }
 
-    // ─── Notes generation ─────────────────────────────────────────────────────
+    // ─── Generate notes (moved from Notes button menu) ────────────────────────
 
-    private fun showNotesOptions() {
+    private fun showGenerateOptions() {
         val options = mutableListOf(
             "📖 Generate Chapter Notes",
-            "✏️ Generate Exercise Notes",
-            "📋 View Saved Notes",
-            "🎓 View Saved BB Sessions"
+            "✏️ Generate Exercise Notes"
         )
         if (isPdfChapter && pdfPageCount > 0) {
             options.add(1, "📄 Generate Page-wise Notes")
         }
-        AlertDialog.Builder(this)
-            .setTitle("📝 Notes for $chapterName")
+        android.app.AlertDialog.Builder(this)
+            .setTitle("✨ Generate for $chapterName")
             .setItems(options.toTypedArray()) { _, which ->
                 when (options[which]) {
-                    "📖 Generate Chapter Notes"  -> generateChapterNotes()
-                    "📄 Generate Page-wise Notes" -> showPageWiseNotesPicker()
-                    "✏️ Generate Exercise Notes"  -> generateExerciseNotes()
-                    "📋 View Saved Notes"          -> viewSavedNotes()
-                    "🎓 View Saved BB Sessions"    -> viewSavedBbSessions()
+                    "📖 Generate Chapter Notes"   -> generateChapterNotes()
+                    "📄 Generate Page-wise Notes"  -> showPageWiseNotesPicker()
+                    "✏️ Generate Exercise Notes"   -> generateExerciseNotes()
                 }
             }
             .show()
+    }
+
+    private fun showNotesOptions() {
+        showGenerateOptions()
     }
 
     private fun generateChapterNotes() {
@@ -354,27 +496,17 @@ class ChapterActivity : BaseActivity() {
     }
 
     private fun viewSavedNotes() {
-        val userId = SessionManager.getFirestoreUserId(this)
-        val notesRepo = com.aiguruapp.student.chat.NotesRepository(this, userId, subjectName, chapterName)
-        notesRepo.loadAll(
-            onResult  = { text ->
-                AlertDialog.Builder(this)
-                    .setTitle("📋 Notes: $chapterName")
-                    .setMessage(text)
-                    .setPositiveButton("OK", null)
-                    .show()
-            },
-            onEmpty   = { Toast.makeText(this, "No saved notes yet — generate some from the chat!", Toast.LENGTH_SHORT).show() },
-            onFailure = { Toast.makeText(this, "Couldn't load notes. Try again.", Toast.LENGTH_SHORT).show() }
-        )
+        // Navigate to Saved tab → Notes sub-tab
+        val tabLayout = findViewById<TabLayout>(R.id.tabLayout)
+        tabLayout.getTabAt(0)?.select()
+        val subTabs = findViewById<TabLayout>(R.id.savedSubTabLayout)
+        subTabs.getTabAt(1)?.select()
     }
 
     private fun viewSavedBbSessions() {
-        startActivity(
-            Intent(this, BbSavedSessionsActivity::class.java)
-                .putExtra(BbSavedSessionsActivity.EXTRA_SUBJECT, subjectName)
-                .putExtra(BbSavedSessionsActivity.EXTRA_CHAPTER, chapterName)
-        )
+        // Navigate to Saved tab → BB Sessions sub-tab
+        val tabLayout = findViewById<TabLayout>(R.id.tabLayout)
+        tabLayout.getTabAt(0)?.select()
     }
 
     // ─── Chapter type detection ───────────────────────────────────────────────

@@ -73,6 +73,10 @@ class BlackboardActivity : AppCompatActivity() {
         const val EXTRA_LANGUAGE_TAG    = "extra_language_tag"
         const val EXTRA_SUBJECT         = "extra_subject"
         const val EXTRA_CHAPTER         = "extra_chapter"
+        /** True when the user is replaying a previously saved session — skips quota recording. */
+        const val EXTRA_IS_REPLAY       = "extra_is_replay"
+        /** ArrayList<String> of MD5 TTS keys saved with the session for instant audio on replay. */
+        const val EXTRA_TTS_KEYS        = "extra_tts_keys"
     }
 
     // ── Views ─────────────────────────────────────────────────────────────────
@@ -177,6 +181,12 @@ class BlackboardActivity : AppCompatActivity() {
         aiTtsEngine = com.aiguruapp.student.tts.BbAiTtsEngine(this, tts)
         aiTtsToggleBtn = findViewById(R.id.aiTtsToggleBtn)
 
+        // If replaying a saved session, pre-warm TTS engine with stored audio keys
+        // so cached MP3s are served instantly without any regeneration
+        intent.getStringArrayListExtra(EXTRA_TTS_KEYS)?.let { keys ->
+            if (keys.isNotEmpty()) aiTtsEngine.prewarmKeys(keys)
+        }
+
         // Restore AI TTS preference
         val prefs = getSharedPreferences("bb_prefs", MODE_PRIVATE)
         useAiTts = prefs.getBoolean("use_ai_tts", false)
@@ -250,12 +260,13 @@ class BlackboardActivity : AppCompatActivity() {
                     return@getUserMetadata
                 }
 
+                val isReplay = intent.getBooleanExtra(EXTRA_IS_REPLAY, false)
                 generateSteps(
                     message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
                     messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
                     userId         = userId,
                     conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
-                    recordSession  = true
+                    recordSession  = !isReplay
                 )
             } else {
                 // Metadata unavailable — generate without quota check
@@ -405,6 +416,7 @@ class BlackboardActivity : AppCompatActivity() {
     // ── Save session to chapter notes ──────────────────────────────────────────
 
     private fun saveCurrentSession() {
+        if (sessionAlreadySaved) return
         val uid = intent.getStringExtra(EXTRA_USER_ID) ?: run {
             android.widget.Toast.makeText(this, "Sign in to save sessions", android.widget.Toast.LENGTH_SHORT).show()
             return
@@ -416,6 +428,24 @@ class BlackboardActivity : AppCompatActivity() {
         val msgId   = intent.getStringExtra(EXTRA_MESSAGE_ID) ?: ""
         val sessionId = "${convId}_${System.currentTimeMillis()}"
 
+        // Collect TTS audio keys for all frames so replays can skip re-generation
+        val ttsKeys = steps.flatMap { step ->
+            step.frames.mapNotNull { frame ->
+                if (frame.speech.isBlank()) null
+                else {
+                    val engine = frame.ttsEngine.ifBlank {
+                        com.aiguruapp.student.chat.BlackboardGenerator.smartAssignTts(frame.frameType).first
+                    }
+                    if (engine == "android") null
+                    else aiTtsEngine.buildKey(frame.speech, engine)
+                }
+            }
+        }.distinct()
+
+        // Show saving spinner on button
+        saveSessionBtn.isEnabled = false
+        saveSessionBtn.text = "⏳ Saving…"
+
         com.aiguruapp.student.firestore.FirestoreManager.saveBbSession(
             userId        = uid,
             subject       = subject,
@@ -425,13 +455,17 @@ class BlackboardActivity : AppCompatActivity() {
             conversationId = convId,
             topic         = topic,
             stepCount     = steps.size,
+            ttsKeys       = ttsKeys,
             onSuccess     = {
                 sessionAlreadySaved = true
+                saveSessionBtn.isEnabled = true
                 saveSessionBtn.text = "✓ Saved"
                 saveSessionBtn.setTextColor(android.graphics.Color.parseColor("#A0FFD0"))
-                android.widget.Toast.makeText(this, "Session saved to chapter notes!", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(this, "Session saved!", android.widget.Toast.LENGTH_SHORT).show()
             },
             onFailure     = {
+                saveSessionBtn.isEnabled = true
+                saveSessionBtn.text = "💾 Save"
                 android.widget.Toast.makeText(this, "Save failed — try again", android.widget.Toast.LENGTH_SHORT).show()
             }
         )

@@ -143,7 +143,8 @@
             android:layout_height="wrap_content"
             android:text="Select All"
             android:textSize="13sp"
-            android:layout_weight="1" />
+            android:layout_weight="1"
+            android:buttonTint="#5C35B5" />
 
         <TextView
             android:id="@+id/filterLabel"
@@ -157,7 +158,8 @@
             android:id="@+id/aiOnlyCheckbox"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:checked="true" />
+            android:checked="true"
+            android:buttonTint="#5C35B5" />
 
     </LinearLayout>
 

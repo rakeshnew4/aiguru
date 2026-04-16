@@ -136,6 +136,9 @@
         <activity android:name=".TeacherTasksActivity" android:exported="false"
             android:windowSoftInputMode="adjustResize"/>
         <activity android:name=".TasksActivity" android:exported="false"/>
+        <activity android:name=".TeacherChatHostActivity" android:exported="false"
+            android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".TeacherQuizValidationActivity" android:exported="false"/>
         <activity android:name=".GeminiLiveActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"/>

@@ -29,6 +29,7 @@ object SessionManager {
     private const val KEY_FIREBASE_UID = "firebase_uid"
     private const val KEY_PREF_LANG = "pref_lang"
     private const val KEY_GUEST_QUOTA_USED = "guest_quota_used_ms"
+    private const val KEY_IS_TEACHER = "is_teacher"
 
     private fun prefs(context: Context): SharedPreferences =
         context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -94,6 +95,13 @@ object SessionManager {
      */
     fun isGuestMode(context: Context): Boolean =
         prefs(context).getBoolean(KEY_IS_GUEST, false)
+
+    fun isTeacher(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_IS_TEACHER, false)
+
+    fun saveIsTeacher(context: Context, teacher: Boolean) {
+        prefs(context).edit().putBoolean(KEY_IS_TEACHER, teacher).apply()
+    }
 
     fun hasSubscription(context: Context): Boolean =
         prefs(context).getString(KEY_PLAN_ID, "").isNullOrBlank().not()

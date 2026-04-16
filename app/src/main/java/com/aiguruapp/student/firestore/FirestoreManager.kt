@@ -751,6 +751,7 @@ object FirestoreManager {
         conversationId: String,
         topic: String,
         stepCount: Int,
+        ttsKeys: List<String> = emptyList(),
         onSuccess: () -> Unit = {},
         onFailure: (Exception?) -> Unit = {}
     ) {
@@ -765,7 +766,8 @@ object FirestoreManager {
             "chapter"         to chapter,
             "step_count"      to stepCount,
             "preview"         to preview,
-            "saved_at"        to System.currentTimeMillis()
+            "saved_at"        to System.currentTimeMillis(),
+            "tts_keys"        to ttsKeys
         )
         usersRef(userId)
             .collection("subjects").document(safeId(subject))
@@ -997,6 +999,108 @@ object FirestoreManager {
             .get()
             .addOnSuccessListener { snap ->
                 onSuccess(snap.documents.map { it.id }.toSet())
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    // ── Teacher Chat Defaults ─────────────────────────────────────────────────
+    // Path: users/{teacherId}/teacher_settings/chat_defaults
+    // Fields: subject, chapter, grade, school_id
+
+    fun getTeacherChatDefaults(
+        userId: String,
+        onResult: (subject: String, chapter: String, grade: String, schoolId: String) -> Unit
+    ) {
+        if (userId.isBlank() || userId == "guest_user") {
+            onResult("", "", "", ""); return
+        }
+        usersRef(userId)
+            .collection("teacher_settings").document("chat_defaults")
+            .get()
+            .addOnSuccessListener { doc ->
+                onResult(
+                    doc.getString("subject")   ?: "",
+                    doc.getString("chapter")   ?: "",
+                    doc.getString("grade")     ?: "",
+                    doc.getString("school_id") ?: ""
+                )
+            }
+            .addOnFailureListener { onResult("", "", "", "") }
+    }
+
+    fun setTeacherChatDefaults(
+        userId: String,
+        subject: String,
+        chapter: String,
+        grade: String,
+        schoolId: String,
+        onDone: () -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") { onDone(); return }
+        val data = mapOf(
+            "subject"   to subject,
+            "chapter"   to chapter,
+            "grade"     to grade,
+            "school_id" to schoolId,
+            "updatedAt" to System.currentTimeMillis()
+        )
+        usersRef(userId)
+            .collection("teacher_settings").document("chat_defaults")
+            .set(data, SetOptions.merge())
+            .addOnCompleteListener { onDone() }
+    }
+
+    /**
+     * Validate teacher credentials against schools/{schoolId}/teachers/{username}.
+     * Calls onSuccess(name, teacherId) on match, onFailure(message) otherwise.
+     */
+    fun validateTeacher(
+        schoolId: String,
+        username: String,
+        password: String,
+        onSuccess: (name: String, teacherId: String) -> Unit,
+        onFailure: (String) -> Unit
+    ) {
+        db.collection("schools")
+            .document(schoolId)
+            .collection("teachers")
+            .document(username.lowercase())
+            .get()
+            .addOnSuccessListener { doc ->
+                if (doc.exists()) {
+                    val stored = doc.getString("password") ?: ""
+                    if (stored == password) {
+                        val name      = doc.getString("name") ?: username
+                        val teacherId = doc.getString("teacher_id") ?: username
+                        onSuccess(name, teacherId)
+                    } else {
+                        onFailure("Incorrect password. Check with your school admin.")
+                    }
+                } else {
+                    onFailure("Username not found in teacher roster.")
+                }
+            }
+            .addOnFailureListener { onFailure(it.message ?: "Verification failed") }
+    }
+
+    /**
+     * Fetch students for a given school + grade from schools/{schoolId}/students.
+     * If grade is blank or "All", returns all students.
+     */
+    fun getStudentsByGrade(
+        schoolId: String,
+        grade: String,
+        onSuccess: (List<Map<String, Any>>) -> Unit,
+        onFailure: (Exception) -> Unit = {}
+    ) {
+        var query: com.google.firebase.firestore.Query =
+            db.collection("schools").document(schoolId).collection("students")
+        if (grade.isNotBlank() && grade.lowercase() != "all") {
+            query = query.whereEqualTo("grade", grade)
+        }
+        query.get()
+            .addOnSuccessListener { snap ->
+                onSuccess(snap.documents.mapNotNull { it.data })
             }
             .addOnFailureListener { onFailure(it) }
     }
