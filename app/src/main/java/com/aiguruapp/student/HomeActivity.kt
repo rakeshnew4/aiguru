@@ -484,6 +484,9 @@ class HomeActivity : BaseActivity() {
         findViewById<LinearLayout>(R.id.drawerItemTasks).setOnClickListener {
             navigate { startActivity(Intent(this, TasksActivity::class.java)) }
         }
+        findViewById<LinearLayout>(R.id.drawerItemJoinSchool).setOnClickListener {
+            navigate { startActivity(Intent(this, SchoolJoinActivity::class.java)) }
+        }
         findViewById<LinearLayout>(R.id.drawerItemPlans).setOnClickListener {
             navigate {
                 startActivity(

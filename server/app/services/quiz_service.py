@@ -121,6 +121,8 @@ def _parse_question(raw: Dict[str, Any], idx: int) -> AnyQuestion:
     if q_type == QuestionType.FILL_BLANK_DRAG:
         return FillBlankDragQuestion(**raw)
     if q_type == QuestionType.SHORT_ANSWER:
+        raw.setdefault("sample_answer", "")
+        raw.setdefault("expected_keywords", [])
         return ShortAnswerQuestion(**raw)
 
     # Unknown type → fall back to MCQ structure if possible

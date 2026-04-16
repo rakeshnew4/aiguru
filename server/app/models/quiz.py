@@ -71,7 +71,7 @@ class ShortAnswerQuestion(BaseModel):
     id: str
     question: str
     expected_keywords: List[str]           # key concepts to look for
-    sample_answer: str                     # reference answer for LLM eval
+    sample_answer: str = ""               # reference answer for LLM eval (optional)
     explanation: str = ""
 
 
