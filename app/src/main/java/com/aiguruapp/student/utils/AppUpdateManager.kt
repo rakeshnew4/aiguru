@@ -15,7 +15,8 @@ import com.google.firebase.firestore.Source
  *  1. Fetch document with Source.DEFAULT (cache-first, falls back to server).
  *  2. A 5-second safety timeout guarantees we never block the user indefinitely
  *     when the device is offline or Firestore is slow.
- *  3. Caller receives a typed [UpdateResult] and decides how to display UI.
+ *  3. On failure, falls back to local SharedPreferences cache (7-day TTL).
+ *  4. Caller receives a typed [UpdateResult] and decides how to display UI.
  *
  * Optional-update cooldown: once a user dismisses the optional dialog we
  * suppress it for [OPTIONAL_PROMPT_COOLDOWN_MS] so it doesn't nag every launch.
@@ -67,6 +68,7 @@ object AppUpdateManager {
     fun checkForUpdates(
         currentVersionCode: Int,
         prefs: SharedPreferences,
+        appContext: android.content.Context,
         onResult: (UpdateResult) -> Unit
     ) {
         val mainHandler = Handler(Looper.getMainLooper())
@@ -83,8 +85,15 @@ object AppUpdateManager {
 
         // Safety timeout — never block the user longer than TIMEOUT_MS.
         mainHandler.postDelayed({
-            Log.w(TAG, "Update check timed out after ${TIMEOUT_MS}ms — proceeding.")
-            settle(UpdateResult.NetworkError)
+            Log.w(TAG, "Update check timed out after ${TIMEOUT_MS}ms — using cached config or proceeding.")
+            // ✓ Try to use cached config instead of just giving up
+            val cachedConfig = com.aiguruapp.student.config.AppUpdateConfigCache.get(appContext)
+            if (cachedConfig != null) {
+                Log.d(TAG, "Using cached app config (${(System.currentTimeMillis() - prefs.getLong("app_config_cache_ts", 0L)) / 1000}s old)")
+                settle(evaluateConfig(currentVersionCode, cachedConfig, prefs))
+            } else {
+                settle(UpdateResult.NetworkError)
+            }
         }, TIMEOUT_MS)
 
         FirebaseFirestore.getInstance()
@@ -93,36 +102,57 @@ object AppUpdateManager {
             .get(Source.DEFAULT) // cache-first, server fallback
             .addOnSuccessListener { snapshot ->
                 val config = snapshot.toAppUpdateConfig()
+                // ✓ Cache successful result for offline use
+                com.aiguruapp.student.config.AppUpdateConfigCache.save(appContext, config)
                 Log.d(TAG, "Update check: minVer=${config.minVersionCode}, " +
                         "latestVer=${config.latestVersionCode}, " +
                         "active=${config.isActive}, maintenance=${config.isMaintenance}")
 
-                val result = when {
-                    // 1. Global kill-switch or scheduled maintenance
-                    !config.isActive || config.isMaintenance ->
-                        UpdateResult.Maintenance(config)
-
-                    // 2. Hard block — version is below minimum required
-                    currentVersionCode < config.minVersionCode ->
-                        UpdateResult.ForceUpdate(config)
-
-                    // 3. Soft nudge — newer version exists
-                    currentVersionCode < config.latestVersionCode -> {
-                        val lastShown = prefs.getLong(KEY_LAST_OPTIONAL_PROMPT, 0L)
-                        val cooldownExpired =
-                            System.currentTimeMillis() - lastShown > OPTIONAL_PROMPT_COOLDOWN_MS
-                        if (cooldownExpired) UpdateResult.OptionalUpdate(config)
-                        else UpdateResult.UpToDate
-                    }
-
-                    else -> UpdateResult.UpToDate
-                }
+                val result = evaluateConfig(currentVersionCode, config, prefs)
                 settle(result)
             }
             .addOnFailureListener { e ->
-                Log.e(TAG, "Update check failed: ${e.message}")
-                settle(UpdateResult.NetworkError)
+                Log.e(TAG, "Update check failed: ${e.message} — trying cache")
+                // ✓ Fall back to cached config
+                val cachedConfig = com.aiguruapp.student.config.AppUpdateConfigCache.get(appContext)
+                if (cachedConfig != null) {
+                    Log.d(TAG, "Using cached app config as fallback")
+                    settle(evaluateConfig(currentVersionCode, cachedConfig, prefs))
+                } else {
+                    Log.w(TAG, "No cached config available; proceeding without update check")
+                    settle(UpdateResult.NetworkError)
+                }
             }
+    }
+
+    /**
+     * Evaluate the config and decide what update action to take.
+     */
+    private fun evaluateConfig(
+        currentVersionCode: Int,
+        config: AppUpdateConfig,
+        prefs: SharedPreferences
+    ): UpdateResult {
+        return when {
+            // 1. Global kill-switch or scheduled maintenance
+            !config.isActive || config.isMaintenance ->
+                UpdateResult.Maintenance(config)
+
+            // 2. Hard block — version is below minimum required
+            currentVersionCode < config.minVersionCode ->
+                UpdateResult.ForceUpdate(config)
+
+            // 3. Soft nudge — newer version exists
+            currentVersionCode < config.latestVersionCode -> {
+                val lastShown = prefs.getLong(KEY_LAST_OPTIONAL_PROMPT, 0L)
+                val cooldownExpired =
+                    System.currentTimeMillis() - lastShown > OPTIONAL_PROMPT_COOLDOWN_MS
+                if (cooldownExpired) UpdateResult.OptionalUpdate(config)
+                else UpdateResult.UpToDate
+            }
+
+            else -> UpdateResult.UpToDate
+        }
     }
 
     /**
