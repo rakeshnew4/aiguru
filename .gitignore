@@ -144,7 +144,11 @@ server/test.py
 server/firebase_serviceaccount.json
 **/__pycache__
 server/app/__pycache__
+server/response.json
+server/response.txt
+server/prompt.txt
 
 
 git pull --rebase origin main
 server/google_tts_serviceaccount.json
+**/*.pyc
