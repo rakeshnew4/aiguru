@@ -123,6 +123,52 @@ object AdminConfigRepository {
         )
     }
 
+    /**
+     * Async version of [resolveEffectiveLimits].
+     *
+     * If the plan is already in the in-memory cache, [onResult] is called synchronously.
+     * Otherwise the plan is fetched directly from Firestore and the cache is updated before
+     * calling [onResult].  This prevents premium users from being gated at free-plan limits
+     * when [cachedPlans] is empty (e.g. plans haven't loaded yet at the time of the quota check).
+     *
+     * Safe to call from any thread; [onResult] is delivered on the Firestore callback thread
+     * (usually a background thread) — callers must post to the main thread if they touch UI.
+     */
+    fun resolveEffectiveLimitsAsync(
+        planId: String,
+        userOverrideLimits: PlanLimits? = null,
+        onResult: (PlanLimits) -> Unit
+    ) {
+        // If the plan is already cached (or the user is on the free plan which uses defaultLimits),
+        // resolve synchronously and return immediately.
+        if (planId.isBlank() || planId == "free" || cachedPlans.containsKey(planId)) {
+            onResult(resolveEffectiveLimits(planId, userOverrideLimits))
+            return
+        }
+        // Plan not yet cached — fetch directly from Firestore
+        db.collection(PLANS_COL).document(planId)
+            .get()
+            .addOnSuccessListener { doc ->
+                try {
+                    val plan = doc.toObject(SubscriptionPlan::class.java)?.copy(planId = doc.id)
+                    if (plan != null) {
+                        // Merge into the in-memory cache so subsequent calls are instant
+                        cachedPlans = cachedPlans.toMutableMap().also { it[doc.id] = plan }
+                        Log.d(TAG, "Fetched plan $planId on-demand: dailyBb=${plan.limits.dailyBlackboardSessions} dailyChat=${plan.limits.dailyChatQuestions}")
+                    } else {
+                        Log.w(TAG, "Plan document $planId exists but toObject() returned null — using defaults")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to parse plan $planId: ${e.message}")
+                }
+                onResult(resolveEffectiveLimits(planId, userOverrideLimits))
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "On-demand plan fetch failed for $planId — using defaults: ${e.message}")
+                onResult(resolveEffectiveLimits(planId, userOverrideLimits))
+            }
+    }
+
     /** Get a plan by id, with fallback to the free plan defaults. */
     fun getPlan(planId: String): SubscriptionPlan =
         cachedPlans[planId] ?: SubscriptionPlan(planId = planId.ifBlank { "free" })

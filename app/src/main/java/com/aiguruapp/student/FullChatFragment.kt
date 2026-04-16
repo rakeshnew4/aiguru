@@ -1077,6 +1077,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         try {
             val uCrop = UCrop.of(sourceUri, Uri.fromFile(destFile))
                 .withOptions(options)
+                .withAspectRatio(cropRatioX, cropRatioY)   // pre-select ~30% of image area
                 .withMaxResultSize(1920, 1920)
             cropLauncher.launch(uCrop.getIntent(requireContext()))
         } catch (e: Exception) {
@@ -1186,10 +1187,13 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             capturedPdfBase64 != null -> PlanEnforcer.FeatureType.PDF_UPLOAD
             else -> PlanEnforcer.FeatureType.TEXT_CHAT
         }
-        val effectiveLimits = AdminConfigRepository.resolveEffectiveLimits(
+        // Quick synchronous check with whatever limits are in cache — just to catch
+        // obvious blocks (maintenance, plan expired, feature disabled) before the
+        // async metadata + plan refresh below.
+        val quickLimits = AdminConfigRepository.resolveEffectiveLimits(
             cachedMetadata.planId, cachedMetadata.planLimits
         )
-        val planCheck = PlanEnforcer.check(cachedMetadata, effectiveLimits, featureType)
+        val planCheck = PlanEnforcer.check(cachedMetadata, quickLimits, featureType)
         if (!planCheck.allowed) {
             if (imageUri != null) selectedImageUri = imageUri
             if (capturedPdfBase64 != null) pdfPageBase64 = capturedPdfBase64
@@ -1206,9 +1210,9 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             return
         }
 
-        // Always refresh metadata from Firestore before quota check
-        // so counters are never stale (e.g. after midnight rollover, plan upgrade,
-        // or quota increase by admin).
+        // Always refresh metadata AND plan limits from Firestore before the quota check.
+        // This means premium users always get their real limits even if plans weren't
+        // cached yet at startup (race condition fix).
         FirestoreManager.getUserMetadata(userId, onSuccess = { freshMeta ->
             if (freshMeta != null) {
                 // Preserve the local userId in case Firestore deserialization leaves it blank,
@@ -1219,18 +1223,28 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                     "Meta refreshed before quota: chatAsked=${freshMeta.chatQuestionsToday} bbDone=${freshMeta.bbSessionsToday} questionsUpdatedAt=${freshMeta.questionsUpdatedAt}"
                 )
             }
-            // Now proceed with the actual message sending using refreshed metadata
-            proceedWithSendMessage(
-                userText, autoSaveNotes, imageUri, capturedPdfBase64, capturedImageBase64,
-                capturedDisplayUri, hadVisualAttachment, featureType, effectiveLimits
-            )
+            val effectivePlanId = cachedMetadata.planId
+            val effectiveOverride = cachedMetadata.planLimits
+            // Resolve limits async: fetches plan from Firestore if not in cache so premium
+            // users never see free-plan quota limits due to a cold-start cache miss.
+            AdminConfigRepository.resolveEffectiveLimitsAsync(effectivePlanId, effectiveOverride) { freshLimits ->
+                android.util.Log.d("FullChatFragment",
+                    "Plan limits for $effectivePlanId: chat=${freshLimits.dailyChatQuestions} bb=${freshLimits.dailyBlackboardSessions}")
+                // Now proceed with the actual message sending using refreshed metadata + limits
+                proceedWithSendMessage(
+                    userText, autoSaveNotes, imageUri, capturedPdfBase64, capturedImageBase64,
+                    capturedDisplayUri, hadVisualAttachment, featureType, freshLimits
+                )
+            }
         }, onFailure = {
             android.util.Log.w("FullChatFragment", "Meta refresh failed, proceeding with cached: ${it?.message}")
-            // Proceed anyway with potentially stale metadata (worst case: user needs to refresh and retry)
-            proceedWithSendMessage(
-                userText, autoSaveNotes, imageUri, capturedPdfBase64, capturedImageBase64,
-                capturedDisplayUri, hadVisualAttachment, featureType, effectiveLimits
-            )
+            // Resolve limits async even on metadata failure so plan limits are still correct
+            AdminConfigRepository.resolveEffectiveLimitsAsync(cachedMetadata.planId, cachedMetadata.planLimits) { freshLimits ->
+                proceedWithSendMessage(
+                    userText, autoSaveNotes, imageUri, capturedPdfBase64, capturedImageBase64,
+                    capturedDisplayUri, hadVisualAttachment, featureType, freshLimits
+                )
+            }
         })
     }
 

@@ -150,21 +150,6 @@ service cloud.firestore {
       allow write: if isSignedIn()
         && request.resource.data.ownerUserId == request.auth.uid;
     }
-
-    // ── Guest devices (unauthenticated access for guest quota tracking) ────────
-    // Structure: devices/{deviceId} → { guest_chat_used, guest_bb_used, linked_user_id, ... }
-    match /devices/{deviceId} {
-      // Anyone (including unauthenticated) can read & create their device doc
-      allow read, create: if true;
-      // Increment quota counters: allow only the specific counter fields — no auth required
-      // (guests cannot authenticate, but we restrict which fields can be updated)
-      allow update: if request.resource.data.diff(resource.data).affectedKeys()
-                        .hasOnly(['guest_chat_used', 'guest_bb_used'])
-                     || (isSignedIn()
-                         && request.resource.data.diff(resource.data).affectedKeys()
-                              .hasOnly(['linked_user_id', 'linked_at']));
-      allow delete: if false;
-    }
   }
 }
 

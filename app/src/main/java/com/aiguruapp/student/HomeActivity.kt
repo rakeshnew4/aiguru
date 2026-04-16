@@ -161,8 +161,9 @@ findViewById<MaterialButton>(R.id.progressButton).setOnClickListener {
                     .addOnSuccessListener { planDoc ->
                         @Suppress("UNCHECKED_CAST")
                         val limitsMap = planDoc.get("limits") as? Map<String, Any>
-                        val chatLimit = (limitsMap?.get("daily_chat_questions") as? Long)?.toInt() ?: 12
-                        val bbLimit   = (limitsMap?.get("daily_bb_sessions") as? Long)?.toInt() ?: 2
+                        // 0 means unlimited in the existing coercion logic below
+                        val chatLimit = (limitsMap?.get("daily_chat_questions") as? Long)?.toInt() ?: 0
+                        val bbLimit   = (limitsMap?.get("daily_bb_sessions") as? Long)?.toInt() ?: 0
                         val aiTtsQuotaChars = (limitsMap?.get("ai_tts_quota_chars") as? Long)?.toInt() ?: 0
 
                         val chatLeft = if (chatLimit <= 0) -1 else (chatLimit - chatUsed).coerceAtLeast(0)
@@ -172,10 +173,13 @@ findViewById<MaterialButton>(R.id.progressButton).setOnClickListener {
                         runOnUiThread { updateQuotaStripUI(chatLeft, bbLeft, aiTtsCharsLeft) }
                     }
                     .addOnFailureListener {
-                        // Plan fetch failed — show with free plan defaults
-                        val chatLeft = (12 - chatUsed).coerceAtLeast(0)
-                        val bbLeft   = (2  - bbUsed).coerceAtLeast(0)
-                        runOnUiThread { updateQuotaStripUI(chatLeft, bbLeft, 0) }
+                        // Direct Firestore plan fetch failed — fall back to in-memory plan cache
+                        // (resolveEffectiveLimitsAsync will fetch from Firestore again if not cached)
+                        AdminConfigRepository.resolveEffectiveLimitsAsync(planId, null) { limits ->
+                            val chatLimit2 = if (limits.dailyChatQuestions  <= 0) -1 else (limits.dailyChatQuestions  - chatUsed).coerceAtLeast(0)
+                            val bbLimit2   = if (limits.dailyBlackboardSessions <= 0) -1 else (limits.dailyBlackboardSessions - bbUsed).coerceAtLeast(0)
+                            runOnUiThread { updateQuotaStripUI(chatLimit2, bbLimit2, 0) }
+                        }
                     }
             }
     }
@@ -356,10 +360,6 @@ findViewById<MaterialButton>(R.id.progressButton).setOnClickListener {
         val chip = findViewById<MaterialButton?>(R.id.langChipButton) ?: return
         refreshLangChip(chip)
         chip.setOnClickListener { showLangPicker(chip) }
-
-        findViewById<MaterialButton?>(R.id.calcChipButton)?.setOnClickListener {
-            showCalculator()
-        }
     }
 
     private fun refreshLangChip(chip: MaterialButton) {

@@ -93,9 +93,7 @@ class BlackboardActivity : AppCompatActivity() {
     // ── State ─────────────────────────────────────────────────────────────────
     private lateinit var tts: TextToSpeechManager
     private lateinit var aiTtsEngine: com.aiguruapp.student.tts.BbAiTtsEngine
-    /** 0 = Standard (Android), 1 = Premium (Google Cloud TTS), 2 = Ultra (AI/Gemini) */
-    private var ttsVoiceMode = 0
-    private val useAiTts: Boolean get() = ttsVoiceMode > 0
+    private var useAiTts = false
     private lateinit var aiTtsToggleBtn: TextView
     private var steps            = listOf<BlackboardGenerator.BlackboardStep>()
     private var currentStepIdx   = 0
@@ -175,57 +173,40 @@ class BlackboardActivity : AppCompatActivity() {
         aiTtsEngine = com.aiguruapp.student.tts.BbAiTtsEngine(this, tts)
         aiTtsToggleBtn = findViewById(R.id.aiTtsToggleBtn)
 
-        // Restore TTS voice mode preference (0=Standard, 1=Premium, 2=Ultra)
+        // Restore AI TTS preference
         val prefs = getSharedPreferences("bb_prefs", MODE_PRIVATE)
-        ttsVoiceMode = prefs.getInt("tts_voice_mode",
-            if (prefs.getBoolean("use_ai_tts", false)) 1 else 0)  // migrate old pref
+        useAiTts = prefs.getBoolean("use_ai_tts", false)
         updateAiTtsToggleUi()
 
         aiTtsToggleBtn.setOnClickListener {
-            // Cycle: Standard(0) -> Premium(1) -> Ultra(2) -> Standard(0)
-            ttsVoiceMode = (ttsVoiceMode + 1) % 3
-            android.util.Log.d("BB_TTS_TOGGLE", "TTS mode changed: ttsVoiceMode=$ttsVoiceMode")
-            prefs.edit().putInt("tts_voice_mode", ttsVoiceMode).apply()
+            useAiTts = !useAiTts
+            android.util.Log.d("BB_TTS_TOGGLE", "AI TTS button clicked: useAiTts=$useAiTts")
+            prefs.edit().putBoolean("use_ai_tts", useAiTts).apply()
             updateAiTtsToggleUi()
-            when (ttsVoiceMode) {
-                0 -> {
-                    aiTtsEngine.stop()
-                    android.widget.Toast.makeText(this, "Standard (Android TTS)", android.widget.Toast.LENGTH_SHORT).show()
+            if (useAiTts) {
+                // Immediately check plan permission
+                val limits = AdminConfigRepository.resolveEffectiveLimits(
+                    cachedMetadata.planId, cachedMetadata.planLimits
+                )
+                val check = PlanEnforcer.check(
+                    cachedMetadata, limits, com.aiguruapp.student.config.PlanEnforcer.FeatureType.AI_TTS
+                )
+                if (!check.allowed) {
+                    android.util.Log.w("BB_TTS_TOGGLE", "❌ Plan check failed: ${check.upgradeMessage}")
+                    useAiTts = false
+                    prefs.edit().putBoolean("use_ai_tts", false).apply()
+                    updateAiTtsToggleUi()
+                    android.widget.Toast.makeText(this, check.upgradeMessage, android.widget.Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
                 }
-                1 -> {
-                    val limits = AdminConfigRepository.resolveEffectiveLimits(
-                        cachedMetadata.planId, cachedMetadata.planLimits
-                    )
-                    val check = PlanEnforcer.check(
-                        cachedMetadata, limits, com.aiguruapp.student.config.PlanEnforcer.FeatureType.AI_TTS
-                    )
-                    if (!check.allowed) {
-                        ttsVoiceMode = 0
-                        prefs.edit().putInt("tts_voice_mode", 0).apply()
-                        updateAiTtsToggleUi()
-                        android.widget.Toast.makeText(this, check.upgradeMessage, android.widget.Toast.LENGTH_LONG).show()
-                    } else {
-                        preloadUpcoming(currentStepIdx, currentFrameIdx, count = 3)
-                        android.widget.Toast.makeText(this, "Premium (Google TTS) — preloading…", android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                }
-                2 -> {
-                    val limits = AdminConfigRepository.resolveEffectiveLimits(
-                        cachedMetadata.planId, cachedMetadata.planLimits
-                    )
-                    val check = PlanEnforcer.check(
-                        cachedMetadata, limits, com.aiguruapp.student.config.PlanEnforcer.FeatureType.AI_TTS
-                    )
-                    if (!check.allowed) {
-                        ttsVoiceMode = 0
-                        prefs.edit().putInt("tts_voice_mode", 0).apply()
-                        updateAiTtsToggleUi()
-                        android.widget.Toast.makeText(this, check.upgradeMessage, android.widget.Toast.LENGTH_LONG).show()
-                    } else {
-                        preloadUpcoming(currentStepIdx, currentFrameIdx, count = 3)
-                        android.widget.Toast.makeText(this, "Ultra AI Voice — preloading…", android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                }
+                // Preload current + next 2 speech texts with new setting
+                android.util.Log.d("BB_TTS_TOGGLE", "✓ AI TTS enabled, preloading...")
+                preloadUpcoming(currentStepIdx, currentFrameIdx, count = 3)
+                android.widget.Toast.makeText(this, "🎙 AI Voice ON — preloading…", android.widget.Toast.LENGTH_SHORT).show()
+            } else {
+                android.util.Log.d("BB_TTS_TOGGLE", "✗ AI TTS disabled")
+                aiTtsEngine.stop()
+                android.widget.Toast.makeText(this, "🔊 Android TTS", android.widget.Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -241,36 +222,6 @@ class BlackboardActivity : AppCompatActivity() {
             // Wire the server URL for AI TTS as soon as config is loaded
             aiTtsEngine.selfHostedUrl = AdminConfigRepository.ttsSelfHostedUrl()
         }
-        
-        // GUEST QUOTA CHECK — if user is in guest mode
-        if (com.aiguruapp.student.utils.SessionManager.isGuestMode(this)) {
-            val deviceId = com.aiguruapp.student.utils.SessionManager.getDeviceId(this)
-            com.aiguruapp.student.config.PlanEnforcer.checkGuestQuota(deviceId, isBlackboard = true) { checkResult ->
-                if (!checkResult.allowed) {
-                    loadingGroup.visibility = android.view.View.GONE
-                    loadingText.text = checkResult.upgradeMessage
-                    loadingText.visibility = android.view.View.VISIBLE
-                    android.widget.Toast.makeText(this, checkResult.upgradeMessage, android.widget.Toast.LENGTH_LONG).show()
-                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                        startActivity(
-                            android.content.Intent(this, com.aiguruapp.student.LoginActivity::class.java)
-                                .putExtra("show_login_hint", true)
-                                .setFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                        )
-                    }, 2000)
-                    return@checkGuestQuota
-                }
-                // Guest BB quota OK, proceed with generation
-                generateStepsGuest(
-                    message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
-                    messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
-                    deviceId       = deviceId,
-                    conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID)
-                )
-            }
-            return
-        }
-        
         FirestoreManager.getUserMetadata(userId ?: "", onSuccess = { meta ->
             if (meta != null) {
                 cachedMetadata = meta
@@ -324,12 +275,6 @@ class BlackboardActivity : AppCompatActivity() {
         })
     }
 
-    override fun onPause() {
-        super.onPause()
-        // Stop all TTS engines immediately when the user leaves / minimizes the app
-        aiTtsEngine.stop()
-    }
-
     override fun onDestroy() {
         typeAnimator?.cancel()
         aiTtsEngine.destroy()
@@ -338,22 +283,14 @@ class BlackboardActivity : AppCompatActivity() {
     }
 
     private fun updateAiTtsToggleUi() {
-        when (ttsVoiceMode) {
-            0 -> {
-                aiTtsToggleBtn.text = "Standard"
-                aiTtsToggleBtn.setTextColor(android.graphics.Color.parseColor("#AABBCC"))
-                aiTtsToggleBtn.setBackgroundColor(android.graphics.Color.parseColor("#333555"))
-            }
-            1 -> {
-                aiTtsToggleBtn.text = "Premium"
-                aiTtsToggleBtn.setTextColor(android.graphics.Color.parseColor("#A0D4FF"))
-                aiTtsToggleBtn.setBackgroundColor(android.graphics.Color.parseColor("#1A3355"))
-            }
-            2 -> {
-                aiTtsToggleBtn.text = "Ultra"
-                aiTtsToggleBtn.setTextColor(android.graphics.Color.parseColor("#A0FFD0"))
-                aiTtsToggleBtn.setBackgroundColor(android.graphics.Color.parseColor("#224433"))
-            }
+        if (useAiTts) {
+            aiTtsToggleBtn.text  = "🎙 AI"
+            aiTtsToggleBtn.setTextColor(android.graphics.Color.parseColor("#A0FFD0"))
+            aiTtsToggleBtn.setBackgroundColor(android.graphics.Color.parseColor("#224433"))
+        } else {
+            aiTtsToggleBtn.text  = "🔊 TTS"
+            aiTtsToggleBtn.setTextColor(android.graphics.Color.parseColor("#AABBCC"))
+            aiTtsToggleBtn.setBackgroundColor(android.graphics.Color.parseColor("#333555"))
         }
     }
 
@@ -438,51 +375,6 @@ class BlackboardActivity : AppCompatActivity() {
                         )
                         lifecycleScope.launch(Dispatchers.Main) { updateBbQuotaChip(userId) }
                     }
-                    lifecycleScope.launch(Dispatchers.Main) {
-                        steps = generated
-                        computedFontSp = computeFontSize(steps)
-                        loadingGroup.visibility = View.GONE
-                        contentGroup.visibility = View.VISIBLE
-                        buildDots()
-                        setupBoard()
-                        // Preload first 3 frames' AI audio in background
-                        preloadUpcoming(0, 0, count = 3)
-                        showFrame(0, 0)
-                    }
-                },
-                onError = { err ->
-                    lifecycleScope.launch(Dispatchers.Main) {
-                        loadingText.text = "Couldn't build lesson. Please try again."
-                        android.util.Log.e("Blackboard", "Generation error: $err")
-                    }
-                }
-            )
-        }
-    }
-
-    /**
-     * Guest variant of generateSteps — records usage in /devices collection.
-     */
-    private fun generateStepsGuest(
-        message: String,
-        messageId: String? = null,
-        deviceId: String,
-        conversationId: String? = null
-    ) {
-        lifecycleScope.launch(Dispatchers.IO) {
-            BlackboardGenerator.generate(
-                messageContent = message,
-                messageId      = messageId,
-                userId         = null,  // No user ID for guests
-                conversationId = conversationId,
-                preferredLanguageTag = preferredLanguageTag,
-                onStatus = { statusMsg, _ ->
-                    runOnUiThread { loadingText.text = statusMsg }
-                },
-                onSuccess = { generated ->
-                    // Record guest BB session usage
-                    PlanEnforcer.recordGuestUsage(deviceId, isBlackboard = true)
-                    
                     lifecycleScope.launch(Dispatchers.Main) {
                         steps = generated
                         computedFontSp = computeFontSize(steps)
@@ -960,13 +852,11 @@ class BlackboardActivity : AppCompatActivity() {
 
         // Determine effective TTS engine for this frame:
         //   - First frame of the whole lesson → android (zero-delay guaranteed start)
-        //   - ttsVoiceMode == 0 (Standard)    → android (user preference)
-        //   - ttsVoiceMode == 1 (Premium)      → google (Google Cloud TTS)
-        //   - ttsVoiceMode == 2 (Ultra)        → smartAssignTts (gemini/google per frame type)
+        //   - useAiTts master toggle OFF       → android (user preference)
+        //   - otherwise                        → use the per-frame engine assigned by the LLM
         val effectiveEngine: String = when {
             stepIdx == 0 && frameIdx == 0 -> "android"
-            ttsVoiceMode == 0             -> "android"
-            ttsVoiceMode == 1             -> "google"
+            !useAiTts                     -> "android"
             else -> frame.ttsEngine.ifBlank {
                 BlackboardGenerator.smartAssignTts(frame.frameType).first
             }
