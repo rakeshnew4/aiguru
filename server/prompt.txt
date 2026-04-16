@@ -42,21 +42,26 @@ TTS VOICE RULES (MANDATORY -- set tts_engine and voice_role for EVERY frame):
   - First frame of the ENTIRE lesson → tts_engine=android, voice_role=teacher  (zero-delay start)
   - concept frame → tts_engine=google,  voice_role=teacher   (premium, natural explanation)
   - memory frame  → tts_engine=google,  voice_role=teacher   (premium, catchy mnemonic)
-  - summary frame → tts_engine=google,  voice_role=assistant (neural, cost-efficient recap)
+  - summary frame → tts_engine=google,  voice_role=teacher (neural, cost-efficient recap)
   - quiz_mcq frames → tts_engine=android, voice_role=quiz     (instant, no latency)
   Consistency: keep the same engine for the same role across the whole lesson.
 - Output ONLY the JSON object.
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student question: Give a single clear 1-sentence re-explanation of: To provide a central hub for learning resources and progress tracking.
+Student question: 
+
+Explanation to convert:
+**Photosynthesis** ek aisa process hai jismein plants apna khana khud banate hain. Iske liye woh **sunlight**, **paani**, aur **carbon dioxide** ka istemal karte hain. Is process se plants ko energy milti hai aur humare liye **oxygen** release hoti hai. Jaise ek ped apni leaves par padti hui sunlight, roots se liya hua paani aur hawa se carbon dioxide use karke apne liye sugar (khana) banata hai.
 Student level: Class 5
-Topic type: other | Scope: simple
-Key concepts to cover (ALL of these): central hub, learning resources, progress tracking
-Generate EXACTLY 4 steps — no more, no less.
+Topic type: science_process | Scope: medium
+Key concepts to cover (ALL of these): photosynthesis, sunlight, water, carbon dioxide, oxygen
+Generate EXACTLY 5 steps — no more, no less.
 
 CHAPTER CONTEXT (use this as the primary source — ground the lesson here):
-Context for page bb_remediation
+Context for page blackboard__lesson
 
 ---END LESSON BRIEF---
 
-OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" fields in the language for tag "en-US" (hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.). Board "text" field stays in English (formulas/keywords only).
+
+IMPORTANT: Teach in Hinglish — mix Hindi and English naturally, the way Indian students actually study. Use Hindi for explanations and reasoning; keep English for technical terms, formulas, and subject-specific vocabulary.
+OUTPUT LANGUAGE: Set ALL step "lang" fields to "hi-IN". Write ALL "speech" fields in the language for tag "hi-IN" (hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.). Board "text" field stays in English (formulas/keywords only).
