@@ -95,6 +95,17 @@ class QuizSetupActivity : BaseActivity() {
                     )
                 }
                 setLoading(false)
+                
+                // ✓ VALIDATION: Check if quiz has valid questions
+                if (quiz.questions.isEmpty()) {
+                    Toast.makeText(
+                        this@QuizSetupActivity,
+                        "Quiz generation failed: No valid questions. Please try again or select different options.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@launch
+                }
+                
                 // Serialize & pass quiz to QuizActivity
                 startActivity(
                     Intent(this@QuizSetupActivity, QuizActivity::class.java)
@@ -104,9 +115,16 @@ class QuizSetupActivity : BaseActivity() {
                 finish()
             } catch (e: Exception) {
                 setLoading(false)
+                // ✓ Better error handling
+                val errorMsg = when {
+                    e.message?.contains("502") == true -> "Server error generating quiz. The LLM returned invalid data. Please try again."
+                    e.message?.contains("timeout", ignoreCase = true) == true -> "Quiz generation took too long. Please try again."
+                    e.message?.contains("Empty response") == true -> "No response from server. Check your connection and try again."
+                    else -> "Failed to generate quiz: ${e.message}"
+                }
                 Toast.makeText(
                     this@QuizSetupActivity,
-                    "Failed to generate quiz: ${e.message}",
+                    errorMsg,
                     Toast.LENGTH_LONG
                 ).show()
             }

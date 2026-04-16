@@ -128,6 +128,11 @@ data class Quiz(
                     val opts = obj.optJSONArray("options")
                         ?.let { arr -> (0 until arr.length()).map { arr.getString(it) } }
                         ?: emptyList()
+                    // ✓ VALIDATION: MCQ must have at least 2 options
+                    if (opts.size < 2) {
+                        android.util.Log.w("QuizModels", "Invalid MCQ question $id: options has ${opts.size} items (min 2 required)")
+                        return null  // Skip malformed question
+                    }
                     QuizQuestion.MCQ(id, question, explanation, opts,
                         obj.optString("correct_answer", ""))
                 }

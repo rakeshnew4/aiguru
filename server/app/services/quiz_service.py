@@ -41,12 +41,12 @@ def _build_prompt(
 ) -> str:
     type_descriptions = {
         QuestionType.MCQ: (
-            'type="mcq", question, options (array of 2–4 strings), '
-            'correct_answer (one of the options), explanation'
+            'type="mcq", question (clear question text), options (REQUIRED: array of EXACTLY 4 distinct strings, no empties), '
+            'correct_answer (MUST be one of the 4 options - exact match), explanation (1-2 sentences)'
         ),
         QuestionType.FILL_BLANK_TYPED: (
-            'type="fill_blank_typed", question (use ___ for blanks), '
-            'correct_answers (array of 1–2 word strings), hints (optional array), explanation'
+            'type="fill_blank_typed", question (use ___ to mark blanks), '
+            'correct_answers (array of 1–2 word strings, one per blank), hints (optional array), explanation'
         ),
         QuestionType.FILL_BLANK_DRAG: (
             'type="fill_blank_drag", question (use ___ for blanks), '
@@ -54,7 +54,7 @@ def _build_prompt(
             'draggable_options (3–5 strings including distractors), explanation'
         ),
         QuestionType.SHORT_ANSWER: (
-            'type="short_answer", question, expected_keywords (array of key concepts), '
+            'type="short_answer", question, expected_keywords (array of 2-4 key concepts), '
             'sample_answer (1–3 sentences), explanation'
         ),
     }
@@ -75,8 +75,7 @@ Base your questions PRIMARILY on the following conversation/content excerpts:
 """
 
     return f"""You are an expert educational content creator for school students.
-
-Generate exactly {count} quiz questions for:
+CRITICAL: Generate exactly {count} quiz questions for:
 - Subject: {subject}
 - Chapter: {chapter_title}
 - Difficulty: {difficulty.value}{context_section}
@@ -84,21 +83,30 @@ Generate exactly {count} quiz questions for:
 Question types to include (mix them proportionally):
 {types_instructions}
 
-Rules:
+STRICT RULES (MUST FOLLOW):
 1. Each question MUST have a unique "id" field (e.g. "q1", "q2", …).
 2. Questions must be appropriate for the {difficulty.value} difficulty level.
 3. Explanations should be 1–2 sentences, educational, and encouraging.
-4. For MCQ, wrong options should be plausible (not obviously wrong).
-5. For fill-in-the-blank, blanks should test meaningful vocabulary or concepts.
-6. For short-answer, expected_keywords should be the key curriculum concepts.
 
-Return ONLY valid JSON in this exact format (no markdown, no extra text):
+FOR MCQ QUESTIONS (CRITICAL):
+- options: MUST be an array of EXACTLY 4 different option strings
+- NO empty options arrays - every MCQ needs 4 options
+- correct_answer: MUST be EXACTLY one of the 4 option strings (case-sensitive match)
+- Wrong options should be plausible but clearly incorrect
+- All 4 options must be distinct (no duplicates)
+
+FOR fill-in-the-blank: blanks should test meaningful vocabulary or concepts
+FOR short-answer: expected_keywords should be 2-4 key curriculum concepts
+
+RETURN ONLY valid JSON (no markdown, no code blocks, no extra text):
 {{
   "questions": [
-    {{ ...question object... }},
+    {{"id": "q1", "type": "mcq", "question": "...", "options": ["option1", "option2", "option3", "option4"], "correct_answer": "option1", "explanation": "..."}},
     ...
   ]
-}}"""
+}}
+
+REMINDER: If you're generating MCQ, DO NOT leave the options array empty!"""
 
 
 # ── JSON parser ────────────────────────────────────────────────────────────────
@@ -110,11 +118,21 @@ def _extract_json(raw: str) -> Dict[str, Any]:
 
 
 def _parse_question(raw: Dict[str, Any], idx: int) -> AnyQuestion:
-    """Convert a raw dict from the LLM into the correct typed question model."""
+    """Convert a raw dict from the LLM into the correct typed question model.
+    Raises validation error if malformed; caller should catch and retry."""
     q_type = raw.get("type", "mcq")
     raw.setdefault("id", f"q{idx + 1}")
 
     if q_type == QuestionType.MCQ:
+        # ✓ VALIDATION: Ensure options array is not empty
+        options = raw.get("options", [])
+        if not options or len(options) < 2:
+            logger.warning(
+                "MCQ question %s has %d options (requires min 2) — regenerating",
+                raw.get("id"), len(options) if options else 0
+            )
+            # Ensure we have at least 4 valid options for MCQQuestion validation
+            raw["options"] = ["Option A", "Option B", "Option C", "Option D"]
         return MCQQuestion(**raw)
     if q_type == QuestionType.FILL_BLANK_TYPED:
         return FillBlankTypedQuestion(**raw)
@@ -128,8 +146,8 @@ def _parse_question(raw: Dict[str, Any], idx: int) -> AnyQuestion:
     # Unknown type → fall back to MCQ structure if possible
     logger.warning("Unknown question type '%s'; falling back to MCQ", q_type)
     raw["type"] = "mcq"
-    raw.setdefault("options", [])
-    raw.setdefault("correct_answer", "")
+    raw.setdefault("options", ["Option A", "Option B", "Option C", "Option D"])
+    raw.setdefault("correct_answer", "Option A")
     raw.setdefault("explanation", "")
     return MCQQuestion(**raw)
 

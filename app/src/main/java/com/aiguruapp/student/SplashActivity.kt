@@ -91,7 +91,8 @@ class SplashActivity : AppCompatActivity() {
         // Update check runs fully in parallel — no blocking.
         AppUpdateManager.checkForUpdates(
             currentVersionCode = BuildConfig.VERSION_CODE,
-            prefs = prefs
+            prefs = prefs,
+            appContext = this  // ✓ Pass context for caching
         ) { result ->
             checkResultCache = result
             if (hasProceeded) {
