@@ -111,6 +111,10 @@ class GenerateQuizRequest(BaseModel):
         default_factory=lambda: [QuestionType.MCQ]
     )
     count: int = Field(default=10, ge=1, le=20)
+    # Optional: when provided, the LLM uses this text as the primary source
+    # for question generation instead of the chapter title alone.
+    # Used by teachers generating quizzes from selected chat messages.
+    context_text: str = Field(default="", max_length=12000)
 
 
 class GenerateQuizResponse(BaseModel):

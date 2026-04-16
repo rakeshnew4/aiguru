@@ -48,7 +48,8 @@ class QuizApiClient(
         difficulty: String,
         questionTypes: List<String>,
         count: Int,
-        userId: String
+        userId: String,
+        contextText: String = ""
     ): Quiz {
         val typesArray = JSONArray().apply { questionTypes.forEach { put(it) } }
         val body = JSONObject().apply {
@@ -59,6 +60,7 @@ class QuizApiClient(
             put("question_types", typesArray)
             put("count", count)
             put("user_id", userId)
+            if (contextText.isNotBlank()) put("context_text", contextText)
         }.toString().toRequestBody(JSON_MEDIA)
 
         val request = Request.Builder()

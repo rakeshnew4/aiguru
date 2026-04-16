@@ -129,6 +129,13 @@
         <activity android:name=".BlackboardActivity" android:exported="false"
             android:screenOrientation="portrait"
             android:launchMode="singleTop"/>
+        <activity android:name=".BbSavedSessionsActivity" android:exported="false"/>
+        <activity android:name=".TeacherChatReviewActivity" android:exported="false"
+            android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".TeacherSavedContentActivity" android:exported="false"/>
+        <activity android:name=".TeacherTasksActivity" android:exported="false"
+            android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".TasksActivity" android:exported="false"/>
         <activity android:name=".GeminiLiveActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize"/>

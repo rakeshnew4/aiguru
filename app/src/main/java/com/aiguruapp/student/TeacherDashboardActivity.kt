@@ -1,5 +1,6 @@
 package com.aiguruapp.student
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.Gravity
@@ -52,6 +53,17 @@ class TeacherDashboardActivity : BaseActivity() {
         swipeRefresh.setOnRefreshListener { loadClass(); swipeRefresh.isRefreshing = false }
 
         findViewById<MaterialButton>(R.id.loadClassButton).setOnClickListener { loadClass() }
+
+        // Teacher action shortcuts
+        findViewById<MaterialButton>(R.id.btnChatReview).setOnClickListener {
+            startActivity(Intent(this, TeacherChatReviewActivity::class.java))
+        }
+        findViewById<MaterialButton>(R.id.btnAssignTask).setOnClickListener {
+            startActivity(Intent(this, TeacherTasksActivity::class.java))
+        }
+        findViewById<MaterialButton>(R.id.btnSavedContent).setOnClickListener {
+            startActivity(Intent(this, TeacherSavedContentActivity::class.java))
+        }
     }
 
     private fun loadClass() {

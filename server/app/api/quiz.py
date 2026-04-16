@@ -50,6 +50,7 @@ async def generate_quiz(req: GenerateQuizRequest, auth: AuthUser = Depends(requi
             mode=req.mode,
             question_types=req.question_types,
             count=req.count,
+            context_text=req.context_text,
         )
     except RuntimeError as exc:
         logger.error("Quiz generation failed: %s", exc)

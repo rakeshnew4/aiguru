@@ -121,6 +121,8 @@ class BlackboardActivity : AppCompatActivity() {
 
     // Quota chip in the top bar
     private lateinit var bbQuotaChip: android.widget.TextView
+    private lateinit var saveSessionBtn: TextView
+    private var sessionAlreadySaved = false
 
     // Cached user metadata for quota checks
     private var cachedMetadata = UserMetadata()
@@ -152,6 +154,7 @@ class BlackboardActivity : AppCompatActivity() {
         nextBtn         = findViewById(R.id.nextButton)
         handWriter      = findViewById(R.id.handWriter)
         bbQuotaChip     = findViewById(R.id.bbQuotaChip)
+        saveSessionBtn  = findViewById(R.id.saveSessionBtn)
         bbAskInput      = findViewById(R.id.bbAskInput)
         bbAskSendBtn    = findViewById(R.id.bbAskSend)
 
@@ -163,6 +166,7 @@ class BlackboardActivity : AppCompatActivity() {
         bbAskInput.setOnEditorActionListener { _, _, _ -> sendBbQuestion(); true }
 
         closeBtn.setOnClickListener  { finish() }
+        saveSessionBtn.setOnClickListener { saveCurrentSession() }
         prevBtn.setOnClickListener   { prevStep() }
         nextBtn.setOnClickListener   { nextStep() }
         replayBtn.setOnClickListener { reSpeakCurrent() }
@@ -380,6 +384,7 @@ class BlackboardActivity : AppCompatActivity() {
                         computedFontSp = computeFontSize(steps)
                         loadingGroup.visibility = View.GONE
                         contentGroup.visibility = View.VISIBLE
+                        saveSessionBtn.visibility = View.VISIBLE
                         buildDots()
                         setupBoard()
                         // Preload first 3 frames' AI audio in background
@@ -395,6 +400,41 @@ class BlackboardActivity : AppCompatActivity() {
                 }
             )
         }
+    }
+
+    // ── Save session to chapter notes ──────────────────────────────────────────
+
+    private fun saveCurrentSession() {
+        val uid = intent.getStringExtra(EXTRA_USER_ID) ?: run {
+            android.widget.Toast.makeText(this, "Sign in to save sessions", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+        val subject = intent.getStringExtra(EXTRA_SUBJECT) ?: "General"
+        val chapter = intent.getStringExtra(EXTRA_CHAPTER) ?: "General"
+        val topic   = intent.getStringExtra(EXTRA_MESSAGE) ?: ""
+        val convId  = intent.getStringExtra(EXTRA_CONVERSATION_ID) ?: java.util.UUID.randomUUID().toString()
+        val msgId   = intent.getStringExtra(EXTRA_MESSAGE_ID) ?: ""
+        val sessionId = "${convId}_${System.currentTimeMillis()}"
+
+        com.aiguruapp.student.firestore.FirestoreManager.saveBbSession(
+            userId        = uid,
+            subject       = subject,
+            chapter       = chapter,
+            sessionId     = sessionId,
+            messageId     = msgId,
+            conversationId = convId,
+            topic         = topic,
+            stepCount     = steps.size,
+            onSuccess     = {
+                sessionAlreadySaved = true
+                saveSessionBtn.text = "✓ Saved"
+                saveSessionBtn.setTextColor(android.graphics.Color.parseColor("#A0FFD0"))
+                android.widget.Toast.makeText(this, "Session saved to chapter notes!", android.widget.Toast.LENGTH_SHORT).show()
+            },
+            onFailure     = {
+                android.widget.Toast.makeText(this, "Save failed — try again", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        )
     }
 
     /** Refresh the session quota chip in the top bar. */

@@ -11,8 +11,11 @@ import android.widget.EditText
 import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.view.GravityCompat
+import androidx.drawerlayout.widget.DrawerLayout
 import com.bumptech.glide.Glide
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
@@ -45,6 +48,12 @@ class HomeActivity : BaseActivity() {
     private lateinit var subjectAdapter: SubjectAdapter
     private lateinit var userId: String
     private var homePendingForceUpdate: AppUpdateManager.UpdateResult.ForceUpdate? = null
+    private lateinit var drawerLayout: DrawerLayout
+
+    // Drawer quota views — updated by loadQuotaStrip
+    private var drawerChatLimit: Int  = 0
+    private var drawerBbLimit: Int    = 0
+    private var drawerVoiceLimit: Int = 0
 
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -90,22 +99,29 @@ class HomeActivity : BaseActivity() {
             // Animated color-cycling for the prominent Quick Chat button
             startQuickChatPulseAnimation(btn)
         }
-findViewById<MaterialButton>(R.id.progressButton).setOnClickListener {
-            startActivity(Intent(this, ProgressDashboardActivity::class.java))
-        }
-        findViewById<MaterialButton>(R.id.teacherDashboardButton).setOnClickListener {
-            startActivity(Intent(this, TeacherDashboardActivity::class.java))
-        }
         setupLangChip()
-        findViewById<TextView?>(R.id.profileButton)?.setOnClickListener {
-            startActivity(Intent(this, UserProfileActivity::class.java))
+
+        drawerLayout = findViewById(R.id.homeDrawerLayout)
+
+        // Hamburger opens the navigation drawer
+        findViewById<View?>(R.id.drawerToggleBtn)?.setOnClickListener {
+            drawerLayout.openDrawer(GravityCompat.START)
         }
+
+        // Avatar (top-right) shows a quick logout confirmation — everything else is in the drawer
+        findViewById<View?>(R.id.profileButton)?.setOnClickListener {
+            confirmLogout()
+        }
+
+        // Plan badge still navigates to subscription
         findViewById<TextView?>(R.id.planBadgeText)?.setOnClickListener {
             startActivity(
                 Intent(this, SubscriptionActivity::class.java)
                     .putExtra("schoolId", SessionManager.getSchoolId(this))
             )
         }
+
+        setupDrawer()
     }
 
     override fun onResume() {
@@ -161,10 +177,14 @@ findViewById<MaterialButton>(R.id.progressButton).setOnClickListener {
                     .addOnSuccessListener { planDoc ->
                         @Suppress("UNCHECKED_CAST")
                         val limitsMap = planDoc.get("limits") as? Map<String, Any>
-                        // 0 means unlimited in the existing coercion logic below
                         val chatLimit = (limitsMap?.get("daily_chat_questions") as? Long)?.toInt() ?: 0
                         val bbLimit   = (limitsMap?.get("daily_bb_sessions") as? Long)?.toInt() ?: 0
                         val aiTtsQuotaChars = (limitsMap?.get("ai_tts_quota_chars") as? Long)?.toInt() ?: 0
+
+                        // Store limits so progress bars can show correct percentages
+                        drawerChatLimit  = chatLimit
+                        drawerBbLimit    = bbLimit
+                        drawerVoiceLimit = aiTtsQuotaChars
 
                         val chatLeft = if (chatLimit <= 0) -1 else (chatLimit - chatUsed).coerceAtLeast(0)
                         val bbLeft   = if (bbLimit   <= 0) -1 else (bbLimit   - bbUsed).coerceAtLeast(0)
@@ -173,9 +193,9 @@ findViewById<MaterialButton>(R.id.progressButton).setOnClickListener {
                         runOnUiThread { updateQuotaStripUI(chatLeft, bbLeft, aiTtsCharsLeft) }
                     }
                     .addOnFailureListener {
-                        // Direct Firestore plan fetch failed — fall back to in-memory plan cache
-                        // (resolveEffectiveLimitsAsync will fetch from Firestore again if not cached)
                         AdminConfigRepository.resolveEffectiveLimitsAsync(planId, null) { limits ->
+                            drawerChatLimit  = limits.dailyChatQuestions
+                            drawerBbLimit    = limits.dailyBlackboardSessions
                             val chatLimit2 = if (limits.dailyChatQuestions  <= 0) -1 else (limits.dailyChatQuestions  - chatUsed).coerceAtLeast(0)
                             val bbLimit2   = if (limits.dailyBlackboardSessions <= 0) -1 else (limits.dailyBlackboardSessions - bbUsed).coerceAtLeast(0)
                             runOnUiThread { updateQuotaStripUI(chatLimit2, bbLimit2, 0) }
@@ -184,28 +204,56 @@ findViewById<MaterialButton>(R.id.progressButton).setOnClickListener {
             }
     }
 
+    /**
+     * Update the usage section in the left navigation drawer.
+     * @param chatLeft  remaining chat questions today (-1 = unlimited)
+     * @param bbLeft    remaining blackboard sessions today (-1 = unlimited)
+     * @param aiTtsCharsLeft remaining AI TTS chars today (-1 = unlimited / 0 = no quota)
+     */
     private fun updateQuotaStripUI(chatLeft: Int, bbLeft: Int, aiTtsCharsLeft: Int) {
-        val strip = findViewById<LinearLayout?>(R.id.quotaStripCard) ?: return
-        if (chatLeft < 0 && bbLeft < 0 && aiTtsCharsLeft < 0) {
-            strip.visibility = android.view.View.GONE
-            return
+        // Chat
+        val chatText = if (chatLeft < 0) "∞" else "$chatLeft left"
+        val chatColor = if (chatLeft in 0..3) "#BF360C" else "#1565C0"
+        findViewById<TextView?>(R.id.drawerChatLeft)?.apply {
+            text = chatText
+            setTextColor(Color.parseColor(chatColor))
         }
-        strip.visibility = android.view.View.VISIBLE
+        findViewById<ProgressBar?>(R.id.drawerChatProgress)?.let { bar ->
+            val used = if (drawerChatLimit > 0 && chatLeft >= 0) drawerChatLimit - chatLeft else 0
+            bar.max = if (drawerChatLimit > 0) drawerChatLimit else 100
+            bar.progress = used.coerceAtLeast(0)
+        }
 
-        val chatView = findViewById<TextView?>(R.id.quotaChatCount)
-        chatView?.text = if (chatLeft < 0) "∞" else chatLeft.toString()
-        chatView?.setTextColor(Color.parseColor(if (chatLeft in 0..3) "#BF360C" else "#1565C0"))
+        // Blackboard
+        val bbText = if (bbLeft < 0) "∞" else "$bbLeft left"
+        val bbColor = if (bbLeft in 0..1) "#BF360C" else "#7B1FA2"
+        findViewById<TextView?>(R.id.drawerBbLeft)?.apply {
+            text = bbText
+            setTextColor(Color.parseColor(bbColor))
+        }
+        findViewById<ProgressBar?>(R.id.drawerBbProgress)?.let { bar ->
+            val used = if (drawerBbLimit > 0 && bbLeft >= 0) drawerBbLimit - bbLeft else 0
+            bar.max = if (drawerBbLimit > 0) drawerBbLimit else 100
+            bar.progress = used.coerceAtLeast(0)
+        }
 
-        val bbView = findViewById<TextView?>(R.id.quotaBbCount)
-        bbView?.text = if (bbLeft < 0) "∞" else bbLeft.toString()
-        bbView?.setTextColor(Color.parseColor(if (bbLeft in 0..1) "#BF360C" else "#1565C0"))
-
-        // AI TTS credits
-        val aiTtsView = findViewById<TextView?>(R.id.quotaAiTtsChars)
-        if (aiTtsView != null) {
-            aiTtsView.visibility = if (aiTtsCharsLeft == 0) android.view.View.GONE else android.view.View.VISIBLE
-            aiTtsView.text = if (aiTtsCharsLeft < 0) "🎙 ∞" else "🎙 ${aiTtsCharsLeft}c"
-            aiTtsView.setTextColor(Color.parseColor(if (aiTtsCharsLeft in 0..1000) "#BF360C" else "#00796B"))
+        // AI Voice credits
+        val voiceRow = findViewById<LinearLayout?>(R.id.drawerVoiceRow)
+        if (aiTtsCharsLeft != 0) {
+            voiceRow?.visibility = View.VISIBLE
+            val voiceText = if (aiTtsCharsLeft < 0) "∞" else "$aiTtsCharsLeft chars left"
+            val voiceColor = if (aiTtsCharsLeft in 0..1000) "#BF360C" else "#1E9B6B"
+            findViewById<TextView?>(R.id.drawerVoiceLeft)?.apply {
+                text = voiceText
+                setTextColor(Color.parseColor(voiceColor))
+            }
+            findViewById<ProgressBar?>(R.id.drawerVoiceProgress)?.let { bar ->
+                val used = if (drawerVoiceLimit > 0 && aiTtsCharsLeft >= 0) drawerVoiceLimit - aiTtsCharsLeft else 0
+                bar.max = if (drawerVoiceLimit > 0) drawerVoiceLimit else 100
+                bar.progress = used.coerceAtLeast(0)
+            }
+        } else {
+            voiceRow?.visibility = View.GONE
         }
     }
 
@@ -264,6 +312,8 @@ findViewById<MaterialButton>(R.id.progressButton).setOnClickListener {
             text = displayPlan
             visibility = android.view.View.VISIBLE
         }
+        // Sync drawer header too
+        if (::drawerLayout.isInitialized) updateDrawerHeader()
     }
 
     private fun setupGreeting() {
@@ -383,68 +433,8 @@ findViewById<MaterialButton>(R.id.progressButton).setOnClickListener {
             .show()
     }
 
-    private fun showProfileDialog() {
-        val studentName = SessionManager.getStudentName(this)
-        val studentId = SessionManager.getStudentId(this)
-        val schoolName = SessionManager.getSchoolName(this)
-        val planName = SessionManager.getPlanName(this).ifBlank { "No plan selected" }
-        val userId = SessionManager.getStudentId(this)
-
-        // Load fresh token breakdown from Firestore
-        FirestoreManager.getUserMetadata(userId, onSuccess = { meta ->
-            val totalToday  = meta?.tokensToday ?: 0
-            val inToday     = meta?.inputTokensToday ?: 0
-            val outToday    = meta?.outputTokensToday ?: 0
-            val totalMonth  = meta?.tokensThisMonth ?: 0
-            val inMonth     = meta?.inputTokensThisMonth ?: 0
-            val outMonth    = meta?.outputTokensThisMonth ?: 0
-
-            val tokenInfo = buildString {
-                append("\nToday:  $totalToday tokens")
-                if (inToday > 0 || outToday > 0) append(" (in $inToday / out $outToday)")
-                append("\nMonth: $totalMonth tokens")
-                if (inMonth > 0 || outMonth > 0) append(" (in $inMonth / out $outMonth)")
-            }
-
-            AlertDialog.Builder(this)
-                .setTitle("👤 $studentName")
-                .setMessage(
-                    "School: $schoolName\n" +
-                    "Student ID: $studentId\n" +
-                    "Plan: $planName\n" +
-                    tokenInfo
-                )
-                .setPositiveButton("Change Plan") { _, _ ->
-                    startActivity(
-                        Intent(this, SubscriptionActivity::class.java)
-                            .putExtra("schoolId", SessionManager.getSchoolId(this))
-                    )
-                }
-                .setNeutralButton("Logout") { _, _ -> confirmLogout() }
-                .setNegativeButton("Close", null)
-                .show()
-        }, onFailure = {
-            // Fallback: show dialog without token info
-            AlertDialog.Builder(this)
-                .setTitle("👤 $studentName")
-                .setMessage(
-                    "School: $schoolName\n" +
-                    "Student ID: $studentId\n" +
-                    "Plan: $planName"
-                )
-                .setPositiveButton("Change Plan") { _, _ ->
-                    startActivity(
-                        Intent(this, SubscriptionActivity::class.java)
-                            .putExtra("schoolId", SessionManager.getSchoolId(this))
-                    )
-                }
-                .setNeutralButton("Logout") { _, _ -> confirmLogout() }
-                .setNegativeButton("Close", null)
-                .show()
-        })
-    }
-
-    private fun confirmLogout() {        AlertDialog.Builder(this)
+    private fun confirmLogout() {
+        AlertDialog.Builder(this)
             .setTitle("Logout")
             .setMessage("Are you sure you want to logout?")
             .setPositiveButton("Logout") { _, _ ->
@@ -454,12 +444,68 @@ findViewById<MaterialButton>(R.id.progressButton).setOnClickListener {
                 startActivity(Intent(this, LoginActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 })
-
                 finish()
             }
-
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    @Suppress("OVERRIDE_DEPRECATION")
+    override fun onBackPressed() {
+        if (::drawerLayout.isInitialized && drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START)
+        } else {
+            super.onBackPressed()
+        }
+    }
+
+    private fun setupDrawer() {
+        // Populate drawer header from session
+        updateDrawerHeader()
+
+        // Nav item clicks — close drawer then navigate
+        fun navigate(block: () -> Unit) {
+            drawerLayout.closeDrawer(GravityCompat.START)
+            drawerLayout.postDelayed(block, 200)
+        }
+
+        findViewById<LinearLayout>(R.id.drawerHeaderCard).setOnClickListener {
+            navigate { startActivity(Intent(this, UserProfileActivity::class.java)) }
+        }
+        findViewById<LinearLayout>(R.id.drawerItemProfile).setOnClickListener {
+            navigate { startActivity(Intent(this, UserProfileActivity::class.java)) }
+        }
+        findViewById<LinearLayout>(R.id.drawerItemProgress).setOnClickListener {
+            navigate { startActivity(Intent(this, ProgressDashboardActivity::class.java)) }
+        }
+        findViewById<LinearLayout>(R.id.drawerItemTeacher).setOnClickListener {
+            navigate { startActivity(Intent(this, TeacherDashboardActivity::class.java)) }
+        }
+        findViewById<LinearLayout>(R.id.drawerItemTasks).setOnClickListener {
+            navigate { startActivity(Intent(this, TasksActivity::class.java)) }
+        }
+        findViewById<LinearLayout>(R.id.drawerItemPlans).setOnClickListener {
+            navigate {
+                startActivity(
+                    Intent(this, SubscriptionActivity::class.java)
+                        .putExtra("schoolId", SessionManager.getSchoolId(this))
+                )
+            }
+        }
+        findViewById<LinearLayout>(R.id.drawerItemSignOut).setOnClickListener {
+            drawerLayout.closeDrawer(GravityCompat.START)
+            drawerLayout.postDelayed({ confirmLogout() }, 200)
+        }
+    }
+
+    /** Sync drawer header text from SessionManager. */
+    private fun updateDrawerHeader() {
+        val name  = SessionManager.getStudentName(this)
+        val school = SessionManager.getSchoolName(this)
+        val plan  = SessionManager.getPlanName(this).let { if (it.isBlank()) "Free" else it }
+        findViewById<TextView?>(R.id.drawerName)?.text = name
+        findViewById<TextView?>(R.id.drawerSchool)?.text = school
+        findViewById<TextView?>(R.id.drawerPlanBadge)?.text = "📋 $plan"
     }
 
     // ── Offers banner (Firestore-backed) ───────────────────────────────────────

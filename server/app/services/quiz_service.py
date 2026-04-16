@@ -37,6 +37,7 @@ def _build_prompt(
     difficulty: Difficulty,
     question_types: List[QuestionType],
     count: int,
+    context_text: str = "",
 ) -> str:
     type_descriptions = {
         QuestionType.MCQ: (
@@ -63,12 +64,22 @@ def _build_prompt(
         if qt in type_descriptions
     )
 
+    context_section = ""
+    if context_text.strip():
+        context_section = f"""
+
+Base your questions PRIMARILY on the following conversation/content excerpts:
+---
+{context_text.strip()[:8000]}
+---
+"""
+
     return f"""You are an expert educational content creator for school students.
 
 Generate exactly {count} quiz questions for:
 - Subject: {subject}
 - Chapter: {chapter_title}
-- Difficulty: {difficulty.value}
+- Difficulty: {difficulty.value}{context_section}
 
 Question types to include (mix them proportionally):
 {types_instructions}
@@ -131,6 +142,7 @@ async def generate_quiz(
     mode: QuizMode,
     question_types: List[QuestionType],
     count: int,
+    context_text: str = "",
 ) -> Quiz:
     """
     Call the LLM to produce a structured quiz and return a validated Quiz object.
@@ -158,7 +170,7 @@ async def generate_quiz(
         except Exception as cache_exc:
             logger.warning("Failed to deserialise cached quiz: %s", cache_exc)
 
-    prompt = _build_prompt(subject, chapter_title, difficulty, question_types, count)
+    prompt = _build_prompt(subject, chapter_title, difficulty, question_types, count, context_text)
     system_prefix = (
         "You are a quiz generator. Always respond with valid JSON only. "
         "No prose, no markdown, just raw JSON.\n\n"

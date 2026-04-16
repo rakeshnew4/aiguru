@@ -735,6 +735,272 @@ object FirestoreManager {
             .addOnFailureListener { onFailure(it) }
     }
 
+    // ── Saved BB Sessions ────────────────────────────────────────────────────────
+    // Path: users/{uid}/subjects/{subjectId}/chapters/{chapterId}/bb_sessions/{sessionId}
+
+    /**
+     * Save blackboard session metadata so users can revisit sessions per chapter.
+     * Only metadata is stored — no LLM content.
+     */
+    fun saveBbSession(
+        userId: String,
+        subject: String,
+        chapter: String,
+        sessionId: String,
+        messageId: String,
+        conversationId: String,
+        topic: String,
+        stepCount: Int,
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") { onFailure(null); return }
+        val preview = topic.trim().take(120)
+        val data = mapOf(
+            "session_id"      to sessionId,
+            "message_id"      to messageId,
+            "conversation_id" to conversationId,
+            "topic"           to topic,
+            "subject"         to subject,
+            "chapter"         to chapter,
+            "step_count"      to stepCount,
+            "preview"         to preview,
+            "saved_at"        to System.currentTimeMillis()
+        )
+        usersRef(userId)
+            .collection("subjects").document(safeId(subject))
+            .collection("chapters").document(safeId(chapter))
+            .collection("bb_sessions").document(sessionId)
+            .set(data, SetOptions.merge())
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { onFailure(it) }
+
+        // Also write to flat collection so we can list all sessions without subject/chapter
+        usersRef(userId)
+            .collection("saved_bb_sessions_flat").document(sessionId)
+            .set(data, SetOptions.merge())
+    }
+
+    /**
+     * Load all saved BB sessions for a user across ALL subjects/chapters.
+     * Uses the flat mirror collection written by saveBbSession.
+     */
+    fun loadAllSavedBbSessions(
+        userId: String,
+        onSuccess: (List<Map<String, Any>>) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") { onFailure(null); return }
+        usersRef(userId)
+            .collection("saved_bb_sessions_flat")
+            .orderBy("saved_at", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .limit(100)
+            .get()
+            .addOnSuccessListener { snap ->
+                val sessions = snap.documents.mapNotNull { doc ->
+                    doc.data?.toMutableMap()?.also { it["id"] = doc.id }
+                }
+                onSuccess(sessions)
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * Load all saved BB sessions for a chapter, sorted by saved_at descending.
+     */
+    fun loadBbSessions(
+        userId: String,
+        subject: String,
+        chapter: String,
+        onSuccess: (List<Map<String, Any>>) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") { onFailure(null); return }
+        usersRef(userId)
+            .collection("subjects").document(safeId(subject))
+            .collection("chapters").document(safeId(chapter))
+            .collection("bb_sessions")
+            .orderBy("saved_at", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .get()
+            .addOnSuccessListener { snap ->
+                val sessions = snap.documents.mapNotNull { doc ->
+                    doc.data?.toMutableMap()?.also { it["id"] = doc.id }
+                }
+                onSuccess(sessions)
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * Delete a saved BB session.
+     */
+    fun deleteBbSession(
+        userId: String,
+        subject: String,
+        chapter: String,
+        sessionId: String,
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") { onFailure(null); return }
+        usersRef(userId)
+            .collection("subjects").document(safeId(subject))
+            .collection("chapters").document(safeId(chapter))
+            .collection("bb_sessions").document(sessionId)
+            .delete()
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { onFailure(it) }
+
+        // Mirror delete on flat collection
+        usersRef(userId)
+            .collection("saved_bb_sessions_flat").document(sessionId)
+            .delete()
+    }
+
+    // ── Tasks ─────────────────────────────────────────────────────────────────
+    // Path: school_tasks/{taskId}  (global, filtered by school_id + grade)
+    // task_type: "bb_lesson" | "quiz" | "both"
+
+    /**
+     * Create or update a task assigned by a teacher to a school/grade.
+     */
+    fun saveTask(
+        taskId: String,
+        teacherId: String,
+        schoolId: String,
+        grade: String,
+        title: String,
+        description: String,
+        taskType: String,
+        subject: String,
+        chapter: String,
+        bbTopic: String = "",
+        quizJson: String = "",
+        onSuccess: (String) -> Unit = {},
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        val docId = taskId.ifBlank { db.collection("school_tasks").document().id }
+        val data = mapOf(
+            "task_id"     to docId,
+            "teacher_id"  to teacherId,
+            "school_id"   to schoolId,
+            "grade"       to grade,
+            "title"       to title,
+            "description" to description,
+            "task_type"   to taskType,
+            "subject"     to subject,
+            "chapter"     to chapter,
+            "bb_topic"    to bbTopic,
+            "quiz_json"   to quizJson,
+            "created_at"  to System.currentTimeMillis(),
+            "is_active"   to true
+        )
+        db.collection("school_tasks").document(docId)
+            .set(data, SetOptions.merge())
+            .addOnSuccessListener { onSuccess(docId) }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * Load active tasks for a school + grade (student view).
+     */
+    fun loadTasksForSchool(
+        schoolId: String,
+        grade: String,
+        onSuccess: (List<Map<String, Any>>) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (schoolId.isBlank()) { onSuccess(emptyList()); return }
+        db.collection("school_tasks")
+            .whereEqualTo("school_id", schoolId)
+            .whereEqualTo("is_active", true)
+            .orderBy("created_at", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .get()
+            .addOnSuccessListener { snap ->
+                val all = snap.documents.mapNotNull { doc ->
+                    doc.data?.toMutableMap()?.also { it["id"] = doc.id }
+                }
+                // Filter by grade (empty grade = all grades)
+                val filtered = if (grade.isBlank()) all else all.filter { task ->
+                    val tGrade = task["grade"] as? String ?: ""
+                    tGrade.isBlank() || tGrade == grade
+                }
+                onSuccess(filtered)
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * Load tasks created by a specific teacher.
+     */
+    fun loadTasksByTeacher(
+        teacherId: String,
+        onSuccess: (List<Map<String, Any>>) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (teacherId.isBlank()) { onSuccess(emptyList()); return }
+        db.collection("school_tasks")
+            .whereEqualTo("teacher_id", teacherId)
+            .orderBy("created_at", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .get()
+            .addOnSuccessListener { snap ->
+                val tasks = snap.documents.mapNotNull { doc ->
+                    doc.data?.toMutableMap()?.also { it["id"] = doc.id }
+                }
+                onSuccess(tasks)
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * Deactivate (soft-delete) a task.
+     */
+    fun deactivateTask(
+        taskId: String,
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        db.collection("school_tasks").document(taskId)
+            .update("is_active", false)
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * Mark a task as completed by a student.
+     */
+    fun markTaskComplete(
+        userId: String,
+        taskId: String,
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") { onFailure(null); return }
+        usersRef(userId)
+            .collection("task_completions").document(taskId)
+            .set(mapOf("task_id" to taskId, "completed_at" to System.currentTimeMillis()))
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * Load the set of task IDs completed by a student.
+     */
+    fun loadCompletedTaskIds(
+        userId: String,
+        onSuccess: (Set<String>) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") { onSuccess(emptySet()); return }
+        usersRef(userId)
+            .collection("task_completions")
+            .get()
+            .addOnSuccessListener { snap ->
+                onSuccess(snap.documents.map { it.id }.toSet())
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
 }
 
 

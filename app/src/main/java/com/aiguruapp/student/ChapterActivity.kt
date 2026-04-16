@@ -283,7 +283,8 @@ class ChapterActivity : BaseActivity() {
         val options = mutableListOf(
             "📖 Generate Chapter Notes",
             "✏️ Generate Exercise Notes",
-            "📋 View Saved Notes"
+            "📋 View Saved Notes",
+            "🎓 View Saved BB Sessions"
         )
         if (isPdfChapter && pdfPageCount > 0) {
             options.add(1, "📄 Generate Page-wise Notes")
@@ -296,6 +297,7 @@ class ChapterActivity : BaseActivity() {
                     "📄 Generate Page-wise Notes" -> showPageWiseNotesPicker()
                     "✏️ Generate Exercise Notes"  -> generateExerciseNotes()
                     "📋 View Saved Notes"          -> viewSavedNotes()
+                    "🎓 View Saved BB Sessions"    -> viewSavedBbSessions()
                 }
             }
             .show()
@@ -364,6 +366,14 @@ class ChapterActivity : BaseActivity() {
             },
             onEmpty   = { Toast.makeText(this, "No saved notes yet — generate some from the chat!", Toast.LENGTH_SHORT).show() },
             onFailure = { Toast.makeText(this, "Couldn't load notes. Try again.", Toast.LENGTH_SHORT).show() }
+        )
+    }
+
+    private fun viewSavedBbSessions() {
+        startActivity(
+            Intent(this, BbSavedSessionsActivity::class.java)
+                .putExtra(BbSavedSessionsActivity.EXTRA_SUBJECT, subjectName)
+                .putExtra(BbSavedSessionsActivity.EXTRA_CHAPTER, chapterName)
         )
     }
 

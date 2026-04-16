@@ -119,47 +119,4 @@ class QuizSetupActivity : BaseActivity() {
     }
 }
 
-// ── Simple Intent-safe serialization ──────────────────────────────────────────
-private fun Quiz.toTransferJson(): String {
-    val obj = org.json.JSONObject().apply {
-        put("id", id)
-        put("subject", subject)
-        put("chapter_id", chapterId)
-        put("chapter_title", chapterTitle)
-        put("difficulty", difficulty)
-        val qArray = org.json.JSONArray()
-        questions.forEach { q ->
-            val qObj = org.json.JSONObject().apply {
-                put("id", q.id)
-                put("type", q.type)
-                put("question", q.question)
-                put("explanation", q.explanation)
-                when (q) {
-                    is com.aiguruapp.student.models.QuizQuestion.MCQ -> {
-                        val opts = org.json.JSONArray()
-                        q.options.forEach { opts.put(it) }
-                        put("options", opts)
-                        put("correct_answer", q.correctAnswer)
-                    }
-                    is com.aiguruapp.student.models.QuizQuestion.FillBlankTyped -> {
-                        val ans = org.json.JSONArray()
-                        q.correctAnswers.forEach { ans.put(it) }
-                        put("correct_answers", ans)
-                        val hints = org.json.JSONArray()
-                        q.hints.forEach { hints.put(it) }
-                        put("hints", hints)
-                    }
-                    is com.aiguruapp.student.models.QuizQuestion.ShortAnswer -> {
-                        val kw = org.json.JSONArray()
-                        q.expectedKeywords.forEach { kw.put(it) }
-                        put("expected_keywords", kw)
-                        put("sample_answer", q.sampleAnswer)
-                    }
-                }
-            }
-            qArray.put(qObj)
-        }
-        put("questions", qArray)
-    }
-    return obj.toString()
-}
+
