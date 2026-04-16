@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/colorBackground">
+
+    <!-- Header -->
+    <LinearLayout
+        android:id="@+id/headerBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="12dp"
+        android:background="@color/colorPrimary"
+        app:layout_anchorGravity="top">
+
+        <ImageButton
+            android:id="@+id/backButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_arrow_back"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Back"
+            android:tint="@android:color/white"/>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:layout_marginStart="8dp">
+
+            <TextView
+                android:id="@+id/reportTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Task Report"
+                android:textColor="@android:color/white"
+                android:textSize="17sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/reportSubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Student completion status"
+                android:textColor="#CCffffff"
+                android:textSize="13sp"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Summary strip -->
+    <LinearLayout
+        android:id="@+id/summaryStrip"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:padding="12dp"
+        android:background="#E8EAF6"
+        android:layout_marginTop="64dp">
+
+        <TextView
+            android:id="@+id/statBbDone"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="0\n🎓 BB Done"
+            android:textSize="13sp"
+            android:textColor="#1A237E"/>
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="36dp"
+            android:background="#BDBDBD"/>
+
+        <TextView
+            android:id="@+id/statQuizDone"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="0\n🧠 Quiz Done"
+            android:textSize="13sp"
+            android:textColor="#1A237E"/>
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="36dp"
+            android:background="#BDBDBD"/>
+
+        <TextView
+            android:id="@+id/statBothDone"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="0\n✅ Both Done"
+            android:textSize="13sp"
+            android:textColor="#2E7D32"/>
+    </LinearLayout>
+
+    <!-- Loading bar -->
+    <ProgressBar
+        android:id="@+id/loadingBar"
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:indeterminate="true"
+        android:layout_marginTop="148dp"
+        android:visibility="gone"/>
+
+    <!-- Empty state -->
+    <LinearLayout
+        android:id="@+id/emptyState"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="32dp"
+        android:layout_marginTop="160dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📋"
+            android:textSize="48sp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="No completions yet"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:textColor="#333333"
+            android:layout_marginTop="12dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Students who complete the BB lesson or quiz will appear here."
+            android:textSize="13sp"
+            android:textColor="#777777"
+            android:gravity="center"
+            android:layout_marginTop="6dp"/>
+    </LinearLayout>
+
+    <!-- Student list -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/completionsList"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="160dp"
+        android:clipToPadding="false"
+        android:paddingBottom="16dp"
+        android:visibility="gone"/>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -19,6 +19,8 @@ import java.util.concurrent.TimeUnit
 
 class ProgressDashboardActivity : BaseActivity() {
 
+    private var isFirstLoad = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_progress_dashboard)
@@ -38,10 +40,19 @@ class ProgressDashboardActivity : BaseActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Reload stats on every resume so data is fresh after chatting/BB sessions
+        if (!isFirstLoad) loadProgress()
+        isFirstLoad = false
+    }
+
     private fun loadProgress() {
         val userId = SessionManager.getFirestoreUserId(this)
         if (userId.isBlank() || SessionManager.isGuestMode(this)) { showEmpty(isGuest = true); return }
-        findViewById<View>(R.id.loadingLayout).visibility = View.VISIBLE
+        // Don't show the loading spinner on background refreshes (already has content)
+        val hasContent = findViewById<ScrollView>(R.id.chapterScrollView).visibility == View.VISIBLE
+        if (!hasContent) findViewById<View>(R.id.loadingLayout).visibility = View.VISIBLE
         StudentStatsManager.fetchStudentStats(
             userId    = userId,
             onSuccess = { stats -> runOnUiThread { populateFromStats(stats) } },

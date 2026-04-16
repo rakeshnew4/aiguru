@@ -136,7 +136,11 @@ class TeacherTasksActivity : BaseActivity() {
         generateForTaskButton.setOnClickListener { onGenerateQuizForTask() }
         saveTaskButton.setOnClickListener { onSaveTask() }
 
-        adapter = TasksAdapter(tasks) { task -> onDeactivateTask(task) }
+        adapter = TasksAdapter(
+            tasks        = tasks,
+            onDeactivate = { task -> onDeactivateTask(task) },
+            onViewReport = { task -> onViewTaskReport(task) }
+        )
         tasksList.layoutManager = LinearLayoutManager(this)
         tasksList.adapter = adapter
 
@@ -278,6 +282,18 @@ class TeacherTasksActivity : BaseActivity() {
             .show()
     }
 
+    private fun onViewTaskReport(task: Map<String, Any>) {
+        val taskId    = task["task_id"] as? String ?: task["id"] as? String ?: return
+        val taskTitle = task["title"]   as? String ?: ""
+        val taskType  = task["task_type"] as? String ?: ""
+        startActivity(
+            android.content.Intent(this, TeacherTaskReportActivity::class.java)
+                .putExtra(TeacherTaskReportActivity.EXTRA_TASK_ID,    taskId)
+                .putExtra(TeacherTaskReportActivity.EXTRA_TASK_TITLE, taskTitle)
+                .putExtra(TeacherTaskReportActivity.EXTRA_TASK_TYPE,  taskType)
+        )
+    }
+
     private fun countQuestions(json: String): Int = try {
         org.json.JSONObject(json).optJSONArray("questions")?.length() ?: 0
     } catch (_: Exception) { 0 }
@@ -286,7 +302,8 @@ class TeacherTasksActivity : BaseActivity() {
 
     private class TasksAdapter(
         private val tasks: List<Map<String, Any>>,
-        private val onDeactivate: (Map<String, Any>) -> Unit
+        private val onDeactivate: (Map<String, Any>) -> Unit,
+        private val onViewReport: (Map<String, Any>) -> Unit
     ) : RecyclerView.Adapter<TasksAdapter.VH>() {
 
         private val fmt = SimpleDateFormat("d MMM yyyy", Locale.getDefault())
@@ -304,6 +321,7 @@ class TeacherTasksActivity : BaseActivity() {
             val title:         TextView = v.findViewById(R.id.taskTitle)
             val meta:          TextView = v.findViewById(R.id.taskMeta)
             val grade:         TextView = v.findViewById(R.id.taskGrade)
+            val viewReportBtn: TextView = v.findViewById(R.id.viewReportBtn)
             val deactivateBtn: TextView = v.findViewById(R.id.deactivateBtn)
         }
 
@@ -327,6 +345,7 @@ class TeacherTasksActivity : BaseActivity() {
                 if (gradeVal.isNotBlank()) append("Grade: $gradeVal  ")
                 if (ts > 0) append("• ${fmt.format(Date(ts))}")
             }
+            holder.viewReportBtn.setOnClickListener { onViewReport(task) }
             holder.deactivateBtn.setOnClickListener { onDeactivate(task) }
         }
     }

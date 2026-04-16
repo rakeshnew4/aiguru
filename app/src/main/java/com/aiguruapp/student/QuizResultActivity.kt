@@ -39,6 +39,19 @@ class QuizResultActivity : BaseActivity() {
             )
         }
 
+        // ── Mark task quiz completion if launched from a task
+        val taskId = intent.getStringExtra("taskId").orEmpty()
+        if (taskId.isNotBlank() && userId.isNotBlank()) {
+            val studentName = com.aiguruapp.student.utils.SessionManager.getStudentName(this)
+            com.aiguruapp.student.firestore.FirestoreManager.markTaskQuizComplete(
+                userId      = userId,
+                taskId      = taskId,
+                score       = correctCount,
+                total       = totalCount,
+                studentName = studentName
+            )
+        }
+
         // ── Header subtitle
         findViewById<TextView>(R.id.resultSubtitle).text =
             "$chapterTitle · ${difficulty.replaceFirstChar { it.uppercase() }}"

@@ -64,6 +64,19 @@
         android:gravity="end">
 
         <TextView
+            android:id="@+id/viewReportBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:gravity="center"
+            android:text="📊 Report"
+            android:textSize="12sp"
+            android:textColor="#1565C0"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:layout_marginEnd="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+        <TextView
             android:id="@+id/deactivateBtn"
             android:layout_width="wrap_content"
             android:layout_height="32dp"

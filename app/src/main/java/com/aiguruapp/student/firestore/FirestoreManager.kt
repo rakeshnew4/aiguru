@@ -969,7 +969,7 @@ object FirestoreManager {
     }
 
     /**
-     * Mark a task as completed by a student.
+     * Mark a task as completed by a student (legacy — marks entire task done).
      */
     fun markTaskComplete(
         userId: String,
@@ -982,6 +982,115 @@ object FirestoreManager {
             .collection("task_completions").document(taskId)
             .set(mapOf("task_id" to taskId, "completed_at" to System.currentTimeMillis()))
             .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * Mark the BB-lesson part of a task as completed by a student.
+     * Writes to both the student record and the task's completions subcollection
+     * so the teacher can query completions from a single path.
+     */
+    fun markTaskBbComplete(
+        userId: String,
+        taskId: String,
+        schoolId: String = "",
+        studentName: String = "",
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") { onFailure(null); return }
+        val now = System.currentTimeMillis()
+        val studentData = mapOf(
+            "task_id"       to taskId,
+            "bb_completed"  to true,
+            "bb_completed_at" to now,
+            "last_updated_at" to now
+        )
+        val completionData = mapOf(
+            "user_id"         to userId,
+            "student_name"    to studentName,
+            "bb_completed"    to true,
+            "bb_completed_at" to now,
+            "last_updated_at" to now
+        )
+        // Write to student's own record
+        usersRef(userId).collection("task_completions").document(taskId)
+            .set(studentData, SetOptions.merge())
+            .addOnSuccessListener {
+                // Also write to school_tasks/{taskId}/completions/{userId} for teacher report
+                if (taskId.isNotBlank()) {
+                    db.collection("school_tasks").document(taskId)
+                        .collection("completions").document(userId)
+                        .set(completionData, SetOptions.merge())
+                }
+                onSuccess()
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * Mark the quiz part of a task as completed by a student.
+     */
+    fun markTaskQuizComplete(
+        userId: String,
+        taskId: String,
+        score: Int,
+        total: Int,
+        studentName: String = "",
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") { onFailure(null); return }
+        val now = System.currentTimeMillis()
+        val studentData = mapOf(
+            "task_id"          to taskId,
+            "quiz_completed"   to true,
+            "quiz_completed_at" to now,
+            "quiz_score"       to score,
+            "quiz_total"       to total,
+            "last_updated_at"  to now
+        )
+        val completionData = mapOf(
+            "user_id"           to userId,
+            "student_name"      to studentName,
+            "quiz_completed"    to true,
+            "quiz_completed_at" to now,
+            "quiz_score"        to score,
+            "quiz_total"        to total,
+            "last_updated_at"   to now
+        )
+        usersRef(userId).collection("task_completions").document(taskId)
+            .set(studentData, SetOptions.merge())
+            .addOnSuccessListener {
+                if (taskId.isNotBlank()) {
+                    db.collection("school_tasks").document(taskId)
+                        .collection("completions").document(userId)
+                        .set(completionData, SetOptions.merge())
+                }
+                onSuccess()
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * Load per-student completions for a task (teacher report view).
+     * Reads from school_tasks/{taskId}/completions/
+     */
+    fun loadTaskCompletions(
+        taskId: String,
+        onSuccess: (List<Map<String, Any>>) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (taskId.isBlank()) { onSuccess(emptyList()); return }
+        db.collection("school_tasks").document(taskId)
+            .collection("completions")
+            .get()
+            .addOnSuccessListener { snap ->
+                val list = snap.documents.mapNotNull { doc ->
+                    doc.data?.toMutableMap()?.also { it["doc_id"] = doc.id }
+                }
+                onSuccess(list)
+            }
             .addOnFailureListener { onFailure(it) }
     }
 

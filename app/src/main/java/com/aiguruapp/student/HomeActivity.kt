@@ -355,7 +355,7 @@ class HomeActivity : BaseActivity() {
             
         //    android.graphics.Color.parseColor("#000000"),
             android.graphics.Color.parseColor("#066526"),  // green
-            android.graphics.Color.parseColor("#1d87e3"),  // blue
+            android.graphics.Color.parseColor("#08477e"),  // blue
             // android.graphics.Color.parseColor("#ffffff"),  // violet
      
         )

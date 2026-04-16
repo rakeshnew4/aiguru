@@ -222,9 +222,9 @@ class ChapterActivity : BaseActivity() {
         val pagesContent   = findViewById<View>(R.id.pagesContent)
         val chatContainer  = findViewById<View>(R.id.chatTabContainer)
 
-        tabLayout.addTab(tabLayout.newTab().setText("📌  Saved"))
-        tabLayout.addTab(tabLayout.newTab().setText("📄  Pages"))
+        tabLayout.addTab(tabLayout.newTab().setText("�  Pages"))
         tabLayout.addTab(tabLayout.newTab().setText("💬  Chat"))
+        tabLayout.addTab(tabLayout.newTab().setText("📌  Saved"))
 
         fun showOnly(visible: View) {
             listOf(savedContent, pagesContent, chatContainer).forEach {
@@ -235,14 +235,14 @@ class ChapterActivity : BaseActivity() {
         tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
                 when (tab.position) {
-                    0 -> {
-                        showOnly(savedContent)
-                        loadSavedTabIfNeeded()
-                    }
-                    1 -> showOnly(pagesContent)
-                    2 -> {
+                    0 -> showOnly(pagesContent)
+                    1 -> {
                         showOnly(chatContainer)
                         getOrCreateChatFragment()
+                    }
+                    2 -> {
+                        showOnly(savedContent)
+                        loadSavedTabIfNeeded()
                     }
                 }
             }
@@ -250,9 +250,9 @@ class ChapterActivity : BaseActivity() {
             override fun onTabReselected(tab: TabLayout.Tab) {}
         })
 
-        // Start on Pages tab (index 1)
+        // Start on Pages tab (index 0)
         showOnly(pagesContent)
-        tabLayout.getTabAt(1)?.select()
+        tabLayout.getTabAt(0)?.select()
     }
 
     // ─── Saved tab ────────────────────────────────────────────────────────────
@@ -395,7 +395,7 @@ class ChapterActivity : BaseActivity() {
     /** Switch programmatically to the Chat tab (called by Ask AI buttons in the pages view). */
     fun switchToChat() {
         val tabLayout = findViewById<TabLayout>(R.id.tabLayout)
-        tabLayout.getTabAt(2)?.select()
+        tabLayout.getTabAt(1)?.select()
     }
 
     /** Returns the existing FullChatFragment or creates it synchronously if not yet loaded. */
@@ -498,7 +498,7 @@ class ChapterActivity : BaseActivity() {
     private fun viewSavedNotes() {
         // Navigate to Saved tab → Notes sub-tab
         val tabLayout = findViewById<TabLayout>(R.id.tabLayout)
-        tabLayout.getTabAt(0)?.select()
+        tabLayout.getTabAt(2)?.select()
         val subTabs = findViewById<TabLayout>(R.id.savedSubTabLayout)
         subTabs.getTabAt(1)?.select()
     }
@@ -506,7 +506,7 @@ class ChapterActivity : BaseActivity() {
     private fun viewSavedBbSessions() {
         // Navigate to Saved tab → BB Sessions sub-tab
         val tabLayout = findViewById<TabLayout>(R.id.tabLayout)
-        tabLayout.getTabAt(0)?.select()
+        tabLayout.getTabAt(2)?.select()
     }
 
     // ─── Chapter type detection ───────────────────────────────────────────────

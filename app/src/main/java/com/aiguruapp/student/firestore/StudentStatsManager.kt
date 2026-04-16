@@ -195,10 +195,23 @@ object StudentStatsManager {
         onSuccess: (StudentStats?) -> Unit,
         onFailure: (Exception?) -> Unit = {}
     ) {
+        // Use DEFAULT: serves from cache instantly when offline, refreshes from server when online.
+        // Source.SERVER was causing the dashboard to show empty on slow/offline connections.
         db.collection(COLLECTION).document(userId)
-            .get(Source.SERVER)
+            .get(Source.DEFAULT)
             .addOnSuccessListener { doc ->
-                if (!doc.exists()) { onSuccess(null); return@addOnSuccessListener }
+                if (!doc.exists()) {
+                    // Cache miss — try server once more in case this is first ever write
+                    db.collection(COLLECTION).document(userId)
+                        .get(Source.SERVER)
+                        .addOnSuccessListener { serverDoc ->
+                            if (!serverDoc.exists()) { onSuccess(null); return@addOnSuccessListener }
+                            try { onSuccess(parseStats(serverDoc.data ?: emptyMap())) }
+                            catch (e: Exception) { Log.e(TAG, "fetchStudentStats parse error: ${e.message}"); onFailure(e) }
+                        }
+                        .addOnFailureListener { onSuccess(null) }
+                    return@addOnSuccessListener
+                }
                 try {
                     val stats = parseStats(doc.data ?: emptyMap())
                     onSuccess(stats)

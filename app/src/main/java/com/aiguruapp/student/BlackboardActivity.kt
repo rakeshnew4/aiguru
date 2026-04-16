@@ -73,6 +73,8 @@ class BlackboardActivity : AppCompatActivity() {
         const val EXTRA_LANGUAGE_TAG    = "extra_language_tag"
         const val EXTRA_SUBJECT         = "extra_subject"
         const val EXTRA_CHAPTER         = "extra_chapter"
+        /** Task ID — when set, BB completion is tracked against this task. */
+        const val EXTRA_TASK_ID         = "extra_task_id"
         /** True when the user is replaying a previously saved session — skips quota recording. */
         const val EXTRA_IS_REPLAY       = "extra_is_replay"
         /** ArrayList<String> of MD5 TTS keys saved with the session for instant audio on replay. */
@@ -401,6 +403,16 @@ class BlackboardActivity : AppCompatActivity() {
                         // Preload first 3 frames' AI audio in background
                         preloadUpcoming(0, 0, count = 3)
                         showFrame(0, 0)
+                        // If launched from a task, mark BB lesson as completed
+                        val taskId = intent.getStringExtra(EXTRA_TASK_ID).orEmpty()
+                        if (taskId.isNotBlank() && !userId.isNullOrBlank()) {
+                            val studentName = com.aiguruapp.student.utils.SessionManager.getStudentName(this@BlackboardActivity)
+                            FirestoreManager.markTaskBbComplete(
+                                userId      = userId,
+                                taskId      = taskId,
+                                studentName = studentName
+                            )
+                        }
                     }
                 },
                 onError = { err ->

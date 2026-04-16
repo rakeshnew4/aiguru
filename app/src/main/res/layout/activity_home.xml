@@ -315,7 +315,7 @@
                     android:id="@+id/generalChatButton"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:text="✨ Quick Chat - AI Lessons"
+                    android:text="✨ Quick Chat - AI Lessons (BB)"
                     android:textAllCaps="false"
                     android:textSize="14sp"
                     android:textStyle="bold"

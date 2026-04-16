@@ -388,6 +388,7 @@ class QuizActivity : BaseActivity() {
                 .putExtra("subjectName",    intent.getStringExtra("subjectName") ?: "")
                 .putExtra("quizJson",       intent.getStringExtra("quizJson"))
                 .putExtra("answersJson",    answersToJson())
+                .putExtra("taskId",         intent.getStringExtra("taskId") ?: "")
         )
         finish()
     }

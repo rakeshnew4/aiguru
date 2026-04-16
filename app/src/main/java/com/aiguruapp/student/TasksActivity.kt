@@ -106,12 +106,14 @@ class TasksActivity : BaseActivity() {
         val topic   = task["bb_topic"]  as? String ?: return
         val subject = task["subject"]   as? String ?: "General"
         val chapter = task["chapter"]   as? String ?: "General"
+        val taskId  = task["task_id"]   as? String ?: task["id"] as? String ?: ""
         startActivity(
             Intent(this, BlackboardActivity::class.java).apply {
                 putExtra(BlackboardActivity.EXTRA_MESSAGE, topic)
                 putExtra(BlackboardActivity.EXTRA_USER_ID, userId)
                 putExtra(BlackboardActivity.EXTRA_SUBJECT, subject)
                 putExtra(BlackboardActivity.EXTRA_CHAPTER, chapter)
+                if (taskId.isNotBlank()) putExtra(BlackboardActivity.EXTRA_TASK_ID, taskId)
             }
         )
     }
@@ -119,9 +121,14 @@ class TasksActivity : BaseActivity() {
     private fun launchQuiz(task: Map<String, Any>) {
         val quizJson = task["quiz_json"] as? String ?: ""
         if (quizJson.isBlank()) { Toast.makeText(this, "Quiz not available", Toast.LENGTH_SHORT).show(); return }
+        val taskId   = task["task_id"] as? String ?: task["id"] as? String ?: ""
+        val subject  = task["subject"] as? String ?: ""
+        val chapter  = task["chapter"] as? String ?: ""
         startActivity(
             Intent(this, QuizActivity::class.java)
                 .putExtra("quizJson", quizJson)
+                .putExtra("subjectName", subject)
+                .putExtra("taskId", taskId)
         )
     }
 
