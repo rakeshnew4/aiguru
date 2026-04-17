@@ -11,26 +11,23 @@
 <LinearLayout
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:paddingStart="10dp"
-    android:paddingEnd="10dp"
     android:orientation="vertical"
     android:background="@color/colorBackground"
     android:fitsSystemWindows="true">
 
+    <!-- ── Compact top nav bar — always dark, never school-themed ── -->
     <LinearLayout
-        android:id="@+id/homeHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#FFFFFF"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingStart="8dp"
-        android:paddingEnd="16dp"
-        android:paddingTop="14dp"
-        android:paddingBottom="14dp"
-        android:elevation="2dp">
+        android:background="#1A1A2E"
+        android:paddingStart="4dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:elevation="4dp">
 
-        <!-- Hamburger — opens the left navigation drawer -->
         <TextView
             android:id="@+id/drawerToggleBtn"
             android:layout_width="44dp"
@@ -39,48 +36,23 @@
             android:text="☰"
             android:textSize="22sp"
             android:textColor="#FFFFFF"
-            android:background="@android:color/transparent"
-            android:layout_marginEnd="4dp" />
+            android:background="@android:color/transparent" />
 
-        <LinearLayout
+        <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/greetingText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Good morning"
-                android:textColor="@color/colorTextSecondary"
-                android:textSize="12sp" />
-
-            <TextView
-                android:id="@+id/userNameText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="👨‍🎤  Student"
-                android:textColor="@color/colorTextPrimary"
-                android:textSize="21sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/schoolNameSubtitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="1dp"
-                android:text="School"
-                android:textColor="@color/colorTextSecondary"
-                android:textSize="11sp" />
-
-        </LinearLayout>
+            android:text="AI Guru"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:paddingStart="4dp" />
 
         <TextView
             android:id="@+id/planBadgeText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="PRO"
+            android:text="📋 Free"
             android:textColor="#FFFFFF"
             android:textSize="10sp"
             android:textStyle="bold"
@@ -92,12 +64,10 @@
             android:layout_marginEnd="10dp"
             android:visibility="gone" />
 
-        <!-- School logo — shown only when school has a logoUrl; hidden otherwise -->
         <ImageView
             android:id="@+id/schoolLogoImage"
-            android:layout_width="0dp"
-            android:layout_height="40dp"
-            android:layout_weight="0.4"
+            android:layout_width="34dp"
+            android:layout_height="34dp"
             android:layout_marginEnd="8dp"
             android:background="@drawable/bg_avatar_circle"
             android:contentDescription="School logo"
@@ -106,43 +76,259 @@
 
         <TextView
             android:id="@+id/profileButton"
-            android:layout_width="42dp"
-            android:layout_height="42dp"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
             android:gravity="center"
             android:text="👨‍🎤"
-            android:textSize="17sp"
-            android:textStyle="bold"
+            android:textSize="16sp"
             android:textColor="#FFFFFF"
             android:background="@drawable/bg_avatar_circle" />
 
     </LinearLayout>
 
-    <View
+    <!-- ── Hero greeting — gets school branding color from code ── -->
+    <LinearLayout
+        android:id="@+id/homeHeader"
         android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/colorDivider" />
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@color/colorPrimary"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="20dp">
 
+        <TextView
+            android:id="@+id/greetingText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Good morning ☀️"
+            android:textColor="#FFFFFFCC"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/userNameText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Student"
+            android:textColor="#FFFFFF"
+            android:textSize="23sp"
+            android:textStyle="bold"
+            android:layout_marginTop="2dp" />
+
+        <TextView
+            android:id="@+id/schoolNameSubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🏫 School"
+            android:textColor="#FFFFFFBB"
+            android:textSize="12sp"
+            android:layout_marginTop="4dp" />
+
+        <!-- Today's Focus strip — divider + streak + messages today + goal progress -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#44FFFFFF"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:id="@+id/heroStreakBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🔥 — days"
+                android:textSize="12sp"
+                android:textColor="#FFFFFFDD"
+                android:layout_marginEnd="12dp" />
+
+            <TextView
+                android:id="@+id/heroMsgsToday"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="💬 — msgs today"
+                android:textSize="12sp"
+                android:textColor="#FFFFFFDD" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/heroGoalLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🎯 0/10"
+                android:textSize="12sp"
+                android:textColor="#FFFFFFDD" />
+
+        </LinearLayout>
+
+        <ProgressBar
+            android:id="@+id/heroGoalProgress"
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:max="10"
+            android:progress="0"
+            android:progressTint="#FFFFFF"
+            android:progressBackgroundTint="#44FFFFFF"
+            android:layout_marginBottom="4dp" />
+
+    </LinearLayout>
+
+    <!-- ── Quick Actions — 4 colored tiles so users know what to tap ── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="6dp"
+        android:background="@color/colorBackground">
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/quickActionChatBtn"
+            android:layout_width="0dp"
+            android:layout_height="78dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="5dp"
+            android:clickable="true"
+            android:focusable="true"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="4dp"
+            app:cardBackgroundColor="#1565C0"
+            app:rippleColor="#33FFFFFF">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="💬" android:textSize="26sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ask AI" android:textSize="11sp" android:textStyle="bold" android:textColor="#FFFFFF" android:layout_marginTop="3dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/quickActionBbBtn"
+            android:layout_width="0dp"
+            android:layout_height="78dp"
+            android:layout_weight="1"
+            android:layout_marginStart="5dp"
+            android:layout_marginEnd="5dp"
+            android:clickable="true"
+            android:focusable="true"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="4dp"
+            app:cardBackgroundColor="#6A1B9A"
+            app:rippleColor="#33FFFFFF">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🎓" android:textSize="26sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Blackboard" android:textSize="11sp" android:textStyle="bold" android:textColor="#FFFFFF" android:layout_marginTop="3dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/quickActionProgressBtn"
+            android:layout_width="0dp"
+            android:layout_height="78dp"
+            android:layout_weight="1"
+            android:layout_marginStart="5dp"
+            android:layout_marginEnd="5dp"
+            android:clickable="true"
+            android:focusable="true"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="4dp"
+            app:cardBackgroundColor="#2E7D32"
+            app:rippleColor="#33FFFFFF">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="📈" android:textSize="26sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Progress" android:textSize="11sp" android:textStyle="bold" android:textColor="#FFFFFF" android:layout_marginTop="3dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/quickActionTasksBtn"
+            android:layout_width="0dp"
+            android:layout_height="78dp"
+            android:layout_weight="1"
+            android:layout_marginStart="5dp"
+            android:clickable="true"
+            android:focusable="true"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="4dp"
+            app:cardBackgroundColor="#E65100"
+            app:rippleColor="#33FFFFFF">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="📋" android:textSize="26sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="My Tasks" android:textSize="11sp" android:textStyle="bold" android:textColor="#FFFFFF" android:layout_marginTop="3dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+
+    <!-- ── Smart Suggestions (For You) — populated from Firestore based on usage ── -->
+    <LinearLayout
+        android:id="@+id/smartCardSection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@color/colorBackground"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="✨ For You"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="@color/colorTextPrimary"
+            android:paddingStart="20dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="6dp" />
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            android:paddingStart="16dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="12dp"
+            android:clipToPadding="false">
+
+            <LinearLayout
+                android:id="@+id/smartCardsContainer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+
+        </HorizontalScrollView>
+
+    </LinearLayout>
+
+    <!-- ── Language chip ── -->
     <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:scrollbars="none"
-        android:background="#FFFFFF"
-        android:paddingTop="10dp"
-        android:paddingBottom="12dp">
-
+        android:background="@color/colorSurface"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:paddingStart="16dp"
             android:paddingEnd="16dp">
-
-
-
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/langChipButton"
                 android:layout_width="wrap_content"
-                android:layout_height="40dp"
+                android:layout_height="36dp"
                 android:text="🌐 English"
                 android:textAllCaps="false"
                 android:textSize="13sp"
@@ -154,11 +340,8 @@
                 app:strokeWidth="1dp"
                 app:cornerRadius="18dp"
                 android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:layout_marginEnd="8dp" />
-
+                android:paddingEnd="16dp" />
         </LinearLayout>
-
     </HorizontalScrollView>
 
     <LinearLayout

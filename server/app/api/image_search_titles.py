@@ -244,6 +244,39 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
         if "steps" not in data or not isinstance(data["steps"], list):
             return query
 
+        # ── SVG diagram frames: build svg_html server-side, suppress Wikimedia ──
+        # Steps that contain a "diagram" frame get their visual from the SVG —
+        # no Wikimedia photo is needed.  Python converts svg_elements → svg_html
+        # here so Android just calls webView.loadData(frame.svgHtml) with no math.
+        from app.utils.svg_builder import build_animated_svg
+        for step in data["steps"]:
+            if not isinstance(step, dict):
+                continue
+            has_diagram = any(
+                isinstance(f, dict) and f.get("frame_type") == "diagram"
+                for f in step.get("frames", [])
+            )
+            if has_diagram:
+                # Suppress Wikimedia image for this step — the diagram IS the visual
+                step["image_show_confidencescore"] = 0.0
+                step.pop("image_description", None)
+                # Convert svg_elements → svg_html for every diagram frame
+                for frame in step.get("frames", []):
+                    if not isinstance(frame, dict) or frame.get("frame_type") != "diagram":
+                        continue
+                    svg_elems = frame.get("svg_elements")
+                    if svg_elems:
+                        elems_json = (
+                            json.dumps(svg_elems)
+                            if isinstance(svg_elems, list)
+                            else str(svg_elems)
+                        )
+                        html = build_animated_svg(elems_json)
+                        if html:
+                            frame["svg_html"] = html
+                            logger.info("Built svg_html for diagram frame in step '%s'", step.get("title", ""))
+                    frame.pop("svg_elements", None)  # clean up — not needed by Android
+
         # Collect per-step image descriptions (only high-confidence steps)
         descriptions = []
         for step in data["steps"]:

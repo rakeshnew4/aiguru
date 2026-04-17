@@ -1,0 +1,6 @@
+<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+<line x1="50" y1="150" x2="150" y2="150" stroke="black"/>
+<line x1="50" y1="150" x2="100" y2="50" stroke="black"/>
+<line x1="150" y1="150" x2="100" y2="50" stroke="black"/>
+<text x="95" y="40" font-size="12">A</text>
+</svg>

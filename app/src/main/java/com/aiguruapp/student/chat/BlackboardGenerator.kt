@@ -39,7 +39,9 @@ object BlackboardGenerator {
         val fillBlanks: List<String> = emptyList(),   // correct words for each blank in text
         // ── quiz_order specific ───────────────────────────────────────────────
         // quizOptions holds the steps in SHUFFLED order; quizCorrectOrder holds correct 0-based indices
-        val quizCorrectOrder: List<Int> = emptyList()
+        val quizCorrectOrder: List<Int> = emptyList(),
+        // ── diagram frame: JSON array string of SVG shape elements ───────────
+        val svgHtml: String = ""
     )
 
     data class BlackboardStep(
@@ -65,6 +67,7 @@ object BlackboardGenerator {
     fun smartAssignTts(frameType: String): Pair<String, String> = when {
         frameType == "concept"              -> Pair("gemini",  "teacher")
         frameType == "memory"               -> Pair("gemini",  "teacher")
+        frameType == "diagram"              -> Pair("gemini",  "teacher")
         frameType == "summary"              -> Pair("google",  "assistant")
         frameType.startsWith("quiz")        -> Pair("android", "quiz")
         else                                -> Pair("android", "teacher")
@@ -154,7 +157,8 @@ object BlackboardGenerator {
                                 quizModelAnswer   = frameObj.optString("quiz_model_answer", ""),
                                 quizKeywords      = if (kwArr != null) (0 until kwArr.length()).map { kwArr.getString(it) } else emptyList(),
                                 fillBlanks        = if (fillArr != null) (0 until fillArr.length()).map { fillArr.getString(it) } else emptyList(),
-                                quizCorrectOrder  = if (orderArr != null) (0 until orderArr.length()).map { orderArr.getInt(it) } else emptyList()
+                                quizCorrectOrder  = if (orderArr != null) (0 until orderArr.length()).map { orderArr.getInt(it) } else emptyList(),
+                                svgHtml           = frameObj.optString("svg_html", "")
                             )
                         }
                         BlackboardStep(
@@ -275,7 +279,8 @@ object BlackboardGenerator {
                         quizModelAnswer  = frameObj.optString("quiz_model_answer", ""),
                         quizKeywords     = if (kwArr != null) (0 until kwArr.length()).map { kwArr.getString(it) } else emptyList(),
                         fillBlanks       = if (fillArr != null) (0 until fillArr.length()).map { fillArr.getString(it) } else emptyList(),
-                        quizCorrectOrder = if (orderArr != null) (0 until orderArr.length()).map { orderArr.getInt(it) } else emptyList()
+                        quizCorrectOrder = if (orderArr != null) (0 until orderArr.length()).map { orderArr.getInt(it) } else emptyList(),
+                        svgHtml          = frameObj.optString("svg_html", "")
                     )
                 }
                 BlackboardStep(
@@ -308,7 +313,8 @@ object BlackboardGenerator {
                                     .put("quiz_model_answer", frame.quizModelAnswer)
                                     .put("quiz_keywords", JSONArray(frame.quizKeywords))
                                     .put("fill_blanks", JSONArray(frame.fillBlanks))
-                                    .put("quiz_correct_order", JSONArray(frame.quizCorrectOrder)))
+                                    .put("quiz_correct_order", JSONArray(frame.quizCorrectOrder))
+                                    .put("svg_html", frame.svgHtml))
                             }
                         }
                         put(JSONObject()
@@ -373,6 +379,7 @@ object BlackboardGenerator {
                         .put("quiz_keywords", JSONArray(frame.quizKeywords))
                         .put("fill_blanks", JSONArray(frame.fillBlanks))
                         .put("quiz_correct_order", JSONArray(frame.quizCorrectOrder))
+                        .put("svg_html", frame.svgHtml)
                 )
             }
             arr.put(
@@ -450,7 +457,8 @@ object BlackboardGenerator {
                             quizModelAnswer  = f.optString("quiz_model_answer", ""),
                             quizKeywords     = kwArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
                             fillBlanks       = fillArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
-                            quizCorrectOrder = orderArr?.let { a -> (0 until a.length()).map { a.getInt(it) } } ?: emptyList()
+                            quizCorrectOrder = orderArr?.let { a -> (0 until a.length()).map { a.getInt(it) } } ?: emptyList(),
+                            svgHtml          = f.optString("svg_html", "")
                         )
                     }
                     BlackboardStep(
@@ -542,7 +550,8 @@ object BlackboardGenerator {
                                 quizModelAnswer  = frameObj.optString("quiz_model_answer", ""),
                                 quizKeywords     = kwArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
                                 fillBlanks       = fillArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
-                                quizCorrectOrder = orderArr?.let { a -> (0 until a.length()).map { a.getInt(it) } } ?: emptyList()
+                                quizCorrectOrder = orderArr?.let { a -> (0 until a.length()).map { a.getInt(it) } } ?: emptyList(),
+                                svgHtml          = frameObj.optString("svg_html", "")
                             )
                         }
                         BlackboardStep(

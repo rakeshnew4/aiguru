@@ -1,0 +1,41 @@
+
+<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+
+
+    <line x1="50" y1="150" x2="150" y2="150"
+          stroke="black"
+          stroke-dasharray="100.0"
+          stroke-dashoffset="100.0">
+        <animate attributeName="stroke-dashoffset"
+                 from="100.0" to="0"
+                 dur="0.5s"
+                 begin="0s"
+                 fill="freeze" />
+    </line>
+    
+
+    <line x1="50" y1="150" x2="100" y2="50"
+          stroke="black"
+          stroke-dasharray="111.80339887498948"
+          stroke-dashoffset="111.80339887498948">
+        <animate attributeName="stroke-dashoffset"
+                 from="111.80339887498948" to="0"
+                 dur="0.5s"
+                 begin="0.5s"
+                 fill="freeze" />
+    </line>
+    
+
+    <line x1="150" y1="150" x2="100" y2="50"
+          stroke="black"
+          stroke-dasharray="111.80339887498948"
+          stroke-dashoffset="111.80339887498948">
+        <animate attributeName="stroke-dashoffset"
+                 from="111.80339887498948" to="0"
+                 dur="0.5s"
+                 begin="1s"
+                 fill="freeze" />
+    </line>
+    
+
+</svg>

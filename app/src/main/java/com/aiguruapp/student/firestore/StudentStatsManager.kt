@@ -188,6 +188,56 @@ object StudentStatsManager {
             .addOnFailureListener { Log.w(TAG, "recordAppTime failed: ${it.message}") }
     }
 
+    // ── BB intro seen flag ────────────────────────────────────────────────────
+
+    /**
+     * Marks that the user has seen the Blackboard Mode intro bottom sheet.
+     * Called immediately before showing the sheet so it can never repeat even if
+     * the user kills the app mid-show.
+     */
+    fun markBbIntroSeen(userId: String) {
+        if (userId.isBlank() || userId == "guest_user") return
+        db.collection(COLLECTION).document(userId)
+            .set(mapOf("seen_bb_intro" to true), SetOptions.merge())
+            .addOnFailureListener { Log.w(TAG, "markBbIntroSeen failed: ${it.message}") }
+    }
+
+    /**
+     * Checks [students_stats/{userId}] for the  seen_bb_intro  field.
+     * Fast — reads from Firestore local cache first.
+     */
+    fun hasSeen_bb_intro(userId: String, callback: (Boolean) -> Unit) {
+        if (userId.isBlank() || userId == "guest_user") { callback(true); return }
+        db.collection(COLLECTION).document(userId)
+            .get(Source.DEFAULT)
+            .addOnSuccessListener { doc ->
+                callback(doc.getBoolean("seen_bb_intro") == true)
+            }
+            .addOnFailureListener { callback(true) } // fail-safe: don't spam on error
+    }
+
+    // ── Fetch raw total_messages + total_bb_sessions + streak for smart cards ─
+
+    /**
+     * Lightweight read of the three counters needed for smart-card filtering.
+     * Uses local cache (near-instant), then refreshes from server.
+     */
+    fun fetchUsageSummary(
+        userId: String,
+        callback: (totalMessages: Long, totalBbSessions: Long, streakDays: Long) -> Unit
+    ) {
+        if (userId.isBlank() || userId == "guest_user") { callback(0L, 0L, 0L); return }
+        db.collection(COLLECTION).document(userId)
+            .get(Source.DEFAULT)
+            .addOnSuccessListener { doc ->
+                val msgs    = (doc.getLong("total_messages") ?: 0L)
+                val bb      = (doc.getLong("total_bb_sessions") ?: 0L)
+                val streak  = (doc.getLong("streak_days") ?: 0L)
+                callback(msgs, bb, streak)
+            }
+            .addOnFailureListener { callback(0L, 0L, 0L) }
+    }
+
     // ── Fetch a single student's full stats ────────────────────────────────────
 
     fun fetchStudentStats(

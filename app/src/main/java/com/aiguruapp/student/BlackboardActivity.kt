@@ -815,6 +815,34 @@ class BlackboardActivity : AppCompatActivity() {
         }
         board.addView(contentText)
 
+        // ── Diagram frame: animated SVG drawing (HTML built server-side) ─────
+        if (frame.frameType == "diagram" && frame.svgHtml.isNotBlank()) {
+            // Set caption label above the diagram
+            blackboardMarkwon.setMarkdown(contentText, frame.text.ifBlank { " " })
+
+            // Server already built the full animated HTML — just load it
+            val diagramWebView = android.webkit.WebView(this).apply {
+                settings.javaScriptEnabled = false
+                settings.loadWithOverviewMode = true
+                settings.useWideViewPort = true
+                isVerticalScrollBarEnabled = false
+                isHorizontalScrollBarEnabled = false
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    (280 * dp).toInt()
+                ).apply { topMargin = (8 * dp).toInt() }
+            }
+            board.addView(diagramWebView)
+            diagramWebView.loadDataWithBaseURL(null, frame.svgHtml, "text/html", "UTF-8", null)
+
+            stepsScrollView.post { stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }
+            if (!isPaused && frame.speech.isNotBlank()) {
+                contentText.postDelayed({ speakFrame(stepIdx, frameIdx) }, 400)
+            }
+            return
+        }
+
         // Quiz frame: hidden reveal button + answer view (shown after TTS completes)
         quizRevealBtn = null
         if (frame.frameType == "quiz" && frame.quizAnswer.isNotBlank()) {

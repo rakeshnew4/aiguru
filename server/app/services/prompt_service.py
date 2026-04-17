@@ -85,10 +85,16 @@ blackboard_prompt = (
     " Think like the most engaging teacher ever -- make every student say"
     ' "WOW, I actually get this now!"\n\n'
     "Return ONLY valid JSON (no code fences, no extra text):\n"
-    '{"steps": [{"title": "2-5 word heading", "image_show_confidencescore": 0.8, "image_description": "specific wikimedia search phrase", "lang": "<USE THE REQUESTED LANGUAGE TAG e.g. hi-IN or en-US>", "frames": [{"frame_type": "concept", "text": "board content max 3 lines", "highlight": ["key term"], "speech": "teacher says 1-2 sentences IN THE LANG LANGUAGE", "tts_engine": "gemini", "voice_role": "teacher", "duration_ms": 2500, "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1, "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": []}]}]}\n\n'
+    '{"steps": [{"title": "2-5 word heading", "image_show_confidencescore": 0.8, "image_description": "specific wikimedia search phrase", "lang": "<USE THE REQUESTED LANGUAGE TAG e.g. hi-IN or en-US>", "frames": [{"frame_type": "concept", "text": "board content max 3 lines", "highlight": ["key term"], "speech": "teacher says 1-2 sentences IN THE LANG LANGUAGE", "tts_engine": "gemini", "voice_role": "teacher", "duration_ms": 2500, "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1, "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": [], "svg_elements": []}]}]}\n\n'
     "FRAME TYPES -- mix ALL of these for maximum engagement:\n"
     "concept    -> Core teaching: formula, definition, step, key fact. Use **bold**. Most common type.\n"
     "memory     -> Mnemonic, rhyme, acronym, or fun trick. Make it catchy and unforgettable!\n"
+    "diagram    -> Animated step-by-step drawing. Use for geometry, structures, circuits, graphs.\n"
+    "           MUST provide svg_elements: array of shape objects drawn sequentially on a 400x300 canvas.\n"
+    '           Shapes: {"shape":"line","x1":N,"y1":N,"x2":N,"y2":N} | {"shape":"circle","cx":N,"cy":N,"r":N}\n'
+    '                   {"shape":"rect","x":N,"y":N,"w":N,"h":N} | {"shape":"text","x":N,"y":N,"value":"label"}\n'
+    "           Coordinates 0-400 (x) / 0-300 (y). Each shape appears one-by-one with smooth animation.\n"
+    "           text field: 1-line caption shown above the diagram. speech: explain what is being drawn.\n"
     "quiz_mcq   -> Multiple choice. MUST provide exactly 4 quiz_options and quiz_correct_index (0-3).\n"
     "quiz_typed -> Open-ended typed answer. MUST provide quiz_model_answer and quiz_keywords (3-6 key terms).\n"
     "quiz_voice -> Open-ended spoken answer. Same fields as quiz_typed.\n"
@@ -102,7 +108,7 @@ blackboard_prompt = (
 
     "- quiz_order: quiz_options = 3-5 SHUFFLED step texts. quiz_correct_order = 0-based correct position indices.\n"
     "- NEVER include quiz_correct_index for quiz_typed, quiz_voice, or quiz_order (leave as -1).\n"
-    "- Non-quiz frames: quiz_options=[], quiz_correct_index=-1, quiz_model_answer=\"\", quiz_keywords=[], fill_blanks=[], quiz_correct_order=[].\n"
+    "- Non-quiz frames: quiz_options=[], quiz_correct_index=-1, quiz_model_answer=\"\", quiz_keywords=[], fill_blanks=[], quiz_correct_order=[], svg_elements=[].\n"
     "- image_show_confidencescore for any quiz frame: always 0.0 (no image on quiz frames).\n\n"
     "IMAGE GUIDANCE:\n"
     "- image_description: A Wikimedia Commons search phrase for a REAL well-known educational diagram.\n"
@@ -130,6 +136,7 @@ blackboard_prompt = (
     "  - First frame of the ENTIRE lesson → tts_engine=android, voice_role=teacher  (zero-delay start)\n"
     "  - concept frame → tts_engine=gemini,  voice_role=teacher   (premium, natural explanation)\n"
     "  - memory frame  → tts_engine=gemini,  voice_role=teacher   (premium, catchy mnemonic)\n"
+    "  - diagram frame → tts_engine=gemini,  voice_role=teacher   (narrate what is being drawn)\n"
     "  - summary frame → tts_engine=google,  voice_role=assistant (neural, cost-efficient recap)\n"
     "  - quiz_* frames → tts_engine=android, voice_role=quiz      (instant, no latency)\n"
     "  Consistency: keep the same engine for the same role across the whole lesson.\n"

@@ -1,0 +1,59 @@
+
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+
+<!-- Sun -->
+<circle cx="50" cy="50" r="20" fill="yellow" />
+
+<!-- Sunlight rays (animated lines) -->
+<line x1="70" y1="60" x2="150" y2="120" stroke="orange" stroke-width="2"
+      stroke-dasharray="100" stroke-dashoffset="100">
+  <animate attributeName="stroke-dashoffset" from="100" to="0"
+           dur="1s" begin="0s" fill="freeze"/>
+</line>
+
+<!-- Plant (simple) -->
+<rect x="170" y="150" width="20" height="80" fill="green"/>
+<circle cx="180" cy="140" r="20" fill="green"/>
+
+<!-- CO2 arrow (left to plant) -->
+<line x1="100" y1="200" x2="170" y2="180" stroke="blue" stroke-width="2"
+      marker-end="url(#arrow)"
+      stroke-dasharray="100" stroke-dashoffset="100">
+  <animate attributeName="stroke-dashoffset" from="100" to="0"
+           dur="1s" begin="1s" fill="freeze"/>
+</line>
+
+<text x="90" y="210" font-size="12">CO₂</text>
+
+<!-- O2 arrow (plant to right) -->
+<line x1="190" y1="180" x2="260" y2="200" stroke="red" stroke-width="2"
+      marker-end="url(#arrow)"
+      stroke-dasharray="100" stroke-dashoffset="100">
+  <animate attributeName="stroke-dashoffset" from="100" to="0"
+           dur="1s" begin="2s" fill="freeze"/>
+</line>
+
+<text x="270" y="210" font-size="12">O₂</text>
+
+<!-- Glucose output -->
+<text x="160" y="260" font-size="12" fill="purple"
+      opacity="0">
+  Glucose (C₆H₁₂O₆)
+  <animate attributeName="opacity" from="0" to="1"
+           dur="1s" begin="3s" fill="freeze"/>
+</text>
+
+<!-- Equation -->
+<text x="20" y="290" font-size="12">
+  6CO₂ + 6H₂O → C₆H₁₂O₆ + 6O₂
+</text>
+
+<!-- Arrow definition -->
+<defs>
+  <marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5"
+          orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L10,5 L0,10 Z" fill="black" />
+  </marker>
+</defs>
+
+</svg>

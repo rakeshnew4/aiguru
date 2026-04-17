@@ -21,6 +21,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.aiguruapp.student.adapters.SubjectAdapter
+import com.aiguruapp.student.BlackboardActivity
 import com.aiguruapp.student.BuildConfig
 import com.aiguruapp.student.config.AccessGate
 import com.aiguruapp.student.config.AccessGate.Feature
@@ -38,6 +39,9 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.view.WindowCompat
 import com.aiguruapp.student.firestore.FirestoreManager
+import com.aiguruapp.student.firestore.HomeSmartContentLoader
+import com.aiguruapp.student.firestore.SmartCard
+import com.aiguruapp.student.firestore.StudentStatsManager
 import com.aiguruapp.student.models.FirestoreOffer
 import com.google.firebase.firestore.FirebaseFirestore
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -124,6 +128,10 @@ class HomeActivity : BaseActivity() {
         }
 
         setupDrawer()
+        setupQuickActions()
+
+        // BB intro + smart cards: run after layout is settled
+        loadSmartHomeContent()
     }
 
     override fun onResume() {
@@ -459,6 +467,173 @@ class HomeActivity : BaseActivity() {
         } else {
             super.onBackPressed()
         }
+    }
+
+    // ── Smart home content: BB intro + personalised suggestion cards ──────────
+
+    /**
+     * Entry point called once from onCreate.
+     * 1. Fetches usage summary from students_stats.
+     * 2. Shows BB intro bottom sheet if user has never used BB mode.
+     * 3. Loads personalised smart cards and renders them in the strip.
+     * 4. Updates Today's Focus stats in the hero card.
+     */
+    private fun loadSmartHomeContent() {
+        val uid = SessionManager.getFirestoreUserId(this)
+        if (uid.isBlank() || uid == "guest_user") return
+
+        StudentStatsManager.fetchUsageSummary(uid) { totalMessages, totalBbSessions, streakDays ->
+            runOnUiThread {
+                // Update Today's Focus strip in the hero card
+                updateTodaysFocusStrip(totalMessages, streakDays)
+            }
+
+            // Show BB intro bottom sheet if never used BB
+            if (totalBbSessions == 0L) {
+                StudentStatsManager.hasSeen_bb_intro(uid) { alreadySeen ->
+                    if (!alreadySeen) {
+                        // Mark seen immediately so it never shows twice
+                        StudentStatsManager.markBbIntroSeen(uid)
+                        runOnUiThread {
+                            // Small delay so the home screen settles first
+                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                if (!isFinishing && !isDestroyed) {
+                                    BbIntroBottomSheet().show(supportFragmentManager, BbIntroBottomSheet.TAG)
+                                }
+                            }, 800)
+                        }
+                    }
+                }
+            }
+
+            // Load personalised smart cards
+            HomeSmartContentLoader.loadForUser(
+                totalMessages   = totalMessages,
+                totalBbSessions = totalBbSessions,
+                streakDays      = streakDays,
+                onSuccess = { cards ->
+                    runOnUiThread { renderSmartCards(cards) }
+                }
+            )
+        }
+    }
+
+    /** Renders personalised suggestion cards in the horizontal "For You" strip. */
+    private fun renderSmartCards(cards: List<SmartCard>) {
+        if (cards.isEmpty()) return
+        val section   = findViewById<android.widget.LinearLayout?>(R.id.smartCardSection) ?: return
+        val container = findViewById<android.widget.LinearLayout?>(R.id.smartCardsContainer) ?: return
+        container.removeAllViews()
+
+        for (card in cards) {
+            val itemView = layoutInflater.inflate(R.layout.item_smart_card, container, false)
+
+            itemView.findViewById<android.widget.TextView>(R.id.smartCardEmoji).text    = card.emoji
+            itemView.findViewById<android.widget.TextView>(R.id.smartCardTitle).text    = card.title
+            itemView.findViewById<android.widget.TextView>(R.id.smartCardSubtitle).text = card.subtitle
+            val cta = itemView.findViewById<android.widget.TextView>(R.id.smartCardCta)
+            cta.text = card.ctaLabel
+
+            // Accent color
+            val color = try { android.graphics.Color.parseColor(card.cardColor) }
+                        catch (_: Exception) { android.graphics.Color.parseColor("#1565C0") }
+            itemView.findViewById<View>(R.id.smartCardAccent)
+                .backgroundTintList = android.content.res.ColorStateList.valueOf(color)
+            cta.setTextColor(color)
+
+            itemView.setOnClickListener { handleSmartCardTap(card) }
+            container.addView(itemView)
+        }
+
+        section.visibility = View.VISIBLE
+    }
+
+    /** Handles a tap on a smart card — either opens BB mode or navigates in-app. */
+    private fun handleSmartCardTap(card: SmartCard) {
+        when (card.type) {
+            "bb_intro" -> {
+                if (card.bbMessage.isBlank()) return
+                val uid  = SessionManager.getFirestoreUserId(this)
+                val lang = SessionManager.getPreferredLang(this).ifBlank { "en-US" }
+                startActivity(
+                    android.content.Intent(this, BlackboardActivity::class.java)
+                        .putExtra(BlackboardActivity.EXTRA_MESSAGE, card.bbMessage)
+                        .putExtra(BlackboardActivity.EXTRA_SUBJECT, card.subject.ifBlank { "General" })
+                        .putExtra(BlackboardActivity.EXTRA_CHAPTER, card.chapter.ifBlank { "General" })
+                        .putExtra(BlackboardActivity.EXTRA_USER_ID, uid)
+                        .putExtra(BlackboardActivity.EXTRA_LANGUAGE_TAG, lang)
+                )
+            }
+            "tip" -> {
+                // For tips that point to a subject — open chat; otherwise just dismiss
+                if (card.subject.isNotBlank() && card.chapter.isNotBlank()) {
+                    startActivity(
+                        android.content.Intent(this, ChatHostActivity::class.java)
+                            .putExtra("subjectName", card.subject)
+                            .putExtra("chapterName", card.chapter)
+                    )
+                }
+            }
+        }
+    }
+
+    /** Fills the Today's Focus strip inside the hero card with live counts. */
+    private fun updateTodaysFocusStrip(totalMessages: Long, streakDays: Long) {
+        // streak badge
+        val streakLabel = if (streakDays > 0) "🔥 $streakDays day streak" else "🔥 Start your streak"
+        findViewById<android.widget.TextView?>(R.id.heroStreakBadge)?.text = streakLabel
+
+        // messages today — read from users_table counter (the loadQuotaStrip call runs
+        // in parallel; we just show total lifetime messages here as a fallback for speed)
+        val msgLabel = "💬 $totalMessages msgs"
+        findViewById<android.widget.TextView?>(R.id.heroMsgsToday)?.text = msgLabel
+
+        // Goal ring: daily goal = 10 messages
+        val dailyGoal = 10
+        val todayProgress = (totalMessages % dailyGoal).toInt().coerceIn(0, dailyGoal)
+        findViewById<android.widget.TextView?>(R.id.heroGoalLabel)?.text =
+            "🎯 $todayProgress/$dailyGoal"
+        findViewById<android.widget.ProgressBar?>(R.id.heroGoalProgress)?.apply {
+            max = dailyGoal
+            progress = todayProgress
+        }
+    }
+
+    private fun setupQuickActions() {
+        // 💬 Ask AI — always visible, open General Chat
+        findViewById<com.google.android.material.card.MaterialCardView>(R.id.quickActionChatBtn)
+            ?.setOnClickListener {
+                startActivity(
+                    Intent(this, ChatHostActivity::class.java)
+                        .putExtra("subjectName", "General")
+                        .putExtra("chapterName", "General Chat")
+                )
+            }
+
+        // 🎓 Blackboard — gated by plan/role
+        AccessGate.applyVisibility(this, findViewById(R.id.quickActionBbBtn), Feature.BLACKBOARD)
+        findViewById<com.google.android.material.card.MaterialCardView>(R.id.quickActionBbBtn)
+            ?.setOnClickListener {
+                startActivity(
+                    Intent(this, BlackboardActivity::class.java)
+                        .putExtra(BlackboardActivity.EXTRA_SUBJECT, "General")
+                        .putExtra(BlackboardActivity.EXTRA_CHAPTER, "General")
+                )
+            }
+
+        // 📈 Progress — gated by plan feature
+        AccessGate.applyVisibility(this, findViewById(R.id.quickActionProgressBtn), Feature.PROGRESS_DASHBOARD)
+        findViewById<com.google.android.material.card.MaterialCardView>(R.id.quickActionProgressBtn)
+            ?.setOnClickListener {
+                startActivity(Intent(this, ProgressDashboardActivity::class.java))
+            }
+
+        // 📋 My Tasks — gated by plan/role
+        AccessGate.applyVisibility(this, findViewById(R.id.quickActionTasksBtn), Feature.TASKS)
+        findViewById<com.google.android.material.card.MaterialCardView>(R.id.quickActionTasksBtn)
+            ?.setOnClickListener {
+                startActivity(Intent(this, TasksActivity::class.java))
+            }
     }
 
     private fun setupDrawer() {
