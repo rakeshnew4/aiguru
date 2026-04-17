@@ -246,9 +246,12 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
 
         # ── SVG diagram frames: build svg_html server-side, suppress Wikimedia ──
         # Steps that contain a "diagram" frame get their visual from the SVG —
-        # no Wikimedia photo is needed.  Python converts svg_elements → svg_html
-        # here so Android just calls webView.loadData(frame.svgHtml) with no math.
-        from app.utils.svg_builder import build_animated_svg
+        # no Wikimedia photo is needed.
+        #
+        # Two paths:
+        #   1. NEW  — LLM outputs diagram_type + data  → Python layout engine → shapes → HTML
+        #   2. LEGACY — LLM outputs raw svg_elements   → build_animated_svg directly
+        from app.utils.svg_builder import build_animated_svg, build_from_diagram_type
         for step in data["steps"]:
             if not isinstance(step, dict):
                 continue
@@ -260,22 +263,49 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
                 # Suppress Wikimedia image for this step — the diagram IS the visual
                 step["image_show_confidencescore"] = 0.0
                 step.pop("image_description", None)
-                # Convert svg_elements → svg_html for every diagram frame
+                # Convert diagram data → svg_html for every diagram frame
                 for frame in step.get("frames", []):
                     if not isinstance(frame, dict) or frame.get("frame_type") != "diagram":
                         continue
-                    svg_elems = frame.get("svg_elements")
-                    if svg_elems:
-                        elems_json = (
-                            json.dumps(svg_elems)
-                            if isinstance(svg_elems, list)
-                            else str(svg_elems)
-                        )
-                        html = build_animated_svg(elems_json)
-                        if html:
-                            frame["svg_html"] = html
-                            logger.info("Built svg_html for diagram frame in step '%s'", step.get("title", ""))
-                    frame.pop("svg_elements", None)  # clean up — not needed by Android
+
+                    html = ""
+                    d_type = frame.get("diagram_type", "")
+                    d_data = frame.get("data") or {}
+
+                    if d_type:
+                        # ── Path 1: structured diagram_type → Python renders shapes ──
+                        shapes = build_from_diagram_type(d_type, d_data)
+                        if shapes:
+                            html = build_animated_svg(shapes)
+                            if html:
+                                logger.info(
+                                    "Built structured svg_html (type=%s) for step '%s'",
+                                    d_type, step.get("title", "")
+                                )
+
+                    if not html:
+                        # ── Path 2: legacy raw svg_elements fallback ──────────────
+                        svg_elems = frame.get("svg_elements")
+                        if svg_elems:
+                            elems_json = (
+                                json.dumps(svg_elems)
+                                if isinstance(svg_elems, list)
+                                else str(svg_elems)
+                            )
+                            html = build_animated_svg(elems_json)
+                            if html:
+                                logger.info(
+                                    "Built legacy svg_html for step '%s'",
+                                    step.get("title", "")
+                                )
+
+                    if html:
+                        frame["svg_html"] = html
+
+                    # Clean up fields not needed by Android
+                    frame.pop("svg_elements", None)
+                    frame.pop("diagram_type", None)
+                    frame.pop("data", None)
 
         # Collect per-step image descriptions (only high-confidence steps)
         descriptions = []

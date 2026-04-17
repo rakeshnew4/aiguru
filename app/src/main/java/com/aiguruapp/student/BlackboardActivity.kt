@@ -98,10 +98,10 @@ class BlackboardActivity : AppCompatActivity() {
     private lateinit var stepCounter:     TextView
     private lateinit var dotsContainer:   LinearLayout
     private lateinit var closeBtn:        TextView
-    private lateinit var prevBtn:         TextView
     private lateinit var pauseBtn:        TextView
     private lateinit var replayBtn:       TextView
-    private lateinit var nextBtn:         TextView
+    private lateinit var progressSeekBar: android.widget.SeekBar
+    private var seekBarDragging = false
     private lateinit var handWriter:      TextView
 
     // ── State ─────────────────────────────────────────────────────────────────
@@ -114,6 +114,7 @@ class BlackboardActivity : AppCompatActivity() {
     private var currentFrameIdx  = 0
     private var isPaused         = false
     private var typeAnimator:    ValueAnimator? = null
+    private var seekBarAnimator: ValueAnimator? = null
     private var computedFontSp   = 30f
     private var preferredLanguageTag = "en-US"
 
@@ -169,10 +170,9 @@ class BlackboardActivity : AppCompatActivity() {
         stepCounter     = findViewById(R.id.stepCounter)
         dotsContainer   = findViewById(R.id.dotsContainer)
         closeBtn        = findViewById(R.id.closeButton)
-        prevBtn         = findViewById(R.id.prevButton)
         pauseBtn        = findViewById(R.id.pauseButton)
         replayBtn       = findViewById(R.id.replayButton)
-        nextBtn         = findViewById(R.id.nextButton)
+        progressSeekBar = findViewById(R.id.bbProgressSeek)
         handWriter      = findViewById(R.id.handWriter)
         bbQuotaChip     = findViewById(R.id.bbQuotaChip)
         saveSessionBtn  = findViewById(R.id.saveSessionBtn)
@@ -190,10 +190,36 @@ class BlackboardActivity : AppCompatActivity() {
         closeBtn.setOnClickListener  { finish() }
         saveSessionBtn.setOnClickListener { saveCurrentSession() }
         publishLessonBtn.setOnClickListener { publishCurrentLesson() }
-        prevBtn.setOnClickListener   { prevStep() }
-        nextBtn.setOnClickListener   { nextStep() }
-        replayBtn.setOnClickListener { reSpeakCurrent() }
+        replayBtn.setOnClickListener { restartLesson() }
         pauseBtn.setOnClickListener  { togglePause() }
+
+        // ── YouTube-style seekbar ─────────────────────────────────────────
+        progressSeekBar.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+            override fun onStartTrackingTouch(seekBar: android.widget.SeekBar) {
+                seekBarDragging = true
+                isPaused = true
+                seekBarAnimator?.cancel()
+                aiTtsEngine.stop()
+            }
+            override fun onProgressChanged(seekBar: android.widget.SeekBar, progress: Int, fromUser: Boolean) {
+                if (!fromUser || steps.isEmpty()) return
+                // Convert flat progress index → (stepIdx, frameIdx)
+                var remaining = progress
+                for ((sIdx, step) in steps.withIndex()) {
+                    if (remaining < step.frames.size) {
+                        rebuildBoardUpTo(sIdx, remaining)
+                        return
+                    }
+                    remaining -= step.frames.size
+                }
+                // Clamp to very last frame
+                val lastS = steps.size - 1
+                rebuildBoardUpTo(lastS, steps[lastS].frames.size - 1)
+            }
+            override fun onStopTrackingTouch(seekBar: android.widget.SeekBar) {
+                seekBarDragging = false
+            }
+        })
 
         // Teacher mode: show publish button so this lesson can be shared with students
         isTeacherMode = com.aiguruapp.student.utils.SessionManager.isTeacher(this)
@@ -470,6 +496,8 @@ class BlackboardActivity : AppCompatActivity() {
                         loadingGroup.visibility = View.GONE
                         contentGroup.visibility = View.VISIBLE
                         saveSessionBtn.visibility = View.VISIBLE
+                        // Show inline ask bar now that content is ready
+                        findViewById<android.widget.LinearLayout>(R.id.bbAskBar)?.visibility = View.VISIBLE
                         // Teachers can publish the freshly-generated lesson to global bb_cache
                         if (isTeacherMode) publishLessonBtn.visibility = View.VISIBLE
                         buildDots()
@@ -575,6 +603,8 @@ class BlackboardActivity : AppCompatActivity() {
                         computedFontSp = computeFontSize(steps)
                         loadingGroup.visibility = View.GONE
                         contentGroup.visibility = View.VISIBLE
+                        // Show inline ask bar now that content is ready
+                        findViewById<android.widget.LinearLayout>(R.id.bbAskBar)?.visibility = View.VISIBLE
                         // Teachers don't need save/publish after loading a cached lesson
                         saveSessionBtn.visibility = View.GONE
                         publishLessonBtn.visibility = View.GONE
@@ -727,6 +757,26 @@ class BlackboardActivity : AppCompatActivity() {
         typeAnimator?.cancel()
         handWriter.visibility = View.INVISIBLE
         updateCounterAndDots()
+
+        // ── Smooth seekbar animation over this frame's duration ───────────
+        if (!isPaused && !seekBarDragging && steps.isNotEmpty()) {
+            val totalFrames = steps.sumOf { it.frames.size }
+            if (totalFrames > 1) {
+                val flatNow  = steps.take(stepIdx).sumOf { it.frames.size } + frameIdx
+                val flatNext = (flatNow + 1).coerceAtMost(totalFrames - 1)
+                if (flatNow < flatNext) {
+                    seekBarAnimator?.cancel()
+                    seekBarAnimator = ValueAnimator.ofInt(flatNow, flatNext).apply {
+                        duration = frame.durationMs
+                        interpolator = android.view.animation.LinearInterpolator()
+                        addUpdateListener { anim ->
+                            if (!seekBarDragging) progressSeekBar.progress = anim.animatedValue as Int
+                        }
+                        start()
+                    }
+                }
+            }
+        }
 
         val board = boardLayout ?: return
         val dp = resources.displayMetrics.density
@@ -903,13 +953,13 @@ class BlackboardActivity : AppCompatActivity() {
             quizRevealBtn = revealBtn
         }
 
-        val baseSsb = buildFrameText(frame.text, frame.highlight)
+        val baseSsb = buildFrameText(sanitizeFrameText(frame.text), frame.highlight)
         val textLen = baseSsb.length
 
         if (textLen == 0) {
             if (frame.text.contains('$')) {
                 val kalam = ResourcesCompat.getFont(this, R.font.kalam)
-                blackboardMarkwon.setMarkdown(contentText, preprocessLatex(frame.text))
+                blackboardMarkwon.setMarkdown(contentText, preprocessLatex(sanitizeFrameText(frame.text)))
                 contentText.typeface = kalam
                 contentText.setLineSpacing(0f, 1.6f)
             } else {
@@ -924,7 +974,7 @@ class BlackboardActivity : AppCompatActivity() {
         // If the frame contains LaTeX, skip the typewriter animation and render directly
         if (frame.text.contains('$')) {
             val kalam = ResourcesCompat.getFont(this, R.font.kalam)
-            blackboardMarkwon.setMarkdown(contentText, preprocessLatex(frame.text))
+            blackboardMarkwon.setMarkdown(contentText, preprocessLatex(sanitizeFrameText(frame.text)))
             contentText.typeface = kalam
             contentText.setLineSpacing(0f, 1.6f)
             stepsScrollView.post { stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }
@@ -1221,15 +1271,31 @@ class BlackboardActivity : AppCompatActivity() {
         handWriter.visibility = View.INVISIBLE
         when {
             currentFrameIdx > 0 -> {
-                // To safely go back, clear the whole board and fast-forward to the previous frame
                 rebuildBoardUpTo(currentStepIdx, currentFrameIdx - 1)
             }
             currentStepIdx > 0 -> {
                 val prevFrames = steps[currentStepIdx - 1].frames
                 rebuildBoardUpTo(currentStepIdx - 1, prevFrames.size - 1)
             }
-            else -> reSpeakCurrent()
+            else -> restartLesson()
         }
+    }
+
+    /** Restarts the lesson from Step 1, Frame 1 — wired to the ↺ reload button. */
+    private fun restartLesson() {
+        seekBarAnimator?.cancel()
+        aiTtsEngine.stop()
+        typeAnimator?.cancel()
+        handWriter.visibility = View.INVISIBLE
+        isPaused = false
+        pauseBtn.text = "⏸"
+        val board = boardLayout ?: return
+        board.removeAllViews()
+        buildDots()
+        setupBoard()
+        preloadUpcoming(0, 0, count = 3)
+        showFrame(0, 0)
+        stepsScrollView.smoothScrollTo(0, 0)
     }
 
     /** 
@@ -1288,7 +1354,7 @@ class BlackboardActivity : AppCompatActivity() {
                     else      -> Color.parseColor("#F0EDD0")
                 }
                 val contentText = TextView(this).apply {
-                    text = buildFrameText(frame.text, frame.highlight)
+                    text = buildFrameText(sanitizeFrameText(frame.text), frame.highlight)
                     textSize = computedFontSp
                     gravity = Gravity.START
                     setTextColor(frameColor)
@@ -1332,6 +1398,7 @@ class BlackboardActivity : AppCompatActivity() {
         isPaused = !isPaused
         pauseBtn.text = if (isPaused) "▶" else "⏸"
         if (isPaused) {
+            seekBarAnimator?.cancel()
             aiTtsEngine.stop()
         } else {
             speakFrame(currentStepIdx, currentFrameIdx)
@@ -1341,11 +1408,21 @@ class BlackboardActivity : AppCompatActivity() {
     private fun updateCounterAndDots() {
         stepCounter.text = "${currentStepIdx + 1} / ${steps.size}"
         updateDots(currentStepIdx)
-        val atStart = currentStepIdx == 0 && currentFrameIdx == 0
-        val atEnd   = currentStepIdx == steps.size - 1 &&
-                      currentFrameIdx == (steps.lastOrNull()?.frames?.size ?: 1) - 1
-        prevBtn.alpha = if (atStart) 0.30f else 1f
-        nextBtn.alpha = if (atEnd)   0.30f else 1f
+        updateProgressSeekBar()
+    }
+
+    /** Syncs the seekbar position to the current step/frame without triggering the listener. */
+    private fun updateProgressSeekBar() {
+        if (steps.isEmpty() || seekBarDragging) return
+        val totalFrames = steps.sumOf { it.frames.size }
+        if (totalFrames <= 1) {
+            progressSeekBar.max = 1
+            progressSeekBar.progress = 0
+            return
+        }
+        val flat = steps.take(currentStepIdx).sumOf { it.frames.size } + currentFrameIdx
+        progressSeekBar.max = totalFrames - 1
+        progressSeekBar.progress = flat
     }
 
     // ── Frame text rendering ──────────────────────────────────────────────────
@@ -1428,6 +1505,17 @@ class BlackboardActivity : AppCompatActivity() {
      *  ### H3    → lavender       (#CE93D8) +6%  size  bold
      *  - bullets → •
      */
+    /**
+     * Guards against raw JSON schema leaking onto the board.
+     * If [text] looks like a bare JSON object or array (e.g., the LLM accidentally put
+     * the frame schema in the text field), return empty string instead.
+     */
+    private fun sanitizeFrameText(text: String): String {
+        val t = text.trim()
+        return if ((t.startsWith("{") || t.startsWith("[")) &&
+                   (t.endsWith("}") || t.endsWith("]"))) "" else text
+    }
+
     private fun parseMarkdownForBlackboard(text: String): SpannableStringBuilder {
         val ssb = SpannableStringBuilder()
         val lines = text.lines()
@@ -2217,6 +2305,7 @@ class BlackboardActivity : AppCompatActivity() {
         board.addView(questionCard)
         stepsScrollView.postDelayed({ stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 200)
 
+        // ── Streaming answer text ───────────────────────────────────────────
         val responseInner = TextView(this).apply {
             text = "…"
             textSize = computedFontSp - 6f
@@ -2228,6 +2317,56 @@ class BlackboardActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.WRAP_CONTENT
             )
         }
+
+        // Collapsible content area (answer text + BB button added after streaming)
+        val contentArea = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (8 * dp).toInt() }
+            addView(responseInner)
+        }
+
+        // Chevron toggle indicator
+        val chevron = TextView(this).apply {
+            text = "▼"
+            textSize = 11f
+            setTextColor(Color.parseColor("#7070A0"))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        // Collapsible header row: "💬 Answer" + chevron
+        val headerRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            val label = TextView(this@BlackboardActivity).apply {
+                text = "💬 Answer"
+                textSize = computedFontSp - 7f
+                setTextColor(Color.parseColor("#909090"))
+                typeface = caveat
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            }
+            addView(label)
+            addView(chevron)
+            setOnClickListener {
+                if (contentArea.visibility == View.VISIBLE) {
+                    contentArea.visibility = View.GONE
+                    chevron.text = "▶"
+                } else {
+                    contentArea.visibility = View.VISIBLE
+                    chevron.text = "▼"
+                }
+            }
+        }
+
         val responseCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable().apply {
@@ -2241,7 +2380,8 @@ class BlackboardActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply { topMargin = (8 * dp).toInt() }
-            addView(responseInner)
+            addView(headerRow)
+            addView(contentArea)
         }
         board.addView(responseCard)
         stepsScrollView.postDelayed({ stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 300)
@@ -2272,17 +2412,136 @@ class BlackboardActivity : AppCompatActivity() {
                     runOnUiThread { responseInner.text = display }
                 },
                 onDone = { _, _, _ ->
-                    val final = TutorController.extractAnswerForDisplay(responseText.toString())
+                    val finalAnswer = TutorController.extractAnswerForDisplay(responseText.toString())
                     bbChatHistory.add("user: $question")
-                    bbChatHistory.add("assistant: ${final.take(600)}")
+                    bbChatHistory.add("assistant: ${finalAnswer.take(600)}")
                     runOnUiThread {
-                        responseInner.text = final
+                        responseInner.text = finalAnswer
                         stepsScrollView.postDelayed(
                             { stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 200
                         )
+                        // ── "Explain in BB Mode" button ───────────────────────
+                        val bbExplainBtn = TextView(this@BlackboardActivity).apply {
+                            text = "▶  Explain in Blackboard Mode"
+                            textSize = computedFontSp - 7f
+                            setTextColor(Color.parseColor("#C8A0FF"))
+                            typeface = caveat
+                            setPadding(0, (12 * dp).toInt(), 0, 4)
+                            background = null
+                            layoutParams = LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.WRAP_CONTENT,
+                                LinearLayout.LayoutParams.WRAP_CONTENT
+                            ).apply { topMargin = (10 * dp).toInt() }
+                        }
+                        bbExplainBtn.setOnClickListener {
+                            // Collapse the answer card to save space while lesson plays
+                            contentArea.visibility = View.GONE
+                            chevron.text = "▶"
+                            requestInlineBbLesson(question, finalAnswer)
+                        }
+                        contentArea.addView(bbExplainBtn)
                     }
                 },
                 onError = { err -> runOnUiThread { responseInner.text = "⚠️ $err" } }
+            )
+        }
+    }
+
+    /**
+     * Generates a fresh BB mini-lesson for [question] and APPENDS it below the existing
+     * board content (instead of replacing it). A purple separator divider and topic header
+     * are inserted first so the student can see where the inline lesson begins.
+     */
+    /**
+     * Generates a full animated BB lesson for [question] and APPENDS it to the current lesson.
+     * The new steps are added to [steps] so they play with the same animations, TTS, images,
+     * and seekbar as the original lesson — fully consistent, not static cards.
+     */
+    private fun requestInlineBbLesson(question: String, chatAnswer: String) {
+        val dp = resources.displayMetrics.density
+        val board = boardLayout ?: return
+        val caveat = ResourcesCompat.getFont(this, R.font.kalam)
+
+        // Stop current audio so the incoming lesson doesn't compete
+        aiTtsEngine.stop()
+        typeAnimator?.cancel()
+        seekBarAnimator?.cancel()
+        handWriter.visibility = View.INVISIBLE
+
+        // ── Purple separator + topic header appended to board ─────────────────
+        val divider = View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, (2 * dp).toInt()
+            ).apply { topMargin = (24 * dp).toInt(); bottomMargin = (8 * dp).toInt() }
+            setBackgroundColor(Color.parseColor("#3D1A6E"))
+        }
+        val topicHeader = TextView(this).apply {
+            text = "🎓  ${question.take(60)}"
+            textSize = computedFontSp - 4f
+            setTextColor(Color.parseColor("#C8A0FF"))
+            typeface = caveat
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        val loadingTv = TextView(this).apply {
+            text = "⏳ Building lesson…"
+            textSize = computedFontSp - 6f
+            setTextColor(Color.parseColor("#8070A0"))
+            typeface = caveat
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (6 * dp).toInt() }
+        }
+        board.addView(divider)
+        board.addView(topicHeader)
+        board.addView(loadingTv)
+        stepsScrollView.postDelayed({ stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 200)
+
+        val enrichedMessage = buildString {
+            append(question)
+            if (chatAnswer.isNotBlank()) {
+                append("\n\n[Context: "); append(chatAnswer.take(400)); append("]")
+            }
+        }
+        val uid = intent.getStringExtra(EXTRA_USER_ID)?.ifBlank { null }
+        lifecycleScope.launch(Dispatchers.IO) {
+            BlackboardGenerator.generate(
+                messageContent       = enrichedMessage,
+                userId               = uid,
+                preferredLanguageTag = preferredLanguageTag,
+                onStatus = { msg, _ -> runOnUiThread { loadingTv.text = msg } },
+                onSuccess = { inlineSteps ->
+                    lifecycleScope.launch(Dispatchers.Main) {
+                        // Remove the loading indicator (divider + header stay)
+                        board.removeView(loadingTv)
+
+                        // Record the index where the inline lesson begins
+                        val firstNewStepIdx = steps.size
+
+                        // Extend the master steps list → seekbar, dots, advanceFrame() all work
+                        steps = steps + inlineSteps
+
+                        // Update seekbar range and navigation dots for the longer lesson
+                        progressSeekBar.max = maxOf(1, steps.sumOf { it.frames.size } - 1)
+                        buildDots()
+                        updateCounterAndDots()
+
+                        // Preload audio for the first few inline frames
+                        preloadUpcoming(firstNewStepIdx, 0, count = 3)
+
+                        // showFrame at firstNewStepIdx > 0 appends without clearing the board,
+                        // so the previous lesson stays visible above the inline content.
+                        isPaused = false
+                        pauseBtn.text = "⏸"
+                        showFrame(firstNewStepIdx, 0)
+                    }
+                },
+                onError = { err ->
+                    runOnUiThread { loadingTv.text = "⚠️ $err" }
+                }
             )
         }
     }

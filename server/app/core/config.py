@@ -41,11 +41,11 @@ class Settings(BaseSettings):
     CHEAPER_TEMPERATURE: float = 0.7
     CHEAPER_MAX_TOKENS: int = 4096
     
-    # FASTER: Fastest models for simple/structured tasks (blackboard JSON, formatting)
-    FASTER_PROVIDER: str = "gemini"   # gemini is fastest for structured JSON
-    FASTER_MODEL_ID: str = "gemini-2.0-flash"
-    FASTER_TEMPERATURE: float = 0.4
-    FASTER_MAX_TOKENS: int = 1500
+    # FASTER: Quickest tier for small structured tasks (intent classifier, BB planner, grading)
+    FASTER_PROVIDER: str = "gemini"
+    FASTER_MODEL_ID: str = "gemini-2.5-flash-lite-preview-06-17"
+    FASTER_TEMPERATURE: float = 0.3
+    FASTER_MAX_TOKENS: int = 800
     
     # ── Provider API Keys ──────────────────────────────────────────────────────
     GROQ_API_KEY: str = ""

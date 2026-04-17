@@ -428,14 +428,15 @@ def _call_litellm_proxy(
 
     messages = [{"role": "user", "content": content}]
 
+    # All tiers use gemini-2.5-flash-lite through LiteLLM during testing
     body = json.dumps({
-        "model": "gemini-2.5-flash-lite",
+        "model": "gemini/gemini-2.5-flash-lite-preview-06-17",
         "messages": messages,
         "temperature": model_config.temperature,
         "max_tokens": model_config.max_tokens,
     }).encode()
 
-    logger.debug(f"LiteLLM proxy request: model=gemini-2.5-flash-lite, prompt_len={len(prompt)}, images={len(images) if images else 0}")
+    logger.debug(f"LiteLLM proxy request: model=gemini-2.5-flash-lite, tier={getattr(model_config, '_tier_name', tier if 'tier' in dir() else '?')}, prompt_len={len(prompt)}, images={len(images) if images else 0}")
 
     try:
         conn = http.client.HTTPConnection(host, port, timeout=300)
@@ -506,8 +507,8 @@ def generate_response(
         RuntimeError: If LiteLLM is down or all models fail
     """
     logger.info(f"generate_response | tier={tier} | images={len(images) if images else 0}")
-    
-    # LiteLLM proxy is the ONLY path
+
+    # LiteLLM proxy is the ONLY path (all tiers including faster go through LiteLLM)
     if not settings.USE_LITELLM_PROXY:
         logger.error("USE_LITELLM_PROXY is disabled. LiteLLM proxy is required.")
         raise RuntimeError("LiteLLM proxy is not enabled in configuration")

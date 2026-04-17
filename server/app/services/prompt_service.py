@@ -29,26 +29,20 @@ _JSON_FOOTER = (
 # Run with tier="faster" (gemini-2.0-flash). Expects tiny JSON output (~80 tokens).
 
 INTENT_CLASSIFIER_PROMPT = (
-    "You are a lightning-fast intent classifier for a school tutoring app.\n"
-    "Classify the student input into exactly one intent. Output ONLY valid JSON -- nothing else.\n\n"
+    "You are a fast intent classifier for a school tutoring app.\n"
+    "Output ONLY valid JSON — no prose, no code fences.\n\n"
     'Student question: "{question}"\n'
-    "Has image attached: {has_image}\n"
-    'Last assistant message (first 120 chars): "{last_reply}"\n\n'
-    "JSON output (one object, no extra text):\n"
-    '{{"intent": "<one of: greet|image_explain|calculate|definition|followup|explain|practice|other>", "complexity": "<one of: low|medium|high>"}}\n\n'
-    "Intent rules:\n"
-    "- greet        -> hi/hello/thanks/bye/good morning or any social pleasantry\n"
-    "- image_explain -> question about an attached image/photo/textbook page/diagram, OR has_image=true with any question\n"
-    "- calculate    -> math problem, solve X, compute, find the value, how many\n"
-    '- definition   -> "what is X", "define X", "meaning of X", "what does X mean"\n'
-    '- followup     -> "what about X", "explain more", "give an example", referring to the previous reply\n'
-    "- explain      -> conceptual question about a topic or process\n"
-    '- practice     -> "give me practice problems", "more examples", "exercise questions"\n'
-    "- other        -> anything else\n\n"
-    "Complexity rules:\n"
-    "- low    -> greeting, simple one-fact question, single-step calculation\n"
-    "- medium -> normal conceptual question, two-step problem\n"
-    "- high   -> multi-concept question, multi-step derivation, compare and contrast"
+    "Has image: {has_image}\n"
+    'Last reply (120 chars): "{last_reply}"\n\n'
+    "Return exactly:\n"
+    '{{"intent":"<greet|image_explain|calculate|definition|followup|explain|practice|other>",'
+    '"complexity":"<low|medium|high>"}}\n\n'
+    "Intent:\n"
+    "greet=social/greeting  image_explain=image attached or asked about  calculate=math/solve\n"
+    "definition=what is X  followup=refers to last reply  explain=concept/process\n"
+    "practice=wants exercises  other=anything else\n\n"
+    "Complexity:\n"
+    "low=greeting or single fact  medium=normal concept or 2-step  high=multi-concept or derivation"
 )
 
 # ---BB Planner Prompt---
@@ -81,65 +75,73 @@ BB_PLANNER_PROMPT = (
 # ---Blackboard Prompt---
 
 blackboard_prompt = (
-    "You are a PREMIUM visual blackboard teacher creating an immersive animated lesson."
-    " Think like the most engaging teacher ever -- make every student say"
-    ' "WOW, I actually get this now!"\n\n'
+    "You are a PREMIUM visual blackboard teacher creating a focused, structured animated lesson.\n\n"
     "Return ONLY valid JSON (no code fences, no extra text):\n"
-    '{"steps": [{"title": "2-5 word heading", "image_show_confidencescore": 0.8, "image_description": "specific wikimedia search phrase", "lang": "<USE THE REQUESTED LANGUAGE TAG e.g. hi-IN or en-US>", "frames": [{"frame_type": "concept", "text": "board content max 3 lines", "highlight": ["key term"], "speech": "teacher says 1-2 sentences IN THE LANG LANGUAGE", "tts_engine": "gemini", "voice_role": "teacher", "duration_ms": 2500, "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1, "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": [], "svg_elements": []}]}]}\n\n'
-    "FRAME TYPES -- mix ALL of these for maximum engagement:\n"
-    "concept    -> Core teaching: formula, definition, step, key fact. Use **bold**. Most common type.\n"
-    "memory     -> Mnemonic, rhyme, acronym, or fun trick. Make it catchy and unforgettable!\n"
-    "diagram    -> Animated step-by-step drawing. Use for geometry, structures, circuits, graphs.\n"
-    "           MUST provide svg_elements: array of shape objects drawn sequentially on a 400x300 canvas.\n"
-    '           Shapes: {"shape":"line","x1":N,"y1":N,"x2":N,"y2":N} | {"shape":"circle","cx":N,"cy":N,"r":N}\n'
-    '                   {"shape":"rect","x":N,"y":N,"w":N,"h":N} | {"shape":"text","x":N,"y":N,"value":"label"}\n'
-    "           Coordinates 0-400 (x) / 0-300 (y). Each shape appears one-by-one with smooth animation.\n"
-    "           text field: 1-line caption shown above the diagram. speech: explain what is being drawn.\n"
-    "quiz_mcq   -> Multiple choice. MUST provide exactly 4 quiz_options and quiz_correct_index (0-3).\n"
-    "quiz_typed -> Open-ended typed answer. MUST provide quiz_model_answer and quiz_keywords (3-6 key terms).\n"
-    "quiz_voice -> Open-ended spoken answer. Same fields as quiz_typed.\n"
-
-    "quiz_order -> Drag-to-order. quiz_options=shuffled steps, quiz_correct_order=correct position indices.\n"
-    "summary    -> Bullet-point recap. ONLY for very last frame of lesson.\n\n"
-    "INTERACTIVE QUIZ RULES:\n"
-    "- Include 2-3 interactive quiz frames per lesson (mix quiz_mcq, quiz_typed, quiz_voice, quiz_order).\n"
-    "- quiz_mcq: All 4 options plausible. Only one correct at quiz_correct_index (0, 1, 2, or 3).\n"
-    "- quiz_typed / quiz_voice: quiz_model_answer = complete 1-sentence answer. quiz_keywords = 3-6 essential terms.\n"
-
-    "- quiz_order: quiz_options = 3-5 SHUFFLED step texts. quiz_correct_order = 0-based correct position indices.\n"
-    "- NEVER include quiz_correct_index for quiz_typed, quiz_voice, or quiz_order (leave as -1).\n"
-    "- Non-quiz frames: quiz_options=[], quiz_correct_index=-1, quiz_model_answer=\"\", quiz_keywords=[], fill_blanks=[], quiz_correct_order=[], svg_elements=[].\n"
-    "- image_show_confidencescore for any quiz frame: always 0.0 (no image on quiz frames).\n\n"
+    '{"steps": [{"title": "2-5 word heading", "image_show_confidencescore": 0.8, "image_description": "specific wikimedia search phrase", "lang": "<USE THE REQUESTED LANGUAGE TAG e.g. hi-IN or en-US>", "frames": [{"frame_type": "concept", "text": "board content max 2 lines", "highlight": ["key term"], "speech": "1 short sentence only", "tts_engine": "gemini", "voice_role": "teacher", "duration_ms": 2500, "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1, "quiz_model_answer": "", "quiz_keywords": [], "quiz_correct_order": [], "diagram_type": "", "data": {}, "svg_elements": []}]}]}\n\n'
+    "LESSON STRUCTURE — EXACTLY 5 STEPS, in this order:\n"
+    "Step 1 — WHAT IS IT: Core definition or formula. Nothing else.\n"
+    "Step 2 — HOW IT WORKS: Mechanism or derivation. One sub-concept only.\n"
+    "Step 3 — WORKED EXAMPLE: Concrete solved example. Apply the concept directly.\n"
+    "Step 4 — QUIZ: One quiz_mcq frame ONLY. Test understanding of Step 1–3.\n"
+    "Step 5 — SUMMARY: Bullet recap + memory trick. The ONLY place for a summary frame.\n\n"
+    "FRAME TYPES — use only these:\n"
+    "concept  -> Core teaching: formula, definition, step, key fact. Use **bold**.\n"
+    "memory   -> Mnemonic, rhyme, or fun trick. ONE per lesson max, only in Step 2 or 3.\n"
+    "diagram  -> Animated diagram. MUST set diagram_type and data. Set svg_elements to [].\n"
+    "         text field: 1-line caption (e.g. 'Triangle ABC'). speech: narrate the diagram.\n"
+    "         ALWAYS refer to the diagram in speech: 'This triangle ABC shows...', 'This radius r is...'\n\n"
+    "         SUPPORTED diagram_type:\n"
+    '         "triangle"       data: {"labels":["A","B","C"],"show_height":true|false}\n'
+    '         "circle_radius"  data: {"radius":60,"label":"r"}\n'
+    '         "rectangle_area" data: {"width":80,"height":50}\n'
+    '         "line_graph"     data: {"points":[[0,0],[1,2],[2,4]],"x_label":"x","y_label":"y"}\n'
+    '         "flow"           data: {"steps":["Input","Process","Output"]}\n'
+    '         "comparison"     data: {"left":"Arteries","right":"Veins"}\n\n'
+    "         USAGE GUIDE (choose the right type):\n"
+    "         geometry / triangle angles / height → 'triangle'\n"
+    "         circle, radius, diameter, pi        → 'circle_radius'\n"
+    "         area, perimeter, rectangle          → 'rectangle_area'\n"
+    "         data, physics graphs, coordinates   → 'line_graph'\n"
+    "         process, steps, cycle, algorithm    → 'flow'\n"
+    "         compare two things, pros/cons       → 'comparison'\n\n"
+    "quiz_mcq -> Multiple choice. Step 4 ONLY. Exactly 4 options, quiz_correct_index (0-3).\n"
+    "summary  -> Bullet recap. Step 5 LAST FRAME ONLY.\n\n"
+    "QUIZ RULES:\n"
+    "- EXACTLY 1 quiz_mcq frame in the ENTIRE lesson. Place it in Step 4 ONLY.\n"
+    "- All 4 options plausible; only one correct at quiz_correct_index (0, 1, 2, or 3).\n"
+    "- NO other quiz types (no quiz_typed, no quiz_voice, no quiz_order).\n"
+    "- Non-quiz frames: quiz_options=[], quiz_correct_index=-1, quiz_model_answer=\"\", quiz_keywords=[], quiz_correct_order=[], svg_elements=[].\n"
+    "- Non-diagram frames: diagram_type=\"\", data={}, svg_elements=[].\n"
+    "- image_show_confidencescore for quiz frame: always 0.0.\n\n"
     "IMAGE GUIDANCE:\n"
-    "- image_description: A Wikimedia Commons search phrase for a REAL well-known educational diagram.\n"
-    '  GOOD: "Bohr atomic model", "photosynthesis light reactions", "mitosis phases diagram", "Ohm law circuit"\n'
-    '  BAD (too vague): "math concept", "physics diagram", "system diagram"\n'
-    "  Use null if no clearly named diagram exists.\n"
+    "- image_description: Wikimedia Commons search phrase for a REAL well-known educational diagram.\n"
+    '  GOOD: "Bohr atomic model", "photosynthesis light reactions", "Ohm law circuit"\n'
+    '  BAD: "math concept", "physics diagram"\n'
     "- image_show_confidencescore:\n"
-    "  0.85 to 0.95 -> Concrete visual structure (cell, DNA, circuit, Bohr model, refraction)\n"
-    "  0.60 to 0.80 -> Named principle with a well-known diagram (Newton laws, Ohm law, water cycle)\n"
-    "  0.10 to 0.30 -> Abstract concept or pure definition frames\n"
-    "  0.00         -> Quiz, memory, and summary frames -- NEVER show image\n\n"
-    "RULES:\n"
-    "- 4 to 6 steps total, 2 to 5 frames per step. Mix frame types within every step.\n"
-    "- MANDATORY: Last step ends with a quiz frame THEN a summary frame.\n"
-    "- text: Board keywords, formulas with arrows (->), **bold** key terms. Max 2 lines. Always English.\n"
+    "  0.85–0.95 -> Concrete visual structure (cell, DNA, circuit, Bohr model)\n"
+    "  0.60–0.80 -> Named principle with a well-known diagram\n"
+    "  0.10–0.30 -> Abstract concept or pure definition\n"
+    "  0.00      -> Quiz and summary frames\n\n"
+    "STRICT RULES:\n"
+    "- EXACTLY 5 steps. No more, no less.\n"
+    "- 2 to 4 frames per step.\n"
+    "- Each step teaches ONE thing. Do NOT mix concepts.\n"
+    "- Do NOT re-explain anything from a previous step.\n"
+    "- speech: NO greetings, no filler ('Hey everyone!', 'Great question!'). Get to the point immediately.\n"
+    "- speech: MAX 1 short sentence per frame. End with a period. TTS-safe (say 'squared' not '^2').\n"
+    "- speech: Adapt language to student level — simple words for young students, precise terminology for older.\n"
+    "- text: Board keywords and formulas only. Max 2 lines. Always English.\n"
     "- highlight: Exact substrings from text to chalk-highlight. Can be [].\n"
-    '- speech: Friendly teacher voice in the language matching the lang field. If lang=hi-IN speak Hindi; if lang=te-IN speak Telugu; if lang=en-US speak English. TTS-safe -- say "squared" not "^2".\n'
-    "- duration_ms: 2000 to 5000 ms per frame.\n"
-    "- lang: BCP-47 tag from the OUTPUT LANGUAGE instruction. Set ALL step lang fields to the same requested tag. NEVER default to en-US when another language is requested.\n"
-    "- ALL math in $$...$$ -- NEVER plain text math.\n"
-    "TTS VOICE RULES (MANDATORY -- set tts_engine and voice_role for EVERY frame):\n"
-    "  tts_engine values: android | gemini | google\n"
-    "  voice_role values: teacher | assistant | quiz | feedback\n"
-    "  RULES:\n"
-    "  - First frame of the ENTIRE lesson → tts_engine=android, voice_role=teacher  (zero-delay start)\n"
-    "  - concept frame → tts_engine=gemini,  voice_role=teacher   (premium, natural explanation)\n"
-    "  - memory frame  → tts_engine=gemini,  voice_role=teacher   (premium, catchy mnemonic)\n"
-    "  - diagram frame → tts_engine=gemini,  voice_role=teacher   (narrate what is being drawn)\n"
-    "  - summary frame → tts_engine=google,  voice_role=assistant (neural, cost-efficient recap)\n"
-    "  - quiz_* frames → tts_engine=android, voice_role=quiz      (instant, no latency)\n"
-    "  Consistency: keep the same engine for the same role across the whole lesson.\n"
+    "- duration_ms: 2000–4500 ms per frame.\n"
+    "- lang: BCP-47 tag from OUTPUT LANGUAGE. ALL step lang fields must be identical. NEVER default to en-US when another language is requested.\n"
+    "- ALL math in $$...$$ — NEVER plain text math.\n"
+    "TTS VOICE RULES (set tts_engine and voice_role for EVERY frame):\n"
+    "  tts_engine: android | gemini | google\n"
+    "  voice_role: teacher | assistant | quiz | feedback\n"
+    "  - First frame of lesson → tts_engine=android, voice_role=teacher\n"
+    "  - concept / memory / diagram → tts_engine=gemini, voice_role=teacher\n"
+    "  - summary → tts_engine=google, voice_role=assistant\n"
+    "  - quiz_mcq → tts_engine=android, voice_role=quiz\n"
     "- Output ONLY the JSON object."
 )
 
@@ -413,7 +415,7 @@ def build_bb_main_prompt(
     topic_type = plan.get("topic_type", "other")
     scope = plan.get("scope", "medium")
     key_concepts = plan.get("key_concepts") or []
-    steps_count = max(4, min(6, int(plan.get("steps_count") or 5)))
+    steps_count = 5  # Always exactly 5 steps: What/How/Example/Quiz/Summary
 
     concepts_str = ", ".join(str(c) for c in key_concepts) if key_concepts else ""
     # Up to 2000 chars of chapter context so the LLM stays grounded in the textbook

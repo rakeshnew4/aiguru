@@ -192,72 +192,77 @@
         </LinearLayout>
 
         <!-- Controls -->
+        <!-- YouTube-style compact video controls: seekbar + ⏮ ⏸ ⏭ ↺ 🔊 -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="72dp"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:background="#252840"
-            android:paddingStart="20dp"
-            android:paddingEnd="20dp">
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#1A1A2E"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="2dp">
 
-            <TextView
-                android:id="@+id/prevButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:gravity="center"
-                android:text="◀"
-                android:textSize="22sp"
-                android:textColor="#AABBCC"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:layout_marginEnd="12dp" />
+            <!-- Progress scrubber (like a video timeline) -->
+            <SeekBar
+                android:id="@+id/bbProgressSeek"
+                android:layout_width="match_parent"
+                android:layout_height="22dp"
+                android:max="100"
+                android:progress="0"
+                android:thumbTint="#5C5BD4"
+                android:progressTint="#5C5BD4"
+                android:progressBackgroundTint="#2E2E52" />
 
-            <TextView
-                android:id="@+id/pauseButton"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
-                android:gravity="center"
-                android:text="⏸"
-                android:textSize="26sp"
-                android:textColor="#5C5BD4"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:layout_marginEnd="8dp" />
+            <!-- Transport buttons row: ↺ restart  ⏸/▶ pause  🔊 TTS -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
-            <TextView
-                android:id="@+id/replayButton"
-                android:layout_width="56dp"
-                android:layout_height="56dp"
-                android:gravity="center"
-                android:text="↺"
-                android:textSize="26sp"
-                android:textColor="#AABBCC"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:layout_marginEnd="8dp" />
+                <TextView
+                    android:id="@+id/replayButton"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:gravity="center"
+                    android:text="↺"
+                    android:textSize="20sp"
+                    android:textColor="#8090A8"
+                    android:background="?attr/selectableItemBackgroundBorderless" />
 
-            <TextView
-                android:id="@+id/nextButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:gravity="center"
-                android:text="▶"
-                android:textSize="22sp"
-                android:textColor="#5C5BD4"
-                android:background="?attr/selectableItemBackgroundBorderless" />
+                <TextView
+                    android:id="@+id/pauseButton"
+                    android:layout_width="44dp"
+                    android:layout_height="40dp"
+                    android:gravity="center"
+                    android:text="⏸"
+                    android:textSize="22sp"
+                    android:textColor="#5C5BD4"
+                    android:background="?attr/selectableItemBackgroundBorderless" />
 
-            <TextView
-                android:id="@+id/aiTtsToggleBtn"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:gravity="center"
-                android:text="🔊 TTS"
-                android:textAllCaps="false"
-                android:textSize="12sp"
-                android:textColor="#AABBCC"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:layout_marginStart="10dp"
-                android:background="#333555"
-                android:minWidth="0dp" />
+                <!-- Flexible spacer -->
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <TextView
+                    android:id="@+id/aiTtsToggleBtn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="28dp"
+                    android:gravity="center"
+                    android:text="🔊 TTS"
+                    android:textAllCaps="false"
+                    android:textSize="11sp"
+                    android:textColor="#AABBCC"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:layout_marginStart="4dp"
+                    android:background="#333555"
+                    android:minWidth="0dp" />
+
+            </LinearLayout>
 
         </LinearLayout>
 

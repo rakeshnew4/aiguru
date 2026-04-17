@@ -484,8 +484,7 @@ class HomeActivity : BaseActivity() {
 
         StudentStatsManager.fetchUsageSummary(uid) { totalMessages, totalBbSessions, streakDays ->
             runOnUiThread {
-                // Update Today's Focus strip in the hero card
-                updateTodaysFocusStrip(totalMessages, streakDays)
+                // (streak/progress visible in drawer — not needed on home)
             }
 
             // Show BB intro bottom sheet if never used BB
@@ -577,30 +576,28 @@ class HomeActivity : BaseActivity() {
         }
     }
 
-    /** Fills the Today's Focus strip inside the hero card with live counts. */
-    private fun updateTodaysFocusStrip(totalMessages: Long, streakDays: Long) {
-        // streak badge
-        val streakLabel = if (streakDays > 0) "🔥 $streakDays day streak" else "🔥 Start your streak"
-        findViewById<android.widget.TextView?>(R.id.heroStreakBadge)?.text = streakLabel
-
-        // messages today — read from users_table counter (the loadQuotaStrip call runs
-        // in parallel; we just show total lifetime messages here as a fallback for speed)
-        val msgLabel = "💬 $totalMessages msgs"
-        findViewById<android.widget.TextView?>(R.id.heroMsgsToday)?.text = msgLabel
-
-        // Goal ring: daily goal = 10 messages
-        val dailyGoal = 10
-        val todayProgress = (totalMessages % dailyGoal).toInt().coerceIn(0, dailyGoal)
-        findViewById<android.widget.TextView?>(R.id.heroGoalLabel)?.text =
-            "🎯 $todayProgress/$dailyGoal"
-        findViewById<android.widget.ProgressBar?>(R.id.heroGoalProgress)?.apply {
-            max = dailyGoal
-            progress = todayProgress
-        }
-    }
-
     private fun setupQuickActions() {
-        // 💬 Ask AI — always visible, open General Chat
+        // 🎓 Blackboard — primary hero CTA
+        AccessGate.applyVisibility(this, findViewById(R.id.quickActionBbBtn), Feature.BLACKBOARD)
+        val bbBtn = findViewById<com.google.android.material.card.MaterialCardView>(R.id.quickActionBbBtn)
+        bbBtn?.setOnClickListener { showBbTopicDialog() }
+
+        // Pulse animation on the BB hero card to draw attention
+        bbBtn?.post {
+            val pulse = android.animation.ObjectAnimator.ofPropertyValuesHolder(
+                bbBtn,
+                android.animation.PropertyValuesHolder.ofFloat("scaleX", 1f, 1.04f, 1f),
+                android.animation.PropertyValuesHolder.ofFloat("scaleY", 1f, 1.04f, 1f),
+            ).apply {
+                duration = 900
+                repeatCount = android.animation.ValueAnimator.INFINITE
+                repeatMode  = android.animation.ValueAnimator.REVERSE
+                interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+            }
+            pulse.start()
+        }
+
+        // 💬 Ask AI — secondary
         findViewById<com.google.android.material.card.MaterialCardView>(R.id.quickActionChatBtn)
             ?.setOnClickListener {
                 startActivity(
@@ -610,30 +607,47 @@ class HomeActivity : BaseActivity() {
                 )
             }
 
-        // 🎓 Blackboard — gated by plan/role
-        AccessGate.applyVisibility(this, findViewById(R.id.quickActionBbBtn), Feature.BLACKBOARD)
-        findViewById<com.google.android.material.card.MaterialCardView>(R.id.quickActionBbBtn)
-            ?.setOnClickListener {
-                startActivity(
-                    Intent(this, BlackboardActivity::class.java)
-                        .putExtra(BlackboardActivity.EXTRA_SUBJECT, "General")
-                        .putExtra(BlackboardActivity.EXTRA_CHAPTER, "General")
-                )
-            }
-
-        // 📈 Progress — gated by plan feature
-        AccessGate.applyVisibility(this, findViewById(R.id.quickActionProgressBtn), Feature.PROGRESS_DASHBOARD)
-        findViewById<com.google.android.material.card.MaterialCardView>(R.id.quickActionProgressBtn)
-            ?.setOnClickListener {
-                startActivity(Intent(this, ProgressDashboardActivity::class.java))
-            }
-
-        // 📋 My Tasks — gated by plan/role
+        // 📋 My Tasks — secondary
         AccessGate.applyVisibility(this, findViewById(R.id.quickActionTasksBtn), Feature.TASKS)
         findViewById<com.google.android.material.card.MaterialCardView>(R.id.quickActionTasksBtn)
             ?.setOnClickListener {
                 startActivity(Intent(this, TasksActivity::class.java))
             }
+
+        // Progress lives in the drawer — the stub View just satisfies AccessGate
+        AccessGate.applyVisibility(this, findViewById(R.id.quickActionProgressBtn), Feature.PROGRESS_DASHBOARD)
+    }
+
+    /** Shows a topic-input dialog then launches BB mode with that topic as the message. */
+    private fun showBbTopicDialog() {
+        val input = android.widget.EditText(this).apply {
+            hint = "e.g. Explain Photosynthesis, What is Newton's 3rd law…"
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            setPadding(48, 32, 48, 16)
+        }
+        android.app.AlertDialog.Builder(this)
+            .setTitle("🎓 What do you want to learn?")
+            .setMessage("Describe any topic and Blackboard Mode will create an animated visual lesson for you.")
+            .setView(input)
+            .setPositiveButton("Start Lesson") { _, _ ->
+                val topic = input.text.toString().trim()
+                if (topic.isBlank()) {
+                    Toast.makeText(this, "Please enter a topic first", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                val uid  = SessionManager.getFirestoreUserId(this)
+                val lang = SessionManager.getPreferredLang(this).ifBlank { "en-US" }
+                startActivity(
+                    Intent(this, BlackboardActivity::class.java)
+                        .putExtra(BlackboardActivity.EXTRA_MESSAGE, topic)
+                        .putExtra(BlackboardActivity.EXTRA_SUBJECT, "General")
+                        .putExtra(BlackboardActivity.EXTRA_CHAPTER, "General")
+                        .putExtra(BlackboardActivity.EXTRA_USER_ID, uid)
+                        .putExtra(BlackboardActivity.EXTRA_LANGUAGE_TAG, lang)
+                )
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun setupDrawer() {
