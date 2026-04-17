@@ -474,7 +474,20 @@ def _render_shape(el: dict, delay: float) -> tuple[str, float]:
             f'dur="0.25s" begin="{delay:.2f}s" fill="freeze"/></circle>'
         )
         return svg, delay + 0.20
-
+    # ── emoji ─────────────────────────────────────────────────────────────────
+    elif shape == "emoji":
+        ex = _clamp(float(el.get("x", 200)), 8, 392)
+        ey = _clamp(float(el.get("y", 150)), 16, 296)
+        echar = str(el.get("value", "⭐"))[:8]  # up to 2 emoji chars
+        esize = _clamp(int(el.get("size", 26)), 12, 48)
+        anchor = el.get("anchor", "middle")
+        svg = (
+            f'<text x="{ex}" y="{ey}" font-size="{esize}" text-anchor="{anchor}" opacity="0">'
+            f'{echar}'
+            f'<animate attributeName="opacity" from="0" to="1" '
+            f'dur="0.30s" begin="{delay:.2f}s" fill="freeze"/></text>'
+        )
+        return svg, delay + 0.25
     return "", delay
 
 
@@ -585,126 +598,266 @@ def _render_line_graph(data: dict) -> list:
 
 
 def _render_flow(data: dict) -> list:
+    """
+    Visual journey layout — numbered circles connected by arrows.
+    NOT a boring vertical flowchart.
+    1-3 steps: horizontal row.
+    4 steps: 2×2 grid with loop arrows.
+    5 steps: 3-top + 2-bottom staircase.
+    """
     steps = (data.get("steps") or [])[:5]
+    n = len(steps)
     if not steps:
         return []
 
-    n        = len(steps)
-    box_w    = 200
-    box_h    = 34
-    spacing  = 12
-    total_h  = n * box_h + (n - 1) * spacing
-    start_y  = (300 - total_h) / 2
-    cx       = 200
+    title     = str(data.get("title", ""))[:30]
+    node_r    = 26
+    colors    = ["secondary", "highlight", "label", "secondary", "highlight"]
+    emoji_map = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣"]
 
-    fill_cycle = ["secondary", "highlight", "label", "secondary", "highlight"]
+    if n <= 3:
+        # Horizontal, centred vertically
+        span   = 280
+        step_x = span / max(n - 1, 1)
+        sx0    = (400 - span) / 2
+        positions = [(sx0 + i * step_x, 148.0) for i in range(n)]
+    elif n == 4:
+        # 2×2 square
+        positions = [(110.0, 100.0), (290.0, 100.0),
+                     (290.0, 212.0), (110.0, 212.0)]
+    else:
+        # 3-top, 2-bottom staircase
+        positions = [(70.0, 95.0), (200.0, 80.0), (330.0, 95.0),
+                     (145.0, 218.0), (255.0, 218.0)]
+
     shapes = []
-    for i, label in enumerate(steps):
-        bx = cx - box_w / 2
-        by = start_y + i * (box_h + spacing)
-        fill = fill_cycle[i % len(fill_cycle)]
-        # Each step is its own animation stage → storytelling reveal
-        shapes.append({"shape": "rounded_rect", "x": bx, "y": by, "w": box_w, "h": box_h,
-                        "color": fill, "fill_color": fill, "rx": 8, "animation_stage": i})
-        shapes.append({"shape": "text", "x": cx, "y": by + box_h / 2 + 5,
-                        "value": str(label)[:30], "color": "primary", "bold": True, "animation_stage": i})
+
+    # Optional title
+    if title:
+        shapes.append({"shape": "text", "x": 200, "y": 20,
+                        "value": title, "color": "label", "bold": True,
+                        "size": 12, "anchor": "middle", "animation_stage": 0})
+
+    for i, (px, py) in enumerate(positions):
+        color = colors[i % len(colors)]
+
+        # Node circle
+        shapes.append({"shape": "circle", "cx": px, "cy": py, "r": node_r,
+                        "color": color, "fill_color": color, "animation_stage": i})
+
+        # Step number inside circle
+        shapes.append({"shape": "text", "x": px, "y": py + 6,
+                        "value": str(i + 1), "color": "primary", "bold": True,
+                        "size": 16, "anchor": "middle", "animation_stage": i})
+
+        # Step label below (or above if near bottom edge)
+        label_y = py + node_r + 15
+        if label_y > 288:
+            label_y = py - node_r - 8
+        shapes.append({"shape": "text", "x": px, "y": label_y,
+                        "value": str(steps[i])[:22], "color": color,
+                        "size": 10, "anchor": "middle", "animation_stage": i})
+
+        # Arrow to next node
         if i < n - 1:
-            arrow_y_start = by + box_h
-            arrow_y_end   = by + box_h + spacing
-            shapes.append({"shape": "arrow", "x1": cx, "y1": arrow_y_start,
-                            "x2": cx, "y2": arrow_y_end, "color": "secondary", "animation_stage": i})
+            nx2, ny2 = positions[i + 1]
+            dx, dy   = nx2 - px, ny2 - py
+            dist     = math.sqrt(dx ** 2 + dy ** 2) or 1
+            sx_a = px  + dx / dist * (node_r + 4)
+            sy_a = py  + dy / dist * (node_r + 4)
+            ex_a = nx2 - dx / dist * (node_r + 5)
+            ey_a = ny2 - dy / dist * (node_r + 5)
+            shapes.append({"shape": "arrow", "x1": sx_a, "y1": sy_a,
+                            "x2": ex_a, "y2": ey_a,
+                            "color": "dim", "animation_stage": i})
+
     return shapes
 
 
 def _render_comparison(data: dict) -> list:
-    left  = str(data.get("left",  "A"))[:20]
-    right = str(data.get("right", "B"))[:20]
-    left_pts  = [str(p)[:24] for p in (data.get("left_points")  or [])][:4]
-    right_pts = [str(p)[:24] for p in (data.get("right_points") or [])][:4]
+    """
+    Side-by-side comparison with background panels, a 'vs' badge in the
+    centre, and coloured bullet-dot rows that animate one row at a time.
+    """
+    left      = str(data.get("left",  "A"))[:18]
+    right     = str(data.get("right", "B"))[:18]
+    left_pts  = [str(p)[:26] for p in (data.get("left_points")  or [])][:4]
+    right_pts = [str(p)[:26] for p in (data.get("right_points") or [])][:4]
 
     shapes = [
-        # Headers
-        {"shape": "rounded_rect", "x": 15,  "y": 50, "w": 165, "h": 30, "color": "secondary", "fill_color": "secondary", "rx": 8, "animation_stage": 0},
-        {"shape": "text",         "x": 97,  "y": 71, "value": left,  "color": "primary", "bold": True, "size": 13, "animation_stage": 0},
-        {"shape": "rounded_rect", "x": 220, "y": 50, "w": 165, "h": 30, "color": "highlight", "fill_color": "highlight", "rx": 8, "animation_stage": 0},
-        {"shape": "text",         "x": 302, "y": 71, "value": right, "color": "primary", "bold": True, "size": 13, "animation_stage": 0},
-        # "vs" divider
-        {"shape": "text", "x": 200, "y": 165, "value": "vs", "color": "label", "bold": True, "size": 20, "animation_stage": 0},
+        # Left tinted background panel
+        {"shape": "rounded_rect", "x": 6,   "y": 25, "w": 186, "h": 268,
+         "color": "secondary", "fill_color": "secondary", "rx": 12, "animation_stage": 0},
+        # Right tinted background panel
+        {"shape": "rounded_rect", "x": 208, "y": 25, "w": 186, "h": 268,
+         "color": "highlight", "fill_color": "highlight", "rx": 12, "animation_stage": 0},
+        # Centre divider line
+        {"shape": "dashed_line", "x1": 200, "y1": 30, "x2": 200, "y2": 285,
+         "color": "label", "animation_stage": 0},
+        # "vs" badge
+        {"shape": "circle", "cx": 200, "cy": 155, "r": 19,
+         "color": "label", "fill_color": "label", "animation_stage": 0},
+        {"shape": "text", "x": 200, "y": 161, "value": "vs",
+         "color": "primary", "bold": True, "size": 12,
+         "anchor": "middle", "animation_stage": 0},
+        # Header labels
+        {"shape": "text", "x": 99,  "y": 47, "value": left,
+         "color": "primary", "bold": True, "size": 13,
+         "anchor": "middle", "animation_stage": 0},
+        {"shape": "text", "x": 301, "y": 47, "value": right,
+         "color": "primary", "bold": True, "size": 13,
+         "anchor": "middle", "animation_stage": 0},
     ]
-    # Left bullet points
-    for i, pt in enumerate(left_pts):
-        shapes.append({"shape": "text", "x": 97, "y": 100 + i * 40,
-                        "value": f"• {pt}", "color": "secondary", "size": 11, "animation_stage": i + 1})
-    # Right bullet points
-    for i, pt in enumerate(right_pts):
-        shapes.append({"shape": "text", "x": 302, "y": 100 + i * 40,
-                        "value": f"• {pt}", "color": "highlight", "size": 11, "animation_stage": i + 1})
+
+    n_rows = max(len(left_pts), len(right_pts))
+    for i in range(n_rows):
+        row_y = 78 + i * 48
+        # Left bullet
+        if i < len(left_pts):
+            shapes.append({"shape": "dot", "cx": 18, "cy": row_y - 2, "r": 5,
+                            "color": "primary", "animation_stage": i + 1})
+            shapes.append({"shape": "text", "x": 27, "y": row_y + 3,
+                            "value": left_pts[i], "color": "primary",
+                            "size": 10, "anchor": "start", "animation_stage": i + 1})
+        # Right bullet
+        if i < len(right_pts):
+            shapes.append({"shape": "dot", "cx": 214, "cy": row_y - 2, "r": 5,
+                            "color": "primary", "animation_stage": i + 1})
+            shapes.append({"shape": "text", "x": 223, "y": row_y + 3,
+                            "value": right_pts[i], "color": "primary",
+                            "size": 10, "anchor": "start", "animation_stage": i + 1})
     return shapes
 
 
 def _render_cycle(data: dict) -> list:
     """
     Circular arrangement of steps with curved arrows between nodes.
+    Center hub circle shows the cycle title.
     Max 6 steps; ideal 3–5.
     """
     steps = (data.get("steps") or [])[:6]
+    title = str(data.get("title", "cycle"))[:14]
     n = len(steps)
     if n < 2:
         return []
 
-    cx, cy = 200, 148
-    r_layout = 90   # radius for node placement
+    cx, cy    = 200, 148
+    r_layout  = 88   # distance from centre to node centres
+    node_r    = 26
+    colors    = ["highlight", "secondary", "label",
+                 "highlight", "secondary", "label"]
 
-    # Node positions
     node_positions = []
     for i in range(n):
-        angle = math.radians(360 * i / n - 90)  # start at top
-        nx = cx + r_layout * math.cos(angle)
-        ny = cy + r_layout * math.sin(angle)
-        node_positions.append((nx, ny))
-
-    node_r = 28  # circle node radius
+        angle = math.radians(360 * i / n - 90)
+        node_positions.append(
+            (cx + r_layout * math.cos(angle),
+             cy + r_layout * math.sin(angle))
+        )
 
     shapes = []
+
+    # ── Centre hub ────────────────────────────────────────────────────────────
+    hub_r = 30
+    shapes.append({"shape": "circle", "cx": cx, "cy": cy, "r": hub_r,
+                   "color": "label", "fill_color": "label", "animation_stage": 0})
+    shapes.append({"shape": "text", "x": cx, "y": cy + 5, "value": title,
+                   "color": "primary", "bold": True, "size": 9,
+                   "anchor": "middle", "animation_stage": 0})
+
+    # ── Nodes + arrows ────────────────────────────────────────────────────────
     for i, (nx, ny) in enumerate(node_positions):
-        # Alternate node colors: highlight for first, secondary for rest
-        node_color = "highlight" if i == 0 else "secondary"
-        shapes.append({
-            "shape": "circle", "cx": nx, "cy": ny, "r": node_r,
-            "color": node_color, "fill_color": node_color, "animation_stage": i
-        })
-        shapes.append({
-            "shape": "text", "x": nx, "y": ny + 5, "value": str(steps[i])[:14],
-            "color": "primary", "bold": True, "size": 10, "animation_stage": i
-        })
-        # Curved arrow from node i → node (i+1) % n
-        next_i = (i + 1) % n
+        color = colors[i % len(colors)]
+        shapes.append({"shape": "circle", "cx": nx, "cy": ny, "r": node_r,
+                        "color": color, "fill_color": color, "animation_stage": i + 1})
+        shapes.append({"shape": "text", "x": nx, "y": ny + 5,
+                        "value": str(steps[i])[:12], "color": "primary",
+                        "bold": True, "size": 9,
+                        "anchor": "middle", "animation_stage": i + 1})
+
+        # Curved arrow: node i → node (i+1) % n
+        next_i       = (i + 1) % n
         nxt_x, nxt_y = node_positions[next_i]
-        # Control point: push outward from center
         mid_x = (nx + nxt_x) / 2
         mid_y = (ny + nxt_y) / 2
-        # Outward vector from center
         out_dx = mid_x - cx
         out_dy = mid_y - cy
-        out_len = math.sqrt(out_dx**2 + out_dy**2) or 1
-        push = r_layout * 0.55
+        out_len = math.sqrt(out_dx ** 2 + out_dy ** 2) or 1
+        push = r_layout * 0.52
         cpx = mid_x + push * out_dx / out_len
         cpy = mid_y + push * out_dy / out_len
-        # Shorten arrow start/end so it doesn't overlap the node circle
-        def shorten(ax, ay, bx, by, margin):
-            dx, dy = bx - ax, by - ay
-            d = math.sqrt(dx**2 + dy**2) or 1
-            return ax + dx / d * margin, ay + dy / d * margin
 
-        sx, sy = shorten(nx, ny, cpx, cpy, node_r + 3)
-        ex, ey = shorten(nxt_x, nxt_y, cpx, cpy, node_r + 3)
+        def _sh(ax, ay, bx, by, margin):
+            ddx, ddy = bx - ax, by - ay
+            dd = math.sqrt(ddx ** 2 + ddy ** 2) or 1
+            return ax + ddx / dd * margin, ay + ddy / dd * margin
 
-        shapes.append({
-            "shape": "curved_arrow",
-            "x1": sx, "y1": sy, "x2": ex, "y2": ey,
-            "cpx": cpx, "cpy": cpy,
-            "color": "dim", "animation_stage": i
-        })
+        sx, sy = _sh(nx,    ny,    cpx, cpy, node_r + 4)
+        ex, ey = _sh(nxt_x, nxt_y, cpx, cpy, node_r + 4)
+        shapes.append({"shape": "curved_arrow",
+                        "x1": sx, "y1": sy, "x2": ex, "y2": ey,
+                        "cpx": cpx, "cpy": cpy,
+                        "color": "dim", "animation_stage": i + 1})
+
+    return shapes
+
+
+def _render_labeled_diagram(data: dict) -> list:
+    """
+    Anatomy / structure diagram — a central shape with radiating dashed
+    pointer lines to labelled parts.  Great for cells, atoms, machines.
+    data keys:
+      center       → label inside central shape (str)
+      center_shape → "circle" | "ellipse"  (default circle)
+      parts        → list of part-name strings (max 6)
+    """
+    center_label = str(data.get("center", ""))[:16]
+    center_shape = data.get("center_shape", "circle")
+    parts        = [str(p)[:20] for p in (data.get("parts") or [])][:6]
+    n            = len(parts)
+
+    cx, cy   = 200, 148
+    r_label  = 108   # distance from centre to label anchor
+    inner_r  = 47    # where dashed line starts (outside central shape)
+
+    shapes = []
+
+    # Central shape
+    if center_shape == "ellipse":
+        shapes.append({"shape": "ellipse", "cx": cx, "cy": cy,
+                        "rx": 52, "ry": 36,
+                        "color": "secondary", "fill_color": "secondary",
+                        "animation_stage": 0})
+    else:
+        shapes.append({"shape": "circle", "cx": cx, "cy": cy, "r": 42,
+                        "color": "secondary", "fill_color": "secondary",
+                        "animation_stage": 0})
+    if center_label:
+        shapes.append({"shape": "text", "x": cx, "y": cy + 5,
+                        "value": center_label, "color": "primary",
+                        "bold": True, "size": 12,
+                        "anchor": "middle", "animation_stage": 0})
+
+    for i, part in enumerate(parts):
+        angle = math.radians(360 * i / max(n, 1) - 90)
+        lx = cx + r_label * math.cos(angle)
+        ly = cy + r_label * math.sin(angle)
+        # clamp to canvas
+        lx = _clamp(lx, 10, 390)
+        ly = _clamp(ly, 14, 288)
+        # line start just outside central shape
+        sx = cx + inner_r * math.cos(angle)
+        sy = cy + inner_r * math.sin(angle)
+        shapes.append({"shape": "dashed_line",
+                        "x1": sx, "y1": sy, "x2": lx, "y2": ly,
+                        "color": "dim", "animation_stage": i + 1})
+        shapes.append({"shape": "dot", "cx": lx, "cy": ly, "r": 4,
+                        "color": "highlight", "animation_stage": i + 1})
+        anchor = "start" if lx >= cx else "end"
+        tx = lx + (9 if lx >= cx else -9)
+        shapes.append({"shape": "text", "x": tx, "y": ly + 5,
+                        "value": part, "color": "label", "size": 11,
+                        "anchor": anchor, "animation_stage": i + 1})
 
     return shapes
 
@@ -719,6 +872,8 @@ _RENDERERS = {
     "flow":            _render_flow,
     "comparison":      _render_comparison,
     "cycle":           _render_cycle,
+    "labeled_diagram": _render_labeled_diagram,
+    "anatomy":         _render_labeled_diagram,   # alias
 }
 
 
@@ -843,10 +998,6 @@ def build_animated_svg(elements) -> str:
         '<body>'
         '<svg viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg">'
         f'{defs_block}'
-        f'{svg_body}'
-        '</svg></body></html>'
-    )
-
         f'{svg_body}'
         '</svg></body></html>'
     )

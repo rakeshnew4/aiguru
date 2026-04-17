@@ -627,8 +627,25 @@ class BlackboardActivity : AppCompatActivity() {
         val nextTitles         = intent_.stepTitles.drop(alreadyGenerated).take(BlackboardGenerator.CHUNK_SIZE)
         val isLast             = (alreadyGenerated + nextTitles.size) >= totalStepsTarget
 
-        // Build a brief context summary from the last 2 steps
-        val contextSummary = steps.takeLast(2).joinToString(" | ") { it.title }
+        // Build a comprehensive context block listing everything already covered
+        val contextSummary = buildString {
+            appendLine("Student's original question: $currentTopic")
+            appendLine()
+            appendLine("Steps ALREADY TAUGHT (do NOT repeat or reintroduce these):")
+            steps.forEachIndexed { idx, step ->
+                append("  ${idx + 1}. ${step.title}")
+                // Include a brief snippet from the first speech of each step so the
+                // LLM understands what depth was already covered
+                val firstSpeech = step.frames.firstOrNull { it.speech.isNotBlank() }?.speech
+                if (!firstSpeech.isNullOrBlank()) {
+                    append(" — \"${firstSpeech.take(90)}\"")
+                }
+                appendLine()
+            }
+            appendLine()
+            appendLine("Total steps covered so far: ${steps.size} / $totalStepsTarget")
+            appendLine("Continue from step ${steps.size + 1}. Build on what was taught — go deeper, give examples, advance the lesson.")
+        }
 
         lifecycleScope.launch(Dispatchers.IO) {
             BlackboardGenerator.generateChunk(

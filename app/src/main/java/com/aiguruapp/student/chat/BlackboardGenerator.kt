@@ -214,30 +214,37 @@ object BlackboardGenerator {
             ?.let { PromptRepository.getLanguageInstruction(it) }
             .orEmpty()
 
-        val contextBlock = if (previousContext.isNotBlank())
-            "\n\nCONTINUATION CONTEXT (already taught — do NOT repeat):\n$previousContext\n"
-        else ""
+        val stepList = chunkStepTitles.joinToString("\n") { "- $it" }
+
+        val lastFrameNote = if (isLastChunk)
+            "\nThe very last frame of the last step MUST be a summary frame recapping the entire lesson."
+        else
+            "\nDo NOT include a summary frame — the lesson continues after these steps."
 
         val svgNote = if (intent.useSvg)
             "\nThis topic benefits from SVG diagrams — use at least one diagram frame per step." else ""
 
-        val stepList = chunkStepTitles.joinToString("\n") { "- $it" }
-        val lastFrameNote = if (isLastChunk)
-            "\nThe very last frame of the last step MUST be a summary frame recapping the entire lesson."
-        else
-            "\nDo NOT include a summary frame (lesson continues after these steps)."
+        // For continuation chunks, explicitly forbid repeating what was already taught.
+        // For the first chunk, explain the topic from scratch.
+        val chunkDirective = if (previousContext.isNotBlank()) {
+            """
+CONTINUATION — DO NOT repeat anything already taught.
+$previousContext
+Now continue teaching the NEXT steps listed below. Build on what was already covered — go deeper, add detail, advance the lesson. Do NOT reintroduce or re-explain concepts from the above steps."""
+        } else {
+            "This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic."
+        }
 
         val userMsg = """Topic: $topic
 Lesson title: ${intent.lessonTitle}
 Category: ${intent.category}
 
-Generate EXACTLY ${chunkStepTitles.size} steps with APPROXIMATELY $framesPerStep frames each.
-Steps to generate:
-$stepList
-$contextBlock$svgNote$lastFrameNote$langInstruction
+$chunkDirective
 
-Explanation to convert:
-${topic.take(3000)}"""
+Generate EXACTLY ${chunkStepTitles.size} steps with APPROXIMATELY $framesPerStep frames each.
+Steps to generate in this batch:
+$stepList
+$svgNote$lastFrameNote$langInstruction"""
 
         val buffer   = StringBuilder()
         var streamErr: String? = null
