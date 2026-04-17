@@ -1,5 +1,6 @@
 package com.aiguruapp.student.models
 
+import com.google.firebase.firestore.IgnoreExtraProperties
 import com.google.firebase.firestore.PropertyName
 
 /**
@@ -8,6 +9,7 @@ import com.google.firebase.firestore.PropertyName
  *
  * planId examples: "free", "student_basic", "student_pro", "school_unlimited"
  */
+@IgnoreExtraProperties
 data class SubscriptionPlan(
     val planId: String = "free",
 

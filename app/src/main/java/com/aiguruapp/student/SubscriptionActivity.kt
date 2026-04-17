@@ -57,6 +57,8 @@ class SubscriptionActivity : BaseActivity(), PaymentResultWithDataListener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_subscription)
 
+        findViewById<android.widget.ImageButton>(R.id.subscriptionBackBtn).setOnClickListener { finish() }
+
         Checkout.preload(applicationContext)
         AdminConfigRepository.fetchIfStale()
 

@@ -258,9 +258,9 @@ class BlackboardActivity : AppCompatActivity() {
         }
         bbQuotaChip.visibility = View.VISIBLE
         bbQuotaChip.text = when {
-            left == 0 -> "0 sessions left"
-            left == 1 -> "1 session left"
-            else      -> "$left sessions left"
+            left == 0 -> "0 sessions more"
+            left == 1 -> "1 session more"
+            else      -> "$left sessions more"
         }
         bbQuotaChip.setBackgroundColor(
             android.graphics.Color.parseColor(if (left <= 1) "#BF360C" else "#5C5BD4")

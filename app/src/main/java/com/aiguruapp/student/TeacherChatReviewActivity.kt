@@ -68,7 +68,23 @@ class TeacherChatReviewActivity : BaseActivity() {
                 ?.getStringExtra(TeacherQuizValidationActivity.RESULT_FILTERED_QUIZ) ?: return@registerForActivityResult
             val filteredQuiz = Quiz.fromJson(JSONObject(filteredJson))
             lastGeneratedQuiz = filteredQuiz
-            showQuizReadyDialog(filteredQuiz, lastSubject, lastChapter)
+            // Publish quiz to global quizzes/ library so it can be assigned by reference (no embedded JSON in tasks)
+            val schoolId = SessionManager.getSchoolId(this)
+            val uid = userId ?: ""
+            FirestoreManager.publishQuizToLibrary(
+                teacherId     = uid,
+                schoolId      = schoolId,
+                subject       = lastSubject,
+                chapter       = lastChapter,
+                title         = "$lastSubject › $lastChapter Quiz",
+                difficulty    = "medium",
+                questionsJson = filteredQuiz.toTransferJson(),
+                bbCacheId     = "",
+                questionCount = filteredQuiz.questions.size,
+                existingId    = "",
+                onSuccess     = { quizId -> showQuizReadyDialog(filteredQuiz, lastSubject, lastChapter, quizId) },
+                onFailure     = { showQuizReadyDialog(filteredQuiz, lastSubject, lastChapter, "") }
+            )
         }
     }
 
@@ -238,10 +254,11 @@ class TeacherChatReviewActivity : BaseActivity() {
         }
     }
 
-    private fun showQuizReadyDialog(quiz: Quiz, subject: String, chapter: String) {
+    private fun showQuizReadyDialog(quiz: Quiz, subject: String, chapter: String, quizId: String) {
+        val savedLabel = if (quizId.isNotBlank()) "✅ Quiz saved to library" else "⚠️ Save failed — using embedded quiz"
         android.app.AlertDialog.Builder(this)
             .setTitle("✅ Quiz Ready — ${quiz.questions.size} questions")
-            .setMessage("What would you like to do with this quiz?")
+            .setMessage("$savedLabel\n\nWhat would you like to do with this quiz?")
             .setPositiveButton("▶ Preview Quiz") { _, _ ->
                 startActivity(
                     Intent(this, QuizActivity::class.java)
@@ -251,10 +268,15 @@ class TeacherChatReviewActivity : BaseActivity() {
             }
             .setNeutralButton("📋 Assign as Task") { _, _ ->
                 startActivity(
-                    Intent(this, TeacherTasksActivity::class.java)
-                        .putExtra(TeacherTasksActivity.EXTRA_PREFILL_QUIZ_JSON, quiz.toTransferJson())
-                        .putExtra(TeacherTasksActivity.EXTRA_PREFILL_SUBJECT, subject)
-                        .putExtra(TeacherTasksActivity.EXTRA_PREFILL_CHAPTER, chapter)
+                    Intent(this, TeacherTasksActivity::class.java).apply {
+                        if (quizId.isNotBlank()) {
+                            putExtra(TeacherTasksActivity.EXTRA_PREFILL_QUIZ_ID, quizId)
+                        } else {
+                            putExtra(TeacherTasksActivity.EXTRA_PREFILL_QUIZ_JSON, quiz.toTransferJson())
+                        }
+                        putExtra(TeacherTasksActivity.EXTRA_PREFILL_SUBJECT, subject)
+                        putExtra(TeacherTasksActivity.EXTRA_PREFILL_CHAPTER, chapter)
+                    }
                 )
             }
             .setNegativeButton("Cancel", null)

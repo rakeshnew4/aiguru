@@ -1,5 +1,6 @@
 package com.aiguruapp.student.models
 
+import com.google.firebase.firestore.IgnoreExtraProperties
 import com.google.firebase.firestore.PropertyName
 
 /**
@@ -12,6 +13,7 @@ import com.google.firebase.firestore.PropertyName
  *
  * All Int fields of 0 mean "unlimited".
  */
+@IgnoreExtraProperties
 data class PlanLimits(
 
     // ── Token budget ─────────────────────────────────────────────────────────

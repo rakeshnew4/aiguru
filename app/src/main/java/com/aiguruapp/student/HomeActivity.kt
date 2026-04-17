@@ -212,7 +212,7 @@ class HomeActivity : BaseActivity() {
      */
     private fun updateQuotaStripUI(chatLeft: Int, bbLeft: Int, aiTtsCharsLeft: Int) {
         // Chat
-        val chatText = if (chatLeft < 0) "∞" else "$chatLeft left"
+        val chatText = if (chatLeft < 0) "∞" else "$chatLeft more"
         val chatColor = if (chatLeft in 0..3) "#BF360C" else "#1565C0"
         findViewById<TextView?>(R.id.drawerChatLeft)?.apply {
             text = chatText
@@ -225,7 +225,7 @@ class HomeActivity : BaseActivity() {
         }
 
         // Blackboard
-        val bbText = if (bbLeft < 0) "∞" else "$bbLeft left"
+        val bbText = if (bbLeft < 0) "∞" else "$bbLeft more"
         val bbColor = if (bbLeft in 0..1) "#BF360C" else "#7B1FA2"
         findViewById<TextView?>(R.id.drawerBbLeft)?.apply {
             text = bbText
@@ -355,7 +355,7 @@ class HomeActivity : BaseActivity() {
             
         //    android.graphics.Color.parseColor("#000000"),
             android.graphics.Color.parseColor("#066526"),  // green
-            android.graphics.Color.parseColor("#08477e"),  // blue
+            android.graphics.Color.parseColor("#208eee"),  // blue
             // android.graphics.Color.parseColor("#ffffff"),  // violet
      
         )

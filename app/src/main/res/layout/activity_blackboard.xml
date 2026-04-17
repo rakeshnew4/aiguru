@@ -82,7 +82,7 @@
                 android:id="@+id/saveSessionBtn"
                 android:layout_width="wrap_content"
                 android:layout_height="32dp"
-                android:layout_toStartOf="@id/closeButton"
+                android:layout_toStartOf="@id/publishLessonBtn"
                 android:layout_centerVertical="true"
                 android:layout_marginEnd="6dp"
                 android:gravity="center"
@@ -93,6 +93,24 @@
                 android:paddingStart="10dp"
                 android:paddingEnd="10dp"
                 android:background="#2A4030"
+                android:visibility="gone" />
+
+            <!-- Publish lesson button (teachers only — visible after lesson generates) -->
+            <TextView
+                android:id="@+id/publishLessonBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_toStartOf="@id/closeButton"
+                android:layout_centerVertical="true"
+                android:layout_marginEnd="6dp"
+                android:gravity="center"
+                android:text="📤 Publish"
+                android:textSize="11sp"
+                android:textColor="#FFD580"
+                android:textAllCaps="false"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:background="#3A3010"
                 android:visibility="gone" />
 
             <TextView

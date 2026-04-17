@@ -345,4 +345,226 @@ object BlackboardGenerator {
             else -> if (value.contains('-')) value else fallback
         }
     }
+
+    // ── Serialization helpers ─────────────────────────────────────────────────
+
+    /**
+     * Serialize a list of [BlackboardStep] to a compact JSON string.
+     * Used when publishing a lesson to the global bb_cache collection.
+     */
+    fun serializeSteps(steps: List<BlackboardStep>): String {
+        val arr = JSONArray()
+        steps.forEach { step ->
+            val framesJson = JSONArray()
+            step.frames.forEach { frame ->
+                framesJson.put(
+                    JSONObject()
+                        .put("text", frame.text)
+                        .put("highlight", JSONArray(frame.highlight))
+                        .put("speech", frame.speech)
+                        .put("duration_ms", frame.durationMs)
+                        .put("frame_type", frame.frameType)
+                        .put("tts_engine", frame.ttsEngine)
+                        .put("voice_role", frame.voiceRole)
+                        .put("quiz_answer", frame.quizAnswer)
+                        .put("quiz_options", JSONArray(frame.quizOptions))
+                        .put("quiz_correct_index", frame.quizCorrectIndex)
+                        .put("quiz_model_answer", frame.quizModelAnswer)
+                        .put("quiz_keywords", JSONArray(frame.quizKeywords))
+                        .put("fill_blanks", JSONArray(frame.fillBlanks))
+                        .put("quiz_correct_order", JSONArray(frame.quizCorrectOrder))
+                )
+            }
+            arr.put(
+                JSONObject()
+                    .put("title", step.title)
+                    .put("frames", framesJson)
+                    .put("lang", step.languageTag)
+                    .put("image_description", step.image_description)
+                    .put("image_show_confidencescore", step.imageConfidenceScore.toDouble())
+            )
+        }
+        return arr.toString()
+    }
+
+    /**
+     * Load a BB lesson from the teacher's own conversation cache:
+     * [users/{userId}/conversations/{conversationId}/blackboard_cache/{messageId}]
+     *
+     * Used by [TeacherSavedContentActivity] before publishing to the global [bb_cache/] collection.
+     * Must be called from a background thread.
+     */
+    fun loadFromUserCache(
+        userId: String,
+        conversationId: String,
+        messageId: String,
+        preferredLanguageTag: String? = null,
+        onSuccess: (List<BlackboardStep>) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        val latch = java.util.concurrent.CountDownLatch(1)
+        var result: List<BlackboardStep>? = null
+        var errorMsg = ""
+
+        val ref = FirebaseFirestore.getInstance()
+            .collection("users").document(userId)
+            .collection("conversations").document(conversationId)
+            .collection("blackboard_cache").document(messageId)
+
+        ref.get().addOnSuccessListener { doc ->
+            if (!doc.exists()) { errorMsg = "Session cache not found"; latch.countDown(); return@addOnSuccessListener }
+            val stepsJson = doc.getString("steps") ?: ""
+            if (stepsJson.isEmpty()) { errorMsg = "No steps data in cache"; latch.countDown(); return@addOnSuccessListener }
+            try {
+                val arr = JSONArray(stepsJson)
+                val langFallback = preferredLanguageTag ?: "en-US"
+                result = (0 until arr.length()).map { i ->
+                    val stepObj = arr.getJSONObject(i)
+                    val langTag = normalizeLanguageTag(
+                        raw      = stepObj.optString("lang", stepObj.optString("language", "")),
+                        fallback = langFallback
+                    )
+                    val framesArr = stepObj.getJSONArray("frames")
+                    val frames = (0 until framesArr.length()).map { j ->
+                        val f = framesArr.getJSONObject(j)
+                        val hlArr    = f.optJSONArray("highlight")
+                        val optsArr  = f.optJSONArray("quiz_options")
+                        val kwArr    = f.optJSONArray("quiz_keywords")
+                        val fillArr  = f.optJSONArray("fill_blanks")
+                        val orderArr = f.optJSONArray("quiz_correct_order")
+                        val fType    = f.optString("frame_type", "concept")
+                        val rawEngine = f.optString("tts_engine", "")
+                        val rawRole   = f.optString("voice_role",  "")
+                        val (aEngine, aRole) = smartAssignTts(fType)
+                        BlackboardFrame(
+                            text             = f.getString("text"),
+                            highlight        = hlArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                            speech           = f.optString("speech", ""),
+                            durationMs       = f.optLong("duration_ms", 2000),
+                            frameType        = fType,
+                            ttsEngine        = rawEngine.ifBlank { aEngine },
+                            voiceRole        = rawRole.ifBlank { aRole },
+                            quizAnswer       = f.optString("quiz_answer", ""),
+                            quizOptions      = optsArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                            quizCorrectIndex = f.optInt("quiz_correct_index", -1),
+                            quizModelAnswer  = f.optString("quiz_model_answer", ""),
+                            quizKeywords     = kwArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                            fillBlanks       = fillArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                            quizCorrectOrder = orderArr?.let { a -> (0 until a.length()).map { a.getInt(it) } } ?: emptyList()
+                        )
+                    }
+                    BlackboardStep(
+                        title                = stepObj.optString("title", ""),
+                        frames               = frames,
+                        languageTag          = langTag,
+                        image_description    = stepObj.optString("image_description", ""),
+                        imageConfidenceScore = stepObj.optDouble("image_show_confidencescore", 0.0).toFloat()
+                    )
+                }
+            } catch (e: Exception) {
+                errorMsg = "Parse error: ${e.message}"
+            }
+            latch.countDown()
+        }.addOnFailureListener { e ->
+            errorMsg = e.message ?: "Failed to load cache"
+            latch.countDown()
+        }
+
+        latch.await(10, java.util.concurrent.TimeUnit.SECONDS)
+        if (result != null && result!!.isNotEmpty()) onSuccess(result!!)
+        else onError(errorMsg.ifBlank { "Session cache could not be loaded" })
+    }
+
+    /**
+     * Load a teacher-shared BB lesson directly from the global [bb_cache/{bbCacheId}] collection.
+     * No LLM call — returns cached steps immediately.
+     * Must be called from a background thread.
+     */
+    fun loadFromGlobalCache(
+        bbCacheId: String,
+        preferredLanguageTag: String? = null,
+        onSuccess: (List<BlackboardStep>) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        val latch = java.util.concurrent.CountDownLatch(1)
+        var result: List<BlackboardStep>? = null
+        var errorMsg = ""
+
+        FirebaseFirestore.getInstance()
+            .collection("bb_cache").document(bbCacheId)
+            .get()
+            .addOnSuccessListener { doc ->
+                if (!doc.exists()) {
+                    errorMsg = "Lesson not found (bb_cache/$bbCacheId)"
+                    latch.countDown()
+                    return@addOnSuccessListener
+                }
+                val stepsJson = doc.getString("steps_json") ?: ""
+                if (stepsJson.isEmpty()) {
+                    errorMsg = "Lesson data is empty"
+                    latch.countDown()
+                    return@addOnSuccessListener
+                }
+                try {
+                    val arr = JSONArray(stepsJson)
+                    val langFallback = preferredLanguageTag
+                        ?: doc.getString("language_tag")
+                        ?: "en-US"
+                    result = (0 until arr.length()).map { i ->
+                        val stepObj = arr.getJSONObject(i)
+                        val langTag = normalizeLanguageTag(
+                            raw      = stepObj.optString("lang", stepObj.optString("language", "")),
+                            fallback = langFallback
+                        )
+                        val framesArr = stepObj.getJSONArray("frames")
+                        val frames = (0 until framesArr.length()).map { j ->
+                            val frameObj  = framesArr.getJSONObject(j)
+                            val hlArr     = frameObj.optJSONArray("highlight")
+                            val optsArr   = frameObj.optJSONArray("quiz_options")
+                            val kwArr     = frameObj.optJSONArray("quiz_keywords")
+                            val fillArr   = frameObj.optJSONArray("fill_blanks")
+                            val orderArr  = frameObj.optJSONArray("quiz_correct_order")
+                            val fType     = frameObj.optString("frame_type", "concept")
+                            val rawEngine = frameObj.optString("tts_engine", "")
+                            val rawRole   = frameObj.optString("voice_role", "")
+                            val (aEngine, aRole) = smartAssignTts(fType)
+                            BlackboardFrame(
+                                text             = frameObj.getString("text"),
+                                highlight        = hlArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                                speech           = frameObj.optString("speech", ""),
+                                durationMs       = frameObj.optLong("duration_ms", 2000),
+                                frameType        = fType,
+                                ttsEngine        = rawEngine.ifBlank { aEngine },
+                                voiceRole        = rawRole.ifBlank { aRole },
+                                quizAnswer       = frameObj.optString("quiz_answer", ""),
+                                quizOptions      = optsArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                                quizCorrectIndex = frameObj.optInt("quiz_correct_index", -1),
+                                quizModelAnswer  = frameObj.optString("quiz_model_answer", ""),
+                                quizKeywords     = kwArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                                fillBlanks       = fillArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                                quizCorrectOrder = orderArr?.let { a -> (0 until a.length()).map { a.getInt(it) } } ?: emptyList()
+                            )
+                        }
+                        BlackboardStep(
+                            title                = stepObj.optString("title", ""),
+                            frames               = frames,
+                            languageTag          = langTag,
+                            image_description    = stepObj.optString("image_description", ""),
+                            imageConfidenceScore = stepObj.optDouble("image_show_confidencescore", 0.0).toFloat()
+                        )
+                    }
+                } catch (e: Exception) {
+                    errorMsg = "Parse error: ${e.message}"
+                }
+                latch.countDown()
+            }
+            .addOnFailureListener { e ->
+                errorMsg = e.message ?: "Failed to load lesson"
+                latch.countDown()
+            }
+
+        latch.await(10, java.util.concurrent.TimeUnit.SECONDS)
+        if (result != null && result!!.isNotEmpty()) onSuccess(result!!)
+        else onError(errorMsg.ifBlank { "Lesson could not be loaded" })
+    }
 }

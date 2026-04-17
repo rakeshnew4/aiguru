@@ -335,7 +335,7 @@ object PlanEnforcer {
 
         if (isBlackboard) {
             val limit = limits.dailyBlackboardSessions
-            if (limit <= 0) return CheckResult(allowed = true)
+            if (limit <= 0) return CheckResult(allowed = true)  // Unlimited
             val fsUsed = if (isSameDay) metadata.bbSessionsToday else 0
             val used = maxOf(fsUsed, inMemEffectiveBb(metadata.userId))
             if (used >= limit) {
@@ -348,8 +348,8 @@ object PlanEnforcer {
             }
         } else {
             val baseLimit = limits.dailyChatQuestions
-            if (baseLimit <= 0) return CheckResult(allowed = true)
             val effectiveLimit = baseLimit + metadata.bonusQuestionsToday.coerceAtLeast(0)
+            if (effectiveLimit <= 0) return CheckResult(allowed = true)  // Unlimited
             val fsUsed = if (isSameDay) metadata.chatQuestionsToday else 0
             val used = maxOf(fsUsed, inMemEffectiveChat(metadata.userId))
             if (used >= effectiveLimit) {
@@ -521,8 +521,7 @@ object PlanEnforcer {
         charsAboutToUse: Int
     ): CheckResult {
         val quotaLimit = limits.aiTtsQuotaChars
-        if (quotaLimit <= 0) return CheckResult(allowed = true)  // 0 or negative = unlimited
-
+     
         val isSameDay = metadata.aiTtsUpdatedAt > 0L &&
             utcDayOf(metadata.aiTtsUpdatedAt) == utcDayOf(System.currentTimeMillis())
 

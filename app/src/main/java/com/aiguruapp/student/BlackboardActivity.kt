@@ -39,6 +39,8 @@ import com.aiguruapp.student.chat.BlackboardGenerator
 import com.aiguruapp.student.chat.ServerProxyClient
 import com.aiguruapp.student.config.AdminConfigRepository
 import com.aiguruapp.student.config.PlanEnforcer
+import com.aiguruapp.student.validators.AiVoiceQuotaValidator
+import com.aiguruapp.student.validators.BlackboardQuotaValidator
 import com.aiguruapp.student.firestore.FirestoreManager
 import com.aiguruapp.student.models.UserMetadata
 import com.aiguruapp.student.utils.PromptRepository
@@ -79,6 +81,12 @@ class BlackboardActivity : AppCompatActivity() {
         const val EXTRA_IS_REPLAY       = "extra_is_replay"
         /** ArrayList<String> of MD5 TTS keys saved with the session for instant audio on replay. */
         const val EXTRA_TTS_KEYS        = "extra_tts_keys"
+        /**
+         * Global bb_cache document ID.
+         * When set the lesson is loaded directly from [bb_cache/{id}] without any LLM call.
+         * Used for teacher-assigned tasks so every student shares the same cached lesson.
+         */
+        const val EXTRA_BB_CACHE_ID     = "extra_bb_cache_id"
     }
 
     // ── Views ─────────────────────────────────────────────────────────────────
@@ -140,6 +148,13 @@ class BlackboardActivity : AppCompatActivity() {
     // Each bookmark: Triple(stepIdx, frameIdx, stepTitle)
     private val bookmarkedFrames = mutableListOf<Triple<Int, Int, String>>()
 
+    // ── Teacher publish button (only shown in teacher-mode) ───────────────────
+    // Visible when user is a teacher and lesson was just generated (not loaded from cache).
+    // Tapping it saves the current lesson to the global bb_cache so it can be assigned to students.
+    private lateinit var publishLessonBtn: android.widget.TextView
+    private var isTeacherMode = false
+    private var publishedBbCacheId = ""   // set after successful publish
+
     // ─────────────────────────────────────────────────────────────────────────
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -161,6 +176,7 @@ class BlackboardActivity : AppCompatActivity() {
         handWriter      = findViewById(R.id.handWriter)
         bbQuotaChip     = findViewById(R.id.bbQuotaChip)
         saveSessionBtn  = findViewById(R.id.saveSessionBtn)
+        publishLessonBtn = findViewById(R.id.publishLessonBtn)
         bbAskInput      = findViewById(R.id.bbAskInput)
         bbAskSendBtn    = findViewById(R.id.bbAskSend)
 
@@ -173,10 +189,15 @@ class BlackboardActivity : AppCompatActivity() {
 
         closeBtn.setOnClickListener  { finish() }
         saveSessionBtn.setOnClickListener { saveCurrentSession() }
+        publishLessonBtn.setOnClickListener { publishCurrentLesson() }
         prevBtn.setOnClickListener   { prevStep() }
         nextBtn.setOnClickListener   { nextStep() }
         replayBtn.setOnClickListener { reSpeakCurrent() }
         pauseBtn.setOnClickListener  { togglePause() }
+
+        // Teacher mode: show publish button so this lesson can be shared with students
+        isTeacherMode = com.aiguruapp.student.utils.SessionManager.isTeacher(this)
+        publishLessonBtn.visibility = View.GONE  // shown after lesson generates
 
         PromptRepository.init(this)
         tts = TextToSpeechManager(this)
@@ -204,8 +225,8 @@ class BlackboardActivity : AppCompatActivity() {
                 val limits = AdminConfigRepository.resolveEffectiveLimits(
                     cachedMetadata.planId, cachedMetadata.planLimits
                 )
-                val check = PlanEnforcer.check(
-                    cachedMetadata, limits, com.aiguruapp.student.config.PlanEnforcer.FeatureType.AI_TTS
+                val check = AiVoiceQuotaValidator.checkFeature(
+                    cachedMetadata, limits
                 )
                 if (!check.allowed) {
                     android.util.Log.w("BB_TTS_TOGGLE", "❌ Plan check failed: ${check.upgradeMessage}")
@@ -238,58 +259,109 @@ class BlackboardActivity : AppCompatActivity() {
             // Wire the server URL for AI TTS as soon as config is loaded
             aiTtsEngine.selfHostedUrl = AdminConfigRepository.ttsSelfHostedUrl()
         }
-        FirestoreManager.getUserMetadata(userId ?: "", onSuccess = { meta ->
-            if (meta != null) {
-                cachedMetadata = meta
-                updateBbQuotaChip(userId)
 
-                // Check daily blackboard quota before generating
-                val limits = AdminConfigRepository.resolveEffectiveLimits(
-                    meta.planId, meta.planLimits
-                )
-                val check = PlanEnforcer.checkQuestionsQuota(meta, limits, isBlackboard = true)
-                if (!check.allowed) {
-                    loadingGroup.visibility = android.view.View.GONE
-                    loadingText.text = check.upgradeMessage
-                    loadingText.visibility = android.view.View.VISIBLE
-                    // Show error and offer upgrade after short delay
-                    android.widget.Toast.makeText(this, check.upgradeMessage, android.widget.Toast.LENGTH_LONG).show()
-                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                        startActivity(
-                            android.content.Intent(this, SubscriptionActivity::class.java)
+        // Read user fields directly from Firestore (raw map access, same as HomeActivity)
+        // to avoid toObject() deserialization issues with unknown/renamed fields.
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            .collection("users_table").document(userId ?: "")
+            .get()
+            .addOnSuccessListener { doc ->
+                if (doc.exists()) {
+                    val planId         = doc.getString("planId") ?: "free"
+                    val chatToday      = doc.getLong("chat_questions_today")?.toInt() ?: 0
+                    val bbToday        = doc.getLong("bb_sessions_today")?.toInt() ?: 0
+                    val updatedAt      = doc.getLong("questions_updated_at") ?: 0L
+                    val bonusToday     = doc.getLong("bonus_questions_today")?.toInt() ?: 0
+                    val aiTtsToday     = doc.getLong("ai_tts_chars_used_today")?.toInt() ?: 0
+                    val aiTtsUpdatedAt = doc.getLong("ai_tts_updated_at") ?: 0L
+                    val planTtsEnabled    = doc.getBoolean("plan_tts_enabled") ?: true
+                    val planAiTtsEnabled  = doc.getBoolean("plan_ai_tts_enabled") ?: false
+                    val planBbEnabled     = doc.getBoolean("plan_blackboard_enabled") ?: true
+                    val planExpiryDate    = doc.getLong("plan_expiry_date") ?: 0L
+
+                    cachedMetadata = cachedMetadata.copy(
+                        planId               = planId.ifBlank { "free" },
+                        chatQuestionsToday   = chatToday,
+                        bbSessionsToday      = bbToday,
+                        questionsUpdatedAt   = updatedAt,
+                        bonusQuestionsToday  = bonusToday,
+                        aiTtsCharsUsedToday  = aiTtsToday,
+                        aiTtsUpdatedAt       = aiTtsUpdatedAt,
+                        planTtsEnabled       = planTtsEnabled,
+                        planAiTtsEnabled     = planAiTtsEnabled,
+                        planBlackboardEnabled = planBbEnabled,
+                        planExpiryDate       = planExpiryDate
+                    )
+
+                    AdminConfigRepository.resolveEffectiveLimitsAsync(cachedMetadata.planId, cachedMetadata.planLimits) { limits ->
+                        runOnUiThread {
+                            updateBbQuotaChip(userId)
+
+                            // If launched from a teacher-assigned task, load from global bb_cache
+                            // (no LLM call, no quota consumed — lesson was generated once by teacher)
+                            val bbCacheId = intent.getStringExtra(EXTRA_BB_CACHE_ID).orEmpty()
+                            if (bbCacheId.isNotBlank()) {
+                                loadFromGlobalCache(bbCacheId, userId)
+                                return@runOnUiThread
+                            }
+
+                            val check = BlackboardQuotaValidator.check(cachedMetadata, limits)
+                            if (!check.allowed) {
+                                loadingGroup.visibility = android.view.View.GONE
+                                loadingText.text = check.upgradeMessage
+                                loadingText.visibility = android.view.View.VISIBLE
+                                android.widget.Toast.makeText(this, check.upgradeMessage, android.widget.Toast.LENGTH_LONG).show()
+                                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                    startActivity(android.content.Intent(this, SubscriptionActivity::class.java))
+                                }, 2000)
+                                return@runOnUiThread
+                            }
+                            val isReplay = intent.getBooleanExtra(EXTRA_IS_REPLAY, false)
+                            generateSteps(
+                                message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
+                                messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
+                                userId         = userId,
+                                conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
+                                recordSession  = !isReplay
+                            )
+                        }
+                    }
+                } else {
+                    // No user doc — check for global cache first, then generate without quota check
+                    val bbCacheId = intent.getStringExtra(EXTRA_BB_CACHE_ID).orEmpty()
+                    if (bbCacheId.isNotBlank()) {
+                        loadFromGlobalCache(bbCacheId, userId)
+                    } else {
+                        generateSteps(
+                            message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
+                            messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
+                            userId         = userId,
+                            conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
+                            recordSession  = false
                         )
-                    }, 2000)
-                    return@getUserMetadata
+                    }
                 }
-
-                val isReplay = intent.getBooleanExtra(EXTRA_IS_REPLAY, false)
-                generateSteps(
-                    message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
-                    messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
-                    userId         = userId,
-                    conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
-                    recordSession  = !isReplay
-                )
-            } else {
-                // Metadata unavailable — generate without quota check
-                generateSteps(
-                    message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
-                    messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
-                    userId         = userId,
-                    conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
-                    recordSession  = false
-                )
             }
-        }, onFailure = {
-            // Fall back to generating without quota guard
-            generateSteps(
-                message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
-                messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
-                userId         = userId,
-                conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
-                recordSession  = false
-            )
-        })
+            .addOnFailureListener {
+                // Firestore unavailable — try global cache first, then generate without quota guard
+                val bbCacheId = intent.getStringExtra(EXTRA_BB_CACHE_ID).orEmpty()
+                if (bbCacheId.isNotBlank()) {
+                    loadFromGlobalCache(bbCacheId, userId)
+                } else {
+                    generateSteps(
+                        message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
+                        messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
+                        userId         = userId,
+                        conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
+                        recordSession  = false
+                    )
+                }
+            }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        aiTtsEngine.stop()
     }
 
     override fun onDestroy() {
@@ -398,6 +470,8 @@ class BlackboardActivity : AppCompatActivity() {
                         loadingGroup.visibility = View.GONE
                         contentGroup.visibility = View.VISIBLE
                         saveSessionBtn.visibility = View.VISIBLE
+                        // Teachers can publish the freshly-generated lesson to global bb_cache
+                        if (isTeacherMode) publishLessonBtn.visibility = View.VISIBLE
                         buildDots()
                         setupBoard()
                         // Preload first 3 frames' AI audio in background
@@ -483,12 +557,114 @@ class BlackboardActivity : AppCompatActivity() {
         )
     }
 
+    // ── Load lesson from teacher-assigned global bb_cache (no LLM) ─────────────
+
+    /**
+     * Loads a pre-generated lesson from [bb_cache/{bbCacheId}].
+     * Called when [EXTRA_BB_CACHE_ID] is set — no quota deduction, no LLM cost.
+     */
+    private fun loadFromGlobalCache(bbCacheId: String, userId: String?) {
+        loadingText.text = "Loading lesson…"
+        lifecycleScope.launch(Dispatchers.IO) {
+            com.aiguruapp.student.chat.BlackboardGenerator.loadFromGlobalCache(
+                bbCacheId            = bbCacheId,
+                preferredLanguageTag = preferredLanguageTag,
+                onSuccess = { generated ->
+                    lifecycleScope.launch(Dispatchers.Main) {
+                        steps = generated
+                        computedFontSp = computeFontSize(steps)
+                        loadingGroup.visibility = View.GONE
+                        contentGroup.visibility = View.VISIBLE
+                        // Teachers don't need save/publish after loading a cached lesson
+                        saveSessionBtn.visibility = View.GONE
+                        publishLessonBtn.visibility = View.GONE
+                        buildDots()
+                        setupBoard()
+                        preloadUpcoming(0, 0, count = 3)
+                        showFrame(0, 0)
+                        // Mark BB progress on task if launched from a task
+                        val taskId = intent.getStringExtra(EXTRA_TASK_ID).orEmpty()
+                        if (taskId.isNotBlank() && !userId.isNullOrBlank()) {
+                            val studentName = com.aiguruapp.student.utils.SessionManager.getStudentName(this@BlackboardActivity)
+                            com.aiguruapp.student.firestore.FirestoreManager.markTaskBbComplete(
+                                userId      = userId,
+                                taskId      = taskId,
+                                studentName = studentName
+                            )
+                        }
+                    }
+                },
+                onError = { err ->
+                    lifecycleScope.launch(Dispatchers.Main) {
+                        loadingText.text = "Couldn't load lesson. Please try again."
+                        android.util.Log.e("Blackboard", "Global cache load error: $err")
+                    }
+                }
+            )
+        }
+    }
+
+    // ── Publish current lesson to global bb_cache (teacher only) ──────────────
+
+    /**
+     * Publishes the just-generated [steps] to [bb_cache/{id}] so this lesson can be
+     * assigned to students via tasks.  Only shown when [isTeacherMode] is true.
+     */
+    private fun publishCurrentLesson() {
+        if (steps.isEmpty()) return
+        val uid = intent.getStringExtra(EXTRA_USER_ID) ?: run {
+            android.widget.Toast.makeText(this, "Sign in to publish", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+        val subject = intent.getStringExtra(EXTRA_SUBJECT) ?: "General"
+        val chapter = intent.getStringExtra(EXTRA_CHAPTER) ?: "General"
+        val topic   = intent.getStringExtra(EXTRA_MESSAGE) ?: ""
+        val preview = steps.firstOrNull()?.frames?.firstOrNull()?.text?.take(120) ?: topic
+        val schoolId = com.aiguruapp.student.utils.SessionManager.getSchoolId(this)
+
+        // Already published — show the id so it can be assigned
+        if (publishedBbCacheId.isNotBlank()) {
+            android.widget.Toast.makeText(this, "Lesson ID: $publishedBbCacheId", android.widget.Toast.LENGTH_LONG).show()
+            return
+        }
+
+        publishLessonBtn.isEnabled = false
+        publishLessonBtn.text = "⏳ Publishing…"
+
+        val stepsJson = com.aiguruapp.student.chat.BlackboardGenerator.serializeSteps(steps)
+        com.aiguruapp.student.firestore.FirestoreManager.publishBbLesson(
+            teacherId    = uid,
+            schoolId     = schoolId,
+            subject      = subject,
+            chapter      = chapter,
+            topic        = topic,
+            preview      = preview,
+            stepsJson    = stepsJson,
+            languageTag  = preferredLanguageTag,
+            stepCount    = steps.size,
+            existingId   = "",
+            onSuccess    = { bbCacheId ->
+                publishedBbCacheId = bbCacheId
+                publishLessonBtn.isEnabled = true
+                publishLessonBtn.text = "✓ Published"
+                publishLessonBtn.setTextColor(android.graphics.Color.parseColor("#A0FFD0"))
+                android.widget.Toast.makeText(this, "Lesson published! ID: $bbCacheId", android.widget.Toast.LENGTH_LONG).show()
+            },
+            onFailure    = { err ->
+                publishLessonBtn.isEnabled = true
+                publishLessonBtn.text = "📤 Publish as Lesson"
+                android.widget.Toast.makeText(this, "Publish failed — try again", android.widget.Toast.LENGTH_SHORT).show()
+                android.util.Log.e("Blackboard", "Publish error: $err")
+            }
+        )
+    }
+
     /** Refresh the session quota chip in the top bar. */
     private fun updateBbQuotaChip(userId: String?) {
         val limits = AdminConfigRepository.resolveEffectiveLimits(
             cachedMetadata.planId, cachedMetadata.planLimits
         )
-        val left = PlanEnforcer.getQuestionsLeft(cachedMetadata, limits, isBlackboard = true)
+        val left = BlackboardQuotaValidator.sessionsLeft(cachedMetadata, limits)
         if (left < 0) {
             bbQuotaChip.visibility = View.GONE
             return
@@ -964,7 +1140,7 @@ class BlackboardActivity : AppCompatActivity() {
             val limits = com.aiguruapp.student.config.AdminConfigRepository.resolveEffectiveLimits(
                 cachedMetadata.planId, cachedMetadata.planLimits
             )
-            val quotaCheck = com.aiguruapp.student.config.PlanEnforcer.checkAiTtsQuota(
+            val quotaCheck = AiVoiceQuotaValidator.checkQuota(
                 cachedMetadata, limits, frame.speech.length
             )
             if (!quotaCheck.allowed) {

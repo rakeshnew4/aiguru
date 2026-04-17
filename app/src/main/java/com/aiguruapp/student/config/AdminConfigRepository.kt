@@ -141,7 +141,14 @@ object AdminConfigRepository {
     ) {
         // If the plan is already cached (or the user is on the free plan which uses defaultLimits),
         // resolve synchronously and return immediately.
-        if (planId.isBlank() || planId == "free" || cachedPlans.containsKey(planId)) {
+        // Note: a plan with dailyChatQuestions==0 is legitimately unlimited — 0 is a valid value.
+        // Plans only end up missing from cachedPlans if toObject() threw (e.g. before
+        // @IgnoreExtraProperties was added). If the plan is present, it was successfully parsed.
+        if (planId.isBlank() || planId == "free") {
+            onResult(resolveEffectiveLimits(planId, userOverrideLimits))
+            return
+        }
+        if (cachedPlans.containsKey(planId)) {
             onResult(resolveEffectiveLimits(planId, userOverrideLimits))
             return
         }
@@ -149,18 +156,9 @@ object AdminConfigRepository {
         db.collection(PLANS_COL).document(planId)
             .get()
             .addOnSuccessListener { doc ->
-                try {
-                    val plan = doc.toObject(SubscriptionPlan::class.java)?.copy(planId = doc.id)
-                    if (plan != null) {
-                        // Merge into the in-memory cache so subsequent calls are instant
-                        cachedPlans = cachedPlans.toMutableMap().also { it[doc.id] = plan }
-                        Log.d(TAG, "Fetched plan $planId on-demand: dailyBb=${plan.limits.dailyBlackboardSessions} dailyChat=${plan.limits.dailyChatQuestions}")
-                    } else {
-                        Log.w(TAG, "Plan document $planId exists but toObject() returned null — using defaults")
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to parse plan $planId: ${e.message}")
-                }
+                val plan = planFromDoc(doc)
+                cachedPlans = cachedPlans.toMutableMap().also { it[doc.id] = plan }
+                Log.d(TAG, "Fetched plan $planId on-demand: chat=${plan.limits.dailyChatQuestions} bb=${plan.limits.dailyBlackboardSessions}")
                 onResult(resolveEffectiveLimits(planId, userOverrideLimits))
             }
             .addOnFailureListener { e ->
@@ -199,20 +197,58 @@ object AdminConfigRepository {
 
     // ── Private ───────────────────────────────────────────────────────────────
 
+    /**
+     * Parse a plan document using raw map access — same approach as HomeActivity.
+     * Avoids toObject() / @IgnoreExtraProperties issues with unknown Firestore fields.
+     */
+    @Suppress("UNCHECKED_CAST")
+    private fun planFromDoc(doc: com.google.firebase.firestore.DocumentSnapshot): SubscriptionPlan {
+        val m = doc.get("limits") as? Map<String, Any> ?: emptyMap()
+        fun int(key: String, default: Int = 0)      = (m[key] as? Long)?.toInt() ?: default
+        fun bool(key: String, default: Boolean = false) = m[key] as? Boolean ?: default
+        fun str(key: String, default: String = "")  = m[key] as? String ?: default
+
+        val limits = PlanLimits(
+            dailyChatQuestions        = int("daily_chat_questions"),
+            dailyBlackboardSessions   = int("daily_bb_sessions"),
+            dailyTokenLimit           = int("daily_token_limit", 100_000),
+            monthlyTokenLimit         = int("monthly_token_limit"),
+            contextWindowMessages     = int("context_window_messages", 20),
+            contextWindowChars        = int("context_window_chars", 8_000),
+            imageUploadEnabled        = bool("image_upload_enabled", true),
+            voiceModeEnabled          = bool("voice_mode_enabled"),
+            pdfEnabled                = bool("pdf_enabled"),
+            flashcardsEnabled         = bool("flashcards_enabled"),
+            conversationSummaryEnabled = bool("conversation_summary_enabled"),
+            blackboardEnabled         = bool("blackboard_enabled"),
+            modelTier                 = str("model_tier", "standard"),
+            messagesPerHour           = int("messages_per_hour", 30),
+            maxSessions               = int("max_sessions", 1),
+            ttsEnabled                = bool("tts_enabled", true),
+            aiTtsEnabled              = bool("ai_tts_enabled"),
+            aiTtsQuotaChars           = int("ai_tts_quota_chars")
+        )
+        return SubscriptionPlan(
+            planId       = doc.id,
+            displayName  = doc.getString("name") ?: doc.id,
+            tagline      = doc.getString("tagline") ?: "",
+            priceDisplay = doc.getString("priceDisplay") ?: "",
+            isPublic     = doc.getBoolean("isPublic") ?: true,
+            displayOrder = (doc.getLong("displayOrder") ?: 0L).toInt(),
+            accentColor  = doc.getString("accentColor") ?: "#1565C0",
+            limits       = limits
+        )
+    }
+
     private fun fetchPlans() {
-        // Top-level plans/ collection (same hierarchy as users/ and updates/)
         db.collection(PLANS_COL)
             .get()
             .addOnSuccessListener { snap ->
                 val loaded = mutableMapOf<String, SubscriptionPlan>()
                 for (doc in snap.documents) {
-                    try {
-                        val plan = doc.toObject(SubscriptionPlan::class.java)
-                            ?.copy(planId = doc.id)  // document ID is the authoritative planId
-                        if (plan != null) loaded[doc.id] = plan
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to parse plan ${doc.id}: ${e.message}")
-                    }
+                    val plan = planFromDoc(doc)
+                    loaded[doc.id] = plan
+                    Log.d(TAG, "Parsed plan ${doc.id}: chat=${plan.limits.dailyChatQuestions} bb=${plan.limits.dailyBlackboardSessions}")
                 }
                 if (loaded.isNotEmpty()) {
                     cachedPlans = loaded

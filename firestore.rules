@@ -97,10 +97,55 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // ── Quiz content (authenticated read, server write only) ───────────────────
+    // ── Shared BB lesson library (teacher writes once, all signed-in students read) ──
+    // Structure: bb_cache/{bbCacheId} → { teacher_id, school_id, subject, chapter,
+    //            topic, preview, steps_json, language_tag, step_count, created_at }
+    match /bb_cache/{bbCacheId} {
+      // Any signed-in user can read (students load assigned lessons)
+      allow read: if isSignedIn();
+      // Only the owning teacher can create/update their lesson
+      allow create: if isSignedIn()
+        && request.resource.data.teacher_id == request.auth.uid;
+      allow update: if isSignedIn()
+        && resource.data.teacher_id == request.auth.uid;
+      allow delete: if isSignedIn()
+        && resource.data.teacher_id == request.auth.uid;
+    }
+
+    // ── Quiz library (teacher writes once, all signed-in students read) ────────
+    // Structure: quizzes/{quizId} → { teacher_id, school_id, subject, chapter,
+    //            title, difficulty, questions_json, bb_cache_id?, created_at }
     match /quizzes/{quizId} {
       allow read: if isSignedIn();
-      allow write: if false;
+      // Teacher creates/updates their own quizzes
+      allow create: if isSignedIn()
+        && request.resource.data.teacher_id == request.auth.uid;
+      allow update: if isSignedIn()
+        && resource.data.teacher_id == request.auth.uid;
+      allow delete: if isSignedIn()
+        && resource.data.teacher_id == request.auth.uid;
+    }
+
+    // ── Teacher-assigned tasks (teacher writes, students read by school+grade) ─
+    // Structure: school_tasks/{taskId} → { task_id, teacher_id, school_id, grade,
+    //            title, description, task_type, subject, chapter,
+    //            bb_cache_id?, bb_topic (display), quiz_id?, due_date?, is_active }
+    match /school_tasks/{taskId} {
+      // Students can read active tasks for their school (filtered client-side by grade)
+      allow read: if isSignedIn();
+      // Teacher creates/updates their own tasks
+      allow create: if isSignedIn()
+        && request.resource.data.teacher_id == request.auth.uid;
+      allow update: if isSignedIn()
+        && resource.data.teacher_id == request.auth.uid;
+      allow delete: if isSignedIn()
+        && resource.data.teacher_id == request.auth.uid;
+
+      // Per-student completion records — teacher reads all, student writes own
+      match /completions/{userId} {
+        allow read: if isSignedIn();
+        allow write: if isOwner(userId);
+      }
     }
 
     // Quiz attempts (owner can read their own; server writes via service account)

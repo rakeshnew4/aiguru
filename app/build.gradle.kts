@@ -99,6 +99,7 @@ dependencies {
     implementation("com.razorpay:checkout:1.6.41")
     implementation("com.google.firebase:firebase-auth:23.1.0")
     implementation("com.google.firebase:firebase-firestore:25.1.1")
+    implementation("com.google.firebase:firebase-storage:21.1.0")
     implementation("com.google.android.gms:play-services-auth:21.3.0")
     implementation("com.github.bumptech.glide:glide:4.16.0")
     implementation("com.caverock:androidsvg-aar:1.4")

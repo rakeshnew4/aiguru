@@ -35,10 +35,14 @@ import java.util.*
 class TeacherTasksActivity : BaseActivity() {
 
     companion object {
-        const val EXTRA_PREFILL_QUIZ_JSON = "extra_prefill_quiz_json"
-        const val EXTRA_PREFILL_SUBJECT   = "extra_prefill_subject"
-        const val EXTRA_PREFILL_CHAPTER   = "extra_prefill_chapter"
-        const val EXTRA_PREFILL_BB_TOPIC  = "extra_prefill_bb_topic"
+        const val EXTRA_PREFILL_QUIZ_JSON  = "extra_prefill_quiz_json"
+        const val EXTRA_PREFILL_SUBJECT    = "extra_prefill_subject"
+        const val EXTRA_PREFILL_CHAPTER    = "extra_prefill_chapter"
+        const val EXTRA_PREFILL_BB_TOPIC   = "extra_prefill_bb_topic"
+        /** Pre-published quiz ID from quizzes/ collection — preferred over EXTRA_PREFILL_QUIZ_JSON. */
+        const val EXTRA_PREFILL_QUIZ_ID    = "extra_prefill_quiz_id"
+        /** Pre-published BB lesson ID from bb_cache/ collection — preferred over EXTRA_PREFILL_BB_TOPIC. */
+        const val EXTRA_PREFILL_BB_CACHE_ID = "extra_prefill_bb_cache_id"
     }
 
     // Form views
@@ -70,6 +74,10 @@ class TeacherTasksActivity : BaseActivity() {
     private val userId by lazy { SessionManager.getFirestoreUserId(this) }
     private val apiClient by lazy { QuizApiClient(AdminConfigRepository.effectiveServerUrl()) }
     private var generatedQuizJson = ""
+    /** ID of the bb_cache/ lesson selected for this task (empty = use bbTopic string / legacy). */
+    private var selectedBbCacheId = ""
+    /** ID of the quizzes/ document selected for this task (empty = use embedded generatedQuizJson). */
+    private var selectedQuizId = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -102,17 +110,34 @@ class TeacherTasksActivity : BaseActivity() {
         intent.getStringExtra(EXTRA_PREFILL_SUBJECT)?.let { taskSubjectInput.setText(it) }
         intent.getStringExtra(EXTRA_PREFILL_CHAPTER)?.let { taskChapterInput.setText(it) }
         intent.getStringExtra(EXTRA_PREFILL_BB_TOPIC)?.let { bbTopicInput.setText(it) }
+        // New: pre-fill by library ID (preferred over embedded JSON)
+        intent.getStringExtra(EXTRA_PREFILL_BB_CACHE_ID)?.let { id ->
+            selectedBbCacheId = id
+            bbTopicInput.setText("📚 Lesson loaded (ID: ${id.take(8)}…)")
+            bbTopicInput.isEnabled = false
+        }
+        intent.getStringExtra(EXTRA_PREFILL_QUIZ_ID)?.let { id ->
+            selectedQuizId = id
+            quizStatusText.text = "✅ Quiz loaded from library"
+        }
         intent.getStringExtra(EXTRA_PREFILL_QUIZ_JSON)?.let { json ->
-            generatedQuizJson = json
-            quizStatusText.text = "✅ Quiz ready (${countQuestions(json)} questions)"
+            if (selectedQuizId.isBlank()) {
+                generatedQuizJson = json
+                quizStatusText.text = "✅ Quiz ready (${countQuestions(json)} questions)"
+            }
         }
 
         // Show create panel when pre-fill is present
-        if (intent.hasExtra(EXTRA_PREFILL_QUIZ_JSON) || intent.hasExtra(EXTRA_PREFILL_BB_TOPIC)) {
+        val hasBbPrefill  = intent.hasExtra(EXTRA_PREFILL_BB_TOPIC) || intent.hasExtra(EXTRA_PREFILL_BB_CACHE_ID)
+        val hasQuizPrefill = intent.hasExtra(EXTRA_PREFILL_QUIZ_JSON) || intent.hasExtra(EXTRA_PREFILL_QUIZ_ID)
+        if (hasBbPrefill || hasQuizPrefill) {
             createPanel.visibility = View.VISIBLE
             updateTaskTypeSections()
-            if (intent.hasExtra(EXTRA_PREFILL_QUIZ_JSON)) {
+            if (hasQuizPrefill && !hasBbPrefill) {
                 taskTypeGroup.check(R.id.rbQuiz)
+                updateTaskTypeSections()
+            } else if (hasBbPrefill && hasQuizPrefill) {
+                taskTypeGroup.check(R.id.rbBoth)
                 updateTaskTypeSections()
             }
         }
@@ -202,12 +227,14 @@ class TeacherTasksActivity : BaseActivity() {
             else            -> "both"
         }
         val bbTopic = bbTopicInput.text.toString().trim()
-        if ((taskType == "bb_lesson" || taskType == "both") && bbTopic.isBlank()) {
-            Toast.makeText(this, "Enter a Blackboard lesson topic", Toast.LENGTH_SHORT).show()
+        val needsBb = taskType == "bb_lesson" || taskType == "both"
+        val needsQuiz = taskType == "quiz" || taskType == "both"
+        if (needsBb && bbTopic.isBlank() && selectedBbCacheId.isBlank()) {
+            Toast.makeText(this, "Enter a Blackboard lesson topic or pick a lesson", Toast.LENGTH_SHORT).show()
             return
         }
-        if ((taskType == "quiz" || taskType == "both") && generatedQuizJson.isBlank()) {
-            Toast.makeText(this, "Generate quiz questions first", Toast.LENGTH_SHORT).show()
+        if (needsQuiz && generatedQuizJson.isBlank() && selectedQuizId.isBlank()) {
+            Toast.makeText(this, "Generate or select quiz questions first", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -222,8 +249,10 @@ class TeacherTasksActivity : BaseActivity() {
             taskType    = taskType,
             subject     = taskSubjectInput.text.toString().trim(),
             chapter     = taskChapterInput.text.toString().trim(),
-            bbTopic     = bbTopic,
-            quizJson    = generatedQuizJson,
+            bbTopic     = if (selectedBbCacheId.isNotBlank()) bbTopic else bbTopic,
+            quizJson    = if (selectedQuizId.isBlank()) generatedQuizJson else "",
+            bbCacheId   = selectedBbCacheId,
+            quizId      = selectedQuizId,
             onSuccess   = { _ ->
                 saveTaskButton.isEnabled = true
                 Toast.makeText(this, "✅ Task assigned!", Toast.LENGTH_SHORT).show()
@@ -241,7 +270,8 @@ class TeacherTasksActivity : BaseActivity() {
     private fun clearForm() {
         taskTitleInput.setText(""); taskDescInput.setText("")
         taskSubjectInput.setText(""); taskChapterInput.setText("")
-        bbTopicInput.setText(""); generatedQuizJson = ""; quizStatusText.text = ""
+        bbTopicInput.setText(""); bbTopicInput.isEnabled = true
+        generatedQuizJson = ""; selectedBbCacheId = ""; selectedQuizId = ""; quizStatusText.text = ""
     }
 
     private fun loadMyTasks() {

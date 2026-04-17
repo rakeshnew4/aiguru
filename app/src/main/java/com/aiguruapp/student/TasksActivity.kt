@@ -103,13 +103,23 @@ class TasksActivity : BaseActivity() {
     }
 
     private fun launchLesson(task: Map<String, Any>) {
-        val topic   = task["bb_topic"]  as? String ?: return
-        val subject = task["subject"]   as? String ?: "General"
-        val chapter = task["chapter"]   as? String ?: "General"
-        val taskId  = task["task_id"]   as? String ?: task["id"] as? String ?: ""
+        val bbCacheId = task["bb_cache_id"] as? String ?: ""
+        val topic     = task["bb_topic"]    as? String ?: ""
+        val subject   = task["subject"]     as? String ?: "General"
+        val chapter   = task["chapter"]     as? String ?: "General"
+        val taskId    = task["task_id"]     as? String ?: task["id"] as? String ?: ""
+        if (bbCacheId.isBlank() && topic.isBlank()) {
+            Toast.makeText(this, "Lesson not available", Toast.LENGTH_SHORT).show(); return
+        }
         startActivity(
             Intent(this, BlackboardActivity::class.java).apply {
-                putExtra(BlackboardActivity.EXTRA_MESSAGE, topic)
+                if (bbCacheId.isNotBlank()) {
+                    // Teacher-assigned lesson: load from global bb_cache — no LLM call
+                    putExtra(BlackboardActivity.EXTRA_BB_CACHE_ID, bbCacheId)
+                } else {
+                    // Legacy: topic string triggers LLM generation (backwards compat)
+                    putExtra(BlackboardActivity.EXTRA_MESSAGE, topic)
+                }
                 putExtra(BlackboardActivity.EXTRA_USER_ID, userId)
                 putExtra(BlackboardActivity.EXTRA_SUBJECT, subject)
                 putExtra(BlackboardActivity.EXTRA_CHAPTER, chapter)
@@ -119,11 +129,34 @@ class TasksActivity : BaseActivity() {
     }
 
     private fun launchQuiz(task: Map<String, Any>) {
+        val quizId   = task["quiz_id"]  as? String ?: ""
+        val taskId   = task["task_id"]  as? String ?: task["id"] as? String ?: ""
+        val subject  = task["subject"]  as? String ?: ""
+        if (quizId.isNotBlank()) {
+            // New flow: load quiz from global quizzes/ collection by ID
+            FirestoreManager.loadQuizFromLibrary(
+                quizId    = quizId,
+                onSuccess = { data ->
+                    val questionsJson = data["questions_json"] as? String ?: ""
+                    if (questionsJson.isBlank()) {
+                        Toast.makeText(this, "Quiz not available", Toast.LENGTH_SHORT).show(); return@loadQuizFromLibrary
+                    }
+                    startActivity(
+                        Intent(this, QuizActivity::class.java)
+                            .putExtra("quizJson", questionsJson)
+                            .putExtra("subjectName", subject)
+                            .putExtra("taskId", taskId)
+                    )
+                },
+                onFailure = {
+                    Toast.makeText(this, "Quiz not available", Toast.LENGTH_SHORT).show()
+                }
+            )
+            return
+        }
+        // Legacy fallback: embedded quiz_json in task document
         val quizJson = task["quiz_json"] as? String ?: ""
         if (quizJson.isBlank()) { Toast.makeText(this, "Quiz not available", Toast.LENGTH_SHORT).show(); return }
-        val taskId   = task["task_id"] as? String ?: task["id"] as? String ?: ""
-        val subject  = task["subject"] as? String ?: ""
-        val chapter  = task["chapter"] as? String ?: ""
         startActivity(
             Intent(this, QuizActivity::class.java)
                 .putExtra("quizJson", quizJson)

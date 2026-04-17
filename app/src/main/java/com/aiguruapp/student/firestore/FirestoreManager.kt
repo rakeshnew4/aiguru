@@ -448,6 +448,7 @@ object FirestoreManager {
         convsRef(userId).document(convId(subject, chapter))
             .collection("messages")
             .orderBy("timestamp", Query.Direction.ASCENDING)
+            .limitToLast(30)
             .get()
             .addOnSuccessListener { snap ->
                 onSuccess(snap.documents.mapNotNull { doc ->
@@ -862,9 +863,19 @@ object FirestoreManager {
     // ── Tasks ─────────────────────────────────────────────────────────────────
     // Path: school_tasks/{taskId}  (global, filtered by school_id + grade)
     // task_type: "bb_lesson" | "quiz" | "both"
+    //
+    // New fields (replacing heavy embedded data):
+    //   bb_cache_id → references bb_cache/{id} (teacher's shared lesson)
+    //   quiz_id     → references quizzes/{id}  (teacher's validated quiz)
+    //   bb_topic    → kept as display text (set from bb_cache.preview)
+    // The old quiz_json field is no longer written for new tasks.
 
     /**
      * Create or update a task assigned by a teacher to a school/grade.
+     *
+     * For new tasks use [bbCacheId] + [quizId] instead of [bbTopic] + [quizJson].
+     * Legacy tasks that still carry quiz_json will keep working via TasksActivity
+     * fallback logic.
      */
     fun saveTask(
         taskId: String,
@@ -876,13 +887,16 @@ object FirestoreManager {
         taskType: String,
         subject: String,
         chapter: String,
-        bbTopic: String = "",
-        quizJson: String = "",
+        bbTopic: String = "",       // display text / fallback topic for older tasks
+        quizJson: String = "",      // DEPRECATED — use quizId instead
+        bbCacheId: String = "",     // NEW: reference to bb_cache/{id}
+        quizId: String = "",        // NEW: reference to quizzes/{id}
+        dueDate: Long = 0L,         // NEW: optional due date (epoch ms, 0 = no deadline)
         onSuccess: (String) -> Unit = {},
         onFailure: (Exception?) -> Unit = {}
     ) {
         val docId = taskId.ifBlank { db.collection("school_tasks").document().id }
-        val data = mapOf(
+        val data = mutableMapOf<String, Any>(
             "task_id"     to docId,
             "teacher_id"  to teacherId,
             "school_id"   to schoolId,
@@ -893,10 +907,15 @@ object FirestoreManager {
             "subject"     to subject,
             "chapter"     to chapter,
             "bb_topic"    to bbTopic,
-            "quiz_json"   to quizJson,
             "created_at"  to System.currentTimeMillis(),
             "is_active"   to true
         )
+        // Only write the new reference fields when provided; backwards compat for legacy tasks
+        if (bbCacheId.isNotBlank()) data["bb_cache_id"] = bbCacheId
+        if (quizId.isNotBlank())    data["quiz_id"]     = quizId
+        if (dueDate > 0)            data["due_date"]    = dueDate
+        // Legacy fallback: if no quizId but quizJson provided (old flow), keep it
+        if (quizJson.isNotBlank() && quizId.isBlank()) data["quiz_json"] = quizJson
         db.collection("school_tasks").document(docId)
             .set(data, SetOptions.merge())
             .addOnSuccessListener { onSuccess(docId) }
@@ -1210,6 +1229,180 @@ object FirestoreManager {
         query.get()
             .addOnSuccessListener { snap ->
                 onSuccess(snap.documents.mapNotNull { it.data })
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    // ── Shared BB Lesson Library ──────────────────────────────────────────────
+    // Path: bb_cache/{bbCacheId}
+    // Teacher publishes a generated lesson once; all students load from this cache.
+    // This eliminates per-student LLM calls for teacher-assigned BB lessons.
+
+    /**
+     * Publish a BB lesson to the global lesson library.
+     * Returns the generated doc ID via [onSuccess].
+     *
+     * @param stepsJson  Full BlackboardStep[] serialized as JSON string.
+     * @param preview    First 120 chars of the lesson (for list UI).
+     */
+    fun publishBbLesson(
+        teacherId: String,
+        schoolId: String,
+        subject: String,
+        chapter: String,
+        topic: String,
+        preview: String,
+        stepsJson: String,
+        languageTag: String = "en-US",
+        stepCount: Int = 0,
+        existingId: String = "",
+        onSuccess: (bbCacheId: String) -> Unit = {},
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (teacherId.isBlank()) { onFailure(null); return }
+        val docId = existingId.ifBlank { db.collection("bb_cache").document().id }
+        val data = mapOf(
+            "bb_cache_id"  to docId,
+            "teacher_id"   to teacherId,
+            "school_id"    to schoolId,
+            "subject"      to subject,
+            "chapter"      to chapter,
+            "topic"        to topic,
+            "preview"      to preview.take(150),
+            "steps_json"   to stepsJson,
+            "language_tag" to languageTag,
+            "step_count"   to stepCount,
+            "created_at"   to System.currentTimeMillis()
+        )
+        db.collection("bb_cache").document(docId)
+            .set(data, SetOptions.merge())
+            .addOnSuccessListener { onSuccess(docId) }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * Load a single BB lesson from the global library.
+     * Returns the raw Firestore data map (contains steps_json, topic, etc.)
+     */
+    fun loadBbLesson(
+        bbCacheId: String,
+        onSuccess: (Map<String, Any>) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (bbCacheId.isBlank()) { onFailure(null); return }
+        db.collection("bb_cache").document(bbCacheId)
+            .get()
+            .addOnSuccessListener { doc ->
+                if (doc.exists()) onSuccess(doc.data ?: emptyMap())
+                else onFailure(null)
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * List all BB lessons published by a teacher, newest first.
+     */
+    fun loadTeacherBbLessons(
+        teacherId: String,
+        onSuccess: (List<Map<String, Any>>) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (teacherId.isBlank()) { onSuccess(emptyList()); return }
+        db.collection("bb_cache")
+            .whereEqualTo("teacher_id", teacherId)
+            .orderBy("created_at", Query.Direction.DESCENDING)
+            .limit(50)
+            .get()
+            .addOnSuccessListener { snap ->
+                onSuccess(snap.documents.mapNotNull { doc ->
+                    doc.data?.toMutableMap()?.also { it["id"] = doc.id }
+                })
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    // ── Quiz Library ──────────────────────────────────────────────────────────
+    // Path: quizzes/{quizId}
+    // Teacher validates a quiz once; task references quiz_id, students load it.
+
+    /**
+     * Publish a validated quiz to the global quiz library.
+     * Returns the generated quiz ID via [onSuccess].
+     *
+     * @param questionsJson  Quiz.toTransferJson() output.
+     * @param bbCacheId      Optional ID linking this quiz to a BB lesson.
+     */
+    fun publishQuizToLibrary(
+        teacherId: String,
+        schoolId: String,
+        subject: String,
+        chapter: String,
+        title: String,
+        difficulty: String = "medium",
+        questionsJson: String,
+        bbCacheId: String = "",
+        questionCount: Int = 0,
+        existingId: String = "",
+        onSuccess: (quizId: String) -> Unit = {},
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (teacherId.isBlank()) { onFailure(null); return }
+        val docId = existingId.ifBlank { db.collection("quizzes").document().id }
+        val data = mutableMapOf<String, Any>(
+            "quiz_id"         to docId,
+            "teacher_id"      to teacherId,
+            "school_id"       to schoolId,
+            "subject"         to subject,
+            "chapter"         to chapter,
+            "title"           to title,
+            "difficulty"      to difficulty,
+            "questions_json"  to questionsJson,
+            "question_count"  to questionCount,
+            "created_at"      to System.currentTimeMillis()
+        )
+        if (bbCacheId.isNotBlank()) data["bb_cache_id"] = bbCacheId
+        db.collection("quizzes").document(docId)
+            .set(data, SetOptions.merge())
+            .addOnSuccessListener { onSuccess(docId) }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * Load a single quiz from the global library.
+     */
+    fun loadQuizFromLibrary(
+        quizId: String,
+        onSuccess: (Map<String, Any>) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (quizId.isBlank()) { onFailure(null); return }
+        db.collection("quizzes").document(quizId)
+            .get()
+            .addOnSuccessListener { doc ->
+                if (doc.exists()) onSuccess(doc.data ?: emptyMap())
+                else onFailure(null)
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * List all quizzes published by a teacher, newest first.
+     */
+    fun loadTeacherQuizzes(
+        teacherId: String,
+        onSuccess: (List<Map<String, Any>>) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (teacherId.isBlank()) { onSuccess(emptyList()); return }
+        db.collection("quizzes")
+            .whereEqualTo("teacher_id", teacherId)
+            .orderBy("created_at", Query.Direction.DESCENDING)
+            .limit(50)
+            .get()
+            .addOnSuccessListener { snap ->
+                onSuccess(snap.documents.mapNotNull { doc ->
+                    doc.data?.toMutableMap()?.also { it["id"] = doc.id }
+                })
             }
             .addOnFailureListener { onFailure(it) }
     }

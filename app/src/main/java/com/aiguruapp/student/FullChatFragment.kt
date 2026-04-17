@@ -42,6 +42,7 @@ import com.aiguruapp.student.chat.PageAnalyzer
 import com.aiguruapp.student.chat.ServerProxyClient
 import com.aiguruapp.student.config.AdminConfigRepository
 import com.aiguruapp.student.config.PlanEnforcer
+import com.aiguruapp.student.validators.ChatQuotaValidator
 import com.aiguruapp.student.firestore.FirestoreManager
 import com.aiguruapp.student.models.Flashcard
 import com.aiguruapp.student.models.Message
@@ -1210,42 +1211,48 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             return
         }
 
-        // Always refresh metadata AND plan limits from Firestore before the quota check.
-        // This means premium users always get their real limits even if plans weren't
-        // cached yet at startup (race condition fix).
-        FirestoreManager.getUserMetadata(userId, onSuccess = { freshMeta ->
-            if (freshMeta != null) {
-                // Preserve the local userId in case Firestore deserialization leaves it blank,
-                // so the in-memory quota counter (keyed by userId) stays aligned.
-                cachedMetadata = if (freshMeta.userId.isBlank()) freshMeta.copy(userId = userId) else freshMeta
-                android.util.Log.d(
-                    "FullChatFragment",
-                    "Meta refreshed before quota: chatAsked=${freshMeta.chatQuestionsToday} bbDone=${freshMeta.bbSessionsToday} questionsUpdatedAt=${freshMeta.questionsUpdatedAt}"
-                )
+        // Read usage counters directly from users_table (same approach as HomeActivity).
+        // Avoids toObject() deserialization issues — just raw field access.
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            .collection("users_table").document(userId)
+            .get()
+            .addOnSuccessListener { doc ->
+                if (doc.exists()) {
+                    val chatToday      = doc.getLong("chat_questions_today")?.toInt() ?: 0
+                    val bbToday        = doc.getLong("bb_sessions_today")?.toInt() ?: 0
+                    val updatedAt      = doc.getLong("questions_updated_at") ?: 0L
+                    val bonusToday     = doc.getLong("bonus_questions_today")?.toInt() ?: 0
+                    val planId         = doc.getString("planId") ?: cachedMetadata.planId
+                    // Patch only the usage fields into cachedMetadata so everything else stays
+                    cachedMetadata = cachedMetadata.copy(
+                        planId               = planId.ifBlank { cachedMetadata.planId },
+                        chatQuestionsToday   = chatToday,
+                        bbSessionsToday      = bbToday,
+                        questionsUpdatedAt   = updatedAt,
+                        bonusQuestionsToday  = bonusToday
+                    )
+                    android.util.Log.d("FullChatFragment",
+                        "Meta refreshed before quota: chatAsked=$chatToday bbDone=$bbToday questionsUpdatedAt=$updatedAt")
+                }
+                val effectivePlanId = cachedMetadata.planId
+                AdminConfigRepository.resolveEffectiveLimitsAsync(effectivePlanId, cachedMetadata.planLimits) { freshLimits ->
+                    android.util.Log.d("FullChatFragment",
+                        "Plan limits for $effectivePlanId: chat=${freshLimits.dailyChatQuestions} bb=${freshLimits.dailyBlackboardSessions}")
+                    proceedWithSendMessage(
+                        userText, autoSaveNotes, imageUri, capturedPdfBase64, capturedImageBase64,
+                        capturedDisplayUri, hadVisualAttachment, featureType, freshLimits
+                    )
+                }
             }
-            val effectivePlanId = cachedMetadata.planId
-            val effectiveOverride = cachedMetadata.planLimits
-            // Resolve limits async: fetches plan from Firestore if not in cache so premium
-            // users never see free-plan quota limits due to a cold-start cache miss.
-            AdminConfigRepository.resolveEffectiveLimitsAsync(effectivePlanId, effectiveOverride) { freshLimits ->
-                android.util.Log.d("FullChatFragment",
-                    "Plan limits for $effectivePlanId: chat=${freshLimits.dailyChatQuestions} bb=${freshLimits.dailyBlackboardSessions}")
-                // Now proceed with the actual message sending using refreshed metadata + limits
-                proceedWithSendMessage(
-                    userText, autoSaveNotes, imageUri, capturedPdfBase64, capturedImageBase64,
-                    capturedDisplayUri, hadVisualAttachment, featureType, freshLimits
-                )
+            .addOnFailureListener {
+                android.util.Log.w("FullChatFragment", "Meta refresh failed, proceeding with cached: ${it.message}")
+                AdminConfigRepository.resolveEffectiveLimitsAsync(cachedMetadata.planId, cachedMetadata.planLimits) { freshLimits ->
+                    proceedWithSendMessage(
+                        userText, autoSaveNotes, imageUri, capturedPdfBase64, capturedImageBase64,
+                        capturedDisplayUri, hadVisualAttachment, featureType, freshLimits
+                    )
+                }
             }
-        }, onFailure = {
-            android.util.Log.w("FullChatFragment", "Meta refresh failed, proceeding with cached: ${it?.message}")
-            // Resolve limits async even on metadata failure so plan limits are still correct
-            AdminConfigRepository.resolveEffectiveLimitsAsync(cachedMetadata.planId, cachedMetadata.planLimits) { freshLimits ->
-                proceedWithSendMessage(
-                    userText, autoSaveNotes, imageUri, capturedPdfBase64, capturedImageBase64,
-                    capturedDisplayUri, hadVisualAttachment, featureType, freshLimits
-                )
-            }
-        })
     }
 
     private fun proceedWithSendMessage(
@@ -1265,7 +1272,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         // GUEST QUOTA CHECK — if user is in guest mode
         if (com.aiguruapp.student.utils.SessionManager.isGuestMode(ctx)) {
             val deviceId = com.aiguruapp.student.utils.SessionManager.getDeviceId(ctx)
-            com.aiguruapp.student.config.PlanEnforcer.checkGuestQuota(deviceId, isBlackboard = false) { checkResult ->
+            ChatQuotaValidator.checkGuest(deviceId) { checkResult ->
                 if (!checkResult.allowed) {
                     selectedImageUri = imageUri
                     pdfPageBase64 = capturedPdfBase64
@@ -1279,7 +1286,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                                 .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                         )
                     }, 1500)
-                    return@checkGuestQuota
+                    return@checkGuest
                 }
                 // Guest quota OK, proceed with sending
                 proceedWithMessageSendAfterQuotaCheck(
@@ -1291,7 +1298,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         }
 
         // REGULAR QUOTA CHECK — for logged-in users
-        val questionCheck = PlanEnforcer.checkQuestionsQuota(cachedMetadata, effectiveLimits, isBlackboard = false)
+        val questionCheck = ChatQuotaValidator.check(cachedMetadata, effectiveLimits)
         if (!questionCheck.allowed) {
             selectedImageUri = imageUri
             pdfPageBase64 = capturedPdfBase64
