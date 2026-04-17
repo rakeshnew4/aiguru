@@ -494,14 +494,20 @@ def _render_shape(el: dict, delay: float) -> tuple[str, float]:
 # ── Structured diagram renderers (Python-generated coordinates) ───────────────
 
 def _render_triangle(data: dict) -> list:
-    """Fixed-position equilateral-ish triangle with vertex labels."""
+    """Fixed-position equilateral-ish triangle with vertex labels.
+    Supports:
+      show_height   → altitude from A to BC with right-angle marker
+      show_incircle → inscribed circle touching all 3 sides (incircle)
+      show_circumcircle → circumscribed circle passing through all vertices
+      show_median   → median from A to midpoint of BC
+    """
     labels = data.get("labels") or ["A", "B", "C"]
     while len(labels) < 3:
         labels.append("")
 
-    A = (200, 55)
-    B = (90,  235)
-    C = (310, 235)
+    A = (200.0, 55.0)
+    B = (90.0,  235.0)
+    C = (310.0, 235.0)
 
     shapes = [
         {"shape": "line", "x1": A[0], "y1": A[1], "x2": B[0], "y2": B[1], "color": "highlight", "animation_stage": 0},
@@ -514,13 +520,76 @@ def _render_triangle(data: dict) -> list:
         {"shape": "text", "x": B[0] - 18, "y": B[1] + 18, "value": labels[1], "color": "label", "bold": True, "size": 15, "animation_stage": 1},
         {"shape": "text", "x": C[0] + 18, "y": C[1] + 18, "value": labels[2], "color": "label", "bold": True, "size": 15, "animation_stage": 1},
     ]
+
+    # ── Side lengths (for incircle / circumcircle calculations) ──────────────
+    a = math.sqrt((C[0]-B[0])**2 + (C[1]-B[1])**2)   # BC (opposite A)
+    b = math.sqrt((A[0]-C[0])**2 + (A[1]-C[1])**2)   # CA (opposite B)
+    c = math.sqrt((B[0]-A[0])**2 + (B[1]-A[1])**2)   # AB (opposite C)
+    perim = a + b + c
+    s     = perim / 2  # semi-perimeter
+    area  = abs((B[0]-A[0])*(C[1]-A[1]) - (C[0]-A[0])*(B[1]-A[1])) / 2
+
     if data.get("show_height"):
         foot = (A[0], B[1])
         shapes += [
             {"shape": "dashed_line", "x1": A[0], "y1": A[1], "x2": foot[0], "y2": foot[1], "color": "secondary", "animation_stage": 2},
             {"shape": "angle_arc",   "cx": foot[0], "cy": foot[1], "r": 12, "angle_deg": 90, "rotation_deg": 0, "color": "secondary", "animation_stage": 2},
-            {"shape": "text",        "x": A[0] + 16, "y": (A[1] + foot[1]) // 2, "value": "h", "color": "secondary", "bold": True, "animation_stage": 2},
+            {"shape": "text",        "x": A[0] + 16, "y": (A[1] + foot[1]) / 2, "value": "h", "color": "secondary", "bold": True, "animation_stage": 2},
         ]
+
+    if data.get("show_incircle"):
+        # Incenter = weighted average of vertices by opposite side length
+        ix = (a * A[0] + b * B[0] + c * C[0]) / perim
+        iy = (a * A[1] + b * B[1] + c * C[1]) / perim
+        # Inradius = Area / semi-perimeter
+        ir = area / s
+        shapes += [
+            # The inscribed circle
+            {"shape": "circle", "cx": round(ix, 1), "cy": round(iy, 1),
+             "r": round(ir, 1), "color": "secondary", "fill_color": "secondary",
+             "animation_stage": 2},
+            # Mark the incentre I
+            {"shape": "dot", "cx": round(ix, 1), "cy": round(iy, 1),
+             "r": 4, "color": "highlight", "animation_stage": 3},
+            {"shape": "text", "x": round(ix, 1) + 12, "y": round(iy, 1) - 10,
+             "value": "I", "color": "highlight", "bold": True, "size": 14,
+             "animation_stage": 3},
+            {"shape": "text", "x": round(ix, 1), "y": round(iy, 1) + ir + 16,
+             "value": f"r = {ir:.0f}", "color": "label", "size": 11,
+             "anchor": "middle", "animation_stage": 3},
+        ]
+
+    if data.get("show_circumcircle"):
+        # Circumcentre via perpendicular bisectors
+        ax, ay = A; bx, by = B; cx2, cy2 = C
+        d_val = 2 * (ax*(by - cy2) + bx*(cy2 - ay) + cx2*(ay - by))
+        if abs(d_val) > 0.01:
+            ux = ((ax**2+ay**2)*(by-cy2) + (bx**2+by**2)*(cy2-ay) + (cx2**2+cy2**2)*(ay-by)) / d_val
+            uy = ((ax**2+ay**2)*(cx2-bx) + (bx**2+by**2)*(ax-cx2) + (cx2**2+cy2**2)*(bx-ax)) / d_val
+            ur = math.sqrt((ax-ux)**2 + (ay-uy)**2)
+            shapes += [
+                {"shape": "circle", "cx": round(ux,1), "cy": round(uy,1),
+                 "r": round(ur,1), "color": "dim", "animation_stage": 2},
+                {"shape": "dot",   "cx": round(ux,1), "cy": round(uy,1),
+                 "r": 4, "color": "secondary", "animation_stage": 3},
+                {"shape": "text",  "x": round(ux,1)+12, "y": round(uy,1)-8,
+                 "value": "O", "color": "secondary", "bold": True, "size": 13,
+                 "animation_stage": 3},
+            ]
+
+    if data.get("show_median"):
+        # Median from A to midpoint M of BC
+        mx = (B[0] + C[0]) / 2
+        my = (B[1] + C[1]) / 2
+        shapes += [
+            {"shape": "dashed_line", "x1": A[0], "y1": A[1], "x2": mx, "y2": my,
+             "color": "label", "animation_stage": 2},
+            {"shape": "dot", "cx": mx, "cy": my, "r": 4,
+             "color": "label", "animation_stage": 2},
+            {"shape": "text", "x": mx + 12, "y": my + 6, "value": "M",
+             "color": "label", "bold": True, "size": 13, "animation_stage": 3},
+        ]
+
     return shapes
 
 

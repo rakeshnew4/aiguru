@@ -47,6 +47,10 @@ Available diagram types:
 - comparison   → differences between two things (e.g. "difference between X and Y")
 - line_graph   → trends / graphs (e.g. "how population grows", "speed vs time")
 - triangle     → geometry with three vertices
+                  • set show_incircle=true for "incircle / inscribed circle / inradius"
+                  • set show_circumcircle=true for "circumcircle / circumscribed"
+                  • set show_height=true for "altitude / height of triangle"
+                  • set show_median=true for "median"
 - circle_radius → circle with radius labelled
 - rectangle_area → area of a rectangle
 
@@ -66,7 +70,9 @@ cycle:          { "steps": ["Stage 1", "Stage 2", ...] }         ← max 6, idea
 comparison:     { "left": "A", "right": "B",
                   "left_points": ["point 1", ...],
                   "right_points": ["point 1", ...] }              ← max 4 points each
-triangle:       { "labels": ["A", "B", "C"], "show_height": false }
+triangle:       { "labels": ["A", "B", "C"],
+                  "show_height": false, "show_incircle": false,
+                  "show_circumcircle": false, "show_median": false }
 circle_radius:  { "radius": 60, "label": "r" }
 rectangle_area: { "width": 120, "height": 70 }
 line_graph:     { "points": [[0,0],[1,2],[2,4]], "x_label": "x", "y_label": "y" }
@@ -96,7 +102,12 @@ _KEYWORD_RULES: list[tuple[str, list[str]]] = [
     ("line_graph",     ["graph", "plot", "plotted", "trend", "increase over",
                         "decrease over", "speed vs", "time vs", "growth rate"]),
     ("circle_radius",  ["radius", "diameter", "circumference of a circle"]),
-    ("triangle",       ["triangle", "equilateral", "isosceles", "scalene", "right angle triangle"]),
+    # triangle sub-types must come BEFORE generic "triangle"
+    ("triangle",       ["incircle", "inscribed circle", "in-circle",
+                        "circumcircle", "circumscribed circle",
+                        "median of", "altitude of",
+                        "triangle", "equilateral", "isosceles", "scalene",
+                        "right angle triangle", "right-angle triangle"]),
     ("rectangle_area", ["area of a rectangle", "area of rectangle", "perimeter of rectangle",
                         "length and breadth"]),
     ("cycle",          ["cycle"]),    # generic "cycle" fallback after specific ones
@@ -135,6 +146,17 @@ def _auto_detect(question: str) -> Optional[str]:
             if kw in q:
                 return dtype
     return None
+
+
+def _triangle_flags_from_question(question: str) -> dict:
+    """Return extra boolean flags for the triangle renderer based on keywords."""
+    q = question.lower()
+    return {
+        "show_incircle":      any(k in q for k in ["incircle", "inscribed circle", "in-circle", "inradius"]),
+        "show_circumcircle":  any(k in q for k in ["circumcircle", "circumscribed", "circumradius"]),
+        "show_height":        any(k in q for k in ["altitude", "height of", "perpendicular height"]),
+        "show_median":        any(k in q for k in ["median", "midpoint"]),
+    }
 
 
 def _auto_data_for_cycle(question: str) -> dict:
@@ -182,7 +204,13 @@ def _sanitise_data(dtype: str, data: dict) -> dict:
         labels = [str(l)[:6] for l in (data.get("labels") or ["A", "B", "C"])][:3]
         while len(labels) < 3:
             labels.append("")
-        return {"labels": labels, "show_height": bool(data.get("show_height", False))}
+        return {
+            "labels":             labels,
+            "show_height":        bool(data.get("show_height",       False)),
+            "show_incircle":      bool(data.get("show_incircle",     False)),
+            "show_circumcircle":  bool(data.get("show_circumcircle", False)),
+            "show_median":        bool(data.get("show_median",       False)),
+        }
 
     if dtype == "circle_radius":
         try:
@@ -273,6 +301,9 @@ def generate_diagram(question: str) -> dict:
         # Build data without an LLM call for known patterns
         if detected_type == "cycle":
             data = _auto_data_for_cycle(question)
+        elif detected_type == "triangle":
+            data = _DEFAULT_DATA["triangle"].copy()
+            data.update(_triangle_flags_from_question(question))
         else:
             data = _DEFAULT_DATA.get(detected_type, {}).copy()
         explanation   = ""
