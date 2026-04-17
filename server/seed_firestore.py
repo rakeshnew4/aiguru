@@ -607,3 +607,71 @@ if __name__ == "__main__":
     seed_single("admin_config", "global", ADMIN_CONFIG_GLOBAL)
 
     print("\n✅  Done — all collections seeded successfully.")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SAVED BB SESSION STRUCTURE
+# ══════════════════════════════════════════════════════════════════════════════
+# Path: users/{userId}/saved_bb_sessions_flat/{sessionId}
+#
+# The Android app writes this document via FirestoreManager.saveBbSession().
+# On replay, BlackboardActivity reads `steps_json` to restore the lesson
+# WITHOUT any LLM call — pure Firestore fetch.
+#
+# Example document (for reference / manual test data seeding):
+#
+#   SAMPLE_SAVED_SESSION = {
+#       "session_id":      "conv123_1713000000000",
+#       "message_id":      "msg456",
+#       "conversation_id": "conv123",
+#       "topic":           "What is photosynthesis?",
+#       "subject":         "General",
+#       "chapter":         "General Chat",
+#       "step_count":      3,
+#       "preview":         "What is photosynthesis?",
+#       "saved_at":        1713000000000,           # epoch ms
+#       "tts_keys":        [],
+#       "steps_json":      '[{"title":"Intro","frames":[{"text":"Photosynthesis ...","speech":"...","frame_type":"concept","tts_engine":"android","voice_role":"narrator","highlight":[],"duration_ms":2000,"quiz_answer":"","quiz_options":[],"quiz_correct_index":-1,"quiz_model_answer":"","quiz_keywords":[],"fill_blanks":[],"quiz_correct_order":[],"svg_html":""}],"lang":"en-US","image_description":"","image_show_confidencescore":0.0}]'
+#   }
+#
+# To seed a test session for user UID manually, call:
+#
+#   def seed_test_saved_session(user_uid: str) -> None:
+#       import json, time, uuid
+#       session_id = f"{uuid.uuid4()}_{int(time.time() * 1000)}"
+#       steps_json = json.dumps([{
+#           "title": "What is Photosynthesis?",
+#           "lang": "en-US",
+#           "image_description": "",
+#           "image_show_confidencescore": 0.0,
+#           "frames": [{
+#               "text": "Photosynthesis is how plants make food using sunlight.",
+#               "speech": "Photosynthesis is how plants make food using sunlight.",
+#               "frame_type": "concept",
+#               "tts_engine": "android",
+#               "voice_role": "narrator",
+#               "highlight": ["plants", "sunlight"],
+#               "duration_ms": 3000,
+#               "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1,
+#               "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [],
+#               "quiz_correct_order": [], "svg_html": ""
+#           }]
+#       }])
+#       data = {
+#           "session_id": session_id,
+#           "message_id": "",
+#           "conversation_id": "",
+#           "topic": "What is Photosynthesis?",
+#           "subject": "General",
+#           "chapter": "General Chat",
+#           "step_count": 1,
+#           "preview": "What is Photosynthesis?",
+#           "saved_at": int(time.time() * 1000),
+#           "tts_keys": [],
+#           "steps_json": steps_json,
+#       }
+#       db.collection("users").document(user_uid)\
+#         .collection("saved_bb_sessions_flat").document(session_id)\
+#         .set(data)
+#       print(f"  ✓  Seeded saved session {session_id} for user {user_uid}")
+

@@ -23,6 +23,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.aiguruapp.student.adapters.SubjectAdapter
 import com.aiguruapp.student.BlackboardActivity
 import com.aiguruapp.student.BuildConfig
+import com.aiguruapp.student.chat.BlackboardGenerator
 import com.aiguruapp.student.config.AccessGate
 import com.aiguruapp.student.config.AccessGate.Feature
 import com.aiguruapp.student.config.AdminConfigRepository
@@ -607,30 +608,107 @@ class HomeActivity : BaseActivity() {
                 )
             }
 
-        // 📋 My Tasks — secondary
-        AccessGate.applyVisibility(this, findViewById(R.id.quickActionTasksBtn), Feature.TASKS)
+        // � Saved Sessions — always visible, no gate needed
         findViewById<com.google.android.material.card.MaterialCardView>(R.id.quickActionTasksBtn)
             ?.setOnClickListener {
-                startActivity(Intent(this, TasksActivity::class.java))
+                startActivity(
+                    Intent(this, BbSavedSessionsActivity::class.java)
+                        .putExtra(BbSavedSessionsActivity.EXTRA_SUBJECT, "General")
+                        .putExtra(BbSavedSessionsActivity.EXTRA_CHAPTER, "General Chat")
+                )
             }
 
         // Progress lives in the drawer — the stub View just satisfies AccessGate
         AccessGate.applyVisibility(this, findViewById(R.id.quickActionProgressBtn), Feature.PROGRESS_DASHBOARD)
+
+        // 🔢 Calculator FAB — opens the floating calculator inherited from BaseActivity
+        findViewById<com.google.android.material.card.MaterialCardView?>(R.id.calcFab)
+            ?.setOnClickListener { showCalculator() }
     }
 
     /** Shows a topic-input dialog then launches BB mode with that topic as the message. */
     private fun showBbTopicDialog() {
-        val input = android.widget.EditText(this).apply {
-            hint = "e.g. Explain Photosynthesis, What is Newton's 3rd law…"
-            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
-            setPadding(48, 32, 48, 16)
+        val labels   = BlackboardGenerator.BbDuration.labels
+        var selectedDurationLabel = BlackboardGenerator.BbDuration.MIN_2.label
+
+        // ── Root layout ────────────────────────────────────────────────────
+        val root = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(48, 40, 48, 24)
         }
+
+        // Topic input
+        val topicHint = android.widget.TextView(this).apply {
+            text = "What do you want to learn?"
+            textSize = 13f
+            setTextColor(android.graphics.Color.parseColor("#AABBCC"))
+            setPadding(0, 0, 0, 8)
+        }
+        val topicInput = android.widget.EditText(this).apply {
+            hint = "e.g. Explain Photosynthesis, Newton's 3rd law…"
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                        android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            setPadding(24, 20, 24, 20)
+            maxLines = 3
+        }
+        root.addView(topicHint)
+        root.addView(topicInput)
+
+        // Session duration label
+        val durationLabel = android.widget.TextView(this).apply {
+            text = "Session length"
+            textSize = 13f
+            setTextColor(android.graphics.Color.parseColor("#AABBCC"))
+            setPadding(0, 24, 0, 8)
+        }
+        root.addView(durationLabel)
+
+        // Duration chips in a horizontal scroll
+        val chipScroll = android.widget.HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+        }
+        val chipRow = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+        }
+        val chipViews = labels.map { label ->
+            android.widget.TextView(this).apply {
+                text = label
+                textSize = 13f
+                setPadding(28, 16, 28, 16)
+                val isSelected = label == selectedDurationLabel
+                setBackgroundColor(
+                    if (isSelected) android.graphics.Color.parseColor("#4466BB")
+                    else android.graphics.Color.parseColor("#22334A")
+                )
+                setTextColor(android.graphics.Color.WHITE)
+                val lp = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                lp.setMargins(0, 0, 12, 0)
+                layoutParams = lp
+            }
+        }
+        chipViews.forEachIndexed { idx, chip ->
+            chip.setOnClickListener {
+                selectedDurationLabel = labels[idx]
+                chipViews.forEach { c ->
+                    c.setBackgroundColor(
+                        if (c.text == selectedDurationLabel) android.graphics.Color.parseColor("#4466BB")
+                        else android.graphics.Color.parseColor("#22334A")
+                    )
+                }
+            }
+            chipRow.addView(chip)
+        }
+        chipScroll.addView(chipRow)
+        root.addView(chipScroll)
+
         android.app.AlertDialog.Builder(this)
-            .setTitle("🎓 What do you want to learn?")
-            .setMessage("Describe any topic and Blackboard Mode will create an animated visual lesson for you.")
-            .setView(input)
+            .setTitle("🎓 Start a Blackboard Lesson")
+            .setView(root)
             .setPositiveButton("Start Lesson") { _, _ ->
-                val topic = input.text.toString().trim()
+                val topic = topicInput.text.toString().trim()
                 if (topic.isBlank()) {
                     Toast.makeText(this, "Please enter a topic first", Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
@@ -639,10 +717,11 @@ class HomeActivity : BaseActivity() {
                 val lang = SessionManager.getPreferredLang(this).ifBlank { "en-US" }
                 startActivity(
                     Intent(this, BlackboardActivity::class.java)
-                        .putExtra(BlackboardActivity.EXTRA_MESSAGE, topic)
-                        .putExtra(BlackboardActivity.EXTRA_SUBJECT, "General")
-                        .putExtra(BlackboardActivity.EXTRA_CHAPTER, "General")
-                        .putExtra(BlackboardActivity.EXTRA_USER_ID, uid)
+                        .putExtra(BlackboardActivity.EXTRA_MESSAGE,  topic)
+                        .putExtra(BlackboardActivity.EXTRA_DURATION, selectedDurationLabel)
+                        .putExtra(BlackboardActivity.EXTRA_SUBJECT,  "General")
+                        .putExtra(BlackboardActivity.EXTRA_CHAPTER,  "General")
+                        .putExtra(BlackboardActivity.EXTRA_USER_ID,  uid)
                         .putExtra(BlackboardActivity.EXTRA_LANGUAGE_TAG, lang)
                 )
             }
@@ -742,7 +821,7 @@ class HomeActivity : BaseActivity() {
                     header?.apply {
                         visibility = android.view.View.VISIBLE
                         alpha = 0f
-                        animate().alpha(1f).setDuration(400).start()
+                        animate().alpha(1f).setDuration(300).start()
                     }
                     offers.forEachIndexed { index, offer ->
                         val card = buildOfferCard(offer)
@@ -756,12 +835,12 @@ class HomeActivity : BaseActivity() {
                             .scaleX(1.05f).scaleY(1.05f)
                             .alpha(1f)
                             .setStartDelay(100L * index)
-                            .setDuration(280)
+                            .setDuration(1000)
                             .setInterpolator(android.view.animation.DecelerateInterpolator())
                             .withEndAction {
                                 card.animate()
                                     .scaleX(1f).scaleY(1f)
-                                    .setDuration(120)
+                                    .setDuration(1000)
                                     .setInterpolator(android.view.animation.OvershootInterpolator(1.5f))
                                     .start()
                             }
@@ -795,7 +874,7 @@ class HomeActivity : BaseActivity() {
                 if (!scroll.isAttachedToWindow) return
                 val maxScroll = container.width - scroll.width
                 if (maxScroll <= 0) return   // all cards fit, no need to scroll
-                // Advance by ~270dp then wrap
+                // Advance by ~350dp then wrap
                 val cardWidthPx = (270 * resources.displayMetrics.density).toInt()
                 targetX += cardWidthPx
                 if (targetX > maxScroll) targetX = 0
@@ -828,8 +907,8 @@ class HomeActivity : BaseActivity() {
         // Card with glowing stroke
         val card = com.google.android.material.card.MaterialCardView(ctx).apply {
             layoutParams = android.widget.LinearLayout.LayoutParams(
-                (268 * resources.displayMetrics.density).toInt(),
-                (104 * resources.displayMetrics.density).toInt()
+                (300 * resources.displayMetrics.density).toInt(),
+                (72 * resources.displayMetrics.density).toInt()
             ).also { it.marginEnd = (10 * resources.displayMetrics.density).toInt() }
             radius = 16 * resources.displayMetrics.density
             cardElevation = 6 * resources.displayMetrics.density

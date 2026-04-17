@@ -753,6 +753,7 @@ object FirestoreManager {
         topic: String,
         stepCount: Int,
         ttsKeys: List<String> = emptyList(),
+        stepsJson: String = "",
         onSuccess: () -> Unit = {},
         onFailure: (Exception?) -> Unit = {}
     ) {
@@ -768,7 +769,8 @@ object FirestoreManager {
             "step_count"      to stepCount,
             "preview"         to preview,
             "saved_at"        to System.currentTimeMillis(),
-            "tts_keys"        to ttsKeys
+            "tts_keys"        to ttsKeys,
+            "steps_json"      to stepsJson
         )
         usersRef(userId)
             .collection("subjects").document(safeId(subject))

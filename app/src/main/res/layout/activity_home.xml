@@ -38,32 +38,6 @@
             android:textColor="#FFFFFF"
             android:background="@android:color/transparent" />
 
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="AI Guru"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"
-            android:paddingStart="4dp" />
-
-        <TextView
-            android:id="@+id/planBadgeText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="📋 Free"
-            android:textColor="#FFFFFF"
-            android:textSize="10sp"
-            android:textStyle="bold"
-            android:background="@drawable/bg_badge_rounded"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp"
-            android:layout_marginEnd="10dp"
-            android:visibility="gone" />
-
         <ImageView
             android:id="@+id/schoolLogoImage"
             android:layout_width="28dp"
@@ -72,6 +46,55 @@
             android:background="@drawable/bg_avatar_circle"
             android:contentDescription="School logo"
             android:scaleType="centerCrop"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/schoolNameSubtitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🏫 School"
+            android:textColor="#FFFFFFBB"
+            android:textSize="12sp"
+            android:singleLine="true"
+            android:ellipsize="end" />
+
+        <!-- Language selector — compact, profile-level setting -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/langChipButton"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:text="🌐 EN"
+            android:textAllCaps="false"
+            android:textSize="11sp"
+            android:textColor="#FFFFFF"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            app:backgroundTint="#2A2A4A"
+            app:strokeColor="#44FFFFFF"
+            app:strokeWidth="1dp"
+            app:cornerRadius="14dp"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:layout_marginEnd="8dp" />
+
+        <!-- Plan badge — shown beside profile pic -->
+        <TextView
+            android:id="@+id/planBadgeText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Free"
+            android:textColor="#FFFFFF"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:background="@drawable/bg_badge_rounded"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:layout_marginEnd="8dp"
             android:visibility="gone" />
 
         <TextView
@@ -86,7 +109,7 @@
 
     </LinearLayout>
 
-    <!-- ── Hero greeting — gets school branding color from code ── -->
+    <!-- ── Hero header — student name + school name (no greeting) ── -->
     <LinearLayout
         android:id="@+id/homeHeader"
         android:layout_width="match_parent"
@@ -95,16 +118,8 @@
         android:background="@color/colorPrimary"
         android:paddingStart="20dp"
         android:paddingEnd="20dp"
-        android:paddingTop="14dp"
-        android:paddingBottom="20dp">
-
-        <TextView
-            android:id="@+id/greetingText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Good morning ☀️"
-            android:textColor="#FFFFFFCC"
-            android:textSize="13sp" />
+        android:paddingTop="12dp"
+        android:paddingBottom="14dp">
 
         <TextView
             android:id="@+id/userNameText"
@@ -112,29 +127,18 @@
             android:layout_height="wrap_content"
             android:text="Student"
             android:textColor="#FFFFFF"
-            android:textSize="23sp"
-            android:textStyle="bold"
-            android:layout_marginTop="2dp" />
+            android:textSize="20sp"
+            android:textStyle="bold" />
 
+        <!-- Hidden stub — greeting removed but ID kept for Kotlin compat -->
         <TextView
-            android:id="@+id/schoolNameSubtitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="🏫 School"
-            android:textColor="#FFFFFFBB"
-            android:textSize="12sp"
-            android:layout_marginTop="4dp" />
-
-        <!-- BB nudge tag line -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Your personal AI teacher is ready 🎓"
-            android:textColor="#FFFFFFBB"
-            android:textSize="12sp"
-            android:layout_marginTop="6dp" />
+            android:id="@+id/greetingText"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
 
     </LinearLayout>
+
 
     <!-- ── Primary CTA: Blackboard ── -->
     <LinearLayout
@@ -245,13 +249,13 @@
                 android:focusable="true"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="3dp"
-                app:cardBackgroundColor="#1B3A2F"
+                app:cardBackgroundColor="#2D1B69"
                 app:rippleColor="#33FFFFFF">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="14dp" android:paddingEnd="14dp">
-                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="📋" android:textSize="24sp" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="📚" android:textSize="24sp" />
                     <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical" android:paddingStart="10dp">
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="My Tasks" android:textSize="13sp" android:textStyle="bold" android:textColor="#FFFFFF" />
-                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Assignments" android:textSize="10sp" android:textColor="#FFFFFFAA" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Saved Sessions" android:textSize="13sp" android:textStyle="bold" android:textColor="#FFFFFF" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="View history" android:textSize="10sp" android:textColor="#FFFFFFAA" />
                     </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
@@ -259,9 +263,15 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- quickActionProgressBtn kept as a hidden stub so AccessGate.applyVisibility doesn't crash -->
+    <!-- quickActionProgressBtn + generalChatButton: hidden stubs — IDs referenced in Kotlin -->
     <View
         android:id="@+id/quickActionProgressBtn"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/generalChatButton"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:visibility="gone" />
@@ -305,207 +315,170 @@
 
     </LinearLayout>
 
-    <!-- ── Language chip ── -->
-    <HorizontalScrollView
+    <!-- ── Something Interesting banner — compact, shown when data arrives ── -->
+    <LinearLayout
+        android:id="@+id/offersSectionHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:scrollbars="none"
-        android:background="@color/colorSurface"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
         android:paddingTop="8dp"
-        android:paddingBottom="8dp">
-        <LinearLayout
+        android:paddingBottom="2dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🔥 Something Interesting"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="@color/colorTextPrimary" />
+
+        <TextView
+            android:id="@+id/offersLiveIndicator"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp">
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/langChipButton"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:text="🌐 English"
-                android:textAllCaps="false"
-                android:textSize="13sp"
-                android:textColor="@color/colorTextSecondary"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                app:backgroundTint="@color/colorBackground"
-                app:strokeColor="@color/colorDivider"
-                app:strokeWidth="1dp"
-                app:cornerRadius="18dp"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp" />
-        </LinearLayout>
-    </HorizontalScrollView>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:orientation="vertical"
-        android:background="@color/colorBackground">
-
-        <!-- ── Offers / Announcements banner ──────────────────────────── -->
-        <LinearLayout
-            android:id="@+id/offersSectionHeader"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:paddingTop="14dp"
-            android:paddingBottom="2dp"
-            android:visibility="gone">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="🔥 Something Interesting"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:textColor="#1A237E" />
-
-            <TextView
-                android:id="@+id/offersLiveIndicator"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="● LIVE"
-                android:textSize="10sp"
-                android:textStyle="bold"
-                android:textColor="#E53935"
-                android:background="@android:color/transparent" />
-
-        </LinearLayout>
-
-        <HorizontalScrollView
-            android:id="@+id/offersBannerScroll"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:scrollbars="none"
-            android:paddingStart="16dp"
-            android:paddingEnd="8dp"
-            android:paddingTop="14dp"
-            android:paddingBottom="4dp"
-            android:clipToPadding="false"
-            android:visibility="gone">
-
-            <LinearLayout
-                android:id="@+id/offersBannerContainer"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal" />
-
-        </HorizontalScrollView>
-
-        <!-- ── "My Subjects" header ──────────────────────────────────── -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingStart="20dp"
-            android:paddingEnd="16dp"
-            android:paddingTop="18dp"
-            android:paddingBottom="8dp">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="My Subjects"
-                android:textSize="17sp"
-                android:textStyle="bold"
-                android:textColor="@color/colorTextPrimary" />
-
-            <TextView
-                android:id="@+id/subjectCountText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0"
-                android:textSize="12sp"
-                android:textColor="#FFFFFF"
-                android:background="@drawable/bg_badge_rounded"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp"
-                android:layout_marginEnd="8dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/addSubjectButton"
-                android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:text="+ Add"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:textColor="#FFFFFF"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                app:backgroundTint="@color/colorPrimary"
-                app:cornerRadius="17dp"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp" />
-
-        </LinearLayout>
-
-
-        
-        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
-            android:id="@+id/homeSwipeRefresh"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1">
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/subjectsRecyclerView"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:background="#FFFFFF"
-                android:paddingBottom="8dp"
-                android:clipToPadding="false" />
-
-        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-        <!-- ── Quick Chat button (bottom) ──────────────────────────────── -->
-        <FrameLayout
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:paddingStart="20dp"
-            android:paddingEnd="20dp"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp">
-
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                app:rippleColor="#33FFFFFF"
-                app:cardCornerRadius="28dp"
-                app:cardElevation="10dp"
-                app:cardBackgroundColor="#1A1A2E">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/generalChatButton"
-                    android:layout_width="379dp"
-                    android:layout_height="match_parent"
-                    android:background="@android:color/transparent"
-                    android:gravity="center"
-                    android:text="✨ Ask AI - Lessons(BB) &amp; More"
-                    android:textAllCaps="false"
-                    android:textColor="#FFFFFF"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-
-            </com.google.android.material.card.MaterialCardView>
-
-        </FrameLayout>
+            android:text="● LIVE"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            android:textColor="#E53935"
+            android:background="@android:color/transparent" />
 
     </LinearLayout>
-    <!-- end layout_weight=1 content area -->
+
+    <HorizontalScrollView
+        android:id="@+id/offersBannerScroll"
+        android:layout_width="400dp"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:paddingStart="16dp"
+        android:paddingEnd="15dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="6dp"
+        android:clipToPadding="false"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/offersBannerContainer"
+            android:layout_width="400dp"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" />
+
+    </HorizontalScrollView>
+
+    <!-- ── Main area: subjects list with floating calculator button ── -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:background="@color/colorBackground">
+
+            <!-- ── My Subjects header ──────────────────────────────── -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="20dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="My Subjects"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorTextPrimary" />
+
+                <TextView
+                    android:id="@+id/subjectCountText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0"
+                    android:textSize="12sp"
+                    android:textColor="#FFFFFF"
+                    android:background="@drawable/bg_badge_rounded"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:paddingTop="3dp"
+                    android:paddingBottom="3dp"
+                    android:layout_marginEnd="8dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/addSubjectButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:text="+ Add"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF"
+                    android:minWidth="0dp"
+                    android:minHeight="0dp"
+                    app:backgroundTint="@color/colorPrimary"
+                    app:cornerRadius="17dp"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="14dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp" />
+
+            </LinearLayout>
+
+            <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+                android:id="@+id/homeSwipeRefresh"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/subjectsRecyclerView"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:background="#FFFFFF"
+                    android:paddingBottom="72dp"
+                    android:clipToPadding="false" />
+
+            </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+        </LinearLayout>
+        <!-- end inner LinearLayout -->
+
+        <!-- ── Floating Calculator button ── -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/calcFab"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="20dp"
+            android:clickable="true"
+            android:focusable="true"
+            app:cardCornerRadius="26dp"
+            app:cardElevation="8dp"
+            app:cardBackgroundColor="#1565C0"
+            app:rippleColor="#33FFFFFF">
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:text="🔢"
+                android:textSize="22sp" />
+        </com.google.android.material.card.MaterialCardView>
+
+    </FrameLayout>
+    <!-- end FrameLayout wrapper -->
 
 </LinearLayout>
 <!-- end main content -->

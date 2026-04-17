@@ -133,10 +133,10 @@ object AccessGate {
             { role, _ -> role != Role.GUEST }
         ),
 
-        // ── Authenticated student without a school (also show to guests so they can register) ───
+        // ── Always visible — any signed-in user can join or change their school ───
         JOIN_SCHOOL(
-            "join_school", "Join a School",
-            { role, _ -> role == Role.STUDENT || role == Role.GUEST }
+            "join_school", "Join / Change School",
+            { _, _ -> true }
         ),
 
         // ── Available to everyone ─────────────────────────────────────────────

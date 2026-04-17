@@ -87,6 +87,14 @@ class BlackboardActivity : AppCompatActivity() {
          * Used for teacher-assigned tasks so every student shares the same cached lesson.
          */
         const val EXTRA_BB_CACHE_ID     = "extra_bb_cache_id"
+        /**
+         * Saved session ID from [saved_bb_sessions_flat/{id}].
+         * When set together with [EXTRA_IS_REPLAY], the lesson is loaded directly from the
+         * saved session document (steps_json field) — no LLM call, no quota consumed.
+         */
+        const val EXTRA_SESSION_ID      = "extra_session_id"
+        /** BbDuration label string, e.g. "2 min". Determines totalSteps & framesPerStep. */
+        const val EXTRA_DURATION        = "extra_duration"
     }
 
     // ── Views ─────────────────────────────────────────────────────────────────
@@ -141,6 +149,14 @@ class BlackboardActivity : AppCompatActivity() {
 
     // Cached user metadata for quota checks
     private var cachedMetadata = UserMetadata()
+
+    // ── Progressive generation state ───────────────────────────────────────────
+    private var bbDuration          = BlackboardGenerator.BbDuration.MIN_2
+    private var totalStepsTarget    = BlackboardGenerator.BbDuration.MIN_2.totalSteps
+    private var framesPerStepTarget = BlackboardGenerator.BbDuration.MIN_2.framesPerStep
+    private var bbIntent: BlackboardGenerator.BlackboardIntent? = null
+    private var isGeneratingNextChunk = false
+    private var currentTopic        = ""
 
     // ── Interactive quiz score tracking ────────────────────────────────────────
     private var quizTotal       = 0
@@ -280,6 +296,13 @@ class BlackboardActivity : AppCompatActivity() {
         preferredLanguageTag = sessionLang.ifBlank { intentLang }
         tts.setLocale(Locale.forLanguageTag(preferredLanguageTag))
 
+        // Read session duration chosen in the launch sheet
+        val durationLabel = intent.getStringExtra(EXTRA_DURATION) ?: ""
+        bbDuration = BlackboardGenerator.BbDuration.fromLabel(durationLabel) ?: BlackboardGenerator.BbDuration.MIN_2
+        totalStepsTarget    = bbDuration.totalSteps
+        framesPerStepTarget = bbDuration.framesPerStep
+        currentTopic = intent.getStringExtra(EXTRA_MESSAGE) ?: ""
+
         val userId = intent.getStringExtra(EXTRA_USER_ID)
         AdminConfigRepository.fetchIfStale { _ ->
             // Wire the server URL for AI TTS as soon as config is loaded
@@ -331,6 +354,14 @@ class BlackboardActivity : AppCompatActivity() {
                                 return@runOnUiThread
                             }
 
+                            // If replaying a saved session, load steps directly from Firestore
+                            // — no LLM call, no quota consumed.
+                            val savedSessionId = intent.getStringExtra(EXTRA_SESSION_ID).orEmpty()
+                            if (intent.getBooleanExtra(EXTRA_IS_REPLAY, false) && savedSessionId.isNotBlank() && !userId.isNullOrBlank()) {
+                                loadFromSavedSession(savedSessionId, userId)
+                                return@runOnUiThread
+                            }
+
                             val check = BlackboardQuotaValidator.check(cachedMetadata, limits)
                             if (!check.allowed) {
                                 loadingGroup.visibility = android.view.View.GONE
@@ -353,12 +384,14 @@ class BlackboardActivity : AppCompatActivity() {
                         }
                     }
                 } else {
-                    // No user doc — check for global cache first, then generate without quota check
+                    // No user doc — check for global cache / saved session first, then generate
                     val bbCacheId = intent.getStringExtra(EXTRA_BB_CACHE_ID).orEmpty()
-                    if (bbCacheId.isNotBlank()) {
-                        loadFromGlobalCache(bbCacheId, userId)
-                    } else {
-                        generateSteps(
+                    val savedSessionId = intent.getStringExtra(EXTRA_SESSION_ID).orEmpty()
+                    when {
+                        bbCacheId.isNotBlank() -> loadFromGlobalCache(bbCacheId, userId)
+                        intent.getBooleanExtra(EXTRA_IS_REPLAY, false) && savedSessionId.isNotBlank() && !userId.isNullOrBlank() ->
+                            loadFromSavedSession(savedSessionId, userId)
+                        else -> generateSteps(
                             message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
                             messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
                             userId         = userId,
@@ -369,12 +402,14 @@ class BlackboardActivity : AppCompatActivity() {
                 }
             }
             .addOnFailureListener {
-                // Firestore unavailable — try global cache first, then generate without quota guard
+                // Firestore unavailable — try global cache / saved session first, then generate
                 val bbCacheId = intent.getStringExtra(EXTRA_BB_CACHE_ID).orEmpty()
-                if (bbCacheId.isNotBlank()) {
-                    loadFromGlobalCache(bbCacheId, userId)
-                } else {
-                    generateSteps(
+                val savedSessionId = intent.getStringExtra(EXTRA_SESSION_ID).orEmpty()
+                when {
+                    bbCacheId.isNotBlank() -> loadFromGlobalCache(bbCacheId, userId)
+                    intent.getBooleanExtra(EXTRA_IS_REPLAY, false) && savedSessionId.isNotBlank() && !userId.isNullOrBlank() ->
+                        loadFromSavedSession(savedSessionId, userId)
+                    else -> generateSteps(
                         message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
                         messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
                         userId         = userId,
@@ -461,67 +496,161 @@ class BlackboardActivity : AppCompatActivity() {
         recordSession: Boolean = false
     ) {
         lifecycleScope.launch(Dispatchers.IO) {
-            BlackboardGenerator.generate(
-                messageContent = message,
-                messageId      = messageId,
-                userId         = userId,
-                conversationId = conversationId,
+            // ── Step 1: Get lesson outline from LLM ────────────────────────
+            runOnUiThread { loadingText.text = "Planning lesson…" }
+            BlackboardGenerator.callIntent(
+                topic            = message,
+                totalSteps       = totalStepsTarget,
                 preferredLanguageTag = preferredLanguageTag,
-                onStatus = { statusMsg, _ ->
-                    runOnUiThread { loadingText.text = statusMsg }
-                },
-                onSuccess = { generated ->
-                    if (recordSession && !userId.isNullOrBlank()) {
-                        val isNewQuotaDay = cachedMetadata.questionsUpdatedAt > 0L &&
-                            PlanEnforcer.isNewQuotaDay(cachedMetadata.questionsUpdatedAt)
-                        PlanEnforcer.recordQuestionAsked(userId, isBlackboard = true, previousUpdatedAt = cachedMetadata.questionsUpdatedAt)
-                        cachedMetadata = cachedMetadata.copy(
-                            bbSessionsToday = if (isNewQuotaDay) 1 else cachedMetadata.bbSessionsToday + 1,
-                            questionsUpdatedAt = System.currentTimeMillis()
-                        )
-                        // Track BB session in student progress stats
-                        val bbSubject = intent.getStringExtra(EXTRA_SUBJECT) ?: "General"
-                        val bbChapter = intent.getStringExtra(EXTRA_CHAPTER) ?: "General"
-                        com.aiguruapp.student.firestore.StudentStatsManager.recordBbSession(
-                            userId  = userId,
-                            subject = bbSubject,
-                            chapter = bbChapter,
-                            context = this@BlackboardActivity
-                        )
-                        lifecycleScope.launch(Dispatchers.Main) { updateBbQuotaChip(userId) }
-                    }
-                    lifecycleScope.launch(Dispatchers.Main) {
-                        steps = generated
-                        computedFontSp = computeFontSize(steps)
-                        loadingGroup.visibility = View.GONE
-                        contentGroup.visibility = View.VISIBLE
-                        saveSessionBtn.visibility = View.VISIBLE
-                        // Show inline ask bar now that content is ready
-                        findViewById<android.widget.LinearLayout>(R.id.bbAskBar)?.visibility = View.VISIBLE
-                        // Teachers can publish the freshly-generated lesson to global bb_cache
-                        if (isTeacherMode) publishLessonBtn.visibility = View.VISIBLE
-                        buildDots()
-                        setupBoard()
-                        // Preload first 3 frames' AI audio in background
-                        preloadUpcoming(0, 0, count = 3)
-                        showFrame(0, 0)
-                        // If launched from a task, mark BB lesson as completed
-                        val taskId = intent.getStringExtra(EXTRA_TASK_ID).orEmpty()
-                        if (taskId.isNotBlank() && !userId.isNullOrBlank()) {
-                            val studentName = com.aiguruapp.student.utils.SessionManager.getStudentName(this@BlackboardActivity)
-                            FirestoreManager.markTaskBbComplete(
-                                userId      = userId,
-                                taskId      = taskId,
-                                studentName = studentName
-                            )
+                onSuccess = { intent_ ->
+                    bbIntent = intent_
+                    // ── Step 2: Generate first chunk ───────────────────────
+                    val firstTitles = intent_.stepTitles.take(BlackboardGenerator.CHUNK_SIZE)
+                    val isOnlyChunk = totalStepsTarget <= BlackboardGenerator.CHUNK_SIZE
+                    runOnUiThread { loadingText.text = "Building lesson…" }
+                    BlackboardGenerator.generateChunk(
+                        topic            = message,
+                        intent           = intent_,
+                        chunkStepTitles  = firstTitles,
+                        framesPerStep    = framesPerStepTarget,
+                        isLastChunk      = isOnlyChunk,
+                        preferredLanguageTag = preferredLanguageTag,
+                        onStatus = { statusMsg, _ ->
+                            runOnUiThread { loadingText.text = statusMsg }
+                        },
+                        onSuccess = { generated ->
+                            if (recordSession && !userId.isNullOrBlank()) {
+                                val isNewQuotaDay = cachedMetadata.questionsUpdatedAt > 0L &&
+                                    PlanEnforcer.isNewQuotaDay(cachedMetadata.questionsUpdatedAt)
+                                PlanEnforcer.recordQuestionAsked(userId, isBlackboard = true, previousUpdatedAt = cachedMetadata.questionsUpdatedAt)
+                                cachedMetadata = cachedMetadata.copy(
+                                    bbSessionsToday = if (isNewQuotaDay) 1 else cachedMetadata.bbSessionsToday + 1,
+                                    questionsUpdatedAt = System.currentTimeMillis()
+                                )
+                                val bbSubject = intent.getStringExtra(EXTRA_SUBJECT) ?: "General"
+                                val bbChapter = intent.getStringExtra(EXTRA_CHAPTER) ?: "General"
+                                com.aiguruapp.student.firestore.StudentStatsManager.recordBbSession(
+                                    userId  = userId,
+                                    subject = bbSubject,
+                                    chapter = bbChapter,
+                                    context = this@BlackboardActivity
+                                )
+                                lifecycleScope.launch(Dispatchers.Main) { updateBbQuotaChip(userId) }
+                            }
+                            lifecycleScope.launch(Dispatchers.Main) {
+                                steps = generated
+                                computedFontSp = computeFontSize(steps)
+                                progressSeekBar.max = (totalStepsTarget * framesPerStepTarget).coerceAtLeast(generated.sumOf { it.frames.size })
+                                loadingGroup.visibility = View.GONE
+                                contentGroup.visibility = View.VISIBLE
+                                saveSessionBtn.visibility = View.VISIBLE
+                                findViewById<android.widget.LinearLayout>(R.id.bbAskBar)?.visibility = View.VISIBLE
+                                if (isTeacherMode) publishLessonBtn.visibility = View.VISIBLE
+                                buildDots()
+                                setupBoard()
+                                preloadUpcoming(0, 0, count = 3)
+                                showFrame(0, 0)
+                                val taskId = intent.getStringExtra(EXTRA_TASK_ID).orEmpty()
+                                if (taskId.isNotBlank() && !userId.isNullOrBlank()) {
+                                    val studentName = com.aiguruapp.student.utils.SessionManager.getStudentName(this@BlackboardActivity)
+                                    FirestoreManager.markTaskBbComplete(
+                                        userId      = userId,
+                                        taskId      = taskId,
+                                        studentName = studentName
+                                    )
+                                }
+                            }
+                        },
+                        onError = { err ->
+                            lifecycleScope.launch(Dispatchers.Main) {
+                                loadingText.text = "Couldn't build lesson. Please try again."
+                                android.util.Log.e("Blackboard", "Chunk error: $err")
+                            }
                         }
+                    )
+                },
+                onError = { err ->
+                    // Intent call failed — fall back to old single-pass generate()
+                    android.util.Log.w("Blackboard", "Intent failed ($err), falling back to generate()")
+                    BlackboardGenerator.generate(
+                        messageContent = message,
+                        messageId      = messageId,
+                        userId         = userId,
+                        conversationId = conversationId,
+                        preferredLanguageTag = preferredLanguageTag,
+                        onStatus = { statusMsg, _ ->
+                            runOnUiThread { loadingText.text = statusMsg }
+                        },
+                        onSuccess = { generated ->
+                            lifecycleScope.launch(Dispatchers.Main) {
+                                steps = generated
+                                computedFontSp = computeFontSize(steps)
+                                loadingGroup.visibility = View.GONE
+                                contentGroup.visibility = View.VISIBLE
+                                saveSessionBtn.visibility = View.VISIBLE
+                                findViewById<android.widget.LinearLayout>(R.id.bbAskBar)?.visibility = View.VISIBLE
+                                if (isTeacherMode) publishLessonBtn.visibility = View.VISIBLE
+                                buildDots()
+                                setupBoard()
+                                preloadUpcoming(0, 0, count = 3)
+                                showFrame(0, 0)
+                            }
+                        },
+                        onError = { e ->
+                            lifecycleScope.launch(Dispatchers.Main) {
+                                loadingText.text = "Couldn't build lesson. Please try again."
+                                android.util.Log.e("Blackboard", "Generation error: $e")
+                            }
+                        }
+                    )
+                }
+            )
+        }
+    }
+
+    // ── Progressive chunk generation ───────────────────────────────────────────
+
+    /**
+     * Fetches the next batch of steps from the LLM and appends them to [steps].
+     * Triggered automatically from [showFrame] when the user is 2 steps from the end
+     * and more steps are expected.
+     */
+    private fun triggerNextChunk() {
+        val intent_ = bbIntent ?: return
+        if (isGeneratingNextChunk) return
+        if (steps.size >= totalStepsTarget) return
+
+        isGeneratingNextChunk = true
+
+        val alreadyGenerated   = steps.size
+        val remaining          = totalStepsTarget - alreadyGenerated
+        val nextTitles         = intent_.stepTitles.drop(alreadyGenerated).take(BlackboardGenerator.CHUNK_SIZE)
+        val isLast             = (alreadyGenerated + nextTitles.size) >= totalStepsTarget
+
+        // Build a brief context summary from the last 2 steps
+        val contextSummary = steps.takeLast(2).joinToString(" | ") { it.title }
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            BlackboardGenerator.generateChunk(
+                topic            = currentTopic,
+                intent           = intent_,
+                chunkStepTitles  = nextTitles,
+                framesPerStep    = framesPerStepTarget,
+                previousContext  = contextSummary,
+                isLastChunk      = isLast,
+                preferredLanguageTag = preferredLanguageTag,
+                onSuccess = { newSteps ->
+                    lifecycleScope.launch(Dispatchers.Main) {
+                        steps = steps + newSteps
+                        progressSeekBar.max = steps.sumOf { it.frames.size }
+                        buildDots()
+                        updateCounterAndDots()
+                        isGeneratingNextChunk = false
                     }
                 },
                 onError = { err ->
-                    lifecycleScope.launch(Dispatchers.Main) {
-                        loadingText.text = "Couldn't build lesson. Please try again."
-                        android.util.Log.e("Blackboard", "Generation error: $err")
-                    }
+                    android.util.Log.w("Blackboard", "Next chunk error: $err")
+                    isGeneratingNextChunk = false
                 }
             )
         }
@@ -570,6 +699,7 @@ class BlackboardActivity : AppCompatActivity() {
             topic         = topic,
             stepCount     = steps.size,
             ttsKeys       = ttsKeys,
+            stepsJson     = com.aiguruapp.student.chat.BlackboardGenerator.serializeSteps(steps),
             onSuccess     = {
                 sessionAlreadySaved = true
                 saveSessionBtn.isEnabled = true
@@ -628,6 +758,46 @@ class BlackboardActivity : AppCompatActivity() {
                     lifecycleScope.launch(Dispatchers.Main) {
                         loadingText.text = "Couldn't load lesson. Please try again."
                         android.util.Log.e("Blackboard", "Global cache load error: $err")
+                    }
+                }
+            )
+        }
+    }
+
+    // ── Publish current lesson to global bb_cache (teacher only) ──────────────
+
+    /**
+     * Loads a previously saved BB session directly from the user's Firestore flat collection.
+     * Reads the [steps_json] field stored when the session was saved — no LLM call.
+     */
+    private fun loadFromSavedSession(sessionId: String, userId: String) {
+        loadingText.text = "Loading saved session…"
+        lifecycleScope.launch(Dispatchers.IO) {
+            com.aiguruapp.student.chat.BlackboardGenerator.loadFromSavedSession(
+                userId               = userId,
+                sessionId            = sessionId,
+                preferredLanguageTag = preferredLanguageTag,
+                onSuccess = { generated ->
+                    lifecycleScope.launch(Dispatchers.Main) {
+                        steps = generated
+                        computedFontSp = computeFontSize(steps)
+                        loadingGroup.visibility = View.GONE
+                        contentGroup.visibility = View.VISIBLE
+                        // Show inline ask bar — user can still ask follow-up questions
+                        findViewById<android.widget.LinearLayout>(R.id.bbAskBar)?.visibility = View.VISIBLE
+                        // Session is already saved; hide the save button, no publish needed
+                        saveSessionBtn.visibility = View.GONE
+                        publishLessonBtn.visibility = View.GONE
+                        buildDots()
+                        setupBoard()
+                        preloadUpcoming(0, 0, count = 3)
+                        showFrame(0, 0)
+                    }
+                },
+                onError = { err ->
+                    lifecycleScope.launch(Dispatchers.Main) {
+                        loadingText.text = err.ifBlank { "Couldn't load saved session." }
+                        android.util.Log.e("Blackboard", "Saved session load error: $err")
                     }
                 }
             )
@@ -757,6 +927,11 @@ class BlackboardActivity : AppCompatActivity() {
         typeAnimator?.cancel()
         handWriter.visibility = View.INVISIBLE
         updateCounterAndDots()
+
+        // Trigger next chunk when 2 steps from the end
+        if (!isGeneratingNextChunk && steps.size < totalStepsTarget && stepIdx >= steps.size - 2) {
+            triggerNextChunk()
+        }
 
         // ── Smooth seekbar animation over this frame's duration ───────────
         if (!isPaused && !seekBarDragging && steps.isNotEmpty()) {

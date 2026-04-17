@@ -56,6 +56,9 @@ object PromptRepository {
     fun getBlackboardSystemPrompt(): String =
         require().optString("blackboard_system_prompt", "")
 
+    fun getBlackboardIntentPrompt(): String =
+        require().optString("blackboard_intent_prompt", "")
+
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
     private fun require(): JSONObject =

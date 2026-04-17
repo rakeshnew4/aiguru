@@ -10,37 +10,80 @@ import org.json.JSONObject
 /**
  * Generates a short, audio-first step-by-step lesson from a chat message.
  * Call from Dispatchers.IO — uses a blocking HTTP request.
+ *
+ * Flow:
+ *  1. [callIntent]    — quick LLM call → structured step outline + metadata
+ *  2. [generateChunk] — LLM call for N steps using the outline as a guide
+ *     BlackboardActivity calls generateChunk() repeatedly as the student
+ *     approaches the end of each loaded batch (progressive loading).
  */
 object BlackboardGenerator {
+
+    /** Number of steps generated per LLM call. */
+    const val CHUNK_SIZE = 5
+
+    // ── Duration enum ─────────────────────────────────────────────────────────
+
+    /**
+     * Session length options shown to the user.
+     * [totalSteps]  — total steps to generate across all chunks.
+     * [framesPerStep] — hint to the LLM for how many frames per step to create.
+     */
+    enum class BbDuration(
+        val label: String,
+        val totalSteps: Int,
+        val framesPerStep: Int
+    ) {
+        SEC_30("30 sec",  3,  2),
+        MIN_1 ("1 min",   5,  3),
+        MIN_2 ("2 min",   8,  4),
+        MIN_3 ("3 min",  12,  4),
+        MIN_5 ("5 min",  20,  5),
+        MIN_10("10 min", 40,  5);
+
+        companion object {
+            fun fromLabel(label: String): BbDuration =
+                values().find { it.label == label } ?: MIN_2
+
+            /** All option labels for the UI picker. */
+            val labels: Array<String> get() = values().map { it.label }.toTypedArray()
+        }
+    }
+
+    // ── Intent result ─────────────────────────────────────────────────────────
+
+    /**
+     * Structured lesson plan returned by [callIntent].
+     * Used to guide each subsequent [generateChunk] call for coherence.
+     */
+    data class BlackboardIntent(
+        val lessonTitle: String,
+        /** One entry per target step, e.g. "Step 1: What is Photosynthesis?" */
+        val stepTitles: List<String>,
+        val useSvg: Boolean,
+        val category: String
+    )
 
     data class BlackboardFrame(
         val text: String,
         val highlight: List<String> = emptyList(),
         val speech: String,
         val durationMs: Long = 2000,
-        // concept | quiz | memory | summary | quiz_mcq | quiz_typed | quiz_voice
-        // | quiz_fill (fill-in-the-blank) | quiz_order (drag to order steps)
+        // concept | memory | diagram | summary
         val frameType: String = "concept",
         // ── Voice Engine & Role ───────────────────────────────────────────────
         // ttsEngine: android | gemini | google
-        //   android = instant built-in TTS (quiz frames, first frame)
-        //   gemini  = premium AI voice (concept / memory frames)
-        //   google  = neural cloud voice (summary / assistant frames)
-        // voiceRole: teacher | assistant | quiz | feedback
-        val ttsEngine: String = "",           // "" = auto-assign via smartAssignTts()
-        val voiceRole: String = "",           // "" = auto-assign via smartAssignTts()
-        val quizAnswer: String = "",          // legacy tap-to-reveal answer (frame_type "quiz")
-        // ── Interactive quiz fields ───────────────────────────────────────────
-        val quizOptions: List<String> = emptyList(),  // quiz_mcq / quiz_order: option texts
-        val quizCorrectIndex: Int = -1,               // quiz_mcq: 0–3 index of correct option
-        val quizModelAnswer: String = "",             // quiz_typed/voice: reference answer for AI grading
-        val quizKeywords: List<String> = emptyList(), // keywords the student answer must cover
-        // ── quiz_fill specific ────────────────────────────────────────────────
-        val fillBlanks: List<String> = emptyList(),   // correct words for each blank in text
-        // ── quiz_order specific ───────────────────────────────────────────────
-        // quizOptions holds the steps in SHUFFLED order; quizCorrectOrder holds correct 0-based indices
+        val ttsEngine: String = "",   // "" = auto-assign via smartAssignTts()
+        val voiceRole: String = "",   // "" = auto-assign via smartAssignTts()
+        // ── Legacy / unused quiz stubs (kept for saved-session deserialization compat) ──
+        val quizAnswer: String = "",
+        val quizOptions: List<String> = emptyList(),
+        val quizCorrectIndex: Int = -1,
+        val quizModelAnswer: String = "",
+        val quizKeywords: List<String> = emptyList(),
+        val fillBlanks: List<String> = emptyList(),
         val quizCorrectOrder: List<Int> = emptyList(),
-        // ── diagram frame: JSON array string of SVG shape elements ───────────
+        // ── diagram frame: self-contained inline SVG ──────────────────────────
         val svgHtml: String = ""
     )
 
@@ -54,15 +97,6 @@ object BlackboardGenerator {
 
     /**
      * Returns (ttsEngine, voiceRole) for a frame that lacks explicit values.
-     *
-     * Rules:
-     *   concept / memory  → gemini  / teacher   (premium feel — LLM explains)
-     *   summary           → google  / assistant  (neural but cheap — brief recap)
-     *   quiz_*            → android / quiz       (instant, no latency during quiz)
-     *   everything else   → android / teacher    (safe default)
-     *
-     * The very first frame of a lesson is always overridden to android/teacher
-     * in BlackboardActivity.speakFrame() to guarantee zero-latency playback.
      */
     fun smartAssignTts(frameType: String): Pair<String, String> = when {
         frameType == "concept"              -> Pair("gemini",  "teacher")
@@ -71,6 +105,172 @@ object BlackboardGenerator {
         frameType == "summary"              -> Pair("google",  "assistant")
         frameType.startsWith("quiz")        -> Pair("android", "quiz")
         else                                -> Pair("android", "teacher")
+    }
+
+    // ── Intent call ───────────────────────────────────────────────────────────
+
+    /**
+     * Quick pre-generation call that returns a structured lesson outline.
+     * Used to keep multi-chunk lessons coherent.
+     * Must be called from a background thread.
+     *
+     * @param topic         The student's question / topic.
+     * @param totalSteps    Target total steps (controls stepTitles array size).
+     * @param preferredLanguageTag BCP-47 tag for language instructions.
+     */
+    fun callIntent(
+        topic: String,
+        totalSteps: Int,
+        preferredLanguageTag: String? = null,
+        onSuccess: (BlackboardIntent) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        val cfg       = AdminConfigRepository.config
+        val serverUrl = AdminConfigRepository.effectiveServerUrl()
+        val server    = ServerProxyClient(serverUrl = serverUrl, modelName = "", apiKey = cfg.serverApiKey)
+
+        val intentPrompt = PromptRepository.getBlackboardIntentPrompt()
+        val langHint = preferredLanguageTag?.let {
+            PromptRepository.getLanguageInstruction(it)
+        }.orEmpty()
+
+        val userMsg = "Topic: $topic\nRequested number of steps: $totalSteps$langHint"
+
+        val buffer = StringBuilder()
+        val latch  = java.util.concurrent.CountDownLatch(1)
+        var err: String? = null
+
+        server.streamChat(
+            question    = userMsg,
+            pageId      = "blackboard__intent",
+            mode        = "blackboard_intent",
+            languageTag = preferredLanguageTag ?: "en-US",
+            history     = emptyList(),
+            onToken     = { token -> buffer.append(token) },
+            onDone      = { _, _, _ -> latch.countDown() },
+            onError     = { e -> err = e; latch.countDown() }
+        )
+        latch.await(30, java.util.concurrent.TimeUnit.SECONDS)
+
+        if (err != null) { onError(err!!); return }
+
+        val raw = buffer.toString()
+        try {
+            val start = raw.indexOf('{')
+            val end   = raw.lastIndexOf('}')
+            if (start < 0 || end <= start) throw Exception("No JSON in response")
+            val obj = JSONObject(raw.substring(start, end + 1))
+            val titlesArr = obj.optJSONArray("steps") ?: JSONArray()
+            val titles = (0 until titlesArr.length()).map { titlesArr.getString(it) }
+            onSuccess(BlackboardIntent(
+                lessonTitle = obj.optString("lesson_title", topic),
+                stepTitles  = titles.ifEmpty { (1..totalSteps).map { "Step $it" } },
+                useSvg      = obj.optBoolean("use_svg", false),
+                category    = obj.optString("category", "general")
+            ))
+        } catch (e: Exception) {
+            // Intent parse failure → supply a default outline so generation can still proceed
+            onSuccess(BlackboardIntent(
+                lessonTitle = topic,
+                stepTitles  = (1..totalSteps).map { "Step $it: ${topic.take(40)}" },
+                useSvg      = false,
+                category    = "general"
+            ))
+        }
+    }
+
+    // ── Chunk generation ──────────────────────────────────────────────────────
+
+    /**
+     * Generates a batch of steps via LLM, respecting the [intent] outline for coherence.
+     * Must be called from a background thread.
+     *
+     * @param topic              Original student topic/question.
+     * @param intent             Outline returned by [callIntent].
+     * @param chunkStepTitles    Step titles for THIS chunk only (subset of intent.stepTitles).
+     * @param framesPerStep      Hint: how many frames per step to create.
+     * @param previousContext    Summary of what was already taught (prior chunks).
+     * @param isLastChunk        When true, the last frame becomes a summary frame.
+     * @param preferredLanguageTag BCP-47 language tag.
+     */
+    fun generateChunk(
+        topic: String,
+        intent: BlackboardIntent,
+        chunkStepTitles: List<String>,
+        framesPerStep: Int,
+        previousContext: String = "",
+        isLastChunk: Boolean = false,
+        preferredLanguageTag: String? = null,
+        onStatus: ((String, Int) -> Unit)? = null,
+        onSuccess: (List<BlackboardStep>) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        val cfg       = AdminConfigRepository.config
+        val serverUrl = AdminConfigRepository.effectiveServerUrl()
+        val server    = ServerProxyClient(serverUrl = serverUrl, modelName = "", apiKey = cfg.serverApiKey)
+
+        val systemPrompt = PromptRepository.getBlackboardSystemPrompt()
+        val langInstruction = preferredLanguageTag
+            ?.let { PromptRepository.getLanguageInstruction(it) }
+            .orEmpty()
+
+        val contextBlock = if (previousContext.isNotBlank())
+            "\n\nCONTINUATION CONTEXT (already taught — do NOT repeat):\n$previousContext\n"
+        else ""
+
+        val svgNote = if (intent.useSvg)
+            "\nThis topic benefits from SVG diagrams — use at least one diagram frame per step." else ""
+
+        val stepList = chunkStepTitles.joinToString("\n") { "- $it" }
+        val lastFrameNote = if (isLastChunk)
+            "\nThe very last frame of the last step MUST be a summary frame recapping the entire lesson."
+        else
+            "\nDo NOT include a summary frame (lesson continues after these steps)."
+
+        val userMsg = """Topic: $topic
+Lesson title: ${intent.lessonTitle}
+Category: ${intent.category}
+
+Generate EXACTLY ${chunkStepTitles.size} steps with APPROXIMATELY $framesPerStep frames each.
+Steps to generate:
+$stepList
+$contextBlock$svgNote$lastFrameNote$langInstruction
+
+Explanation to convert:
+${topic.take(3000)}"""
+
+        val buffer   = StringBuilder()
+        var streamErr: String? = null
+        val latch    = java.util.concurrent.CountDownLatch(1)
+
+        server.streamChat(
+            question     = userMsg,
+            pageId       = "blackboard__chunk",
+            mode         = "blackboard",
+            languageTag  = preferredLanguageTag ?: "en-US",
+            history      = emptyList(),
+            onToken      = { token -> buffer.append(token) },
+            onStatus     = onStatus,
+            onDone       = { _, _, _ -> latch.countDown() },
+            onError      = { e -> streamErr = e; latch.countDown() }
+        )
+        latch.await(60, java.util.concurrent.TimeUnit.SECONDS)
+
+        if (streamErr != null) { onError(streamErr!!); return }
+
+        val response = buffer.toString()
+        try {
+            val start = response.indexOf('{')
+            val end   = response.lastIndexOf('}')
+            if (start < 0 || end <= start) { onError("Invalid response format"); return }
+            val arr = JSONObject(response.substring(start, end + 1)).getJSONArray("steps")
+            val result = parseStepsArray(arr, preferredLanguageTag)
+                .filter { step -> step.frames.none { it.frameType.startsWith("quiz") } }
+            if (result.isEmpty()) { onError("No steps were generated"); return }
+            onSuccess(result)
+        } catch (e: Exception) {
+            onError("Parse error: ${e.message}")
+        }
     }
 
     // System prompt is loaded from assets/tutor_prompts.json → "blackboard_system_prompt"
@@ -205,134 +405,85 @@ object BlackboardGenerator {
             return
         }
 
-
-        // ── 2. Generate via LLM ───────────────────────────────────────────────
-        val cfg = AdminConfigRepository.config
-        val serverUrl = AdminConfigRepository.effectiveServerUrl()
-
-        val server = ServerProxyClient(
-            serverUrl = serverUrl,
-            modelName = "",
-            apiKey    = cfg.serverApiKey
+        // ── 2. Generate via LLM using a default intent outline ─────────────────
+        // generate() is used for cache-aware single-topic generation (teacher tasks, etc.).
+        // For the normal student flow, BlackboardActivity calls callIntent() + generateChunk().
+        val defaultIntent = BlackboardIntent(
+            lessonTitle = messageContent.take(60),
+            stepTitles  = emptyList(),
+            useSvg      = false,
+            category    = "general"
         )
-
-        val buffer   = StringBuilder()
-        var streamErr: String? = null
-        val latch    = java.util.concurrent.CountDownLatch(1)
-
-        val systemPrompt = PromptRepository.getBlackboardSystemPrompt()
-        val languageHint = preferredLanguageTag?.takeIf { it.isNotBlank() }
-            ?.let { "\n\nPreferred speech language tag: $it" }
-            ?: ""
-        server.streamChat(
-            question     = "\n\nExplanation to convert:\n" + messageContent.take(3000),
-            pageId       = "blackboard__lesson",
-            mode         = "blackboard",
-            languageTag  = preferredLanguageTag ?: "en-US",
-            studentLevel = 5,
-            history      = emptyList(),
-            onToken      = { token -> buffer.append(token) },
-            onStatus     = onStatus,
-            onDone       = { _, _, _ -> latch.countDown() },
-            onError      = { err -> streamErr = err; latch.countDown() }
+        generateChunk(
+            topic            = messageContent,
+            intent           = defaultIntent,
+            chunkStepTitles  = emptyList(),   // prompt will use topic directly
+            framesPerStep    = 4,
+            isLastChunk      = true,
+            preferredLanguageTag = preferredLanguageTag,
+            onStatus         = onStatus,
+            onSuccess        = { result ->
+                // ── 3. Save result to Firestore cache ─────────────────────────
+                try {
+                    val stepsJson = serializeSteps(result)
+                    cacheDocRef?.set(mapOf("steps" to stepsJson, "createdAt" to System.currentTimeMillis()))
+                } catch (_: Exception) { /* cache write failure is non-fatal */ }
+                onSuccess(result)
+            },
+            onError = onError
         )
+    }
 
-        latch.await(60, java.util.concurrent.TimeUnit.SECONDS)
+    // ── Shared parse helper ───────────────────────────────────────────────────
 
-        if (streamErr != null) { onError(streamErr!!); return }
-
-        val response = buffer.toString()
-        try {
-            val start = response.indexOf('{')
-            val end   = response.lastIndexOf('}')
-            if (start < 0 || end <= start) { onError("Invalid response format"); return }
-            val arr = JSONObject(response.substring(start, end + 1)).getJSONArray("steps")
-            val result = (0 until arr.length()).map { i ->
-                val stepObj = arr.getJSONObject(i)
-                val langTag = normalizeLanguageTag(
-                    raw = stepObj.optString("lang", stepObj.optString("language", "")),
-                    fallback = preferredLanguageTag ?: "en-US"
-                )
-                val framesArr = stepObj.getJSONArray("frames")
-                val frames = (0 until framesArr.length()).map { j ->
-                    val frameObj = framesArr.getJSONObject(j)
-                    val hlArr    = frameObj.optJSONArray("highlight")
-                    val optsArr  = frameObj.optJSONArray("quiz_options")
-                    val kwArr    = frameObj.optJSONArray("quiz_keywords")
-                    val fillArr  = frameObj.optJSONArray("fill_blanks")
-                    val orderArr = frameObj.optJSONArray("quiz_correct_order")
-                    val fType2   = frameObj.optString("frame_type", "concept")
-                    val rawEng2  = frameObj.optString("tts_engine", "")
-                    val rawRole2 = frameObj.optString("voice_role",  "")
-                    val (aEng2, aRole2) = smartAssignTts(fType2)
-                    BlackboardFrame(
-                        text             = frameObj.getString("text"),
-                        highlight        = if (hlArr != null) (0 until hlArr.length()).map { hlArr.getString(it) } else emptyList(),
-                        speech           = frameObj.optString("speech", ""),
-                        durationMs       = frameObj.optLong("duration_ms", 2000),
-                        frameType        = fType2,
-                        ttsEngine        = rawEng2.ifBlank { aEng2 },
-                        voiceRole        = rawRole2.ifBlank { aRole2 },
-                        quizAnswer       = frameObj.optString("quiz_answer", ""),
-                        quizOptions      = if (optsArr != null) (0 until optsArr.length()).map { optsArr.getString(it) } else emptyList(),
-                        quizCorrectIndex = frameObj.optInt("quiz_correct_index", -1),
-                        quizModelAnswer  = frameObj.optString("quiz_model_answer", ""),
-                        quizKeywords     = if (kwArr != null) (0 until kwArr.length()).map { kwArr.getString(it) } else emptyList(),
-                        fillBlanks       = if (fillArr != null) (0 until fillArr.length()).map { fillArr.getString(it) } else emptyList(),
-                        quizCorrectOrder = if (orderArr != null) (0 until orderArr.length()).map { orderArr.getInt(it) } else emptyList(),
-                        svgHtml          = frameObj.optString("svg_html", "")
-                    )
-                }
-                BlackboardStep(
-                    title                = stepObj.optString("title", ""),
-                    frames               = frames,
-                    languageTag          = langTag,
-                    image_description    = stepObj.optString("image_description", ""),
-                    imageConfidenceScore = stepObj.optDouble("image_show_confidencescore", 0.0).toFloat()
+    /**
+     * Parses a [JSONArray] of step objects into a list of [BlackboardStep].
+     * Quiz frames are NOT filtered here — callers decide whether to filter.
+     */
+    fun parseStepsArray(arr: JSONArray, preferredLanguageTag: String?): List<BlackboardStep> {
+        return (0 until arr.length()).map { i ->
+            val stepObj   = arr.getJSONObject(i)
+            val langTag   = normalizeLanguageTag(
+                raw      = stepObj.optString("lang", stepObj.optString("language", "")),
+                fallback = preferredLanguageTag ?: "en-US"
+            )
+            val framesArr = stepObj.getJSONArray("frames")
+            val frames    = (0 until framesArr.length()).map { j ->
+                val frameObj = framesArr.getJSONObject(j)
+                val hlArr    = frameObj.optJSONArray("highlight")
+                val optsArr  = frameObj.optJSONArray("quiz_options")
+                val kwArr    = frameObj.optJSONArray("quiz_keywords")
+                val fillArr  = frameObj.optJSONArray("fill_blanks")
+                val orderArr = frameObj.optJSONArray("quiz_correct_order")
+                val fType    = frameObj.optString("frame_type", "concept")
+                val rawEng   = frameObj.optString("tts_engine", "")
+                val rawRole  = frameObj.optString("voice_role",  "")
+                val (aEng, aRole) = smartAssignTts(fType)
+                BlackboardFrame(
+                    text             = frameObj.getString("text"),
+                    highlight        = hlArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                    speech           = frameObj.optString("speech", ""),
+                    durationMs       = frameObj.optLong("duration_ms", 2000),
+                    frameType        = fType,
+                    ttsEngine        = rawEng.ifBlank { aEng },
+                    voiceRole        = rawRole.ifBlank { aRole },
+                    quizAnswer       = frameObj.optString("quiz_answer", ""),
+                    quizOptions      = optsArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                    quizCorrectIndex = frameObj.optInt("quiz_correct_index", -1),
+                    quizModelAnswer  = frameObj.optString("quiz_model_answer", ""),
+                    quizKeywords     = kwArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                    fillBlanks       = fillArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                    quizCorrectOrder = orderArr?.let { a -> (0 until a.length()).map { a.getInt(it) } } ?: emptyList(),
+                    svgHtml          = frameObj.optString("svg_html", "")
                 )
             }
-            if (result.isEmpty()) { onError("No steps were generated"); return }
-
-            // ── 3. Save result to Firestore cache ─────────────────────────────
-            try {
-                val stepsJson = JSONArray().apply {
-                    result.forEach { step ->
-                        val framesJson = JSONArray().apply {
-                            step.frames.forEach { frame ->
-                                put(JSONObject()
-                                    .put("text", frame.text)
-                                    .put("highlight", JSONArray(frame.highlight))
-                                    .put("speech", frame.speech)
-                                    .put("duration_ms", frame.durationMs)
-                                    .put("frame_type", frame.frameType)
-                                    .put("tts_engine", frame.ttsEngine)
-                                    .put("voice_role", frame.voiceRole)
-                                    .put("quiz_answer", frame.quizAnswer)
-                                    .put("quiz_options", JSONArray(frame.quizOptions))
-                                    .put("quiz_correct_index", frame.quizCorrectIndex)
-                                    .put("quiz_model_answer", frame.quizModelAnswer)
-                                    .put("quiz_keywords", JSONArray(frame.quizKeywords))
-                                    .put("fill_blanks", JSONArray(frame.fillBlanks))
-                                    .put("quiz_correct_order", JSONArray(frame.quizCorrectOrder))
-                                    .put("svg_html", frame.svgHtml))
-                            }
-                        }
-                        put(JSONObject()
-                            .put("title", step.title)
-                            .put("frames", framesJson)
-                            .put("lang", step.languageTag)
-                            .put("image_description", step.image_description)
-                            .put("image_show_confidencescore", step.imageConfidenceScore.toDouble())
-                        )
-                    }
-                }.toString()
-                cacheDocRef
-                    ?.set(mapOf("steps" to stepsJson, "createdAt" to System.currentTimeMillis()))
-            } catch (_: Exception) { /* cache write failure is non-fatal */ }
-
-            onSuccess(result)
-        } catch (e: Exception) {
-            onError("Parse error: ${e.message}")
+            BlackboardStep(
+                title                = stepObj.optString("title", ""),
+                frames               = frames,
+                languageTag          = langTag,
+                image_description    = stepObj.optString("image_description", ""),
+                imageConfidenceScore = stepObj.optDouble("image_show_confidencescore", 0.0).toFloat()
+            )
         }
     }
 
@@ -575,5 +726,102 @@ object BlackboardGenerator {
         latch.await(10, java.util.concurrent.TimeUnit.SECONDS)
         if (result != null && result!!.isNotEmpty()) onSuccess(result!!)
         else onError(errorMsg.ifBlank { "Lesson could not be loaded" })
+    }
+
+    /**
+     * Load a previously saved BB lesson directly from the user's
+     * [users/{userId}/saved_bb_sessions_flat/{sessionId}] document.
+     *
+     * The document must contain a [steps_json] field (written by [saveBbSession]).
+     * No LLM call is made — this is a pure Firestore fetch.
+     * Must be called from a background thread.
+     */
+    fun loadFromSavedSession(
+        userId: String,
+        sessionId: String,
+        preferredLanguageTag: String? = null,
+        onSuccess: (List<BlackboardStep>) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        val latch = java.util.concurrent.CountDownLatch(1)
+        var result: List<BlackboardStep>? = null
+        var errorMsg = ""
+
+        FirebaseFirestore.getInstance()
+            .collection("users").document(userId)
+            .collection("saved_bb_sessions_flat").document(sessionId)
+            .get()
+            .addOnSuccessListener { doc ->
+                if (!doc.exists()) {
+                    errorMsg = "Saved session not found ($sessionId)"
+                    latch.countDown()
+                    return@addOnSuccessListener
+                }
+                val stepsJson = doc.getString("steps_json") ?: ""
+                if (stepsJson.isBlank()) {
+                    errorMsg = "Session has no steps data (old save — please re-save)"
+                    latch.countDown()
+                    return@addOnSuccessListener
+                }
+                try {
+                    val arr = JSONArray(stepsJson)
+                    val langFallback = preferredLanguageTag ?: "en-US"
+                    result = (0 until arr.length()).map { i ->
+                        val stepObj = arr.getJSONObject(i)
+                        val langTag = normalizeLanguageTag(
+                            raw      = stepObj.optString("lang", stepObj.optString("language", "")),
+                            fallback = langFallback
+                        )
+                        val framesArr = stepObj.getJSONArray("frames")
+                        val frames = (0 until framesArr.length()).map { j ->
+                            val frameObj  = framesArr.getJSONObject(j)
+                            val hlArr     = frameObj.optJSONArray("highlight")
+                            val optsArr   = frameObj.optJSONArray("quiz_options")
+                            val kwArr     = frameObj.optJSONArray("quiz_keywords")
+                            val fillArr   = frameObj.optJSONArray("fill_blanks")
+                            val orderArr  = frameObj.optJSONArray("quiz_correct_order")
+                            val fType     = frameObj.optString("frame_type", "concept")
+                            val rawEngine = frameObj.optString("tts_engine", "")
+                            val rawRole   = frameObj.optString("voice_role",  "")
+                            val (aEngine, aRole) = smartAssignTts(fType)
+                            BlackboardFrame(
+                                text             = frameObj.getString("text"),
+                                highlight        = hlArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                                speech           = frameObj.optString("speech", ""),
+                                durationMs       = frameObj.optLong("duration_ms", 2000),
+                                frameType        = fType,
+                                ttsEngine        = rawEngine.ifBlank { aEngine },
+                                voiceRole        = rawRole.ifBlank { aRole },
+                                quizAnswer       = frameObj.optString("quiz_answer", ""),
+                                quizOptions      = optsArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                                quizCorrectIndex = frameObj.optInt("quiz_correct_index", -1),
+                                quizModelAnswer  = frameObj.optString("quiz_model_answer", ""),
+                                quizKeywords     = kwArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                                fillBlanks       = fillArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                                quizCorrectOrder = orderArr?.let { a -> (0 until a.length()).map { a.getInt(it) } } ?: emptyList(),
+                                svgHtml          = frameObj.optString("svg_html", "")
+                            )
+                        }
+                        BlackboardStep(
+                            title                = stepObj.optString("title", ""),
+                            frames               = frames,
+                            languageTag          = langTag,
+                            image_description    = stepObj.optString("image_description", ""),
+                            imageConfidenceScore = stepObj.optDouble("image_show_confidencescore", 0.0).toFloat()
+                        )
+                    }
+                } catch (e: Exception) {
+                    errorMsg = "Parse error: ${e.message}"
+                }
+                latch.countDown()
+            }
+            .addOnFailureListener { e ->
+                errorMsg = e.message ?: "Failed to load saved session"
+                latch.countDown()
+            }
+
+        latch.await(10, java.util.concurrent.TimeUnit.SECONDS)
+        if (result != null && result!!.isNotEmpty()) onSuccess(result!!)
+        else onError(errorMsg.ifBlank { "Saved session could not be loaded" })
     }
 }

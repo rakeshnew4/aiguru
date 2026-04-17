@@ -63,19 +63,20 @@ class BbSavedSessionsActivity : BaseActivity() {
     }
 
     private fun loadSessions() {
-        FirestoreManager.loadBbSessions(
-            userId  = userId,
-            subject = subject,
-            chapter = chapter,
+        // Use flat mirror collection — shows all sessions regardless of subject/chapter.
+        // Sessions saved from general BB mode default chapter="General", not "General Chat",
+        // so querying by chapter would miss them.
+        FirestoreManager.loadAllSavedBbSessions(
+            userId = userId,
             onSuccess = { list ->
                 sessions.clear()
                 sessions.addAll(list)
                 adapter.notifyDataSetChanged()
                 if (sessions.isEmpty()) {
-                    emptyState.visibility  = View.VISIBLE
+                    emptyState.visibility   = View.VISIBLE
                     recyclerView.visibility = View.GONE
                 } else {
-                    emptyState.visibility  = View.GONE
+                    emptyState.visibility   = View.GONE
                     recyclerView.visibility = View.VISIBLE
                 }
             },
@@ -86,9 +87,10 @@ class BbSavedSessionsActivity : BaseActivity() {
     }
 
     private fun replaySession(session: Map<String, Any>) {
-        val topic   = session["topic"] as? String ?: return
-        val convId  = session["conversation_id"] as? String
-        val msgId   = session["message_id"] as? String
+        val topic     = session["topic"] as? String ?: return
+        val sessionId = session["session_id"] as? String ?: session["id"] as? String ?: ""
+        val convId    = session["conversation_id"] as? String
+        val msgId     = session["message_id"] as? String
         @Suppress("UNCHECKED_CAST")
         val ttsKeys = (session["tts_keys"] as? List<String>) ?: emptyList()
         val intent = Intent(this, BlackboardActivity::class.java).apply {
@@ -97,6 +99,9 @@ class BbSavedSessionsActivity : BaseActivity() {
             putExtra(BlackboardActivity.EXTRA_SUBJECT, subject)
             putExtra(BlackboardActivity.EXTRA_CHAPTER, chapter)
             putExtra(BlackboardActivity.EXTRA_IS_REPLAY, true)
+            // Pass sessionId so BlackboardActivity loads steps directly from Firestore
+            // without any LLM regeneration.
+            if (sessionId.isNotBlank()) putExtra(BlackboardActivity.EXTRA_SESSION_ID, sessionId)
             if (ttsKeys.isNotEmpty()) putExtra(BlackboardActivity.EXTRA_TTS_KEYS, ArrayList(ttsKeys))
             if (!convId.isNullOrBlank()) putExtra(BlackboardActivity.EXTRA_CONVERSATION_ID, convId)
             if (!msgId.isNullOrBlank())  putExtra(BlackboardActivity.EXTRA_MESSAGE_ID, msgId)
