@@ -43,6 +43,7 @@ import com.aiguruapp.student.validators.AiVoiceQuotaValidator
 import com.aiguruapp.student.validators.BlackboardQuotaValidator
 import com.aiguruapp.student.firestore.FirestoreManager
 import com.aiguruapp.student.models.UserMetadata
+import com.aiguruapp.student.utils.FeedbackManager
 import com.aiguruapp.student.utils.PromptRepository
 import com.aiguruapp.student.utils.TTSCallback
 import com.aiguruapp.student.utils.TextToSpeechManager
@@ -203,7 +204,10 @@ class BlackboardActivity : AppCompatActivity() {
         bbAskSendBtn.setOnClickListener { sendBbQuestion() }
         bbAskInput.setOnEditorActionListener { _, _, _ -> sendBbQuestion(); true }
 
-        closeBtn.setOnClickListener  { finish() }
+        closeBtn.setOnClickListener  {
+            if (steps.isNotEmpty()) FeedbackManager.markBbSessionDone(this)
+            finish()
+        }
         saveSessionBtn.setOnClickListener { saveCurrentSession() }
         publishLessonBtn.setOnClickListener { publishCurrentLesson() }
         replayBtn.setOnClickListener { restartLesson() }
@@ -429,6 +433,8 @@ class BlackboardActivity : AppCompatActivity() {
         typeAnimator?.cancel()
         aiTtsEngine.destroy()
         // tts is owned by aiTtsEngine.androidTts — already destroyed above
+        // Mark session done so HomeActivity.onResume can show feedback if needed.
+        if (steps.isNotEmpty()) FeedbackManager.markBbSessionDone(this)
         super.onDestroy()
     }
 

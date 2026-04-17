@@ -477,6 +477,24 @@
                 android:textSize="22sp" />
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- ── Give Feedback button — bottom-start corner ── -->
+        <TextView
+            android:id="@+id/feedbackChip"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:layout_gravity="bottom|start"
+            android:layout_marginStart="16dp"
+            android:layout_marginBottom="22dp"
+            android:gravity="center"
+            android:text="💬 Feedback"
+            android:textSize="12sp"
+            android:textColor="#CCFFFFFF"
+            android:background="@drawable/bg_feedback_chip"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:clickable="true"
+            android:focusable="true" />
+
     </FrameLayout>
     <!-- end FrameLayout wrapper -->
 

@@ -34,6 +34,7 @@ import com.aiguruapp.student.utils.AppUpdateManager
 import com.aiguruapp.student.models.UserMetadata
 import com.aiguruapp.student.utils.ConfigManager
 import com.aiguruapp.student.utils.SchoolTheme
+import com.aiguruapp.student.utils.FeedbackManager
 import com.aiguruapp.student.utils.SessionManager
 import com.google.android.material.button.MaterialButton
 import android.util.Log
@@ -150,6 +151,8 @@ class HomeActivity : BaseActivity() {
         }
         // Receive any late-arriving update result (check finished after splash).
         AppUpdateBus.consume { result -> handleHomeUpdateResult(result) }
+        // Show feedback sheet after first / periodic BB session.
+        FeedbackManager.showIfNeeded(this)
     }
 
     override fun onPause() {
@@ -624,6 +627,10 @@ class HomeActivity : BaseActivity() {
         // 🔢 Calculator FAB — opens the floating calculator inherited from BaseActivity
         findViewById<com.google.android.material.card.MaterialCardView?>(R.id.calcFab)
             ?.setOnClickListener { showCalculator() }
+
+        // 💬 Give Feedback chip
+        findViewById<android.widget.TextView?>(R.id.feedbackChip)
+            ?.setOnClickListener { FeedbackManager.showNow(this) }
     }
 
     /** Shows a topic-input dialog then launches BB mode with that topic as the message. */

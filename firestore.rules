@@ -202,6 +202,16 @@ service cloud.firestore {
       allow write: if isSignedIn()
         && request.resource.data.ownerUserId == request.auth.uid;
     }
+
+    // ── User feedback ─────────────────────────────────────────────────────────
+    // Collection: app_feedback/{autoId}
+    // Any signed-in user may submit one feedback document (create only).
+    // Only admins (via service account) may read; no client reads allowed.
+    match /app_feedback/{docId} {
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid;
+      allow read, update, delete: if false;
+    }
   }
 }
 
