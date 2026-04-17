@@ -45,6 +45,7 @@ class TeacherQuizValidationActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!com.aiguruapp.student.config.AccessGate.requireAccess(this, com.aiguruapp.student.config.AccessGate.Feature.TEACHER_QUIZ_VALIDATION)) return
         setContentView(R.layout.activity_teacher_quiz_validation)
 
         recyclerView    = findViewById(R.id.quizValidationList)

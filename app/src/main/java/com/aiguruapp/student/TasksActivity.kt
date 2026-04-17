@@ -35,6 +35,7 @@ class TasksActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!com.aiguruapp.student.config.AccessGate.requireAccess(this, com.aiguruapp.student.config.AccessGate.Feature.TASKS)) return
         setContentView(R.layout.activity_tasks)
 
         findViewById<ImageButton>(R.id.backButton).setOnClickListener { finish() }

@@ -36,6 +36,7 @@ class TeacherDashboardActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!com.aiguruapp.student.config.AccessGate.requireAccess(this, com.aiguruapp.student.config.AccessGate.Feature.TEACHER_DASHBOARD)) return
         setContentView(R.layout.activity_teacher_dashboard)
 
         findViewById<ImageButton>(R.id.backButton).setOnClickListener { finish() }

@@ -36,6 +36,7 @@ class TeacherSavedContentActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!com.aiguruapp.student.config.AccessGate.requireAccess(this, com.aiguruapp.student.config.AccessGate.Feature.TEACHER_SAVED_CONTENT)) return
         setContentView(R.layout.activity_teacher_saved_content)
 
         findViewById<ImageButton>(R.id.backButton).setOnClickListener { finish() }

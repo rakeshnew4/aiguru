@@ -90,6 +90,7 @@ class TeacherChatReviewActivity : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!com.aiguruapp.student.config.AccessGate.requireAccess(this, com.aiguruapp.student.config.AccessGate.Feature.TEACHER_CHAT_REVIEW)) return
         setContentView(R.layout.activity_teacher_chat_review)
 
         subjectInput      = findViewById(R.id.subjectInput)

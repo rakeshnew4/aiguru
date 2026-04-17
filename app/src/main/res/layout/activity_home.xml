@@ -185,7 +185,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="🔥 Special Offers"
+                android:text="🔥 Something Interesting"
                 android:textSize="14sp"
                 android:textStyle="bold"
                 android:textColor="#1A237E" />
@@ -315,7 +315,7 @@
                     android:id="@+id/generalChatButton"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:text="✨ Quick Chat - AI Lessons (BB)"
+                    android:text="✨ Ask AI - Lessons(BB) &amp; More"
                     android:textAllCaps="false"
                     android:textSize="14sp"
                     android:textStyle="bold"

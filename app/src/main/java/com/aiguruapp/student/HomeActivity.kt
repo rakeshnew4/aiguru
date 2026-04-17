@@ -22,6 +22,8 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.aiguruapp.student.adapters.SubjectAdapter
 import com.aiguruapp.student.BuildConfig
+import com.aiguruapp.student.config.AccessGate
+import com.aiguruapp.student.config.AccessGate.Feature
 import com.aiguruapp.student.config.AdminConfigRepository
 import com.aiguruapp.student.config.PlanEnforcer
 import com.aiguruapp.student.models.AppUpdateConfig
@@ -241,7 +243,7 @@ class HomeActivity : BaseActivity() {
         val voiceRow = findViewById<LinearLayout?>(R.id.drawerVoiceRow)
         if (aiTtsCharsLeft != 0) {
             voiceRow?.visibility = View.VISIBLE
-            val voiceText = if (aiTtsCharsLeft < 0) "∞" else "$aiTtsCharsLeft chars left"
+            val voiceText = if (aiTtsCharsLeft < 0) "∞" else "$aiTtsCharsLeft more"
             val voiceColor = if (aiTtsCharsLeft in 0..1000) "#BF360C" else "#1E9B6B"
             findViewById<TextView?>(R.id.drawerVoiceLeft)?.apply {
                 text = voiceText
@@ -462,6 +464,13 @@ class HomeActivity : BaseActivity() {
     private fun setupDrawer() {
         // Populate drawer header from session
         updateDrawerHeader()
+
+        // ── Role-based visibility ─────────────────────────────────────────────
+        AccessGate.applyVisibility(this, findViewById(R.id.drawerItemTeacher),   Feature.TEACHER_DASHBOARD)
+        AccessGate.applyVisibility(this, findViewById(R.id.drawerItemTasks),     Feature.TASKS)
+        AccessGate.applyVisibility(this, findViewById(R.id.drawerItemJoinSchool),Feature.JOIN_SCHOOL)
+        AccessGate.applyVisibility(this, findViewById(R.id.drawerItemProfile),   Feature.USER_PROFILE)
+        AccessGate.applyVisibility(this, findViewById(R.id.drawerItemProgress),  Feature.PROGRESS_DASHBOARD)
 
         // Nav item clicks — close drawer then navigate
         fun navigate(block: () -> Unit) {
@@ -778,8 +787,8 @@ class HomeActivity : BaseActivity() {
         }
     }
 
-    private val defaultSubjects = listOf(
-        "My Subject"
+    private val defaultSubjects = listOf<String>(
+        
     )
 
     // ── Local SharedPreferences storage (Firestore will be added later) ──────

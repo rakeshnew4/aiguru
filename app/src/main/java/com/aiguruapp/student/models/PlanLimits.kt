@@ -91,5 +91,26 @@ data class PlanLimits(
 
     /** Daily AI TTS character quota. 0 = disabled. */
     @field:PropertyName("ai_tts_quota_chars")
-    var aiTtsQuotaChars: Int = 0
+    var aiTtsQuotaChars: Int = 0,
+
+    // ── Page / section feature flags ─────────────────────────────────────────
+    /** Progress dashboard screen. */
+    @field:PropertyName("progress_dashboard_enabled")
+    var progressDashboardEnabled: Boolean = true,
+
+    /** Chapter library screen. */
+    @field:PropertyName("library_enabled")
+    var libraryEnabled: Boolean = true,
+
+    /** Practice quiz / quiz-setup screen. */
+    @field:PropertyName("quiz_enabled")
+    var quizEnabled: Boolean = true,
+
+    /** Revision mode screen. */
+    @field:PropertyName("revision_enabled")
+    var revisionEnabled: Boolean = true,
+
+    /** NCERT PDF viewer. */
+    @field:PropertyName("ncert_viewer_enabled")
+    var ncertViewerEnabled: Boolean = true
 )
