@@ -1239,23 +1239,13 @@ class HomeActivity : BaseActivity() {
                         val card = buildOfferCard(offer)
                         container.addView(card)
 
-                        // Entry: scale-up + fade-in with stagger (spring-like overshoot)
-                        card.scaleX = 0.75f
-                        card.scaleY = 0.75f
+                        // Gentle fade-in with stagger — no bounce, so blackboard CTA stays dominant
                         card.alpha = 0f
                         card.animate()
-                            .scaleX(1.05f).scaleY(1.05f)
                             .alpha(1f)
-                            .setStartDelay(100L * index)
-                            .setDuration(1000)
+                            .setStartDelay(600L + 120L * index)   // 600 ms head-start for the rest of the screen
+                            .setDuration(400)
                             .setInterpolator(android.view.animation.DecelerateInterpolator())
-                            .withEndAction {
-                                card.animate()
-                                    .scaleX(1f).scaleY(1f)
-                                    .setDuration(1000)
-                                    .setInterpolator(android.view.animation.OvershootInterpolator(1.5f))
-                                    .start()
-                            }
                             .start()
                     }
 
@@ -1306,7 +1296,7 @@ class HomeActivity : BaseActivity() {
     private fun buildOfferCard(offer: FirestoreOffer): android.view.View {
         val ctx = this
         val bgColor = runCatching { android.graphics.Color.parseColor(offer.backgroundColor) }
-            .getOrDefault(android.graphics.Color.parseColor("#1A1A2E"))
+            .getOrDefault(android.graphics.Color.parseColor("#1E2640"))
 
         // Lighten the bg color slightly for the stroke
         val cardStrokeColor = android.graphics.Color.argb(
@@ -1326,7 +1316,8 @@ class HomeActivity : BaseActivity() {
             cardElevation = 6 * resources.displayMetrics.density
             setCardBackgroundColor(bgColor)
             setStrokeColor(cardStrokeColor)
-            strokeWidth = (2 * resources.displayMetrics.density).toInt()
+            strokeWidth = (1 * resources.displayMetrics.density).toInt()
+            alpha = 0.82f   // slightly faded so blackboard CTA stays dominant
         }
 
         // Root frame for stacking (inner row + badge)
@@ -1397,12 +1388,12 @@ class HomeActivity : BaseActivity() {
 
         // "HOT" badge in top-right corner
         val badge = android.widget.TextView(ctx).apply {
-            text = "  ★ NEW  "
+            text = "  ★  "
             textSize = 9f
             setTypeface(null, android.graphics.Typeface.BOLD)
-            setTextColor(android.graphics.Color.WHITE)
+            setTextColor(android.graphics.Color.parseColor("#AAAACC"))
             val badgeBg = android.graphics.drawable.GradientDrawable().apply {
-                setColor(android.graphics.Color.parseColor("#E53935"))
+                setColor(android.graphics.Color.parseColor("#2A2D45"))  // muted, not red
                 cornerRadius = 20 * resources.displayMetrics.density
                 setPadding(0, 0, 0, 0)
             }

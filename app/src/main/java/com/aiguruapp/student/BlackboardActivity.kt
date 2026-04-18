@@ -157,7 +157,8 @@ class BlackboardActivity : AppCompatActivity() {
     // Ask-bar views
     private lateinit var bbAskInput: EditText
     private lateinit var bbAskSendBtn: TextView
-    private lateinit var bbAskToggle: TextView
+    private lateinit var bbAskToggle: TextView   // close X inside the ask bar overlay
+    private lateinit var bbChatFab: TextView      // floating chat button
     private var bbAskBarExpanded = false
 
     // BB ask-bar: image attachment + voice
@@ -256,6 +257,7 @@ class BlackboardActivity : AppCompatActivity() {
         bbAskInput      = findViewById(R.id.bbAskInput)
         bbAskSendBtn    = findViewById(R.id.bbAskSend)
         bbAskToggle     = findViewById(R.id.bbAskToggle)
+        bbChatFab       = findViewById(R.id.bbChatFab)
         bbCameraBtn       = findViewById(R.id.bbCameraBtn)
         bbMicBtn          = findViewById(R.id.bbMicBtn)
         bbImgPreviewRow   = findViewById(R.id.bbImgPreviewRow)
@@ -271,7 +273,8 @@ class BlackboardActivity : AppCompatActivity() {
         }
         bbAskSendBtn.setOnClickListener { sendBbQuestion() }
         bbAskInput.setOnEditorActionListener { _, _, _ -> sendBbQuestion(); true }
-        bbAskToggle.setOnClickListener { toggleAskBar() }
+        bbAskToggle.setOnClickListener { toggleAskBar() }   // ✕ inside ask bar
+        bbChatFab.setOnClickListener { toggleAskBar() }     // 💬 floating FAB
         bbCameraBtn.setOnClickListener { launchBbCamera() }
         bbImgPreviewRemove.setOnClickListener { clearBbImage() }
         bbMicBtn.setOnClickListener {
@@ -1706,7 +1709,7 @@ class BlackboardActivity : AppCompatActivity() {
         val nearEnd = steps.isNotEmpty() && currentStepIdx >= steps.size - 2 && !atStart
         bbProgressHintTv.visibility = if (nearEnd) View.VISIBLE else View.GONE
         if (nearEnd) bbProgressHintTv.text =
-            if (currentStepIdx == steps.size - 1) "🎓 Last step!" else "🔥 Almost done!"
+            if (currentStepIdx == steps.size - 1) "🎓 Replay?" else "🔥 Almost done!"
     }
 
     // ── Frame text rendering ──────────────────────────────────────────────────
@@ -2182,32 +2185,58 @@ class BlackboardActivity : AppCompatActivity() {
         val askBar = findViewById<android.widget.LinearLayout>(R.id.bbAskBar) ?: return
         bbAskBarExpanded = !bbAskBarExpanded
         if (bbAskBarExpanded) {
+            askBar.translationY = askBar.height.toFloat()
             askBar.visibility = View.VISIBLE
-            bbAskToggle.text = "⌄"
+            askBar.animate().translationY(0f).setDuration(240)
+                .setInterpolator(android.view.animation.DecelerateInterpolator()).start()
+            bbChatFab.visibility = View.GONE
             bbAskInput.requestFocus()
         } else {
-            askBar.visibility = View.GONE
-            bbAskToggle.text = "⌨"
+            askBar.animate().translationY(askBar.height.toFloat()).setDuration(200)
+                .setInterpolator(android.view.animation.AccelerateInterpolator())
+                .withEndAction { askBar.visibility = View.GONE }
+                .start()
+            bbChatFab.visibility = View.VISIBLE
         }
     }
+
+    private var subtitlePulse: android.animation.ObjectAnimator? = null
 
     private fun showSubtitle(text: String) {
         bbSubtitleTv.text = text
         if (bbSubtitleTv.visibility != View.VISIBLE) {
             bbSubtitleTv.alpha = 0f
             bbSubtitleTv.visibility = View.VISIBLE
-            bbSubtitleTv.animate().alpha(1f).setDuration(200).start()
+            bbSubtitleTv.animate().alpha(1f).setDuration(220).withEndAction {
+                startSubtitlePulse()
+            }.start()
+        } else {
+            // Already visible — just update text and ensure pulse is running
+            if (subtitlePulse?.isRunning != true) startSubtitlePulse()
         }
         // Auto-collapse ask bar while speaking
         val askBar = findViewById<android.widget.LinearLayout>(R.id.bbAskBar)
         if (askBar?.visibility == View.VISIBLE) {
             askBar.visibility = View.GONE
             bbAskBarExpanded = false
-            bbAskToggle.text = "⌨"
+            bbChatFab.visibility = View.VISIBLE
+        }
+    }
+
+    private fun startSubtitlePulse() {
+        subtitlePulse?.cancel()
+        subtitlePulse = android.animation.ObjectAnimator.ofFloat(bbSubtitleTv, "alpha", 1f, 0.65f).apply {
+            duration = 700
+            repeatMode = android.animation.ValueAnimator.REVERSE
+            repeatCount = android.animation.ValueAnimator.INFINITE
+            interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+            start()
         }
     }
 
     private fun hideSubtitle() {
+        subtitlePulse?.cancel()
+        subtitlePulse = null
         if (bbSubtitleTv.visibility == View.VISIBLE) {
             bbSubtitleTv.animate().alpha(0f).setDuration(300)
                 .withEndAction { bbSubtitleTv.visibility = View.GONE }.start()

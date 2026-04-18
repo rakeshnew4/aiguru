@@ -407,16 +407,30 @@ def _call_litellm_proxy(
     prompt: str,
     model_config,
     images: Optional[List[str]] = None,
+    system_prompt: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Call LLM through the LiteLLM proxy using OpenAI-compatible vision format."""
+    """Call LLM through the LiteLLM proxy using OpenAI-compatible vision format.
+
+    When system_prompt is provided it is sent as role="system" (the first message).
+    LiteLLM translates this to:
+      - Gemini: systemInstruction  → qualifies for implicit caching (≥1024 tokens)
+      - Anthropic: system block   → add cache_control in the call for explicit caching
+      - OpenAI / Groq: standard system message
+    """
     from urllib.parse import urlparse
     proxy_url = settings.LITELLM_PROXY_URL  # e.g. http://localhost:8005
     parsed = urlparse(proxy_url)
     host = parsed.hostname
     port = parsed.port or 80
 
-    # Build message content — multimodal when images are present.
-    # LiteLLM translates this OpenAI vision format to Gemini's native Part format.
+    # Build messages list
+    messages = []
+
+    # System message (static, cache-eligible) — sent first so it forms the cached prefix
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+
+    # User message: multimodal when images are present
     if images:
         content: Any = (
             [{"type": "image_url", "image_url": {"url": img}} for img in images]
@@ -426,7 +440,7 @@ def _call_litellm_proxy(
     else:
         content = prompt
 
-    messages = [{"role": "user", "content": content}]
+    messages.append({"role": "user", "content": content})
 
     # All tiers use gemini-2.5-flash-lite through LiteLLM during testing
     body = json.dumps({
@@ -436,7 +450,7 @@ def _call_litellm_proxy(
         "max_tokens": model_config.max_tokens,
     }).encode()
 
-    logger.debug(f"LiteLLM proxy request: model=gemini-2.5-flash-lite, tier={getattr(model_config, '_tier_name', tier if 'tier' in dir() else '?')}, prompt_len={len(prompt)}, images={len(images) if images else 0}")
+    logger.debug(f"LiteLLM proxy request: model=gemini-2.5-flash-lite, has_system={'yes' if system_prompt else 'no'}, prompt_len={len(prompt)}, images={len(images) if images else 0}")
 
     try:
         conn = http.client.HTTPConnection(host, port, timeout=300)
@@ -469,11 +483,12 @@ def _call_litellm_proxy(
                 "inputTokens": usage.get("prompt_tokens", 0),
                 "outputTokens": usage.get("completion_tokens", 0),
                 "totalTokens": usage.get("total_tokens", 0),
+                "cachedTokens": usage.get("prompt_tokens_details", {}).get("cached_tokens", 0),
             },
             "provider": "litellm",
             "model": data.get("model", "gemini-2.5-flash-lite"),
         }
-        logger.info(f"LiteLLM success: model={result['model']} | tokens={result['tokens']['totalTokens']}")
+        logger.info(f"LiteLLM success: model={result['model']} | tokens={result['tokens']['totalTokens']} | cached={result['tokens']['cachedTokens']}")
         return result
         
     except json.JSONDecodeError as e:
@@ -488,25 +503,29 @@ def generate_response(
     prompt: str,
     images: Optional[List[str]] = None,
     tier: Literal["power", "cheaper", "faster"] = "cheaper",
+    system_prompt: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Generate LLM response using LiteLLM proxy.
-    
+
     UNIFIED PATH: All requests go through LiteLLM proxy (http://localhost:8005).
     LiteLLM handles routing to the configured models in litellm_config.yaml.
-    
+
     Args:
-        prompt: The text prompt
-        images: Optional list of image URLs or base64 data URIs (currently ignored for LiteLLM)
+        prompt: The user message text
+        images: Optional list of image URLs or base64 data URIs
         tier: Model tier - "power", "cheaper", or "faster"
-    
+        system_prompt: Optional static system instruction (role="system").
+                       Identical content across requests enables provider caching:
+                       Gemini implicit caching (≥1024 tokens), Anthropic cache_control.
+
     Returns:
         Dict with 'text', 'tokens', 'provider', 'model' keys
-        
+
     Raises:
         RuntimeError: If LiteLLM is down or all models fail
     """
-    logger.info(f"generate_response | tier={tier} | images={len(images) if images else 0}")
+    logger.info(f"generate_response | tier={tier} | has_system={'yes' if system_prompt else 'no'} | images={len(images) if images else 0}")
 
     # LiteLLM proxy is the ONLY path (all tiers including faster go through LiteLLM)
     if not settings.USE_LITELLM_PROXY:
@@ -518,7 +537,7 @@ def generate_response(
         model_config._tier_name = tier
         
         logger.info(f"Calling LiteLLM proxy with tier={tier}")
-        result = _call_litellm_proxy(prompt, model_config, images)
+        result = _call_litellm_proxy(prompt, model_config, images, system_prompt=system_prompt)
         
         if result and result.get("text"):
             logger.info(f"LiteLLM success | tier={tier} | tokens={result.get('tokens', {})}")

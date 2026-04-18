@@ -25,6 +25,7 @@ from app.models.quiz import (
 )
 from app.services.llm_service import generate_response
 from app.services import cache_service
+from app.services.prompt_service import QUIZ_SYSTEM_PROMPT
 
 logger = get_logger(__name__)
 
@@ -191,11 +192,6 @@ async def generate_quiz(
             logger.warning("Failed to deserialise cached quiz: %s", cache_exc)
 
     prompt = _build_prompt(subject, chapter_title, difficulty, question_types, count, context_text)
-    system_prefix = (
-        "You are a quiz generator. Always respond with valid JSON only. "
-        "No prose, no markdown, just raw JSON.\n\n"
-    )
-    full_prompt = system_prefix + prompt
 
     last_error: Exception | None = None
     for attempt in range(3):
@@ -203,7 +199,7 @@ async def generate_quiz(
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(
                 None,
-                partial(generate_response, full_prompt, [], "cheaper"),
+                partial(generate_response, prompt, [], "cheaper", system_prompt=QUIZ_SYSTEM_PROMPT),
             )
             raw_text: str = result["text"]
             parsed = _extract_json(raw_text)

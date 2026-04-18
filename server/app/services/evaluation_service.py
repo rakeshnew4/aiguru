@@ -17,6 +17,7 @@ from app.core.logger import get_logger
 from app.models.quiz import EvalResult, EvaluateAnswerResponse
 from app.services.llm_service import generate_response
 from app.services import cache_service
+from app.services.prompt_service import EVAL_SYSTEM_PROMPT
 
 logger = get_logger(__name__)
 
@@ -127,7 +128,7 @@ async def evaluate_short_answer(
         except Exception:
             pass  # stale or malformed cache entry — fall through to LLM
 
-    prompt = _EVAL_SYSTEM + "\n\n" + _build_eval_prompt(
+    prompt = _build_eval_prompt(
         question, user_answer, expected_keywords, sample_answer
     )
 
@@ -136,7 +137,7 @@ async def evaluate_short_answer(
         try:
             result = await loop.run_in_executor(
                 None,
-                partial(generate_response, prompt, [], "cheaper"),
+                partial(generate_response, prompt, [], "cheaper", system_prompt=EVAL_SYSTEM_PROMPT),
             )
             raw: str = result["text"]
             cleaned = re.sub(r"```(?:json)?", "", raw).strip().rstrip("`").strip()

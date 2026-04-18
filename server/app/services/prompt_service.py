@@ -28,15 +28,12 @@ _JSON_FOOTER = (
 # ---Intent Classifier Prompt---
 # Run with tier="faster" (gemini-2.0-flash). Expects tiny JSON output (~80 tokens).
 
-INTENT_CLASSIFIER_PROMPT = (
+CLASSIFIER_SYSTEM_PROMPT: str = (
     "You are a fast intent classifier for a school tutoring app.\n"
     "Output ONLY valid JSON — no prose, no code fences.\n\n"
-    'Student question: "{question}"\n'
-    "Has image: {has_image}\n"
-    'Last reply (120 chars): "{last_reply}"\n\n'
     "Return exactly:\n"
-    '{{"intent":"<greet|image_explain|calculate|definition|followup|explain|practice|other>",'
-    '"complexity":"<low|medium|high>"}}\n\n'
+    '{"intent":"<greet|image_explain|calculate|definition|followup|explain|practice|other>",'
+    '"complexity":"<low|medium|high>"}\n\n'
     "Intent:\n"
     "greet=social/greeting  image_explain=image attached or asked about  calculate=math/solve\n"
     "definition=what is X  followup=refers to last reply  explain=concept/process\n"
@@ -45,23 +42,26 @@ INTENT_CLASSIFIER_PROMPT = (
     "low=greeting or single fact  medium=normal concept or 2-step  high=multi-concept or derivation"
 )
 
+# User-part template: per-request dynamic content only
+INTENT_CLASSIFIER_PROMPT: str = (
+    'Student question: "{question}"\n'
+    "Has image: {has_image}\n"
+    'Last reply (120 chars): "{last_reply}"'
+)
+
 # ---BB Planner Prompt---
 # Run with tier="faster". Returns plan JSON (~120 tokens).
 # Tells the main BB LLM exactly how many steps to generate and what concepts to cover.
 
-BB_PLANNER_PROMPT = (
+BB_PLANNER_SYSTEM_PROMPT: str = (
     "You are a lesson planner for a visual animated blackboard school app.\n"
     "Given the student's question, return a concise lesson plan. Output ONLY valid JSON — nothing else.\n\n"
-    'Question: "{question}"\n'
-    'Chapter context (excerpt): "{context_snippet}"\n'
-    'Prior lesson excerpt (last reply): "{last_reply}"\n'
-    "Student class: {level}\n\n"
     "Output (one JSON object, NOTHING else):\n"
-    '{{"topic_type":"<math_formula|science_process|definition|comparison|history|programming|other>",'
+    '{"topic_type":"<math_formula|science_process|definition|comparison|history|programming|other>",'
     '"scope":"<simple|medium|complex>",'
     '"key_concepts":["term1","term2"],'
     '"steps_count":<4|5|6>,'
-    '"image_search_terms":["wikimedia phrase 1","wikimedia phrase 2"]}}\n\n'
+    '"image_search_terms":["wikimedia phrase 1","wikimedia phrase 2"]}\n\n'
     "Rules:\n"
     "- simple (4 steps): single self-contained concept\n"
     "- medium (5 steps): standard topic with 1-2 sub-concepts\n"
@@ -70,6 +70,14 @@ BB_PLANNER_PROMPT = (
     '  GOOD: "mitosis phases cell division", "Newton second law force mass diagram"\n'
     '  BAD: "biology", "science concept", "diagram"\n'
     "- key_concepts: 2-4 core ideas the lesson MUST cover (actual concept names, not topic labels)"
+)
+
+# User-part template: per-request dynamic content only
+BB_PLANNER_PROMPT: str = (
+    'Question: "{question}"\n'
+    'Chapter context (excerpt): "{context_snippet}"\n'
+    'Prior lesson excerpt (last reply): "{last_reply}"\n'
+    "Student class: {level}"
 )
 
 # ---Blackboard Prompt---
@@ -145,6 +153,10 @@ blackboard_prompt = (
     "- Output ONLY the JSON object."
 )
 
+# Blackboard system prompt — the full static spec (~2500 tokens).
+# Gemini implicit caching: exceeds 1024-token threshold → cached after first request.
+BB_SYSTEM_PROMPT: str = blackboard_prompt
+
 # ---Intent-Specific Prompt Builders---
 
 
@@ -157,7 +169,6 @@ def _greet_prompt(context: str, history: str, question: str, level: int) -> str:
         "The student is greeting you or saying something social. "
         f"Respond in 1-2 warm sentences and gently invite them to ask a question{subject_hint}.\n\n"
         "RESPONSE CALIBRATION: This is a greeting -- answer must be 1-2 sentences MAX."
-        + _JSON_FOOTER
     )
 
 
@@ -172,7 +183,6 @@ def _definition_prompt(context: str, history: str, question: str, level: int) ->
         "**Example** -- 1 concrete worked or real-world example\n"
         "**Key fact** -- 1 memorable fact (include if relevant)\n\n"
         "RESPONSE CALIBRATION: Definition questions need precision not length. Keep to 3-5 sentences."
-        + _JSON_FOOTER
     )
 
 
@@ -190,7 +200,6 @@ def _calculate_prompt(context: str, history: str, question: str, level: int) -> 
         "5. **Quick check** -- verify the answer (if applicable)\n\n"
         "ALL math MUST be in $$...$$ format.\n\n"
         "RESPONSE CALIBRATION: Show ALL steps without skipping. If multi-part, answer every part."
-        + _JSON_FOOTER
     )
 
 
@@ -233,7 +242,6 @@ def _explain_prompt(
         "MEMORY TIP or TOP MISTAKE -- whichever is more useful\n\n"
         "FORMATTING: **Bold** every key term on first use. "
         "Markdown tables to compare 2+ things."
-        + _JSON_FOOTER
     )
 
 
@@ -249,7 +257,6 @@ def _followup_prompt(context: str, history: str, question: str, level: int) -> s
         "- Add a new example or analogy if it helps clarify.\n"
         "- Keep it focused and concise.\n\n"
         "RESPONSE CALIBRATION: Follow-up -- avoid repeating what was already explained."
-        + _JSON_FOOTER
     )
 
 
@@ -275,7 +282,6 @@ def _image_explain_prompt(context: str, history: str, question: str, level: int)
         "TRANSCRIPTION IS CRITICAL: It will be saved as context for all follow-up questions. "
         "Transcribe EVERYTHING visible -- do not summarise or skip any text.\n\n"
         "RESPONSE CALIBRATION: Prioritise extracting image content accurately before answering."
-        + _JSON_FOOTER
     )
 
 
@@ -295,7 +301,6 @@ def _practice_prompt(context: str, history: str, question: str, level: int) -> s
         "- Mark the final answer clearly\n\n"
         "ALL math in $$...$$ format.\n\n"
         "RESPONSE CALIBRATION: Give exactly 3 problems with full worked solutions."
-        + _JSON_FOOTER
     )
 
 
@@ -306,13 +311,14 @@ def build_intent_classifier_prompt(
     question: str,
     has_image: bool,
     last_reply: str = "",
-) -> str:
-    """Returns the formatted intent-classifier prompt for the faster model tier."""
-    return INTENT_CLASSIFIER_PROMPT.format(
+) -> tuple:
+    """Returns (system_prompt, user_message) for the intent classifier."""
+    user_msg = INTENT_CLASSIFIER_PROMPT.format(
         question=question[:300],
         has_image=str(has_image).lower(),
         last_reply=(last_reply or "")[:120].replace("\n", " "),
     )
+    return CLASSIFIER_SYSTEM_PROMPT, user_msg
 
 
 def build_prompt(
@@ -324,25 +330,15 @@ def build_prompt(
     mode=None,
     intent=None,
     complexity=None,
-) -> str:
+) -> tuple:
     """
     Build the main LLM prompt.
 
-    For blackboard mode  ->  returns the BB lesson prompt + question + language instruction.
-    For normal mode      ->  routes to the intent-specific prompt builder, then appends
-                             the language instruction for localised output.
+    Returns (system_prompt, user_message) tuple.
+    system_prompt is static and cache-eligible; user_message contains dynamic content.
 
-    Parameters
-    ----------
-    context       : merged chapter / page context string
-    question      : student question text
-    student_level : class / grade as integer (1-12)
-    history       : list of "user: ..." / "assistant: ..." strings (most recent at end)
-    language      : BCP-47 language tag  (e.g. "hi-IN", "en-US")
-    mode          : "normal" | "blackboard"
-    intent        : greet | image_explain | calculate | definition |
-                    followup | explain | practice | other  (None -> "explain")
-    complexity    : "low" | "medium" | "high"  (None -> "medium")
+    For blackboard mode  ->  (BB_SYSTEM_PROMPT, question + language instruction)
+    For normal mode      ->  (CHAT_SYSTEM_PROMPT, intent-specific prompt + language instruction)
     """
     lang = language or "en-US"
     if mode == "blackboard":
@@ -351,7 +347,7 @@ def build_prompt(
             f'Write ALL "speech" fields in the language for tag "{lang}" '
             f'(hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.).'
         )
-        return blackboard_prompt + question + language_instructions.get(lang, "") + lang_tag_instr
+        return BB_SYSTEM_PROMPT, question + language_instructions.get(lang, "") + lang_tag_instr
 
     history_text = "\n".join(history or [])
     ctx = context or ""
@@ -375,7 +371,7 @@ def build_prompt(
         # "explain" | "other" | unknown -> full explain prompt
         core = _explain_prompt(ctx, history_text, question, lvl, cmp)
 
-    return core + language_instructions.get(lang, "")
+    return CHAT_SYSTEM_PROMPT, core + language_instructions.get(lang, "")
 
 
 def build_bb_planner_prompt(
@@ -383,20 +379,21 @@ def build_bb_planner_prompt(
     context: str,
     history: list,
     level: int,
-) -> str:
-    """Returns the formatted BB planner prompt for the 'faster' model tier."""
+) -> tuple:
+    """Returns (system_prompt, user_message) for the BB lesson planner."""
     ctx_snippet = (context or "")[:500].strip()
     last_reply = ""
     for h in reversed(history or []):
         if h.startswith("assistant:"):
             last_reply = h[10:200].strip()
             break
-    return BB_PLANNER_PROMPT.format(
+    user_msg = BB_PLANNER_PROMPT.format(
         question=question[:300],
         context_snippet=ctx_snippet,
         last_reply=last_reply[:200],
         level=level or 5,
     )
+    return BB_PLANNER_SYSTEM_PROMPT, user_msg
 
 
 def build_bb_main_prompt(
@@ -406,11 +403,11 @@ def build_bb_main_prompt(
     history: list,
     plan: dict,
     lang: str,
-) -> str:
+) -> tuple:
     """
     Build the context-enriched blackboard lesson prompt using the planner's output.
-    Injects chapter context, recent conversation, and lesson plan so the BB LLM
-    generates focused content without having to figure out structure itself.
+    Returns (BB_SYSTEM_PROMPT, user_message) where BB_SYSTEM_PROMPT is the static
+    blackboard spec (~2500 tokens) and user_message is the dynamic lesson brief.
     """
     topic_type = plan.get("topic_type", "other")
     scope = plan.get("scope", "medium")
@@ -432,7 +429,7 @@ def build_bb_main_prompt(
     hist_snippet = "\n".join(_fmt(h) for h in history_entries)
     lang_instr = language_instructions.get(lang or "en-US", "")
 
-    parts = [blackboard_prompt, "\n\n---LESSON BRIEF (follow these instructions exactly)---\n"]
+    parts = ["\n\n---LESSON BRIEF (follow these instructions exactly)---\n"]
     parts.append(f"Student question: {question}\n")
     parts.append(f"Student level: Class {level}\n")
     parts.append(f"Topic type: {topic_type} | Scope: {scope}\n")
@@ -456,4 +453,4 @@ def build_bb_main_prompt(
         f'Board "text" field stays in English (formulas/keywords only).'
     )
 
-    return "".join(parts)
+    return BB_SYSTEM_PROMPT, "".join(parts)
