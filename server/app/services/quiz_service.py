@@ -75,8 +75,7 @@ Base your questions PRIMARILY on the following conversation/content excerpts:
 ---
 """
 
-    return f"""You are an expert educational content creator for school students.
-CRITICAL: Generate exactly {count} quiz questions for:
+    return f"""Generate exactly {count} quiz questions for:
 - Subject: {subject}
 - Chapter: {chapter_title}
 - Difficulty: {difficulty.value}{context_section}

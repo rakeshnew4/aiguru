@@ -50,13 +50,6 @@ def check_mcq(user_answer: str, correct_answer: str) -> bool:
 
 # ── Short-answer LLM evaluation ───────────────────────────────────────────────
 
-_EVAL_SYSTEM = (
-    "You are an expert educational evaluator. "
-    "Score student answers strictly and fairly. "
-    "Respond only with valid JSON — no prose, no markdown."
-)
-
-
 def _build_eval_prompt(
     question: str,
     user_answer: str,
