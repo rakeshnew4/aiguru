@@ -46,97 +46,13 @@
         android:orientation="vertical"
         android:visibility="gone">
 
-        <!-- ── TOP BAR ────────────────────────────────────────────────────── -->
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:background="#CC0D1033"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:elevation="6dp">
-
-            <!-- Quota chip (left) -->
-            <TextView
-                android:id="@+id/bbQuotaChip"
-                android:layout_width="wrap_content"
-                android:layout_height="28dp"
-                android:layout_alignParentStart="true"
-                android:layout_centerVertical="true"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:textSize="11sp"
-                android:textColor="#FFFFFF"
-                android:background="@drawable/bg_chip_indigo"
-                android:visibility="gone"
-                android:gravity="center"
-                android:text="" />
-
-            <!-- Step counter (centre) -->
-            <TextView
-                android:id="@+id/stepCounter"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_centerInParent="true"
-                android:text="Step 1 / 5"
-                android:textColor="#E0ECF8"
-                android:textSize="13sp"
-                android:textStyle="bold"
-                android:letterSpacing="0.04" />
-
-            <!-- Save + Publish + Close (right cluster) -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentEnd="true"
-                android:layout_centerVertical="true"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <TextView
-                    android:id="@+id/saveSessionBtn"
-                    android:layout_width="wrap_content"
-                    android:layout_height="28dp"
-                    android:gravity="center"
-                    android:text="💾"
-                    android:textSize="16sp"
-                    android:paddingStart="8dp"
-                    android:paddingEnd="4dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:visibility="gone" />
-
-                <TextView
-                    android:id="@+id/publishLessonBtn"
-                    android:layout_width="wrap_content"
-                    android:layout_height="28dp"
-                    android:gravity="center"
-                    android:text="📤"
-                    android:textSize="16sp"
-                    android:paddingStart="4dp"
-                    android:paddingEnd="4dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:visibility="gone" />
-
-                <TextView
-                    android:id="@+id/closeButton"
-                    android:layout_width="36dp"
-                    android:layout_height="36dp"
-                    android:layout_marginStart="4dp"
-                    android:gravity="center"
-                    android:text="✕"
-                    android:textColor="#7A9ABB"
-                    android:textSize="16sp"
-                    android:background="?attr/selectableItemBackgroundBorderless" />
-
-            </LinearLayout>
-
-        </RelativeLayout>
-
-        <!-- Thin accent progress bar under the top bar -->
-        <View
-            android:id="@+id/topAccentLine"
-            android:layout_width="match_parent"
-            android:layout_height="2dp"
-            android:background="#3D5AFE" />
+        <!-- ── TOP BAR (fully transparent, 0dp height — replaced by floating controls) ── -->
+        <!-- stepCounter kept in hierarchy (hidden) so Kotlin references still compile -->
+        <TextView
+            android:id="@+id/stepCounter"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
 
         <!-- ── LESSON CONTENT ─────────────────────────────────────────────── -->
         <ScrollView
@@ -176,7 +92,95 @@
             android:paddingBottom="2dp"
             android:visibility="gone" />
 
-        <!-- ── ASK BAR ───────────────────────────────────────────────────── -->
+        <!-- ── ASK BAR TOGGLE (always visible, collapses/expands ask bar) ── -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="#B20D1033"
+            android:paddingStart="12dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp">
+
+            <!-- Chevron toggle -->
+            <TextView
+                android:id="@+id/bbAskToggle"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:gravity="center"
+                android:text="⌨"
+                android:textSize="16sp"
+                android:textColor="#7A9ABB"
+                android:background="?attr/selectableItemBackgroundBorderless" />
+
+            <!-- Hint label -->
+            <TextView
+                android:id="@+id/bbAskHintLabel"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Tap to ask a question…"
+                android:textColor="#3A5070"
+                android:textSize="12sp"
+                android:paddingStart="6dp" />
+
+            <!-- Floating quota chip -->
+            <TextView
+                android:id="@+id/bbQuotaChip"
+                android:layout_width="wrap_content"
+                android:layout_height="24dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:textSize="10sp"
+                android:textColor="#FFFFFF"
+                android:background="@drawable/bg_chip_indigo"
+                android:visibility="gone"
+                android:gravity="center"
+                android:text="" />
+
+            <!-- Save -->
+            <TextView
+                android:id="@+id/saveSessionBtn"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:gravity="center"
+                android:text="💾"
+                android:textSize="15sp"
+                android:paddingStart="2dp"
+                android:paddingEnd="2dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:visibility="gone" />
+
+            <!-- Publish -->
+            <TextView
+                android:id="@+id/publishLessonBtn"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:gravity="center"
+                android:text="📤"
+                android:textSize="15sp"
+                android:paddingStart="2dp"
+                android:paddingEnd="2dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:visibility="gone" />
+
+            <!-- Close -->
+            <TextView
+                android:id="@+id/closeButton"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginStart="2dp"
+                android:gravity="center"
+                android:text="✕"
+                android:textColor="#7A9ABB"
+                android:textSize="16sp"
+                android:background="?attr/selectableItemBackgroundBorderless" />
+
+        </LinearLayout>
+
+        <!-- ── ASK BAR (collapsible) ──────────────────────────────────────── -->
         <LinearLayout
             android:id="@+id/bbAskBar"
             android:layout_width="match_parent"
@@ -401,14 +405,15 @@
         android:visibility="invisible" />
 
     <!-- ── SUBTITLE OVERLAY (shown while TTS speaks) ───────────────────── -->
+    <!-- Floats over the board area, well above the bottom controls -->
     <TextView
         android:id="@+id/bbSubtitleTv"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginStart="12dp"
-        android:layout_marginEnd="12dp"
-        android:layout_marginBottom="150dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="220dp"
         android:background="#CC0A0E1F"
         android:gravity="center"
         android:lineSpacingExtra="3dp"

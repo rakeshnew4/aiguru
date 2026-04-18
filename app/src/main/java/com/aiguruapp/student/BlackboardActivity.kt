@@ -157,6 +157,8 @@ class BlackboardActivity : AppCompatActivity() {
     // Ask-bar views
     private lateinit var bbAskInput: EditText
     private lateinit var bbAskSendBtn: TextView
+    private lateinit var bbAskToggle: TextView
+    private var bbAskBarExpanded = false
 
     // BB ask-bar: image attachment + voice
     private var bbCameraImageUri: Uri? = null
@@ -253,6 +255,7 @@ class BlackboardActivity : AppCompatActivity() {
         publishLessonBtn = findViewById(R.id.publishLessonBtn)
         bbAskInput      = findViewById(R.id.bbAskInput)
         bbAskSendBtn    = findViewById(R.id.bbAskSend)
+        bbAskToggle     = findViewById(R.id.bbAskToggle)
         bbCameraBtn       = findViewById(R.id.bbCameraBtn)
         bbMicBtn          = findViewById(R.id.bbMicBtn)
         bbImgPreviewRow   = findViewById(R.id.bbImgPreviewRow)
@@ -268,6 +271,7 @@ class BlackboardActivity : AppCompatActivity() {
         }
         bbAskSendBtn.setOnClickListener { sendBbQuestion() }
         bbAskInput.setOnEditorActionListener { _, _, _ -> sendBbQuestion(); true }
+        bbAskToggle.setOnClickListener { toggleAskBar() }
         bbCameraBtn.setOnClickListener { launchBbCamera() }
         bbImgPreviewRemove.setOnClickListener { clearBbImage() }
         bbMicBtn.setOnClickListener {
@@ -2174,12 +2178,32 @@ class BlackboardActivity : AppCompatActivity() {
         }
     }
 
+    private fun toggleAskBar() {
+        val askBar = findViewById<android.widget.LinearLayout>(R.id.bbAskBar) ?: return
+        bbAskBarExpanded = !bbAskBarExpanded
+        if (bbAskBarExpanded) {
+            askBar.visibility = View.VISIBLE
+            bbAskToggle.text = "⌄"
+            bbAskInput.requestFocus()
+        } else {
+            askBar.visibility = View.GONE
+            bbAskToggle.text = "⌨"
+        }
+    }
+
     private fun showSubtitle(text: String) {
         bbSubtitleTv.text = text
         if (bbSubtitleTv.visibility != View.VISIBLE) {
             bbSubtitleTv.alpha = 0f
             bbSubtitleTv.visibility = View.VISIBLE
             bbSubtitleTv.animate().alpha(1f).setDuration(200).start()
+        }
+        // Auto-collapse ask bar while speaking
+        val askBar = findViewById<android.widget.LinearLayout>(R.id.bbAskBar)
+        if (askBar?.visibility == View.VISIBLE) {
+            askBar.visibility = View.GONE
+            bbAskBarExpanded = false
+            bbAskToggle.text = "⌨"
         }
     }
 
