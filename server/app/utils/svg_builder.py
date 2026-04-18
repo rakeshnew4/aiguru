@@ -22,7 +22,10 @@ Legacy fallback: raw svg_elements still accepted for cached lessons.
 """
 
 import json
+import logging
 import math
+
+logger = logging.getLogger(__name__)
 
 # ── Colour palette ────────────────────────────────────────────────────────────
 STROKE      = "#F0EDD0"   # chalk white
@@ -696,6 +699,7 @@ def _render_shape(el: dict, delay: float) -> tuple[str, float]:
         )
         return svg, delay + 0.50
 
+    logger.warning("_render_shape: unknown shape type %r — skipping element %s", shape, el)
     return "", delay
 
 
@@ -1161,10 +1165,18 @@ def build_from_diagram_type(diagram_type: str, data: dict) -> list:
     """
     renderer = _RENDERERS.get((diagram_type or "").strip().lower())
     if not renderer:
+        logger.warning("build_from_diagram_type: unknown diagram_type %r — supported: %s",
+                       diagram_type, list(_RENDERERS.keys()))
         return []
     try:
-        return renderer(data or {})
-    except Exception:
+        shapes = renderer(data or {})
+        if not shapes:
+            logger.warning("build_from_diagram_type: renderer for %r returned empty shapes (data=%s)",
+                           diagram_type, data)
+        return shapes
+    except Exception as exc:
+        logger.error("build_from_diagram_type: renderer for %r raised %s: %s",
+                     diagram_type, type(exc).__name__, exc, exc_info=True)
         return []
 
 
@@ -1204,10 +1216,12 @@ def build_animated_svg(elements) -> str:
     if isinstance(elements, str):
         try:
             elements = json.loads(elements)
-        except (json.JSONDecodeError, TypeError):
+        except (json.JSONDecodeError, TypeError) as exc:
+            logger.error("build_animated_svg: failed to parse elements JSON: %s", exc)
             return ""
 
     if not elements or not isinstance(elements, list):
+        logger.warning("build_animated_svg: received empty or non-list elements: %r", type(elements).__name__)
         return ""
 
     # ── Separate staged vs legacy shapes ──────────────────────────────────────
@@ -1238,7 +1252,11 @@ def build_animated_svg(elements) -> str:
                 if el.get("shape") == "double_arrow":
                     has_double_arrow = True
                 # All elements in this stage start at the same stage_delay
-                svg_str, new_delay = _render_shape({**el}, stage_delay)
+                try:
+                    svg_str, new_delay = _render_shape({**el}, stage_delay)
+                except Exception as exc:
+                    logger.error("build_animated_svg: _render_shape raised for %r: %s", el.get("shape"), exc, exc_info=True)
+                    continue
                 if svg_str:
                     parts.append(svg_str)
                     added = new_delay - stage_delay
@@ -1256,11 +1274,16 @@ def build_animated_svg(elements) -> str:
                 has_arrow = True
             if el.get("shape") == "double_arrow":
                 has_double_arrow = True
-            svg_str, delay = _render_shape(el, delay)
+            try:
+                svg_str, delay = _render_shape(el, delay)
+            except Exception as exc:
+                logger.error("build_animated_svg: _render_shape raised for %r: %s", el.get("shape"), exc, exc_info=True)
+                continue
             if svg_str:
                 parts.append(svg_str)
 
     if not parts:
+        logger.warning("build_animated_svg: all %d shapes produced no SVG output", len(elements))
         return ""
 
     defs_block = _make_defs(has_arrow, has_double_arrow)
