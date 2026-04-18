@@ -253,9 +253,9 @@ class HomeActivity : BaseActivity() {
                         drawerBbLimit    = bbLimit
                         drawerVoiceLimit = aiTtsQuotaChars
 
-                        val chatLeft = if (chatLimit <= 0) -1 else (chatLimit - chatUsed).coerceAtLeast(0)
-                        val bbLeft   = if (bbLimit   <= 0) -1 else (bbLimit   - bbUsed).coerceAtLeast(0)
-                        val aiTtsCharsLeft = if (aiTtsQuotaChars <= 0) -1 else (aiTtsQuotaChars - aiTtsCharsUsed).coerceAtLeast(0)
+                        val chatLeft = if (chatLimit <= 0) 0 else (chatLimit - chatUsed).coerceAtLeast(0)
+                        val bbLeft   = if (bbLimit   <= 0) 0 else (bbLimit   - bbUsed).coerceAtLeast(0)
+                        val aiTtsCharsLeft = if (aiTtsQuotaChars <= 0) 0 else (aiTtsQuotaChars - aiTtsCharsUsed).coerceAtLeast(0)
 
                         runOnUiThread { updateQuotaStripUI(chatLeft, bbLeft, aiTtsCharsLeft) }
                     }
@@ -263,8 +263,8 @@ class HomeActivity : BaseActivity() {
                         AdminConfigRepository.resolveEffectiveLimitsAsync(planId, null) { limits ->
                             drawerChatLimit  = limits.dailyChatQuestions
                             drawerBbLimit    = limits.dailyBlackboardSessions
-                            val chatLimit2 = if (limits.dailyChatQuestions  <= 0) -1 else (limits.dailyChatQuestions  - chatUsed).coerceAtLeast(0)
-                            val bbLimit2   = if (limits.dailyBlackboardSessions <= 0) -1 else (limits.dailyBlackboardSessions - bbUsed).coerceAtLeast(0)
+                            val chatLimit2 = if (limits.dailyChatQuestions  <= 0) 0 else (limits.dailyChatQuestions  - chatUsed).coerceAtLeast(0)
+                            val bbLimit2   = if (limits.dailyBlackboardSessions <= 0) 0 else (limits.dailyBlackboardSessions - bbUsed).coerceAtLeast(0)
                             runOnUiThread { updateQuotaStripUI(chatLimit2, bbLimit2, 0) }
                         }
                     }
@@ -279,7 +279,7 @@ class HomeActivity : BaseActivity() {
      */
     private fun updateQuotaStripUI(chatLeft: Int, bbLeft: Int, aiTtsCharsLeft: Int) {
         // Chat
-        val chatText = if (chatLeft < 0) "∞" else "$chatLeft more"
+        val chatText = "$chatLeft more"
         val chatColor = if (chatLeft in 0..3) "#BF360C" else "#1565C0"
         findViewById<TextView?>(R.id.drawerChatLeft)?.apply {
             text = chatText
@@ -292,7 +292,7 @@ class HomeActivity : BaseActivity() {
         }
 
         // Blackboard
-        val bbText = if (bbLeft < 0) "∞" else "$bbLeft more"
+        val bbText = "$bbLeft more"
         val bbColor = if (bbLeft in 0..1) "#BF360C" else "#7B1FA2"
         findViewById<TextView?>(R.id.drawerBbLeft)?.apply {
             text = bbText
@@ -308,7 +308,7 @@ class HomeActivity : BaseActivity() {
         val voiceRow = findViewById<LinearLayout?>(R.id.drawerVoiceRow)
         if (aiTtsCharsLeft != 0) {
             voiceRow?.visibility = View.VISIBLE
-            val voiceText = if (aiTtsCharsLeft < 0) "∞" else "$aiTtsCharsLeft more"
+            val voiceText = "$aiTtsCharsLeft more"
             val voiceColor = if (aiTtsCharsLeft in 0..1000) "#BF360C" else "#1E9B6B"
             findViewById<TextView?>(R.id.drawerVoiceLeft)?.apply {
                 text = voiceText

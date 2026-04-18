@@ -163,6 +163,19 @@
             android:orientation="horizontal"
             android:gravity="center" />
 
+        <!-- ── PROGRESS HINT ("Almost done!") ────────────────────────────── -->
+        <TextView
+            android:id="@+id/bbProgressHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="🔥 Almost done!"
+            android:textColor="#FACC15"
+            android:textSize="12sp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:visibility="gone" />
+
         <!-- ── ASK BAR ───────────────────────────────────────────────────── -->
         <LinearLayout
             android:id="@+id/bbAskBar"
@@ -287,27 +300,40 @@
             android:background="#CC0D1033"
             android:paddingStart="14dp"
             android:paddingEnd="14dp"
-            android:paddingTop="2dp"
-            android:paddingBottom="6dp">
+            android:paddingTop="4dp"
+            android:paddingBottom="8dp">
 
-            <!-- Slim seekbar -->
-            <SeekBar
+            <!-- Thin non-interactive progress strip -->
+            <ProgressBar
                 android:id="@+id/bbProgressSeek"
+                style="@android:style/Widget.ProgressBar.Horizontal"
                 android:layout_width="match_parent"
-                android:layout_height="20dp"
+                android:layout_height="3dp"
                 android:max="100"
                 android:progress="0"
-                android:thumbTint="#3D5AFE"
                 android:progressTint="#3D5AFE"
                 android:progressBackgroundTint="#1E2A50" />
 
-            <!-- Transport row -->
+            <!-- Transport row: ⬅ Prev | 🔁 Replay | ▶/⏸ Play | ➡ Next | TTS -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="40dp"
+                android:layout_height="44dp"
                 android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:gravity="center_vertical"
+                android:layout_marginTop="2dp">
 
+                <!-- Prev step -->
+                <TextView
+                    android:id="@+id/prevButton"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:gravity="center"
+                    android:text="⬅"
+                    android:textSize="18sp"
+                    android:textColor="#5A7090"
+                    android:background="?attr/selectableItemBackgroundBorderless" />
+
+                <!-- Replay -->
                 <TextView
                     android:id="@+id/replayButton"
                     android:layout_width="40dp"
@@ -318,14 +344,26 @@
                     android:textColor="#5A7090"
                     android:background="?attr/selectableItemBackgroundBorderless" />
 
+                <!-- Play / Pause (primary, larger) -->
                 <TextView
                     android:id="@+id/pauseButton"
-                    android:layout_width="44dp"
-                    android:layout_height="40dp"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
                     android:gravity="center"
                     android:text="⏸"
-                    android:textSize="21sp"
+                    android:textSize="22sp"
                     android:textColor="#3D5AFE"
+                    android:background="?attr/selectableItemBackgroundBorderless" />
+
+                <!-- Next step -->
+                <TextView
+                    android:id="@+id/nextButton"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:gravity="center"
+                    android:text="➡"
+                    android:textSize="18sp"
+                    android:textColor="#5A7090"
                     android:background="?attr/selectableItemBackgroundBorderless" />
 
                 <View
@@ -361,5 +399,26 @@
         android:text="✍🏽"
         android:textSize="28sp"
         android:visibility="invisible" />
+
+    <!-- ── SUBTITLE OVERLAY (shown while TTS speaks) ───────────────────── -->
+    <TextView
+        android:id="@+id/bbSubtitleTv"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="150dp"
+        android:background="#CC0A0E1F"
+        android:gravity="center"
+        android:lineSpacingExtra="3dp"
+        android:maxLines="4"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:textColor="#F0F0F0"
+        android:textSize="13sp"
+        android:visibility="gone" />
 
 </FrameLayout>

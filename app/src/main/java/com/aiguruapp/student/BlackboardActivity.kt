@@ -121,8 +121,11 @@ class BlackboardActivity : AppCompatActivity() {
     private lateinit var closeBtn:        TextView
     private lateinit var pauseBtn:        TextView
     private lateinit var replayBtn:       TextView
-    private lateinit var progressSeekBar: android.widget.SeekBar
-    private var seekBarDragging = false
+    private lateinit var prevBtn:         TextView
+    private lateinit var nextBtn:         TextView
+    private lateinit var progressSeekBar: android.widget.ProgressBar
+    private lateinit var bbProgressHintTv: TextView
+    private lateinit var bbSubtitleTv: TextView
     private lateinit var handWriter:      TextView
 
     // ── State ─────────────────────────────────────────────────────────────────
@@ -239,7 +242,11 @@ class BlackboardActivity : AppCompatActivity() {
         closeBtn        = findViewById(R.id.closeButton)
         pauseBtn        = findViewById(R.id.pauseButton)
         replayBtn       = findViewById(R.id.replayButton)
+        prevBtn         = findViewById(R.id.prevButton)
+        nextBtn         = findViewById(R.id.nextButton)
         progressSeekBar = findViewById(R.id.bbProgressSeek)
+        bbProgressHintTv = findViewById(R.id.bbProgressHint)
+        bbSubtitleTv     = findViewById(R.id.bbSubtitleTv)
         handWriter      = findViewById(R.id.handWriter)
         bbQuotaChip     = findViewById(R.id.bbQuotaChip)
         saveSessionBtn  = findViewById(R.id.saveSessionBtn)
@@ -275,34 +282,8 @@ class BlackboardActivity : AppCompatActivity() {
         publishLessonBtn.setOnClickListener { publishCurrentLesson() }
         replayBtn.setOnClickListener { restartLesson() }
         pauseBtn.setOnClickListener  { togglePause() }
-
-        // ── YouTube-style seekbar ─────────────────────────────────────────
-        progressSeekBar.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
-            override fun onStartTrackingTouch(seekBar: android.widget.SeekBar) {
-                seekBarDragging = true
-                isPaused = true
-                seekBarAnimator?.cancel()
-                aiTtsEngine.stop()
-            }
-            override fun onProgressChanged(seekBar: android.widget.SeekBar, progress: Int, fromUser: Boolean) {
-                if (!fromUser || steps.isEmpty()) return
-                // Convert flat progress index → (stepIdx, frameIdx)
-                var remaining = progress
-                for ((sIdx, step) in steps.withIndex()) {
-                    if (remaining < step.frames.size) {
-                        rebuildBoardUpTo(sIdx, remaining)
-                        return
-                    }
-                    remaining -= step.frames.size
-                }
-                // Clamp to very last frame
-                val lastS = steps.size - 1
-                rebuildBoardUpTo(lastS, steps[lastS].frames.size - 1)
-            }
-            override fun onStopTrackingTouch(seekBar: android.widget.SeekBar) {
-                seekBarDragging = false
-            }
-        })
+        prevBtn.setOnClickListener   { prevStep() }
+        nextBtn.setOnClickListener   { nextStep() }
 
         // Teacher mode: show publish button so this lesson can be shared with students
         isTeacherMode = com.aiguruapp.student.utils.SessionManager.isTeacher(this)
@@ -610,7 +591,7 @@ class BlackboardActivity : AppCompatActivity() {
                             lifecycleScope.launch(Dispatchers.Main) {
                                 steps = generated
                                 computedFontSp = computeFontSize(steps)
-                                progressSeekBar.max = (totalStepsTarget * framesPerStepTarget).coerceAtLeast(generated.sumOf { it.frames.size })
+        progressSeekBar.max = (totalStepsTarget * framesPerStepTarget).coerceAtLeast(generated.sumOf { it.frames.size })
                                 loadingGroup.visibility = View.GONE
                                 contentGroup.visibility = View.VISIBLE
                                 saveSessionBtn.visibility = View.VISIBLE
@@ -951,11 +932,7 @@ class BlackboardActivity : AppCompatActivity() {
         val limits = AdminConfigRepository.resolveEffectiveLimits(
             cachedMetadata.planId, cachedMetadata.planLimits
         )
-        val left = BlackboardQuotaValidator.sessionsLeft(cachedMetadata, limits)
-        if (left < 0) {
-            bbQuotaChip.visibility = View.GONE
-            return
-        }
+        val left = BlackboardQuotaValidator.sessionsLeft(cachedMetadata, limits).coerceAtLeast(0)
         bbQuotaChip.visibility = View.VISIBLE
         bbQuotaChip.text = when {
             left == 0 -> "0 sessions left"
@@ -1037,7 +1014,7 @@ class BlackboardActivity : AppCompatActivity() {
         }
 
         // ── Smooth seekbar animation over this frame's duration ───────────
-        if (!isPaused && !seekBarDragging && steps.isNotEmpty()) {
+        if (!isPaused && steps.isNotEmpty()) {
             val totalFrames = steps.sumOf { it.frames.size }
             if (totalFrames > 1) {
                 val flatNow  = steps.take(stepIdx).sumOf { it.frames.size } + frameIdx
@@ -1048,7 +1025,7 @@ class BlackboardActivity : AppCompatActivity() {
                         duration = frame.durationMs
                         interpolator = android.view.animation.LinearInterpolator()
                         addUpdateListener { anim ->
-                            if (!seekBarDragging) progressSeekBar.progress = anim.animatedValue as Int
+                            progressSeekBar.progress = anim.animatedValue as Int
                         }
                         start()
                     }
@@ -1503,7 +1480,7 @@ class BlackboardActivity : AppCompatActivity() {
                 android.util.Log.w("BB_SPEAK", "  ✗ Quota check FAILED: ${quotaCheck.upgradeMessage}")
                 android.widget.Toast.makeText(this, quotaCheck.upgradeMessage, android.widget.Toast.LENGTH_LONG).show()
                 tts.setLocale(Locale.forLanguageTag(step.languageTag))
-                tts.speak(stripLatexForSpeech(frame.speech), makeTtsCallback(stepIdx, frameIdx))
+                tts.speak(stripLatexForSpeech(frame.speech), makeTtsCallback(stepIdx, frameIdx, stripLatexForSpeech(frame.speech)))
                 return
             }
 
@@ -1513,7 +1490,7 @@ class BlackboardActivity : AppCompatActivity() {
             aiTtsEngine.play(
                 text      = stripLatexForSpeech(frame.speech),
                 langTag   = step.languageTag,
-                callback  = makeTtsCallback(stepIdx, frameIdx),
+                callback  = makeTtsCallback(stepIdx, frameIdx, stripLatexForSpeech(frame.speech)),
                 ttsEngine = effectiveEngine,
                 onUsedAi  = { wasAi ->
                     android.util.Log.d("BB_SPEAK", "  ↳ onUsedAi=$wasAi")
@@ -1525,7 +1502,7 @@ class BlackboardActivity : AppCompatActivity() {
             )
         } else {
             tts.setLocale(Locale.forLanguageTag(step.languageTag))
-            tts.speak(stripLatexForSpeech(frame.speech), makeTtsCallback(stepIdx, frameIdx))
+            tts.speak(stripLatexForSpeech(frame.speech), makeTtsCallback(stepIdx, frameIdx, stripLatexForSpeech(frame.speech)))
         }
     }
 
@@ -1699,23 +1676,33 @@ class BlackboardActivity : AppCompatActivity() {
     }
 
     private fun updateCounterAndDots() {
-        stepCounter.text = "${currentStepIdx + 1} / ${steps.size}"
+        stepCounter.text = "Step ${currentStepIdx + 1} of ${steps.size}"
         updateDots(currentStepIdx)
         updateProgressSeekBar()
     }
 
-    /** Syncs the seekbar position to the current step/frame without triggering the listener. */
+    /** Syncs the progress strip to the current step/frame. */
     private fun updateProgressSeekBar() {
-        if (steps.isEmpty() || seekBarDragging) return
+        if (steps.isEmpty()) return
         val totalFrames = steps.sumOf { it.frames.size }
         if (totalFrames <= 1) {
             progressSeekBar.max = 1
             progressSeekBar.progress = 0
-            return
+        } else {
+            val flat = steps.take(currentStepIdx).sumOf { it.frames.size } + currentFrameIdx
+            progressSeekBar.max = totalFrames - 1
+            progressSeekBar.progress = flat
         }
-        val flat = steps.take(currentStepIdx).sumOf { it.frames.size } + currentFrameIdx
-        progressSeekBar.max = totalFrames - 1
-        progressSeekBar.progress = flat
+        // Prev/Next dimming
+        val atStart = currentStepIdx == 0 && currentFrameIdx == 0
+        val atEnd   = currentStepIdx == steps.size - 1
+        prevBtn.alpha = if (atStart) 0.30f else 1f
+        nextBtn.alpha = if (atEnd)   0.30f else 1f
+        // "Almost done" hint
+        val nearEnd = steps.isNotEmpty() && currentStepIdx >= steps.size - 2 && !atStart
+        bbProgressHintTv.visibility = if (nearEnd) View.VISIBLE else View.GONE
+        if (nearEnd) bbProgressHintTv.text =
+            if (currentStepIdx == steps.size - 1) "🎓 Last step!" else "🔥 Almost done!"
     }
 
     // ── Frame text rendering ──────────────────────────────────────────────────
@@ -2147,11 +2134,14 @@ class BlackboardActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    private fun makeTtsCallback(stepIdx: Int, frameIdx: Int) = object : TTSCallback {
+    private fun makeTtsCallback(stepIdx: Int, frameIdx: Int, subtitle: String = "") = object : TTSCallback {
 
-        override fun onStart() { /* no-op */ }
+        override fun onStart() {
+            if (subtitle.isNotBlank()) runOnUiThread { showSubtitle(subtitle) }
+        }
 
         override fun onComplete() {
+            runOnUiThread { hideSubtitle() }
             if (!isPaused && currentStepIdx == stepIdx && currentFrameIdx == frameIdx) {
                 val f = steps.getOrNull(stepIdx)?.frames?.getOrNull(frameIdx)
                 when {
@@ -2179,7 +2169,24 @@ class BlackboardActivity : AppCompatActivity() {
         }
 
         override fun onError(error: String) {
+            runOnUiThread { hideSubtitle() }
             android.util.Log.w("Blackboard", "TTS: $error")
+        }
+    }
+
+    private fun showSubtitle(text: String) {
+        bbSubtitleTv.text = text
+        if (bbSubtitleTv.visibility != View.VISIBLE) {
+            bbSubtitleTv.alpha = 0f
+            bbSubtitleTv.visibility = View.VISIBLE
+            bbSubtitleTv.animate().alpha(1f).setDuration(200).start()
+        }
+    }
+
+    private fun hideSubtitle() {
+        if (bbSubtitleTv.visibility == View.VISIBLE) {
+            bbSubtitleTv.animate().alpha(0f).setDuration(300)
+                .withEndAction { bbSubtitleTv.visibility = View.GONE }.start()
         }
     }
 
