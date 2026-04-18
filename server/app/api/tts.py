@@ -15,6 +15,7 @@ Response: raw MP3 bytes (Content-Type: audio/mpeg)
 
 import base64
 import os
+import re
 from typing import Optional
 
 import httpx
@@ -155,6 +156,19 @@ async def _openai_tts(text: str) -> Optional[bytes]:
     return None
 
 
+# ── TTS text sanitisation ────────────────────────────────────────────────────
+
+def _clean_for_tts(text: str) -> str:
+    """Strip LaTeX math delimiters so TTS reads the expression, not 'dollar'."""
+    # $$...$$ block math (must be done before single-dollar)
+    text = re.sub(r'\$\$([\s\S]+?)\$\$', lambda m: m.group(1).strip(), text)
+    # $...$ inline math
+    text = re.sub(r'\$([^\$\n]+?)\$', lambda m: m.group(1).strip(), text)
+    # Any remaining stray dollar signs
+    text = text.replace('$', '')
+    return text
+
+
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/synthesize")
@@ -172,6 +186,9 @@ async def synthesize(
         raise HTTPException(status_code=400, detail="text cannot be empty")
     if len(text) > 5000:
         raise HTTPException(status_code=400, detail="text too long (max 5000 chars)")
+
+    # Strip LaTeX $ delimiters before synthesis
+    text = _clean_for_tts(text)
 
     mp3 = await _google_tts(text, req.language_code, req.voice_name, req.speaking_rate)
     if mp3 is None:

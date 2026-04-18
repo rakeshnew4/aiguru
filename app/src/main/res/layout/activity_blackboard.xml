@@ -6,7 +6,9 @@
     android:keepScreenOn="true"
     android:fitsSystemWindows="true">
 
-    <!-- Loading state -->
+    <!-- ══════════════════════════════════════════════════════════════════════
+         LOADING STATE
+         ══════════════════════════════════════════════════════════════════════ -->
     <LinearLayout
         android:id="@+id/loadingGroup"
         android:layout_width="match_parent"
@@ -25,7 +27,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Preparing lesson..."
-            android:textColor="#E0F0FF"
+            android:textColor="#B0C8E8"
             android:textSize="15sp"
             android:gravity="center"
             android:paddingStart="32dp"
@@ -34,7 +36,9 @@
 
     </LinearLayout>
 
-    <!-- Content -->
+    <!-- ══════════════════════════════════════════════════════════════════════
+         CONTENT
+         ══════════════════════════════════════════════════════════════════════ -->
     <LinearLayout
         android:id="@+id/contentGroup"
         android:layout_width="match_parent"
@@ -42,98 +46,106 @@
         android:orientation="vertical"
         android:visibility="gone">
 
-        <!-- Top bar -->
+        <!-- ── TOP BAR ────────────────────────────────────────────────────── -->
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:background="#252840"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp">
+            android:background="#CC0D1033"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:elevation="6dp">
 
+            <!-- Quota chip (left) -->
+            <TextView
+                android:id="@+id/bbQuotaChip"
+                android:layout_width="wrap_content"
+                android:layout_height="28dp"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:textSize="11sp"
+                android:textColor="#FFFFFF"
+                android:background="@drawable/bg_chip_indigo"
+                android:visibility="gone"
+                android:gravity="center"
+                android:text="" />
+
+            <!-- Step counter (centre) -->
             <TextView
                 android:id="@+id/stepCounter"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_centerVertical="true"
-                android:layout_centerHorizontal="true"
+                android:layout_centerInParent="true"
                 android:text="Step 1 / 5"
-                android:textColor="#CCDDEE"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+                android:textColor="#E0ECF8"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.04" />
 
-            <TextView
-                android:id="@+id/bbQuotaChip"
+            <!-- Save + Publish + Close (right cluster) -->
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_alignParentStart="true"
-                android:layout_centerVertical="true"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp"
-                android:textSize="11sp"
-                android:textColor="#FFFFFF"
-                android:background="#5C5BD4"
-                android:visibility="gone"
-                android:text="" />
-
-            <!-- Save session button -->
-            <TextView
-                android:id="@+id/saveSessionBtn"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:layout_toStartOf="@id/publishLessonBtn"
-                android:layout_centerVertical="true"
-                android:layout_marginEnd="6dp"
-                android:gravity="center"
-                android:text="💾 Save"
-                android:textSize="11sp"
-                android:textColor="#E0FFCC"
-                android:textAllCaps="false"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:background="#2A4030"
-                android:visibility="gone" />
-
-            <!-- Publish lesson button (teachers only — visible after lesson generates) -->
-            <TextView
-                android:id="@+id/publishLessonBtn"
-                android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:layout_toStartOf="@id/closeButton"
-                android:layout_centerVertical="true"
-                android:layout_marginEnd="6dp"
-                android:gravity="center"
-                android:text="📤 Publish"
-                android:textSize="11sp"
-                android:textColor="#FFD580"
-                android:textAllCaps="false"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:background="#3A3010"
-                android:visibility="gone" />
-
-            <TextView
-                android:id="@+id/closeButton"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
-                android:gravity="center"
-                android:text="✕"
-                android:textColor="#AABBCC"
-                android:textSize="18sp"
-                android:background="?attr/selectableItemBackgroundBorderless" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/saveSessionBtn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="28dp"
+                    android:gravity="center"
+                    android:text="💾"
+                    android:textSize="16sp"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="4dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/publishLessonBtn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="28dp"
+                    android:gravity="center"
+                    android:text="📤"
+                    android:textSize="16sp"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="4dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/closeButton"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="4dp"
+                    android:gravity="center"
+                    android:text="✕"
+                    android:textColor="#7A9ABB"
+                    android:textSize="16sp"
+                    android:background="?attr/selectableItemBackgroundBorderless" />
+
+            </LinearLayout>
 
         </RelativeLayout>
 
-        <!-- Lesson content -->
+        <!-- Thin accent progress bar under the top bar -->
+        <View
+            android:id="@+id/topAccentLine"
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:background="#3D5AFE" />
+
+        <!-- ── LESSON CONTENT ─────────────────────────────────────────────── -->
         <ScrollView
             android:id="@+id/stepsScrollView"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:padding="5dp">
+            android:padding="6dp"
+            android:clipToPadding="false">
 
             <LinearLayout
                 android:id="@+id/stepsContainer"
@@ -143,7 +155,7 @@
 
         </ScrollView>
 
-        <!-- Dot indicators -->
+        <!-- ── DOT INDICATORS ────────────────────────────────────────────── -->
         <LinearLayout
             android:id="@+id/dotsContainer"
             android:layout_width="match_parent"
@@ -151,73 +163,148 @@
             android:orientation="horizontal"
             android:gravity="center" />
 
-        <!-- Ask-question bar (hidden for now) -->
+        <!-- ── ASK BAR ───────────────────────────────────────────────────── -->
         <LinearLayout
             android:id="@+id/bbAskBar"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:visibility="gone"
-            android:orientation="horizontal"
-            android:background="#1A1A2E"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#E60D1033"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            android:gravity="center_vertical">
+            android:paddingBottom="8dp"
+            android:paddingTop="6dp"
+            android:visibility="gone">
 
-            <EditText
-                android:id="@+id/bbAskInput"
-                android:layout_width="0dp"
-                android:layout_height="40dp"
-                android:layout_weight="1"
-                android:hint="Ask a question about this lesson…"
-                android:textColor="#F0EDD0"
-                android:textColorHint="#665557"
-                android:textSize="13sp"
-                android:background="#252840"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:imeOptions="actionSend"
-                android:inputType="text" />
+            <!-- Image preview strip -->
+            <LinearLayout
+                android:id="@+id/bbImgPreviewRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingBottom="6dp"
+                android:visibility="gone">
 
-            <TextView
-                android:id="@+id/bbAskSend"
-                android:layout_width="44dp"
-                android:layout_height="40dp"
-                android:gravity="center"
-                android:text="↑"
-                android:textSize="20sp"
-                android:textColor="#5C5BD4"
-                android:layout_marginStart="8dp"
-                android:background="?attr/selectableItemBackgroundBorderless" />
+                <ImageView
+                    android:id="@+id/bbImgPreviewThumb"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:scaleType="centerCrop"
+                    android:background="@drawable/bg_thumb_rounded"
+                    android:clipToOutline="true"
+                    android:layout_marginEnd="10dp" />
+
+                <TextView
+                    android:id="@+id/bbImgPreviewLabel"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Image attached"
+                    android:textColor="#8AABCC"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/bbImgPreviewRemove"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:gravity="center"
+                    android:text="✕"
+                    android:textSize="13sp"
+                    android:textColor="#FF7070"
+                    android:background="?attr/selectableItemBackgroundBorderless" />
+
+            </LinearLayout>
+
+            <!-- Input pill row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_ask_pill"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp">
+
+                <!-- Camera icon -->
+                <TextView
+                    android:id="@+id/bbCameraBtn"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:gravity="center"
+                    android:text="📷"
+                    android:textSize="17sp"
+                    android:background="?attr/selectableItemBackgroundBorderless" />
+
+                <!-- Text input (transparent — pill is the bg) -->
+                <EditText
+                    android:id="@+id/bbAskInput"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:hint="Ask about this lesson…"
+                    android:textColor="#EEF0FF"
+                    android:textColorHint="#4A5880"
+                    android:textSize="13sp"
+                    android:background="@null"
+                    android:paddingStart="6dp"
+                    android:paddingEnd="6dp"
+                    android:imeOptions="actionSend"
+                    android:inputType="textCapSentences"
+                    android:maxLines="3" />
+
+                <!-- Mic icon -->
+                <TextView
+                    android:id="@+id/bbMicBtn"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:gravity="center"
+                    android:text="🎤"
+                    android:textSize="17sp"
+                    android:background="?attr/selectableItemBackgroundBorderless" />
+
+                <!-- Send arrow (accent circle) -->
+                <TextView
+                    android:id="@+id/bbAskSend"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:gravity="center"
+                    android:text="↑"
+                    android:textSize="18sp"
+                    android:textColor="#FFFFFF"
+                    android:layout_marginStart="2dp"
+                    android:background="@drawable/bg_send_circle" />
+
+            </LinearLayout>
 
         </LinearLayout>
 
-        <!-- Controls -->
-        <!-- YouTube-style compact video controls: seekbar + ⏮ ⏸ ⏭ ↺ 🔊 -->
+        <!-- ── MEDIA CONTROLS ────────────────────────────────────────────── -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:background="#1A1A2E"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:paddingTop="4dp"
-            android:paddingBottom="2dp">
+            android:background="#CC0D1033"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="6dp">
 
-            <!-- Progress scrubber (like a video timeline) -->
+            <!-- Slim seekbar -->
             <SeekBar
                 android:id="@+id/bbProgressSeek"
                 android:layout_width="match_parent"
-                android:layout_height="22dp"
+                android:layout_height="20dp"
                 android:max="100"
                 android:progress="0"
-                android:thumbTint="#5C5BD4"
-                android:progressTint="#5C5BD4"
-                android:progressBackgroundTint="#2E2E52" />
+                android:thumbTint="#3D5AFE"
+                android:progressTint="#3D5AFE"
+                android:progressBackgroundTint="#1E2A50" />
 
-            <!-- Transport buttons row: ↺ restart  ⏸/▶ pause  🔊 TTS -->
+            <!-- Transport row -->
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="42dp"
+                android:layout_height="40dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
@@ -227,8 +314,8 @@
                     android:layout_height="40dp"
                     android:gravity="center"
                     android:text="↺"
-                    android:textSize="20sp"
-                    android:textColor="#8090A8"
+                    android:textSize="19sp"
+                    android:textColor="#5A7090"
                     android:background="?attr/selectableItemBackgroundBorderless" />
 
                 <TextView
@@ -237,11 +324,10 @@
                     android:layout_height="40dp"
                     android:gravity="center"
                     android:text="⏸"
-                    android:textSize="22sp"
-                    android:textColor="#5C5BD4"
+                    android:textSize="21sp"
+                    android:textColor="#3D5AFE"
                     android:background="?attr/selectableItemBackgroundBorderless" />
 
-                <!-- Flexible spacer -->
                 <View
                     android:layout_width="0dp"
                     android:layout_height="1dp"
@@ -250,16 +336,15 @@
                 <TextView
                     android:id="@+id/aiTtsToggleBtn"
                     android:layout_width="wrap_content"
-                    android:layout_height="28dp"
+                    android:layout_height="26dp"
                     android:gravity="center"
                     android:text="🔊 TTS"
                     android:textAllCaps="false"
                     android:textSize="11sp"
-                    android:textColor="#AABBCC"
-                    android:paddingStart="8dp"
-                    android:paddingEnd="8dp"
-                    android:layout_marginStart="4dp"
-                    android:background="#333555"
+                    android:textColor="#7A9ABB"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:background="@drawable/bg_tts_pill"
                     android:minWidth="0dp" />
 
             </LinearLayout>
@@ -268,7 +353,7 @@
 
     </LinearLayout>
 
-    <!-- Hand writer indicator -->
+    <!-- ── HAND WRITER INDICATOR ─────────────────────────────────────────── -->
     <TextView
         android:id="@+id/handWriter"
         android:layout_width="wrap_content"

@@ -37,16 +37,32 @@ import com.aiguruapp.student.utils.SchoolTheme
 import com.aiguruapp.student.utils.FeedbackManager
 import com.aiguruapp.student.utils.SessionManager
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import android.graphics.drawable.GradientDrawable
 import android.util.Log
+import android.content.ContentValues
+import android.net.Uri
+import android.provider.MediaStore
+import android.content.pm.PackageManager
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import com.yalantis.ucrop.UCrop
+import com.aiguruapp.student.utils.MediaManager
+import com.aiguruapp.student.utils.VoiceManager
+import com.aiguruapp.student.utils.VoiceRecognitionCallback
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
 import androidx.annotation.RequiresApi
 import androidx.core.view.WindowCompat
 import com.aiguruapp.student.firestore.FirestoreManager
 import com.aiguruapp.student.firestore.HomeSmartContentLoader
 import com.aiguruapp.student.firestore.SmartCard
 import com.aiguruapp.student.firestore.StudentStatsManager
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.aiguruapp.student.models.FirestoreOffer
 import com.google.firebase.firestore.FirebaseFirestore
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import java.util.Calendar
 
 class HomeActivity : BaseActivity() {
@@ -58,7 +74,41 @@ class HomeActivity : BaseActivity() {
     private var homePendingForceUpdate: AppUpdateManager.UpdateResult.ForceUpdate? = null
     private lateinit var drawerLayout: DrawerLayout
 
-    // Drawer quota views — updated by loadQuotaStrip
+    // ── Dialog topic-attach state (mirrors FullChatFragment) ──────────────────
+    private var homeCameraImageUri: Uri? = null
+    private var homePendingImageUri: Uri? = null
+    private var homePendingImageBase64: String? = null
+    private var homeIsListening = false
+    private lateinit var homeVoiceManager: VoiceManager
+    private lateinit var homeMediaManager: MediaManager
+
+    // Active sheet references (non-null while showBbTopicDialog is open)
+    private var homeSheetImgCard: LinearLayout? = null
+    private var homeSheetThumb: ImageView? = null
+    private var homeTopicInput: EditText? = null
+    private var homeMicTile: LinearLayout? = null
+
+    private val homeCameraLauncher =
+        registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+            if (success && homeCameraImageUri != null) launchHomeCrop(homeCameraImageUri!!)
+        }
+    private val homeGalleryLauncher =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri != null) launchHomeCrop(uri)
+        }
+    private val homeCropLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val data = result.data
+            when (result.resultCode) {
+                android.app.Activity.RESULT_OK -> {
+                    val cropped = data?.let { UCrop.getOutput(it) } ?: return@registerForActivityResult
+                    applyHomeCroppedImage(cropped)
+                }
+                UCrop.RESULT_ERROR -> {
+                    Log.w("Home", "UCrop error: ${data?.let { UCrop.getError(it)?.message }}")
+                }
+            }
+        }
     private var drawerChatLimit: Int  = 0
     private var drawerBbLimit: Int    = 0
     private var drawerVoiceLimit: Int = 0
@@ -75,6 +125,9 @@ class HomeActivity : BaseActivity() {
         }
 
         setContentView(R.layout.activity_home)
+
+        homeVoiceManager = VoiceManager(this)
+        homeMediaManager = MediaManager(this)
 
         applySchoolBranding()
         setupGreeting()
@@ -633,107 +686,459 @@ class HomeActivity : BaseActivity() {
             ?.setOnClickListener { FeedbackManager.showNow(this) }
     }
 
-    /** Shows a topic-input dialog then launches BB mode with that topic as the message. */
+    /** Shows a polished bottom sheet to collect topic + duration, then launches BB mode. */
     private fun showBbTopicDialog() {
-        val labels   = BlackboardGenerator.BbDuration.labels
+        val dp     = resources.displayMetrics.density
+        val labels = BlackboardGenerator.BbDuration.labels
         var selectedDurationLabel = BlackboardGenerator.BbDuration.MIN_2.label
 
-        // ── Root layout ────────────────────────────────────────────────────
-        val root = android.widget.LinearLayout(this).apply {
-            orientation = android.widget.LinearLayout.VERTICAL
-            setPadding(48, 40, 48, 24)
+        val sheet = BottomSheetDialog(this, R.style.Theme_BB_QuizDialog)
+
+        // ── Root ─────────────────────────────────────────────────────────────
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadii = floatArrayOf(20*dp,20*dp,20*dp,20*dp,0f,0f,0f,0f)
+                setColor(Color.parseColor("#12122A"))
+            }
+            setPadding((20*dp).toInt(), (6*dp).toInt(), (20*dp).toInt(), (32*dp).toInt())
         }
 
-        // Topic input
-        val topicHint = android.widget.TextView(this).apply {
+        // Drag handle
+        root.addView(LinearLayout(this).apply {
+            gravity = android.view.Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (18*dp).toInt() }
+            addView(View(this@HomeActivity).apply {
+                layoutParams = LinearLayout.LayoutParams((44*dp).toInt(), (4*dp).toInt())
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE; cornerRadius = 2*dp
+                    setColor(Color.parseColor("#44FFFFFF"))
+                }
+            })
+        })
+
+        // Header
+        val headerRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (18*dp).toInt() }
+        }
+        headerRow.addView(TextView(this).apply {
+            text = "🎓"; textSize = 26f; gravity = android.view.Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                (40*dp).toInt(), (40*dp).toInt()
+            ).apply { marginEnd = (12*dp).toInt() }
+        })
+        val headerText = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        headerText.addView(TextView(this).apply {
+            text = "Start a Blackboard Lesson"
+            textSize = 18f
+            setTextColor(Color.parseColor("#E8F0FF"))
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        })
+        headerText.addView(TextView(this).apply {
+            text = "Type a topic or question to explore"
+            textSize = 12f
+            setTextColor(Color.parseColor("#667799"))
+        })
+        headerRow.addView(headerText)
+        root.addView(headerRow)
+
+        // ── Topic input ───────────────────────────────────────────────────────
+        root.addView(TextView(this).apply {
             text = "What do you want to learn?"
-            textSize = 13f
-            setTextColor(android.graphics.Color.parseColor("#AABBCC"))
-            setPadding(0, 0, 0, 8)
-        }
-        val topicInput = android.widget.EditText(this).apply {
+            textSize = 12f
+            setTextColor(Color.parseColor("#8899BB"))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (6*dp).toInt() }
+        })
+        val topicInput = EditText(this).apply {
             hint = "e.g. Explain Photosynthesis, Newton's 3rd law…"
+            textSize = 15f
+            setTextColor(Color.parseColor("#F0EDD0"))
+            setHintTextColor(Color.parseColor("#44667788"))
+            minLines = 2; maxLines = 4
+            gravity = android.view.Gravity.TOP
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE; cornerRadius = 12*dp
+                setColor(Color.parseColor("#1E1E38"))
+                setStroke((1*dp).toInt(), Color.parseColor("#334466BB"))
+            }
+            setPadding((14*dp).toInt(), (12*dp).toInt(), (14*dp).toInt(), (12*dp).toInt())
             inputType = android.text.InputType.TYPE_CLASS_TEXT or
-                        android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
-            setPadding(24, 20, 24, 20)
-            maxLines = 3
+                    android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or
+                    android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            imeOptions = android.view.inputmethod.EditorInfo.IME_FLAG_NO_ENTER_ACTION
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (18*dp).toInt() }
         }
-        root.addView(topicHint)
         root.addView(topicInput)
 
-        // Session duration label
-        val durationLabel = android.widget.TextView(this).apply {
+        // ── Duration chips ────────────────────────────────────────────────────
+        root.addView(TextView(this).apply {
             text = "Session length"
-            textSize = 13f
-            setTextColor(android.graphics.Color.parseColor("#AABBCC"))
-            setPadding(0, 24, 0, 8)
+            textSize = 12f
+            setTextColor(Color.parseColor("#8899BB"))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (8*dp).toInt() }
+        })
+        val chipRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (22*dp).toInt() }
         }
-        root.addView(durationLabel)
-
-        // Duration chips in a horizontal scroll
-        val chipScroll = android.widget.HorizontalScrollView(this).apply {
-            isHorizontalScrollBarEnabled = false
+        val chipViews = labels.mapIndexed { idx, label ->
+            TextView(this).apply {
+                text = label; textSize = 13f; gravity = android.view.Gravity.CENTER
+                setTextColor(Color.WHITE)
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE; cornerRadius = 20*dp
+                    setColor(
+                        if (label == selectedDurationLabel) Color.parseColor("#3C3CBD")
+                        else Color.parseColor("#1E1E38")
+                    )
+                    setStroke((1*dp).toInt(),
+                        if (label == selectedDurationLabel) Color.parseColor("#5C5CF0")
+                        else Color.parseColor("#334466")
+                    )
+                }
+                setPadding((16*dp).toInt(), (10*dp).toInt(), (16*dp).toInt(), (10*dp).toInt())
+                layoutParams = LinearLayout.LayoutParams(
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
+                ).apply { if (idx < labels.size - 1) marginEnd = (8*dp).toInt() }
+            }
         }
-        val chipRow = android.widget.LinearLayout(this).apply {
-            orientation = android.widget.LinearLayout.HORIZONTAL
-        }
-        val chipViews = labels.map { label ->
-            android.widget.TextView(this).apply {
-                text = label
-                textSize = 13f
-                setPadding(28, 16, 28, 16)
-                val isSelected = label == selectedDurationLabel
-                setBackgroundColor(
-                    if (isSelected) android.graphics.Color.parseColor("#4466BB")
-                    else android.graphics.Color.parseColor("#22334A")
-                )
-                setTextColor(android.graphics.Color.WHITE)
-                val lp = android.widget.LinearLayout.LayoutParams(
-                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
-                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-                lp.setMargins(0, 0, 12, 0)
-                layoutParams = lp
+        fun updateChips() {
+            chipViews.forEachIndexed { i, chip ->
+                val sel = labels[i] == selectedDurationLabel
+                (chip.background as GradientDrawable).apply {
+                    setColor(if (sel) Color.parseColor("#3C3CBD") else Color.parseColor("#1E1E38"))
+                    setStroke((1*dp).toInt(), if (sel) Color.parseColor("#5C5CF0") else Color.parseColor("#334466"))
+                }
             }
         }
         chipViews.forEachIndexed { idx, chip ->
-            chip.setOnClickListener {
-                selectedDurationLabel = labels[idx]
-                chipViews.forEach { c ->
-                    c.setBackgroundColor(
-                        if (c.text == selectedDurationLabel) android.graphics.Color.parseColor("#4466BB")
-                        else android.graphics.Color.parseColor("#22334A")
-                    )
-                }
-            }
+            chip.setOnClickListener { selectedDurationLabel = labels[idx]; updateChips() }
             chipRow.addView(chip)
         }
-        chipScroll.addView(chipRow)
-        root.addView(chipScroll)
+        root.addView(chipRow)
 
-        android.app.AlertDialog.Builder(this)
-            .setTitle("🎓 Start a Blackboard Lesson")
-            .setView(root)
-            .setPositiveButton("Start Lesson") { _, _ ->
-                val topic = topicInput.text.toString().trim()
-                if (topic.isBlank()) {
-                    Toast.makeText(this, "Please enter a topic first", Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-                val uid  = SessionManager.getFirestoreUserId(this)
-                val lang = SessionManager.getPreferredLang(this).ifBlank { "en-US" }
-                startActivity(
-                    Intent(this, BlackboardActivity::class.java)
-                        .putExtra(BlackboardActivity.EXTRA_MESSAGE,  topic)
-                        .putExtra(BlackboardActivity.EXTRA_DURATION, selectedDurationLabel)
-                        .putExtra(BlackboardActivity.EXTRA_SUBJECT,  "General")
-                        .putExtra(BlackboardActivity.EXTRA_CHAPTER,  "General")
-                        .putExtra(BlackboardActivity.EXTRA_USER_ID,  uid)
-                        .putExtra(BlackboardActivity.EXTRA_LANGUAGE_TAG, lang)
-                )
+        // ── Image preview card (hidden until photo attached) ──────────────────
+        val homeThumb = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE; cornerRadius = 10*dp
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+            clipToOutline = true
+        }
+        val homeImgRemoveBtn = TextView(this).apply {
+            text = "✕  Remove photo"; textSize = 11f
+            gravity = android.view.Gravity.CENTER
+            setTextColor(Color.parseColor("#FF8080"))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (4*dp).toInt() }
+        }
+        val homeImgCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = android.view.Gravity.CENTER_HORIZONTAL
+            visibility = View.GONE
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE; cornerRadius = 12*dp
+                setColor(Color.parseColor("#1E1E38"))
+                setStroke((1*dp).toInt(), Color.parseColor("#33AABBCC"))
+            }
+            setPadding((10*dp).toInt(), (10*dp).toInt(), (10*dp).toInt(), (10*dp).toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (14*dp).toInt() }
+            addView(homeThumb.apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, (100*dp).toInt()
+                )
+            })
+            addView(homeImgRemoveBtn)
+        }
+        homeSheetImgCard = homeImgCard
+        homeSheetThumb   = homeThumb
+        root.addView(homeImgCard)
+
+        // ── Action tiles: 📷 Photo  |  🎤 Voice ──────────────────────────────
+        fun makeHomeTile(emoji: String, label: String, bgHex: String, borderHex: String): LinearLayout =
+            LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = android.view.Gravity.CENTER
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE; cornerRadius = 12*dp
+                    setColor(Color.parseColor(bgHex))
+                    setStroke((1*dp).toInt(), Color.parseColor(borderHex))
+                }
+                setPadding((8*dp).toInt(), (12*dp).toInt(), (8*dp).toInt(), (10*dp).toInt())
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                isClickable = true; isFocusable = true
+                addView(TextView(this@HomeActivity).apply {
+                    text = emoji; textSize = 22f; gravity = android.view.Gravity.CENTER
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply { bottomMargin = (4*dp).toInt() }
+                })
+                addView(TextView(this@HomeActivity).apply {
+                    text = label; textSize = 11f; gravity = android.view.Gravity.CENTER
+                    setTextColor(Color.parseColor("#AABBCC"))
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                })
+            }
+
+        val homeCamTile = makeHomeTile("📷", "Photo", "#1A2040", "#3355AA")
+        val homeMicTileView = makeHomeTile(
+            if (homeIsListening) "⏹️" else "🎤", "Voice", "#1A2030", "#334466"
+        )
+        (homeCamTile.layoutParams as LinearLayout.LayoutParams).marginEnd = (8*dp).toInt()
+        homeMicTile = homeMicTileView
+        homeTopicInput = topicInput
+
+        val tilesRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (16*dp).toInt() }
+            addView(homeCamTile); addView(homeMicTileView)
+        }
+        root.addView(tilesRow)
+
+        // ── Start button ──────────────────────────────────────────────────────
+        val startBtn = TextView(this).apply {
+            text = "  Start Lesson  🎓"
+            textSize = 16f; gravity = android.view.Gravity.CENTER
+            setTextColor(Color.WHITE)
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE; cornerRadius = 24*dp
+                setColor(Color.parseColor("#3C3CBD"))
+            }
+            setPadding((20*dp).toInt(), (16*dp).toInt(), (20*dp).toInt(), (16*dp).toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        root.addView(startBtn)
+
+        sheet.setContentView(root)
+
+        homeImgRemoveBtn.setOnClickListener {
+            homePendingImageBase64 = null
+            homePendingImageUri = null
+            homeImgCard.visibility = View.GONE
+        }
+
+        homeCamTile.setOnClickListener { openHomeCamera() }
+
+        homeMicTileView.setOnClickListener {
+            if (homeIsListening) homeVoiceManager.stopListening()
+            else homeCheckPermissionAndStartListening()
+        }
+
+        startBtn.setOnClickListener {
+            val topic = topicInput.text.toString().trim()
+            if (topic.isBlank()) {
+                Toast.makeText(this, "Please enter a topic first", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            sheet.dismiss()
+            homeSheetImgCard = null; homeSheetThumb = null
+            homeTopicInput = null;   homeMicTile = null
+            val uid  = SessionManager.getFirestoreUserId(this)
+            val lang = SessionManager.getPreferredLang(this).ifBlank { "en-US" }
+            startActivity(
+                Intent(this, BlackboardActivity::class.java)
+                    .putExtra(BlackboardActivity.EXTRA_MESSAGE,  topic)
+                    .putExtra(BlackboardActivity.EXTRA_DURATION, selectedDurationLabel)
+                    .putExtra(BlackboardActivity.EXTRA_SUBJECT,  "General")
+                    .putExtra(BlackboardActivity.EXTRA_CHAPTER,  "General")
+                    .putExtra(BlackboardActivity.EXTRA_USER_ID,  uid)
+                    .putExtra(BlackboardActivity.EXTRA_LANGUAGE_TAG, lang)
+            )
+        }
+
+        sheet.setOnShowListener {
+            topicInput.requestFocus()
+            val imm = getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+            imm.showSoftInput(topicInput, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+        }
+
+        sheet.show()
+    }
+
+    // ── Topic dialog: camera / crop / voice (mirrors FullChatFragment) ───────
+
+    /** Mirrors FullChatFragment.showImageSourceDialog() */
+    private fun openHomeCamera() {
+        AlertDialog.Builder(this)
+            .setTitle("Add Image")
+            .setItems(arrayOf("📷  Take Photo", "🖼️  Choose from Gallery")) { _, which ->
+                when (which) {
+                    0 -> openHomeCameraCapture()
+                    1 -> homeGalleryLauncher.launch("image/*")
+                }
+            }.show()
+    }
+
+    /** Mirrors FullChatFragment.openCamera() */
+    private fun openHomeCameraCapture() {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                this, arrayOf(android.Manifest.permission.CAMERA), 903
+            )
+            return
+        }
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.TITLE, "AI_Guru_${System.currentTimeMillis()}")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+        }
+        homeCameraImageUri = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+        homeCameraImageUri?.let { homeCameraLauncher.launch(it) }
+    }
+
+    /** Mirrors FullChatFragment.launchCrop() — dimension-aware initial crop ratio, same dark theme */
+    private fun launchHomeCrop(sourceUri: Uri) {
+        val imagesDir = java.io.File(filesDir, "home_images").also { it.mkdirs() }
+        val destFile  = java.io.File(imagesDir, "crop_${System.currentTimeMillis()}.jpg")
+
+        var imgW = 0f; var imgH = 0f
+        runCatching {
+            val boundsOpts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            contentResolver.openInputStream(sourceUri)?.use {
+                android.graphics.BitmapFactory.decodeStream(it, null, boundsOpts)
+            }
+            imgW = boundsOpts.outWidth.toFloat()
+            imgH = boundsOpts.outHeight.toFloat()
+        }
+        val cropRatioX: Float
+        val cropRatioY: Float
+        if (imgW > 0f && imgH > 0f) {
+            if (imgW >= imgH) { cropRatioX = 0.3f * imgW; cropRatioY = imgH }
+            else              { cropRatioX = imgW;         cropRatioY = 0.3f * imgH }
+        } else { cropRatioX = 1f; cropRatioY = 1f }
+
+        val options = UCrop.Options().apply {
+            setToolbarTitle("Crop Image")
+            setToolbarColor(android.graphics.Color.parseColor("#1A237E"))
+            setToolbarWidgetColor(android.graphics.Color.WHITE)
+            setStatusBarColor(android.graphics.Color.parseColor("#0D1650"))
+            setActiveControlsWidgetColor(android.graphics.Color.parseColor("#5C6BC0"))
+            setFreeStyleCropEnabled(true)
+            setShowCropGrid(true)
+            setShowCropFrame(true)
+            setHideBottomControls(true)
+            withMaxResultSize(1920, 1920)
+            setCompressionFormat(android.graphics.Bitmap.CompressFormat.JPEG)
+            setCompressionQuality(90)
+            setDimmedLayerColor(android.graphics.Color.parseColor("#AA000000"))
+        }
+        try {
+            val uCrop = UCrop.of(sourceUri, Uri.fromFile(destFile))
+                .withOptions(options)
+                .withAspectRatio(cropRatioX, cropRatioY)
+                .withMaxResultSize(1920, 1920)
+            homeCropLauncher.launch(uCrop.getIntent(this))
+        } catch (e: Exception) {
+            Log.w("Home", "UCrop launch failed: ${e.message}")
+        }
+    }
+
+    private fun applyHomeCroppedImage(uri: Uri) {
+        homePendingImageUri = uri
+        lifecycleScope.launch(Dispatchers.IO) {
+            val b64 = homeMediaManager.uriToBase64(uri)
+            runOnUiThread {
+                if (b64 != null) {
+                    homePendingImageBase64 = b64
+                    val card  = homeSheetImgCard ?: return@runOnUiThread
+                    val thumb = homeSheetThumb   ?: return@runOnUiThread
+                    card.visibility = View.VISIBLE
+                    Glide.with(this@HomeActivity).load(uri).centerCrop().into(thumb)
+                }
+            }
+        }
+    }
+
+    /** Mirrors FullChatFragment.checkPermissionAndStartListening() */
+    private fun homeCheckPermissionAndStartListening() {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                this, arrayOf(android.Manifest.permission.RECORD_AUDIO), 904
+            )
+            return
+        }
+        homeStartVoiceInput()
+    }
+
+    /** Mirrors FullChatFragment.startVoiceInput() */
+    private fun homeStartVoiceInput() {
+        if (!android.speech.SpeechRecognizer.isRecognitionAvailable(this)) {
+            Toast.makeText(this, "Voice not available on this device", Toast.LENGTH_SHORT).show()
+            return
+        }
+        homeIsListening = true
+        updateHomeMicTile()
+        homeVoiceManager.startListening(object : VoiceRecognitionCallback {
+            override fun onResults(text: String) {
+                runOnUiThread {
+                    homeIsListening = false
+                    updateHomeMicTile()
+                    if (text.isNotEmpty()) {
+                        homeTopicInput?.setText(text)
+                        homeTopicInput?.setSelection(text.length)
+                    }
+                }
+            }
+            override fun onPartialResults(text: String) {
+                runOnUiThread {
+                    homeTopicInput?.setText(text)
+                    homeTopicInput?.setSelection(text.length)
+                }
+            }
+            override fun onError(error: String) {
+                runOnUiThread { homeIsListening = false; updateHomeMicTile() }
+            }
+            override fun onListeningStarted() {}
+            override fun onListeningFinished() {
+                runOnUiThread { homeIsListening = false; updateHomeMicTile() }
+            }
+        }, SessionManager.getPreferredLang(this).ifBlank { "en-US" })
+    }
+
+    /** Mirrors FullChatFragment.resetVoiceButton() — updates the mic tile emoji */
+    private fun updateHomeMicTile() {
+        val tile = homeMicTile ?: return
+        val emojiView = tile.getChildAt(0) as? TextView ?: return
+        emojiView.text = if (homeIsListening) "⏹️" else "🎤"
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            903 -> if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) openHomeCameraCapture()
+            904 -> if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) homeStartVoiceInput()
+        }
     }
 
     private fun setupDrawer() {

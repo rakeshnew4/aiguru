@@ -128,7 +128,7 @@ blackboard_prompt = (
     "- Each step teaches ONE thing. Do NOT mix concepts.\n"
     "- Do NOT re-explain anything from a previous step.\n"
     "- speech: NO greetings, no filler ('Hey everyone!', 'Great question!'). Get to the point immediately.\n"
-    "- speech: MAX 1 short sentence per frame. End with a period. TTS-safe (say 'squared' not '^2').\n"
+    "- speech: MAX 1 short sentence per frame. End with a period. TTS-safe: NEVER use $ or LaTeX delimiters — write math in plain spoken words ONLY (say 'x squared' not '$x^2$', 'pi r squared' not '$\\pi r^2$', 'square root of 9' not '$\\sqrt{9}$').\n"
     "- speech: Adapt language to student level — simple words for young students, precise terminology for older.\n"
     "- text: Board keywords and formulas only. Max 2 lines. Always English.\n"
     "- highlight: Exact substrings from text to chalk-highlight. Can be [].\n"

@@ -4,7 +4,15 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.app.AlertDialog
+import android.content.ContentValues
+import android.content.pm.PackageManager
 import android.graphics.Color
+import android.net.Uri
+import android.provider.MediaStore
+import android.util.Base64
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import com.yalantis.ucrop.UCrop
 import android.view.animation.AlphaAnimation
 import android.view.animation.AnimationSet
 import android.view.animation.ScaleAnimation
@@ -31,6 +39,7 @@ import android.webkit.WebSettings
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.aiguruapp.student.utils.WikimediaUtils
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.lifecycleScope
@@ -44,9 +53,12 @@ import com.aiguruapp.student.validators.BlackboardQuotaValidator
 import com.aiguruapp.student.firestore.FirestoreManager
 import com.aiguruapp.student.models.UserMetadata
 import com.aiguruapp.student.utils.FeedbackManager
+import com.aiguruapp.student.utils.MediaManager
 import com.aiguruapp.student.utils.PromptRepository
 import com.aiguruapp.student.utils.TTSCallback
 import com.aiguruapp.student.utils.TextToSpeechManager
+import com.aiguruapp.student.utils.VoiceManager
+import com.aiguruapp.student.utils.VoiceRecognitionCallback
 import io.noties.markwon.Markwon
 import io.noties.markwon.ext.latex.JLatexMathPlugin
 import io.noties.markwon.inlineparser.MarkwonInlineParserPlugin
@@ -143,6 +155,44 @@ class BlackboardActivity : AppCompatActivity() {
     private lateinit var bbAskInput: EditText
     private lateinit var bbAskSendBtn: TextView
 
+    // BB ask-bar: image attachment + voice
+    private var bbCameraImageUri: Uri? = null
+    private var bbPendingImageUri: Uri? = null
+    private var bbPendingImageBase64: String? = null
+    private var bbIsListening = false
+    private lateinit var bbVoiceManager: VoiceManager
+    private lateinit var bbMediaManager: MediaManager
+    private lateinit var bbCameraBtn: TextView
+    private lateinit var bbMicBtn: TextView
+    private lateinit var bbImgPreviewRow: LinearLayout
+    private lateinit var bbImgPreviewThumb: ImageView
+    private lateinit var bbImgPreviewRemove: TextView
+
+    // ── Activity-result launchers ──────────────────────────────────────────────
+    private val bbCameraLauncher =
+        registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+            if (success && bbCameraImageUri != null) launchBbCrop(bbCameraImageUri!!)
+        }
+
+    private val bbGalleryLauncher =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri != null) launchBbCrop(uri)
+        }
+
+    private val bbCropLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val data = result.data
+            when (result.resultCode) {
+                android.app.Activity.RESULT_OK -> {
+                    val cropped = data?.let { UCrop.getOutput(it) } ?: return@registerForActivityResult
+                    encodeBbImage(cropped)
+                }
+                UCrop.RESULT_ERROR -> {
+                    android.util.Log.w("BB", "UCrop error: ${data?.let { UCrop.getError(it)?.message }}")
+                }
+            }
+        }
+
     // Quota chip in the top bar
     private lateinit var bbQuotaChip: android.widget.TextView
     private lateinit var saveSessionBtn: TextView
@@ -196,6 +246,14 @@ class BlackboardActivity : AppCompatActivity() {
         publishLessonBtn = findViewById(R.id.publishLessonBtn)
         bbAskInput      = findViewById(R.id.bbAskInput)
         bbAskSendBtn    = findViewById(R.id.bbAskSend)
+        bbCameraBtn       = findViewById(R.id.bbCameraBtn)
+        bbMicBtn          = findViewById(R.id.bbMicBtn)
+        bbImgPreviewRow   = findViewById(R.id.bbImgPreviewRow)
+        bbImgPreviewThumb = findViewById(R.id.bbImgPreviewThumb)
+        bbImgPreviewRemove = findViewById(R.id.bbImgPreviewRemove)
+
+        bbVoiceManager = VoiceManager(this)
+        bbMediaManager = MediaManager(this)
 
         val sendBbQuestion = {
             val q = bbAskInput.text.toString().trim()
@@ -203,6 +261,11 @@ class BlackboardActivity : AppCompatActivity() {
         }
         bbAskSendBtn.setOnClickListener { sendBbQuestion() }
         bbAskInput.setOnEditorActionListener { _, _, _ -> sendBbQuestion(); true }
+        bbCameraBtn.setOnClickListener { launchBbCamera() }
+        bbImgPreviewRemove.setOnClickListener { clearBbImage() }
+        bbMicBtn.setOnClickListener {
+            if (bbIsListening) bbVoiceManager.stopListening() else startBbVoice()
+        }
 
         closeBtn.setOnClickListener  {
             if (steps.isNotEmpty()) FeedbackManager.markBbSessionDone(this)
@@ -433,6 +496,7 @@ class BlackboardActivity : AppCompatActivity() {
         typeAnimator?.cancel()
         aiTtsEngine.destroy()
         // tts is owned by aiTtsEngine.androidTts — already destroyed above
+        if (::bbVoiceManager.isInitialized) bbVoiceManager.destroy()
         // Mark session done so HomeActivity.onResume can show feedback if needed.
         if (steps.isNotEmpty()) FeedbackManager.markBbSessionDone(this)
         super.onDestroy()
@@ -936,6 +1000,22 @@ class BlackboardActivity : AppCompatActivity() {
             )
         }
         stepsContainer.addView(boardLayout)
+
+        // GestureDetector on ScrollView so single-taps open the ask sheet
+        // while scroll gestures still work normally.
+        val gestureDetector = android.view.GestureDetector(
+            this,
+            object : android.view.GestureDetector.SimpleOnGestureListener() {
+                override fun onSingleTapUp(e: android.view.MotionEvent): Boolean {
+                    showAskBottomSheet()
+                    return true
+                }
+            }
+        )
+        stepsScrollView.setOnTouchListener { _, event ->
+            gestureDetector.onTouchEvent(event)
+            false
+        }
     }
 
     // ── Frame playback ────────────────────────────────────────────────────────
@@ -1423,7 +1503,7 @@ class BlackboardActivity : AppCompatActivity() {
                 android.util.Log.w("BB_SPEAK", "  ✗ Quota check FAILED: ${quotaCheck.upgradeMessage}")
                 android.widget.Toast.makeText(this, quotaCheck.upgradeMessage, android.widget.Toast.LENGTH_LONG).show()
                 tts.setLocale(Locale.forLanguageTag(step.languageTag))
-                tts.speak(frame.speech, makeTtsCallback(stepIdx, frameIdx))
+                tts.speak(stripLatexForSpeech(frame.speech), makeTtsCallback(stepIdx, frameIdx))
                 return
             }
 
@@ -1431,7 +1511,7 @@ class BlackboardActivity : AppCompatActivity() {
             aiTtsEngine.languageCode = step.languageTag
             android.util.Log.d("BB_SPEAK", "  ✓ Calling aiTtsEngine.play() lang=${step.languageTag} engine=$effectiveEngine")
             aiTtsEngine.play(
-                text      = frame.speech,
+                text      = stripLatexForSpeech(frame.speech),
                 langTag   = step.languageTag,
                 callback  = makeTtsCallback(stepIdx, frameIdx),
                 ttsEngine = effectiveEngine,
@@ -1445,8 +1525,23 @@ class BlackboardActivity : AppCompatActivity() {
             )
         } else {
             tts.setLocale(Locale.forLanguageTag(step.languageTag))
-            tts.speak(frame.speech, makeTtsCallback(stepIdx, frameIdx))
+            tts.speak(stripLatexForSpeech(frame.speech), makeTtsCallback(stepIdx, frameIdx))
         }
+    }
+
+    /**
+     * Strips LaTeX delimiters (`$...$` and `$$...$$`) from [text] so TTS reads
+     * the inner expression rather than saying "dollar".
+     */
+    private fun stripLatexForSpeech(text: String): String {
+        var s = text
+        // $$...$$ first (must come before single-$ to avoid mis-stripping)
+        s = s.replace(Regex("""\$\$([\s\S]+?)\$\$""")) { it.groupValues[1].trim() }
+        // $...$
+        s = s.replace(Regex("""\$([^\$\n]+?)\$""")) { it.groupValues[1].trim() }
+        // Any remaining stray $
+        s = s.replace("$", "")
+        return s
     }
 
     /** Advance to next frame in current step, or first frame of next step. */
@@ -2492,6 +2587,432 @@ class BlackboardActivity : AppCompatActivity() {
         }
     }
 
+    // ── BB ask-bar: camera / image / voice helpers ────────────────────────────
+
+    /** Mirrors FullChatFragment.showImageSourceDialog() */
+    private fun launchBbCamera() {
+        AlertDialog.Builder(this)
+            .setTitle("Add Image")
+            .setItems(arrayOf("📷  Take Photo", "🖼️  Choose from Gallery")) { _, which ->
+                when (which) {
+                    0 -> openBbCamera()
+                    1 -> bbGalleryLauncher.launch("image/*")
+                }
+            }.show()
+    }
+
+    /** Mirrors FullChatFragment.openCamera() exactly. */
+    private fun openBbCamera() {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                this, arrayOf(android.Manifest.permission.CAMERA), 901
+            )
+            return
+        }
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.TITLE, "AI_Guru_${System.currentTimeMillis()}")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+        }
+        bbCameraImageUri = contentResolver.insert(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values
+        )
+        bbCameraImageUri?.let { bbCameraLauncher.launch(it) }
+    }
+
+    /**
+     * Mirrors FullChatFragment.launchCrop() exactly — reads image dimensions for a smart
+     * initial crop ratio, applies the same dark UCrop theme and options.
+     */
+    private fun launchBbCrop(sourceUri: Uri) {
+        val imagesDir = java.io.File(filesDir, "bb_images").also { it.mkdirs() }
+        val destFile  = java.io.File(imagesDir, "crop_${System.currentTimeMillis()}.jpg")
+
+        var imgW = 0f; var imgH = 0f
+        runCatching {
+            val boundsOpts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            contentResolver.openInputStream(sourceUri)?.use {
+                android.graphics.BitmapFactory.decodeStream(it, null, boundsOpts)
+            }
+            imgW = boundsOpts.outWidth.toFloat()
+            imgH = boundsOpts.outHeight.toFloat()
+        }
+        val cropRatioX: Float
+        val cropRatioY: Float
+        if (imgW > 0f && imgH > 0f) {
+            if (imgW >= imgH) { cropRatioX = 0.3f * imgW; cropRatioY = imgH }
+            else              { cropRatioX = imgW;         cropRatioY = 0.3f * imgH }
+        } else { cropRatioX = 1f; cropRatioY = 1f }
+
+        val options = UCrop.Options().apply {
+            setToolbarTitle("Crop Image")
+            setToolbarColor(android.graphics.Color.parseColor("#1A237E"))
+            setToolbarWidgetColor(android.graphics.Color.WHITE)
+            setStatusBarColor(android.graphics.Color.parseColor("#0D1650"))
+            setActiveControlsWidgetColor(android.graphics.Color.parseColor("#5C6BC0"))
+            setFreeStyleCropEnabled(true)
+            setShowCropGrid(true)
+            setShowCropFrame(true)
+            setHideBottomControls(true)
+            withMaxResultSize(1920, 1920)
+            setCompressionFormat(android.graphics.Bitmap.CompressFormat.JPEG)
+            setCompressionQuality(90)
+            setDimmedLayerColor(android.graphics.Color.parseColor("#AA000000"))
+        }
+        try {
+            val uCrop = UCrop.of(sourceUri, Uri.fromFile(destFile))
+                .withOptions(options)
+                .withAspectRatio(cropRatioX, cropRatioY)
+                .withMaxResultSize(1920, 1920)
+            bbCropLauncher.launch(uCrop.getIntent(this))
+        } catch (e: Exception) {
+            android.util.Log.w("BB", "UCrop launch failed: ${e.message}")
+            encodeBbImage(sourceUri)
+        }
+    }
+
+    /**
+     * Converts the cropped URI to Base64 (background thread) and shows the
+     * thumbnail preview row in the ask bar.
+     */
+    private fun encodeBbImage(uri: Uri) {
+        bbPendingImageUri = uri
+        Thread {
+            val b64 = bbMediaManager.uriToBase64(uri)
+            runOnUiThread {
+                if (b64 != null) {
+                    bbPendingImageBase64 = b64
+                    bbImgPreviewRow.visibility = View.VISIBLE
+                    Glide.with(this).load(uri).centerCrop().into(bbImgPreviewThumb)
+                }
+            }
+        }.start()
+    }
+
+    private fun clearBbImage() {
+        bbPendingImageUri = null
+        bbPendingImageBase64 = null
+        bbImgPreviewRow.visibility = View.GONE
+    }
+
+    /**
+     * Mirrors FullChatFragment.checkPermissionAndStartListening().
+     * Checks RECORD_AUDIO permission then delegates to startBbVoiceInput().
+     */
+    private fun startBbVoice() {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                this, arrayOf(android.Manifest.permission.RECORD_AUDIO), 902
+            )
+            return
+        }
+        startBbVoiceInput()
+    }
+
+    /** Mirrors FullChatFragment.startVoiceInput(). */
+    private fun startBbVoiceInput() {
+        if (!android.speech.SpeechRecognizer.isRecognitionAvailable(this)) {
+            android.widget.Toast.makeText(
+                this, "Voice recognition not available on this device", android.widget.Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+        bbIsListening = true
+        bbMicBtn.text = "⏹️"
+        bbMicBtn.backgroundTintList =
+            android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#E53935"))
+        bbAskInput.hint = "Listening…"
+        bbVoiceManager.startListening(object : VoiceRecognitionCallback {
+            override fun onResults(text: String) {
+                runOnUiThread {
+                    resetBbVoiceButton()
+                    if (text.isNotEmpty()) {
+                        bbAskInput.setText(text)
+                        bbAskInput.setSelection(text.length)
+                    }
+                }
+            }
+            override fun onPartialResults(text: String) {
+                runOnUiThread { bbAskInput.setText(text); bbAskInput.setSelection(text.length) }
+            }
+            override fun onError(error: String) { runOnUiThread { resetBbVoiceButton() } }
+            override fun onListeningStarted() {}
+            override fun onListeningFinished() { runOnUiThread { resetBbVoiceButton() } }
+        }, preferredLanguageTag)
+    }
+
+    /** Mirrors FullChatFragment.resetVoiceButton(). */
+    private fun resetBbVoiceButton() {
+        bbIsListening = false
+        bbMicBtn.text = "🎤"
+        bbMicBtn.backgroundTintList =
+            android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#1E1E38"))
+        bbAskInput.hint = "Ask a question about this lesson…"
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 902 && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+            startBbVoiceInput()   // permission just granted
+        } else if (requestCode == 901 && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
+            openBbCamera()        // camera permission just granted
+        }
+    }
+
+    /**
+     * Shows a compact bottom sheet when the user taps anywhere on the board.
+     * Provides a quick-input field + camera + mic + full-screen buttons.
+     */
+    private fun showAskBottomSheet() {
+        val dp = resources.displayMetrics.density
+        val caveat = ResourcesCompat.getFont(this, R.font.kalam)
+
+        val sheet = com.google.android.material.bottomsheet.BottomSheetDialog(
+            this, R.style.Theme_BB_QuizDialog
+        )
+
+        // ── Root container ────────────────────────────────────────────────────
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadii = floatArrayOf(20*dp, 20*dp, 20*dp, 20*dp, 0f, 0f, 0f, 0f)
+                setColor(Color.parseColor("#12122A"))
+            }
+            setPadding((20*dp).toInt(), (6*dp).toInt(), (20*dp).toInt(), (28*dp).toInt())
+        }
+
+        // ── Drag handle ───────────────────────────────────────────────────────
+        root.addView(LinearLayout(this).apply {
+            gravity = android.view.Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (16*dp).toInt() }
+            addView(View(this@BlackboardActivity).apply {
+                layoutParams = LinearLayout.LayoutParams((44*dp).toInt(), (4*dp).toInt())
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE; cornerRadius = 2*dp
+                    setColor(Color.parseColor("#44FFFFFF"))
+                }
+            })
+        })
+
+        // ── Header row: icon + title ──────────────────────────────────────────
+        val headerRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (14*dp).toInt() }
+        }
+        headerRow.addView(TextView(this).apply {
+            text = "🤔"; textSize = 22f; gravity = android.view.Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                (36*dp).toInt(), (36*dp).toInt()
+            ).apply { marginEnd = (10*dp).toInt() }
+        })
+        headerRow.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            addView(TextView(this@BlackboardActivity).apply {
+                text = "Ask a question"
+                textSize = 17f; typeface = caveat
+                setTextColor(Color.parseColor("#E8F0FF"))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            })
+            addView(TextView(this@BlackboardActivity).apply {
+                text = "Type, attach a photo, or use voice"
+                textSize = 11f; typeface = caveat
+                setTextColor(Color.parseColor("#667788"))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            })
+        })
+        root.addView(headerRow)
+
+        // ── Image preview (shown only when photo attached) ────────────────────
+        val sheetThumb = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE; cornerRadius = 10*dp
+            }
+            clipToOutline = true
+        }
+        val sheetImgRemoveBtn = TextView(this).apply {
+            text = "✕  Remove photo"; textSize = 11f; typeface = caveat
+            gravity = android.view.Gravity.CENTER
+            setTextColor(Color.parseColor("#FF8080"))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (4*dp).toInt() }
+        }
+        val sheetImgCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = android.view.Gravity.CENTER_HORIZONTAL
+            visibility = if (bbPendingImageBase64 != null) View.VISIBLE else View.GONE
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE; cornerRadius = 12*dp
+                setColor(Color.parseColor("#1E1E38"))
+                setStroke((1*dp).toInt(), Color.parseColor("#33AABBCC"))
+            }
+            setPadding((10*dp).toInt(), (10*dp).toInt(), (10*dp).toInt(), (10*dp).toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (12*dp).toInt() }
+            addView(sheetThumb.apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, (120*dp).toInt()
+                )
+            })
+            addView(sheetImgRemoveBtn)
+        }
+        bbPendingImageUri?.let { Glide.with(this).load(it).centerCrop().into(sheetThumb) }
+        root.addView(sheetImgCard)
+
+        // ── Multiline text input ──────────────────────────────────────────────
+        val sheetInput = EditText(this).apply {
+            hint = "What would you like to know about this topic?"
+            textSize = 15f; typeface = caveat
+            setTextColor(Color.parseColor("#F0EDD0"))
+            setHintTextColor(Color.parseColor("#44667788"))
+            minLines = 3; maxLines = 6
+            gravity = android.view.Gravity.TOP
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE; cornerRadius = 12*dp
+                setColor(Color.parseColor("#1E1E38"))
+                setStroke((1*dp).toInt(), Color.parseColor("#334466BB"))
+            }
+            setPadding((14*dp).toInt(), (12*dp).toInt(), (14*dp).toInt(), (12*dp).toInt())
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                    android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE or
+                    android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            imeOptions = android.view.inputmethod.EditorInfo.IME_FLAG_NO_ENTER_ACTION
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (16*dp).toInt() }
+        }
+        // Pre-fill with main bar text if any
+        val existing = bbAskInput.text.toString().trim()
+        if (existing.isNotBlank()) { sheetInput.setText(existing); sheetInput.setSelection(existing.length) }
+        root.addView(sheetInput)
+
+        // ── Action tiles row: 📷 Attach  |  🎤 Voice  |  ⛶ Expand ────────────
+        fun makeTile(emoji: String, label: String, bgHex: String, borderHex: String): LinearLayout =
+            LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = android.view.Gravity.CENTER
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE; cornerRadius = 12*dp
+                    setColor(Color.parseColor(bgHex))
+                    setStroke((1*dp).toInt(), Color.parseColor(borderHex))
+                }
+                setPadding((8*dp).toInt(), (12*dp).toInt(), (8*dp).toInt(), (10*dp).toInt())
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    .apply { marginEnd = (8*dp).toInt() }
+                isClickable = true
+                isFocusable = true
+                addView(TextView(this@BlackboardActivity).apply {
+                    text = emoji; textSize = 22f; gravity = android.view.Gravity.CENTER
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply { bottomMargin = (4*dp).toInt() }
+                })
+                addView(TextView(this@BlackboardActivity).apply {
+                    text = label; textSize = 11f; typeface = caveat
+                    gravity = android.view.Gravity.CENTER
+                    setTextColor(Color.parseColor("#AABBCC"))
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                })
+            }
+
+        val camTile  = makeTile("📷", "Photo", "#1A2040", "#3355AA")
+        val micTile  = makeTile(if (bbIsListening) "🔴" else "🎤", "Voice", "#1A2030", "#334466")
+        val fullTile = makeTile("⛶", "Expand", "#1A1A30", "#333355")
+        // Remove right margin from last tile
+        (fullTile.layoutParams as LinearLayout.LayoutParams).marginEnd = 0
+
+        val tilesRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (16*dp).toInt() }
+            addView(camTile); addView(micTile); addView(fullTile)
+        }
+        root.addView(tilesRow)
+
+        // ── Send button ───────────────────────────────────────────────────────
+        val sendBtn = TextView(this).apply {
+            text = "  Send Question  ↑"
+            textSize = 15f; typeface = caveat
+            gravity = android.view.Gravity.CENTER
+            setTextColor(Color.WHITE)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE; cornerRadius = 24*dp
+                setColor(Color.parseColor("#3C3CBD"))
+            }
+            setPadding((20*dp).toInt(), (14*dp).toInt(), (20*dp).toInt(), (14*dp).toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        root.addView(sendBtn)
+
+        sheet.setContentView(root)
+
+        // ── Click handlers ────────────────────────────────────────────────────
+        sheetImgRemoveBtn.setOnClickListener {
+            clearBbImage()
+            sheetImgCard.visibility = View.GONE
+        }
+
+        camTile.setOnClickListener {
+            sheet.dismiss()
+            launchBbCamera()
+        }
+
+        micTile.setOnClickListener {
+            sheet.dismiss()
+            if (bbIsListening) bbVoiceManager.stopListening() else startBbVoice()
+        }
+
+        fullTile.setOnClickListener {
+            sheet.dismiss()
+            val q = sheetInput.text.toString()
+            if (q.isNotBlank()) bbAskInput.setText(q)
+            bbAskInput.requestFocus()
+            val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE)
+                    as android.view.inputmethod.InputMethodManager
+            imm.showSoftInput(bbAskInput, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+        }
+
+        sendBtn.setOnClickListener {
+            val q = sheetInput.text.toString().trim()
+            if (q.isNotBlank()) {
+                sheet.dismiss()
+                bbAskInput.setText("")
+                sendBbChat(q)
+            }
+        }
+
+        // Auto-show keyboard on the input
+        sheet.setOnShowListener {
+            sheetInput.requestFocus()
+            val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE)
+                    as android.view.inputmethod.InputMethodManager
+            imm.showSoftInput(sheetInput, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+        }
+
+        sheet.show()
+    }
+
     // ── Interactive board chat ────────────────────────────────────────────────
 
     private fun sendBbChat(question: String) {
@@ -2499,7 +3020,11 @@ class BlackboardActivity : AppCompatActivity() {
         val caveat = ResourcesCompat.getFont(this, R.font.kalam)
         val board = boardLayout ?: return
 
-        val questionCard = buildChatCard("❓  $question", "#1A1A3A", "#B3C8FF", caveat, dp)
+        // Capture and clear the pending image (if any) before building the card
+        val capturedImageBase64 = bbPendingImageBase64.also { bbPendingImageBase64 = null }
+        if (capturedImageBase64 != null) clearBbImage()
+
+        val questionCard = buildChatCard("❓  $question", "#1A1A3A", "#B3C8FF", caveat, dp, capturedImageBase64)
         board.addView(questionCard)
         stepsScrollView.postDelayed({ stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 200)
 
@@ -2604,17 +3129,18 @@ class BlackboardActivity : AppCompatActivity() {
                 languageTag  = preferredLanguageTag,
                 studentLevel = 7,
                 history      = history,
+                imageBase64  = capturedImageBase64,
                 onToken      = { token ->
                     responseText.append(token)
                     val display = TutorController.extractAnswerForDisplay(responseText.toString())
-                    runOnUiThread { responseInner.text = display }
+                    runOnUiThread { blackboardMarkwon.setMarkdown(responseInner, display) }
                 },
                 onDone = { _, _, _ ->
                     val finalAnswer = TutorController.extractAnswerForDisplay(responseText.toString())
                     bbChatHistory.add("user: $question")
                     bbChatHistory.add("assistant: ${finalAnswer.take(600)}")
                     runOnUiThread {
-                        responseInner.text = finalAnswer
+                        blackboardMarkwon.setMarkdown(responseInner, finalAnswer)
                         stepsScrollView.postDelayed(
                             { stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 200
                         )
@@ -2749,7 +3275,8 @@ class BlackboardActivity : AppCompatActivity() {
         bgColor: String,
         textColor: String,
         caveat: Typeface?,
-        dp: Float
+        dp: Float,
+        imageBase64: String? = null
     ): LinearLayout = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         background = GradientDrawable().apply {
@@ -2774,6 +3301,27 @@ class BlackboardActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.WRAP_CONTENT
             )
         })
+        // Show attached image thumbnail below the text
+        if (!imageBase64.isNullOrBlank()) {
+            try {
+                val bytes = android.util.Base64.decode(imageBase64, android.util.Base64.NO_WRAP)
+                val bmp = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                if (bmp != null) {
+                    addView(ImageView(this@BlackboardActivity).apply {
+                        setImageBitmap(bmp)
+                        scaleType = ImageView.ScaleType.CENTER_CROP
+                        layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            (140 * dp).toInt()
+                        ).apply { topMargin = (8 * dp).toInt() }
+                        background = GradientDrawable().apply {
+                            shape = GradientDrawable.RECTANGLE; cornerRadius = 8 * dp
+                        }
+                        clipToOutline = true
+                    })
+                }
+            } catch (_: Exception) {}
+        }
     }
 
     // ── Progress dots ─────────────────────────────────────────────────────────
