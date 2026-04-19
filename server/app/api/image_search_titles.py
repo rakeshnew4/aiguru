@@ -301,13 +301,6 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
 
                     if html:
                         frame["svg_html"] = html
-                    else:
-                        logger.warning(
-                            "diagram frame in step '%s' produced no svg_html "
-                            "(diagram_type=%r, has_svg_elements=%s) — frame will show no diagram",
-                            step.get("title", ""), d_type,
-                            bool(frame.get("svg_elements")),
-                        )
 
                     # Clean up fields not needed by Android
                     frame.pop("svg_elements", None)

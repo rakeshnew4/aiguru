@@ -444,7 +444,7 @@ def _call_litellm_proxy(
 
     # All tiers use gemini-2.5-flash-lite through LiteLLM during testing
     body = json.dumps({
-        "model": "gemini/gemini-2.5-flash-lite-preview-06-17",
+        "model": "gemini-2.5-flash-lite",
         "messages": messages,
         "temperature": model_config.temperature,
         "max_tokens": model_config.max_tokens,

@@ -25,11 +25,11 @@ from app.models.quiz import (
 )
 from app.services.llm_service import generate_response
 from app.services import cache_service
-from app.services.prompt_service import QUIZ_SYSTEM_PROMPT
+# from app.services.prompt_service import QUIZ_SYSTEM_PROMPT
 
 logger = get_logger(__name__)
 
-
+QUIZ_SYSTEM_PROMPT = """You are a helpful and precise assistant for generating educational quiz questions in JSON format."""
 # ── Prompt builder ─────────────────────────────────────────────────────────────
 
 def _build_prompt(

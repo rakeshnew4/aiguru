@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     
     # FASTER: Quickest tier for small structured tasks (intent classifier, BB planner, grading)
     FASTER_PROVIDER: str = "gemini"
-    FASTER_MODEL_ID: str = "gemini-2.5-flash-lite-preview-06-17"
+    FASTER_MODEL_ID: str = "gemini-2.5-flash-lite"
     FASTER_TEMPERATURE: float = 0.3
     FASTER_MAX_TOKENS: int = 800
     

@@ -28,40 +28,46 @@ _JSON_FOOTER = (
 # ---Intent Classifier Prompt---
 # Run with tier="faster" (gemini-2.0-flash). Expects tiny JSON output (~80 tokens).
 
-CLASSIFIER_SYSTEM_PROMPT: str = (
-    "You are a fast intent classifier for a school tutoring app.\n"
-    "Output ONLY valid JSON — no prose, no code fences.\n\n"
-    "Return exactly:\n"
-    '{"intent":"<greet|image_explain|calculate|definition|followup|explain|practice|other>",'
-    '"complexity":"<low|medium|high>"}\n\n'
-    "Intent:\n"
-    "greet=social/greeting  image_explain=image attached or asked about  calculate=math/solve\n"
-    "definition=what is X  followup=refers to last reply  explain=concept/process\n"
-    "practice=wants exercises  other=anything else\n\n"
-    "Complexity:\n"
-    "low=greeting or single fact  medium=normal concept or 2-step  high=multi-concept or derivation"
-)
-
-# User-part template: per-request dynamic content only
-INTENT_CLASSIFIER_PROMPT: str = (
+INTENT_CLASSIFIER_PROMPT = (
+    "You are a lightning-fast intent classifier for a school tutoring app.\n"
+    "Classify the student input into exactly one intent. Output ONLY valid JSON -- nothing else.\n\n"
     'Student question: "{question}"\n'
-    "Has image: {has_image}\n"
-    'Last reply (120 chars): "{last_reply}"'
+    "Has image attached: {has_image}\n"
+    'Last assistant message (first 120 chars): "{last_reply}"\n\n'
+    "JSON output (one object, no extra text):\n"
+    '{{"intent": "<one of: greet|image_explain|calculate|definition|followup|explain|practice|other>", "complexity": "<one of: low|medium|high>"}}\n\n'
+    "Intent rules:\n"
+    "- greet        -> hi/hello/thanks/bye/good morning or any social pleasantry\n"
+    "- image_explain -> question about an attached image/photo/textbook page/diagram, OR has_image=true with any question\n"
+    "- calculate    -> math problem, solve X, compute, find the value, how many\n"
+    '- definition   -> "what is X", "define X", "meaning of X", "what does X mean"\n'
+    '- followup     -> "what about X", "explain more", "give an example", referring to the previous reply\n'
+    "- explain      -> conceptual question about a topic or process\n"
+    '- practice     -> "give me practice problems", "more examples", "exercise questions"\n'
+    "- other        -> anything else\n\n"
+    "Complexity rules:\n"
+    "- low    -> greeting, simple one-fact question, single-step calculation\n"
+    "- medium -> normal conceptual question, two-step problem\n"
+    "- high   -> multi-concept question, multi-step derivation, compare and contrast"
 )
 
 # ---BB Planner Prompt---
 # Run with tier="faster". Returns plan JSON (~120 tokens).
 # Tells the main BB LLM exactly how many steps to generate and what concepts to cover.
 
-BB_PLANNER_SYSTEM_PROMPT: str = (
+BB_PLANNER_PROMPT = (
     "You are a lesson planner for a visual animated blackboard school app.\n"
     "Given the student's question, return a concise lesson plan. Output ONLY valid JSON — nothing else.\n\n"
+    'Question: "{question}"\n'
+    'Chapter context (excerpt): "{context_snippet}"\n'
+    'Prior lesson excerpt (last reply): "{last_reply}"\n'
+    "Student class: {level}\n\n"
     "Output (one JSON object, NOTHING else):\n"
-    '{"topic_type":"<math_formula|science_process|definition|comparison|history|programming|other>",'
+    '{{"topic_type":"<math_formula|science_process|definition|comparison|history|programming|other>",'
     '"scope":"<simple|medium|complex>",'
     '"key_concepts":["term1","term2"],'
     '"steps_count":<4|5|6>,'
-    '"image_search_terms":["wikimedia phrase 1","wikimedia phrase 2"]}\n\n'
+    '"image_search_terms":["wikimedia phrase 1","wikimedia phrase 2"]}}\n\n'
     "Rules:\n"
     "- simple (4 steps): single self-contained concept\n"
     "- medium (5 steps): standard topic with 1-2 sub-concepts\n"
@@ -72,144 +78,69 @@ BB_PLANNER_SYSTEM_PROMPT: str = (
     "- key_concepts: 2-4 core ideas the lesson MUST cover (actual concept names, not topic labels)"
 )
 
-# User-part template: per-request dynamic content only
-BB_PLANNER_PROMPT: str = (
-    'Question: "{question}"\n'
-    'Chapter context (excerpt): "{context_snippet}"\n'
-    'Prior lesson excerpt (last reply): "{last_reply}"\n'
-    "Student class: {level}"
-)
-
 # ---Blackboard Prompt---
 
 blackboard_prompt = (
-    "You are a PREMIUM visual blackboard teacher creating a focused, structured animated lesson.\n\n"
+    "You are a PREMIUM visual blackboard teacher creating an immersive animated lesson."
+    " Think like the most engaging teacher ever -- make every student say"
+    ' "WOW, I actually get this now!"\n\n'
     "Return ONLY valid JSON (no code fences, no extra text):\n"
-    '{"steps": [{"title": "2-5 word heading", "image_show_confidencescore": 0.8, "image_description": "specific wikimedia search phrase", "lang": "<USE THE REQUESTED LANGUAGE TAG e.g. hi-IN or en-US>", "frames": [{"frame_type": "concept", "text": "board content max 2 lines", "highlight": ["key term"], "speech": "1 short sentence only", "tts_engine": "gemini", "voice_role": "teacher", "duration_ms": 2500, "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1, "quiz_model_answer": "", "quiz_keywords": [], "quiz_correct_order": [], "diagram_type": "", "data": {}, "svg_elements": []}]}]}\n\n'
-    "LESSON STRUCTURE — EXACTLY 5 STEPS, in this order:\n"
-    "Step 1 — WHAT IS IT: Core definition or formula. Nothing else.\n"
-    "Step 2 — HOW IT WORKS: Mechanism or derivation. One sub-concept only.\n"
-    "Step 3 — WORKED EXAMPLE: Concrete solved example. Apply the concept directly.\n"
-    "Step 4 — QUIZ: One quiz_mcq frame ONLY. Test understanding of Step 1–3.\n"
-    "Step 5 — SUMMARY: Bullet recap + memory trick. The ONLY place for a summary frame.\n\n"
-    "FRAME TYPES — use only these:\n"
-    "concept  -> Core teaching: formula, definition, step, key fact. Use **bold**.\n"
-    "memory   -> Mnemonic, rhyme, or fun trick. ONE per lesson max, only in Step 2 or 3.\n"
-    "diagram  -> Animated diagram. MUST set diagram_type and data. Set svg_elements to [].\n"
-    "         text field: 1-line caption (e.g. 'Triangle ABC'). speech: narrate the diagram.\n"
-    "         ALWAYS refer to the diagram in speech: 'This triangle ABC shows...', 'This radius r is...'\n\n"
-    "         SUPPORTED diagram_type:\n"
-    '         "triangle"       data: {"labels":["A","B","C"],"show_height":true|false}\n'
-    '         "circle_radius"  data: {"radius":60,"label":"r"}\n'
-    '         "rectangle_area" data: {"width":80,"height":50}\n'
-    '         "line_graph"     data: {"points":[[0,0],[1,2],[2,4]],"x_label":"x","y_label":"y"}\n'
-    '         "flow"           data: {"steps":["Input","Process","Output"]}\n'
-    '         "comparison"     data: {"left":"Arteries","right":"Veins"}\n\n'
-    "         USAGE GUIDE (choose the right type):\n"
-    "         geometry / triangle angles / height → 'triangle'\n"
-    "         circle, radius, diameter, pi        → 'circle_radius'\n"
-    "         area, perimeter, rectangle          → 'rectangle_area'\n"
-    "         data, physics graphs, coordinates   → 'line_graph'\n"
-    "         process, steps, cycle, algorithm    → 'flow'\n"
-    "         compare two things, pros/cons       → 'comparison'\n\n"
-    "quiz_mcq -> Multiple choice. Step 4 ONLY. Exactly 4 options, quiz_correct_index (0-3).\n"
-    "summary  -> Bullet recap. Step 5 LAST FRAME ONLY.\n\n"
-    "QUIZ RULES:\n"
-    "- EXACTLY 1 quiz_mcq frame in the ENTIRE lesson. Place it in Step 4 ONLY.\n"
-    "- All 4 options plausible; only one correct at quiz_correct_index (0, 1, 2, or 3).\n"
-    "- NO other quiz types (no quiz_typed, no quiz_voice, no quiz_order).\n"
-    "- Non-quiz frames: quiz_options=[], quiz_correct_index=-1, quiz_model_answer=\"\", quiz_keywords=[], quiz_correct_order=[], svg_elements=[].\n"
-    "- Non-diagram frames: diagram_type=\"\", data={}, svg_elements=[].\n"
-    "- image_show_confidencescore for quiz frame: always 0.0.\n\n"
+    '{"steps": [{"title": "2-5 word heading", "image_show_confidencescore": 0.8, "image_description": "specific wikimedia search phrase", "lang": "<USE THE REQUESTED LANGUAGE TAG e.g. hi-IN or en-US>", "frames": [{"frame_type": "concept", "text": "board content max 3 lines", "highlight": ["key term"], "speech": "teacher says 1-2 sentences IN THE LANG LANGUAGE", "tts_engine": "gemini", "voice_role": "teacher", "duration_ms": 2500, "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1, "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": [], "svg_elements": []}]}]}\n\n'
+    "FRAME TYPES -- mix ALL of these for maximum engagement:\n"
+    "concept    -> Core teaching: formula, definition, step, key fact. Use **bold**. Most common type.\n"
+    "memory     -> Mnemonic, rhyme, acronym, or fun trick. Make it catchy and unforgettable!\n"
+    "diagram    -> Animated step-by-step drawing. Use for geometry, structures, circuits, graphs.\n"
+    "           MUST provide svg_elements: array of shape objects drawn sequentially on a 400x300 canvas.\n"
+    '           Shapes: {"shape":"line","x1":N,"y1":N,"x2":N,"y2":N} | {"shape":"circle","cx":N,"cy":N,"r":N}\n'
+    '                   {"shape":"rect","x":N,"y":N,"w":N,"h":N} | {"shape":"text","x":N,"y":N,"value":"label"}\n'
+    "           Coordinates 0-400 (x) / 0-300 (y). Each shape appears one-by-one with smooth animation.\n"
+    "           text field: 1-line caption shown above the diagram. speech: explain what is being drawn.\n"
+    "quiz_mcq   -> Multiple choice. MUST provide exactly 4 quiz_options and quiz_correct_index (0-3).\n"
+    "quiz_typed -> Open-ended typed answer. MUST provide quiz_model_answer and quiz_keywords (3-6 key terms).\n"
+    "quiz_voice -> Open-ended spoken answer. Same fields as quiz_typed.\n"
+
+    "quiz_order -> Drag-to-order. quiz_options=shuffled steps, quiz_correct_order=correct position indices.\n"
+    "summary    -> Bullet-point recap. ONLY for very last frame of lesson.\n\n"
+    "INTERACTIVE QUIZ RULES:\n"
+    "- Include 2-3 interactive quiz frames per lesson (mix quiz_mcq, quiz_typed, quiz_voice, quiz_order).\n"
+    "- quiz_mcq: All 4 options plausible. Only one correct at quiz_correct_index (0, 1, 2, or 3).\n"
+    "- quiz_typed / quiz_voice: quiz_model_answer = complete 1-sentence answer. quiz_keywords = 3-6 essential terms.\n"
+
+    "- quiz_order: quiz_options = 3-5 SHUFFLED step texts. quiz_correct_order = 0-based correct position indices.\n"
+    "- NEVER include quiz_correct_index for quiz_typed, quiz_voice, or quiz_order (leave as -1).\n"
+    "- Non-quiz frames: quiz_options=[], quiz_correct_index=-1, quiz_model_answer=\"\", quiz_keywords=[], fill_blanks=[], quiz_correct_order=[], svg_elements=[].\n"
+    "- image_show_confidencescore for any quiz frame: always 0.0 (no image on quiz frames).\n\n"
     "IMAGE GUIDANCE:\n"
-    "- image_description: Wikimedia Commons search phrase for a REAL well-known educational diagram.\n"
-    '  GOOD: "Bohr atomic model", "photosynthesis light reactions", "Ohm law circuit"\n'
-    '  BAD: "math concept", "physics diagram"\n'
+    "- image_description: A Wikimedia Commons search phrase for a REAL well-known educational diagram.\n"
+    '  GOOD: "Bohr atomic model", "photosynthesis light reactions", "mitosis phases diagram", "Ohm law circuit"\n'
+    '  BAD (too vague): "math concept", "physics diagram", "system diagram"\n'
+    "  Use null if no clearly named diagram exists.\n"
     "- image_show_confidencescore:\n"
-    "  0.85–0.95 -> Concrete visual structure (cell, DNA, circuit, Bohr model)\n"
-    "  0.60–0.80 -> Named principle with a well-known diagram\n"
-    "  0.10–0.30 -> Abstract concept or pure definition\n"
-    "  0.00      -> Quiz and summary frames\n\n"
-    "STRICT RULES:\n"
-    "- EXACTLY 5 steps. No more, no less.\n"
-    "- 2 to 4 frames per step.\n"
-    "- Each step teaches ONE thing. Do NOT mix concepts.\n"
-    "- Do NOT re-explain anything from a previous step.\n"
-    "- speech: NO greetings, no filler ('Hey everyone!', 'Great question!'). Get to the point immediately.\n"
-    "- speech: MAX 1 short sentence per frame. End with a period. TTS-safe: NEVER use $ or LaTeX delimiters — write math in plain spoken words ONLY (say 'x squared' not '$x^2$', 'pi r squared' not '$\\pi r^2$', 'square root of 9' not '$\\sqrt{9}$').\n"
-    "- speech: Adapt language to student level — simple words for young students, precise terminology for older.\n"
-    "- text: Board keywords and formulas only. Max 2 lines. Always English.\n"
-    "- highlight: Exact substrings from text to chalk-highlight. Can be [].\n"
-    "- duration_ms: 2000–4500 ms per frame.\n"
-    "- lang: BCP-47 tag from OUTPUT LANGUAGE. ALL step lang fields must be identical. NEVER default to en-US when another language is requested.\n"
-    "- ALL math in $$...$$ — NEVER plain text math.\n"
-    "TTS VOICE RULES (set tts_engine and voice_role for EVERY frame):\n"
-    "  tts_engine: android | gemini | google\n"
-    "  voice_role: teacher | assistant | quiz | feedback\n"
-    "  - First frame of lesson → tts_engine=android, voice_role=teacher\n"
-    "  - concept / memory / diagram → tts_engine=gemini, voice_role=teacher\n"
-    "  - summary → tts_engine=google, voice_role=assistant\n"
-    "  - quiz_mcq → tts_engine=android, voice_role=quiz\n"
-    "- Output ONLY the JSON object."
-)
-
-# Blackboard system prompt — the full static spec (~2500 tokens).
-# Gemini implicit caching: exceeds 1024-token threshold → cached after first request.
-BB_SYSTEM_PROMPT: str = blackboard_prompt
-
-# ---Chat System Prompt---
-# Static system prompt for normal-mode chat responses.
-# All dynamic content (context, history, question) goes in the user message.
-# Gemini implicit caching: sent identically on every chat request → auto-cached.
-
-CHAT_SYSTEM_PROMPT: str = (
-    "You are an expert, encouraging AI tutor for school students (Classes 1–12).\n"
-    "You have deep knowledge across all school subjects: Mathematics, Science, History, "
-    "Geography, English, and more.\n\n"
-    "CORE RULES:\n"
-    "1. Always answer in the language the student writes in (or as instructed).\n"
-    "2. Adapt complexity to the student's class level.\n"
-    "3. Be warm, clear, and encouraging — never condescending.\n"
-    "4. Use the provided chapter context as the primary source; supplement with general knowledge.\n\n"
-    "MATH FORMATTING (STRICT):\n"
-    "ALL math MUST use $$...$$ — even simple inline: $$x=5$$, $$a^2+b^2=c^2$$.\n"
-    "NEVER plain text math. NEVER code blocks for math.\n\n"
-    "OUTPUT — return ONLY valid JSON (no code fences, no extra text):\n"
-    '{"user_question":"<short restatement of question>",'
-    '"answer":"<your full answer with all markdown/LaTeX formatting>",'
-    '"user_attachment_transcription":"<ALL visible text + diagram descriptions if image/PDF attached; else empty string>",'
-    '"extra_details_or_summary":"<bonus formulas/facts/summary table; else empty string>"}'
-)
-
-# ---Quiz System Prompt---
-# Static system prompt for quiz generation.
-# Dynamic content (subject, chapter, difficulty, question types) goes in the user message.
-# Gemini implicit caching: identical across all quiz generation calls → auto-cached.
-
-QUIZ_SYSTEM_PROMPT: str = (
-    "You are an expert educational content creator specialising in school-level quizzes (Classes 1–12).\n"
-    "You produce well-structured, curriculum-aligned quiz questions in strict JSON format.\n\n"
+    "  0.85 to 0.95 -> Concrete visual structure (cell, DNA, circuit, Bohr model, refraction)\n"
+    "  0.60 to 0.80 -> Named principle with a well-known diagram (Newton laws, Ohm law, water cycle)\n"
+    "  0.10 to 0.30 -> Abstract concept or pure definition frames\n"
+    "  0.00         -> Quiz, memory, and summary frames -- NEVER show image\n\n"
     "RULES:\n"
-    "1. Return ONLY valid JSON — no markdown, no code blocks, no extra text.\n"
-    "2. Every MCQ MUST have EXACTLY 4 distinct, non-empty options.\n"
-    "3. correct_answer MUST be an exact case-sensitive match of one of the 4 options.\n"
-    "4. Every question MUST have a unique 'id' field (e.g. 'q1', 'q2', …).\n"
-    "5. Explanations must be 1–2 sentences, educational, and encouraging.\n"
-    "6. Wrong options must be plausible but clearly incorrect.\n\n"
-    "OUTPUT FORMAT:\n"
-    '{"questions":[{"id":"q1","type":"mcq","question":"...","options":["A","B","C","D"],'
-    '"correct_answer":"A","explanation":"..."}]}'
-)
-
-# ---Evaluation System Prompt---
-# Static system prompt for short-answer evaluation.
-# Dynamic content (question, student answer, keywords) goes in the user message.
-# Gemini implicit caching: identical across all eval calls → auto-cached.
-
-EVAL_SYSTEM_PROMPT: str = (
-    "You are an expert educational evaluator for school students.\n"
-    "Score student answers strictly and fairly using the provided rubric.\n"
-    "Respond ONLY with valid JSON — no prose, no markdown, no code fences."
+    "- 4 to 6 steps total, 2 to 5 frames per step. Mix frame types within every step.\n"
+    "- MANDATORY: Last step ends with a quiz frame THEN a summary frame.\n"
+    "- text: Board keywords, formulas with arrows (->), **bold** key terms. Max 2 lines. Always English.\n"
+    "- highlight: Exact substrings from text to chalk-highlight. Can be [].\n"
+    '- speech: Friendly teacher voice in the language matching the lang field. If lang=hi-IN speak Hindi; if lang=te-IN speak Telugu; if lang=en-US speak English. TTS-safe -- say "squared" not "^2".\n'
+    "- duration_ms: 2000 to 5000 ms per frame.\n"
+    "- lang: BCP-47 tag from the OUTPUT LANGUAGE instruction. Set ALL step lang fields to the same requested tag. NEVER default to en-US when another language is requested.\n"
+    "- ALL math in $$...$$ -- NEVER plain text math.\n"
+    "TTS VOICE RULES (MANDATORY -- set tts_engine and voice_role for EVERY frame):\n"
+    "  tts_engine values: android | gemini | google\n"
+    "  voice_role values: teacher | assistant | quiz | feedback\n"
+    "  RULES:\n"
+    "  - First frame of the ENTIRE lesson → tts_engine=android, voice_role=teacher  (zero-delay start)\n"
+    "  - concept frame → tts_engine=gemini,  voice_role=teacher   (premium, natural explanation)\n"
+    "  - memory frame  → tts_engine=gemini,  voice_role=teacher   (premium, catchy mnemonic)\n"
+    "  - diagram frame → tts_engine=gemini,  voice_role=teacher   (narrate what is being drawn)\n"
+    "  - summary frame → tts_engine=google,  voice_role=assistant (neural, cost-efficient recap)\n"
+    "  - quiz_* frames → tts_engine=android, voice_role=quiz      (instant, no latency)\n"
+    "  Consistency: keep the same engine for the same role across the whole lesson.\n"
+    "- Output ONLY the JSON object."
 )
 
 # ---Intent-Specific Prompt Builders---
@@ -224,6 +155,7 @@ def _greet_prompt(context: str, history: str, question: str, level: int) -> str:
         "The student is greeting you or saying something social. "
         f"Respond in 1-2 warm sentences and gently invite them to ask a question{subject_hint}.\n\n"
         "RESPONSE CALIBRATION: This is a greeting -- answer must be 1-2 sentences MAX."
+        + _JSON_FOOTER
     )
 
 
@@ -238,6 +170,7 @@ def _definition_prompt(context: str, history: str, question: str, level: int) ->
         "**Example** -- 1 concrete worked or real-world example\n"
         "**Key fact** -- 1 memorable fact (include if relevant)\n\n"
         "RESPONSE CALIBRATION: Definition questions need precision not length. Keep to 3-5 sentences."
+        + _JSON_FOOTER
     )
 
 
@@ -255,6 +188,7 @@ def _calculate_prompt(context: str, history: str, question: str, level: int) -> 
         "5. **Quick check** -- verify the answer (if applicable)\n\n"
         "ALL math MUST be in $$...$$ format.\n\n"
         "RESPONSE CALIBRATION: Show ALL steps without skipping. If multi-part, answer every part."
+        + _JSON_FOOTER
     )
 
 
@@ -297,6 +231,7 @@ def _explain_prompt(
         "MEMORY TIP or TOP MISTAKE -- whichever is more useful\n\n"
         "FORMATTING: **Bold** every key term on first use. "
         "Markdown tables to compare 2+ things."
+        + _JSON_FOOTER
     )
 
 
@@ -312,6 +247,7 @@ def _followup_prompt(context: str, history: str, question: str, level: int) -> s
         "- Add a new example or analogy if it helps clarify.\n"
         "- Keep it focused and concise.\n\n"
         "RESPONSE CALIBRATION: Follow-up -- avoid repeating what was already explained."
+        + _JSON_FOOTER
     )
 
 
@@ -337,6 +273,7 @@ def _image_explain_prompt(context: str, history: str, question: str, level: int)
         "TRANSCRIPTION IS CRITICAL: It will be saved as context for all follow-up questions. "
         "Transcribe EVERYTHING visible -- do not summarise or skip any text.\n\n"
         "RESPONSE CALIBRATION: Prioritise extracting image content accurately before answering."
+        + _JSON_FOOTER
     )
 
 
@@ -356,6 +293,7 @@ def _practice_prompt(context: str, history: str, question: str, level: int) -> s
         "- Mark the final answer clearly\n\n"
         "ALL math in $$...$$ format.\n\n"
         "RESPONSE CALIBRATION: Give exactly 3 problems with full worked solutions."
+        + _JSON_FOOTER
     )
 
 
@@ -366,14 +304,13 @@ def build_intent_classifier_prompt(
     question: str,
     has_image: bool,
     last_reply: str = "",
-) -> tuple:
-    """Returns (system_prompt, user_message) for the intent classifier."""
-    user_msg = INTENT_CLASSIFIER_PROMPT.format(
+) -> str:
+    """Returns the formatted intent-classifier prompt for the faster model tier."""
+    return INTENT_CLASSIFIER_PROMPT.format(
         question=question[:300],
         has_image=str(has_image).lower(),
         last_reply=(last_reply or "")[:120].replace("\n", " "),
     )
-    return CLASSIFIER_SYSTEM_PROMPT, user_msg
 
 
 def build_prompt(
@@ -385,15 +322,25 @@ def build_prompt(
     mode=None,
     intent=None,
     complexity=None,
-) -> tuple:
+) -> str:
     """
     Build the main LLM prompt.
 
-    Returns (system_prompt, user_message) tuple.
-    system_prompt is static and cache-eligible; user_message contains dynamic content.
+    For blackboard mode  ->  returns the BB lesson prompt + question + language instruction.
+    For normal mode      ->  routes to the intent-specific prompt builder, then appends
+                             the language instruction for localised output.
 
-    For blackboard mode  ->  (BB_SYSTEM_PROMPT, question + language instruction)
-    For normal mode      ->  (CHAT_SYSTEM_PROMPT, intent-specific prompt + language instruction)
+    Parameters
+    ----------
+    context       : merged chapter / page context string
+    question      : student question text
+    student_level : class / grade as integer (1-12)
+    history       : list of "user: ..." / "assistant: ..." strings (most recent at end)
+    language      : BCP-47 language tag  (e.g. "hi-IN", "en-US")
+    mode          : "normal" | "blackboard"
+    intent        : greet | image_explain | calculate | definition |
+                    followup | explain | practice | other  (None -> "explain")
+    complexity    : "low" | "medium" | "high"  (None -> "medium")
     """
     lang = language or "en-US"
     if mode == "blackboard":
@@ -402,7 +349,7 @@ def build_prompt(
             f'Write ALL "speech" fields in the language for tag "{lang}" '
             f'(hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.).'
         )
-        return BB_SYSTEM_PROMPT, question + language_instructions.get(lang, "") + lang_tag_instr
+        return blackboard_prompt + question + language_instructions.get(lang, "") + lang_tag_instr
 
     history_text = "\n".join(history or [])
     ctx = context or ""
@@ -426,7 +373,7 @@ def build_prompt(
         # "explain" | "other" | unknown -> full explain prompt
         core = _explain_prompt(ctx, history_text, question, lvl, cmp)
 
-    return CHAT_SYSTEM_PROMPT, core + language_instructions.get(lang, "")
+    return core + language_instructions.get(lang, "")
 
 
 def build_bb_planner_prompt(
@@ -434,21 +381,20 @@ def build_bb_planner_prompt(
     context: str,
     history: list,
     level: int,
-) -> tuple:
-    """Returns (system_prompt, user_message) for the BB lesson planner."""
+) -> str:
+    """Returns the formatted BB planner prompt for the 'faster' model tier."""
     ctx_snippet = (context or "")[:500].strip()
     last_reply = ""
     for h in reversed(history or []):
         if h.startswith("assistant:"):
             last_reply = h[10:200].strip()
             break
-    user_msg = BB_PLANNER_PROMPT.format(
+    return BB_PLANNER_PROMPT.format(
         question=question[:300],
         context_snippet=ctx_snippet,
         last_reply=last_reply[:200],
         level=level or 5,
     )
-    return BB_PLANNER_SYSTEM_PROMPT, user_msg
 
 
 def build_bb_main_prompt(
@@ -458,16 +404,16 @@ def build_bb_main_prompt(
     history: list,
     plan: dict,
     lang: str,
-) -> tuple:
+) -> str:
     """
     Build the context-enriched blackboard lesson prompt using the planner's output.
-    Returns (BB_SYSTEM_PROMPT, user_message) where BB_SYSTEM_PROMPT is the static
-    blackboard spec (~2500 tokens) and user_message is the dynamic lesson brief.
+    Injects chapter context, recent conversation, and lesson plan so the BB LLM
+    generates focused content without having to figure out structure itself.
     """
     topic_type = plan.get("topic_type", "other")
     scope = plan.get("scope", "medium")
     key_concepts = plan.get("key_concepts") or []
-    steps_count = 5  # Always exactly 5 steps: What/How/Example/Quiz/Summary
+    steps_count = max(4, min(6, int(plan.get("steps_count") or 5)))
 
     concepts_str = ", ".join(str(c) for c in key_concepts) if key_concepts else ""
     # Up to 2000 chars of chapter context so the LLM stays grounded in the textbook
@@ -484,7 +430,7 @@ def build_bb_main_prompt(
     hist_snippet = "\n".join(_fmt(h) for h in history_entries)
     lang_instr = language_instructions.get(lang or "en-US", "")
 
-    parts = ["\n\n---LESSON BRIEF (follow these instructions exactly)---\n"]
+    parts = [blackboard_prompt, "\n\n---LESSON BRIEF (follow these instructions exactly)---\n"]
     parts.append(f"Student question: {question}\n")
     parts.append(f"Student level: Class {level}\n")
     parts.append(f"Topic type: {topic_type} | Scope: {scope}\n")
@@ -508,4 +454,4 @@ def build_bb_main_prompt(
         f'Board "text" field stays in English (formulas/keywords only).'
     )
 
-    return BB_SYSTEM_PROMPT, "".join(parts)
+    return "".join(parts)

@@ -22,10 +22,7 @@ Legacy fallback: raw svg_elements still accepted for cached lessons.
 """
 
 import json
-import logging
 import math
-
-logger = logging.getLogger(__name__)
 
 # ── Colour palette ────────────────────────────────────────────────────────────
 STROKE      = "#F0EDD0"   # chalk white
@@ -491,215 +488,6 @@ def _render_shape(el: dict, delay: float) -> tuple[str, float]:
             f'dur="0.30s" begin="{delay:.2f}s" fill="freeze"/></text>'
         )
         return svg, delay + 0.25
-
-    # ── stickman ──────────────────────────────────────────────────────────────
-    elif shape == "stickman":
-        # cx/cy = centre of the torso; h = total height (default 80)
-        scx = _clamp(float(el.get("cx", 200)), 20, 380)
-        scy = _clamp(float(el.get("cy", 150)), 20, 280)
-        h   = _clamp(float(el.get("h", 80)),   30, 160)
-        r   = h * 0.14           # head radius
-        torso_top    = scy - h * 0.28
-        torso_bottom = scy + h * 0.12
-        hip_y        = torso_bottom
-        arm_y        = torso_top + (torso_bottom - torso_top) * 0.35
-        arm_span     = h * 0.33
-        leg_spread   = h * 0.22
-        foot_y       = scy + h * 0.50
-        parts_svg = (
-            # Head
-            f'<circle cx="{scx:.1f}" cy="{torso_top - r:.1f}" r="{r:.1f}" '
-            f'stroke="{color}" stroke-width="2" fill="none" opacity="0">'
-            f'<animate attributeName="opacity" from="0" to="1" dur="0.25s" begin="{delay:.2f}s" fill="freeze"/></circle>'
-            # Body
-            f'<line x1="{scx:.1f}" y1="{torso_top:.1f}" x2="{scx:.1f}" y2="{torso_bottom:.1f}" '
-            f'stroke="{color}" stroke-width="2.5" opacity="0">'
-            f'<animate attributeName="opacity" from="0" to="1" dur="0.20s" begin="{delay+0.18:.2f}s" fill="freeze"/></line>'
-            # Left arm
-            f'<line x1="{scx:.1f}" y1="{arm_y:.1f}" x2="{scx-arm_span:.1f}" y2="{arm_y+h*0.18:.1f}" '
-            f'stroke="{color}" stroke-width="2" opacity="0">'
-            f'<animate attributeName="opacity" from="0" to="1" dur="0.18s" begin="{delay+0.30:.2f}s" fill="freeze"/></line>'
-            # Right arm
-            f'<line x1="{scx:.1f}" y1="{arm_y:.1f}" x2="{scx+arm_span:.1f}" y2="{arm_y+h*0.18:.1f}" '
-            f'stroke="{color}" stroke-width="2" opacity="0">'
-            f'<animate attributeName="opacity" from="0" to="1" dur="0.18s" begin="{delay+0.30:.2f}s" fill="freeze"/></line>'
-            # Left leg
-            f'<line x1="{scx:.1f}" y1="{hip_y:.1f}" x2="{scx-leg_spread:.1f}" y2="{foot_y:.1f}" '
-            f'stroke="{color}" stroke-width="2.5" opacity="0">'
-            f'<animate attributeName="opacity" from="0" to="1" dur="0.18s" begin="{delay+0.44:.2f}s" fill="freeze"/></line>'
-            # Right leg
-            f'<line x1="{scx:.1f}" y1="{hip_y:.1f}" x2="{scx+leg_spread:.1f}" y2="{foot_y:.1f}" '
-            f'stroke="{color}" stroke-width="2.5" opacity="0">'
-            f'<animate attributeName="opacity" from="0" to="1" dur="0.18s" begin="{delay+0.44:.2f}s" fill="freeze"/></line>'
-        )
-        return parts_svg, delay + 0.60
-
-    # ── bottle ─────────────────────────────────────────────────────────────────
-    elif shape == "bottle":
-        bx  = _clamp(float(el.get("cx", 200)), 20, 370)
-        by  = _clamp(float(el.get("cy", 150)), 20, 270)
-        bw  = _clamp(float(el.get("w",  30)),  10, 80)
-        bh  = _clamp(float(el.get("h",  80)),  30, 160)
-        neck_w = bw * 0.38
-        # Bottle path: flat bottom → wide body → taper to neck → cap
-        top_y    = by - bh * 0.50
-        body_top = by - bh * 0.25
-        left  = bx - bw / 2
-        right = bx + bw / 2
-        nl    = bx - neck_w / 2
-        nr    = bx + neck_w / 2
-        cap_h = bh * 0.07
-        d = (
-            f"M {left:.1f},{by + bh*0.50:.1f} "      # bottom-left
-            f"L {right:.1f},{by + bh*0.50:.1f} "     # bottom-right
-            f"L {right:.1f},{body_top:.1f} "          # right body top
-            f"Q {right:.1f},{top_y:.1f} {nr:.1f},{top_y:.1f} "  # curve to neck
-            f"L {nr:.1f},{top_y - cap_h:.1f} "        # cap right
-            f"L {nl:.1f},{top_y - cap_h:.1f} "        # cap left
-            f"L {nl:.1f},{top_y:.1f} "
-            f"Q {left:.1f},{top_y:.1f} {left:.1f},{body_top:.1f} "
-            f"Z"
-        )
-        path_len = bh * 3.2
-        svg = (
-            f'<path d="{d}" stroke="{color}" stroke-width="2.5" fill="{color}" fill-opacity="0.12" '
-            f'stroke-dasharray="{path_len:.1f}" stroke-dashoffset="{path_len:.1f}">'
-            f'<animate attributeName="stroke-dashoffset" from="{path_len:.1f}" to="0" '
-            f'dur="0.55s" begin="{delay:.2f}s" fill="freeze"/></path>'
-        )
-        return svg, delay + 0.48
-
-    # ── rocket ────────────────────────────────────────────────────────────────
-    elif shape == "rocket":
-        rcx = _clamp(float(el.get("cx", 200)), 20, 380)
-        rcy = _clamp(float(el.get("cy", 150)), 20, 270)
-        rh  = _clamp(float(el.get("h",  70)),  30, 140)
-        rw  = rh * 0.38
-        tip_y    = rcy - rh * 0.50
-        body_bot = rcy + rh * 0.22
-        fin_h    = rh * 0.28
-        fin_w    = rw * 0.80
-        # Body (rounded-top capsule)
-        d_body = (
-            f"M {rcx:.1f},{tip_y:.1f} "
-            f"Q {rcx+rw:.1f},{tip_y:.1f} {rcx+rw:.1f},{rcy:.1f} "
-            f"L {rcx+rw:.1f},{body_bot:.1f} "
-            f"L {rcx-rw:.1f},{body_bot:.1f} "
-            f"L {rcx-rw:.1f},{rcy:.1f} "
-            f"Q {rcx-rw:.1f},{tip_y:.1f} {rcx:.1f},{tip_y:.1f} Z"
-        )
-        # Left fin
-        d_fin_l = (
-            f"M {rcx-rw:.1f},{body_bot-fin_h:.1f} "
-            f"L {rcx-rw-fin_w:.1f},{body_bot:.1f} "
-            f"L {rcx-rw:.1f},{body_bot:.1f} Z"
-        )
-        # Right fin
-        d_fin_r = (
-            f"M {rcx+rw:.1f},{body_bot-fin_h:.1f} "
-            f"L {rcx+rw+fin_w:.1f},{body_bot:.1f} "
-            f"L {rcx+rw:.1f},{body_bot:.1f} Z"
-        )
-        # Flame (small ellipse below body)
-        flame_cx = rcx
-        flame_cy = body_bot + rh * 0.12
-        flame_rx = rw * 0.45
-        flame_ry = rh * 0.12
-        path_len = rh * 4
-        svg = (
-            f'<path d="{d_body}" stroke="{color}" stroke-width="2.5" fill="{color}" fill-opacity="0.18" '
-            f'opacity="0"><animate attributeName="opacity" from="0" to="1" '
-            f'dur="0.30s" begin="{delay:.2f}s" fill="freeze"/></path>'
-            f'<path d="{d_fin_l}" stroke="{color}" stroke-width="2" fill="{color}" fill-opacity="0.25" '
-            f'opacity="0"><animate attributeName="opacity" from="0" to="1" '
-            f'dur="0.25s" begin="{delay+0.22:.2f}s" fill="freeze"/></path>'
-            f'<path d="{d_fin_r}" stroke="{color}" stroke-width="2" fill="{color}" fill-opacity="0.25" '
-            f'opacity="0"><animate attributeName="opacity" from="0" to="1" '
-            f'dur="0.25s" begin="{delay+0.22:.2f}s" fill="freeze"/></path>'
-            f'<ellipse cx="{flame_cx:.1f}" cy="{flame_cy:.1f}" rx="{flame_rx:.1f}" ry="{flame_ry:.1f}" '
-            f'fill="#FFB74D" opacity="0">'
-            f'<animate attributeName="opacity" from="0" to="0.85" '
-            f'dur="0.20s" begin="{delay+0.38:.2f}s" fill="freeze"/></ellipse>'
-        )
-        return svg, delay + 0.55
-
-    # ── house ─────────────────────────────────────────────────────────────────
-    elif shape == "house":
-        hcx = _clamp(float(el.get("cx", 200)), 30, 370)
-        hcy = _clamp(float(el.get("cy", 160)), 30, 270)
-        hw  = _clamp(float(el.get("w",  80)),  30, 160)
-        hh  = _clamp(float(el.get("h",  70)),  25, 140)
-        wall_h = hh * 0.55
-        wall_top  = hcy + hh * 0.50 - wall_h
-        wall_bot  = hcy + hh * 0.50
-        roof_peak = hcy - hh * 0.50
-        left_wall  = hcx - hw / 2
-        right_wall = hcx + hw / 2
-        door_w = hw * 0.22
-        door_h = wall_h * 0.52
-        door_l = hcx - door_w / 2
-        # Roof
-        d_roof = (
-            f"M {left_wall:.1f},{wall_top:.1f} "
-            f"L {hcx:.1f},{roof_peak:.1f} "
-            f"L {right_wall:.1f},{wall_top:.1f} Z"
-        )
-        # Walls
-        d_walls = (
-            f"M {left_wall:.1f},{wall_top:.1f} "
-            f"L {left_wall:.1f},{wall_bot:.1f} "
-            f"L {right_wall:.1f},{wall_bot:.1f} "
-            f"L {right_wall:.1f},{wall_top:.1f}"
-        )
-        # Door
-        d_door = (
-            f"M {door_l:.1f},{wall_bot:.1f} "
-            f"L {door_l:.1f},{wall_bot-door_h:.1f} "
-            f"Q {hcx:.1f},{wall_bot-door_h-door_w*0.25:.1f} "
-            f"{door_l+door_w:.1f},{wall_bot-door_h:.1f} "
-            f"L {door_l+door_w:.1f},{wall_bot:.1f}"
-        )
-        svg = (
-            f'<path d="{d_roof}" stroke="{color}" stroke-width="2.5" fill="{color}" fill-opacity="0.20" '
-            f'opacity="0"><animate attributeName="opacity" from="0" to="1" '
-            f'dur="0.28s" begin="{delay:.2f}s" fill="freeze"/></path>'
-            f'<path d="{d_walls}" stroke="{color}" stroke-width="2.5" fill="{color}" fill-opacity="0.10" '
-            f'opacity="0"><animate attributeName="opacity" from="0" to="1" '
-            f'dur="0.25s" begin="{delay+0.22:.2f}s" fill="freeze"/></path>'
-            f'<path d="{d_door}" stroke="{color}" stroke-width="2" fill="{color}" fill-opacity="0.30" '
-            f'opacity="0"><animate attributeName="opacity" from="0" to="1" '
-            f'dur="0.20s" begin="{delay+0.40:.2f}s" fill="freeze"/></path>'
-        )
-        return svg, delay + 0.58
-
-    # ── tree ──────────────────────────────────────────────────────────────────
-    elif shape == "tree":
-        tcx = _clamp(float(el.get("cx", 200)), 20, 380)
-        tcy = _clamp(float(el.get("cy", 150)), 20, 270)
-        th  = _clamp(float(el.get("h",  80)),  30, 150)
-        trunk_w = th * 0.12
-        trunk_h = th * 0.28
-        crown_r = th * 0.38
-        trunk_top = tcy + th * 0.50 - trunk_h
-        trunk_bot = tcy + th * 0.50
-        crown_cx  = tcx
-        crown_cy  = tcy - th * 0.10
-        svg = (
-            # Trunk
-            f'<rect x="{tcx-trunk_w/2:.1f}" y="{trunk_top:.1f}" '
-            f'width="{trunk_w:.1f}" height="{trunk_h:.1f}" '
-            f'fill="#8BAB8B" stroke="{color}" stroke-width="1.5" opacity="0">'
-            f'<animate attributeName="opacity" from="0" to="1" '
-            f'dur="0.22s" begin="{delay:.2f}s" fill="freeze"/></rect>'
-            # Canopy circle
-            f'<circle cx="{crown_cx:.1f}" cy="{crown_cy:.1f}" r="{crown_r:.1f}" '
-            f'stroke="{color}" stroke-width="2.5" fill="#81C784" fill-opacity="0.28" '
-            f'opacity="0"><animate attributeName="opacity" from="0" to="1" '
-            f'dur="0.35s" begin="{delay+0.18:.2f}s" fill="freeze"/></circle>'
-        )
-        return svg, delay + 0.50
-
-    logger.warning("_render_shape: unknown shape type %r — skipping element %s", shape, el)
     return "", delay
 
 
@@ -1165,18 +953,10 @@ def build_from_diagram_type(diagram_type: str, data: dict) -> list:
     """
     renderer = _RENDERERS.get((diagram_type or "").strip().lower())
     if not renderer:
-        logger.warning("build_from_diagram_type: unknown diagram_type %r — supported: %s",
-                       diagram_type, list(_RENDERERS.keys()))
         return []
     try:
-        shapes = renderer(data or {})
-        if not shapes:
-            logger.warning("build_from_diagram_type: renderer for %r returned empty shapes (data=%s)",
-                           diagram_type, data)
-        return shapes
-    except Exception as exc:
-        logger.error("build_from_diagram_type: renderer for %r raised %s: %s",
-                     diagram_type, type(exc).__name__, exc, exc_info=True)
+        return renderer(data or {})
+    except Exception:
         return []
 
 
@@ -1216,12 +996,10 @@ def build_animated_svg(elements) -> str:
     if isinstance(elements, str):
         try:
             elements = json.loads(elements)
-        except (json.JSONDecodeError, TypeError) as exc:
-            logger.error("build_animated_svg: failed to parse elements JSON: %s", exc)
+        except (json.JSONDecodeError, TypeError):
             return ""
 
     if not elements or not isinstance(elements, list):
-        logger.warning("build_animated_svg: received empty or non-list elements: %r", type(elements).__name__)
         return ""
 
     # ── Separate staged vs legacy shapes ──────────────────────────────────────
@@ -1252,11 +1030,7 @@ def build_animated_svg(elements) -> str:
                 if el.get("shape") == "double_arrow":
                     has_double_arrow = True
                 # All elements in this stage start at the same stage_delay
-                try:
-                    svg_str, new_delay = _render_shape({**el}, stage_delay)
-                except Exception as exc:
-                    logger.error("build_animated_svg: _render_shape raised for %r: %s", el.get("shape"), exc, exc_info=True)
-                    continue
+                svg_str, new_delay = _render_shape({**el}, stage_delay)
                 if svg_str:
                     parts.append(svg_str)
                     added = new_delay - stage_delay
@@ -1274,16 +1048,11 @@ def build_animated_svg(elements) -> str:
                 has_arrow = True
             if el.get("shape") == "double_arrow":
                 has_double_arrow = True
-            try:
-                svg_str, delay = _render_shape(el, delay)
-            except Exception as exc:
-                logger.error("build_animated_svg: _render_shape raised for %r: %s", el.get("shape"), exc, exc_info=True)
-                continue
+            svg_str, delay = _render_shape(el, delay)
             if svg_str:
                 parts.append(svg_str)
 
     if not parts:
-        logger.warning("build_animated_svg: all %d shapes produced no SVG output", len(elements))
         return ""
 
     defs_block = _make_defs(has_arrow, has_double_arrow)

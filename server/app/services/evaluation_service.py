@@ -17,13 +17,13 @@ from app.core.logger import get_logger
 from app.models.quiz import EvalResult, EvaluateAnswerResponse
 from app.services.llm_service import generate_response
 from app.services import cache_service
-from app.services.prompt_service import EVAL_SYSTEM_PROMPT
+# from app.services.prompt_service import EVAL_SYSTEM_PROMPT
 
 logger = get_logger(__name__)
 
 
 # ── Fuzzy matching helper (for typed fill-in-the-blank) ───────────────────────
-
+EVAL_SYSTEM_PROMPT = """You are a helpful and precise assistant for evaluating student short-answer responses."""
 def _fuzzy_match(user: str, expected: str, threshold: float = 0.80) -> bool:
     """Return True if user's answer is close enough to the expected answer."""
     ratio = SequenceMatcher(None, user.strip().lower(), expected.strip().lower()).ratio()

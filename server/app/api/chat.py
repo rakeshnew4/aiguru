@@ -110,12 +110,12 @@ def _classify_intent(question: str, has_image: bool, last_reply: str) -> dict:
     Falls back to {"intent": "explain", "complexity": "medium"} on any error.
     """
     try:
-        sys_prompt, classifier_prompt = build_intent_classifier_prompt(
+        classifier_prompt = build_intent_classifier_prompt(
             question=question,
             has_image=has_image,
             last_reply=last_reply,
         )
-        raw = generate_response(classifier_prompt, [], tier="faster", system_prompt=sys_prompt)
+        raw = generate_response(classifier_prompt, [], tier="faster")
         text = (raw.get("text") or "").strip()
         parsed = extract_json_safe(text)
         intent = parsed.get("intent", "explain")
@@ -146,10 +146,10 @@ async def _bb_plan(question: str, context: str, history: list, level: int) -> di
         "image_search_terms": [],
     }
     try:
-        sys_prompt, planner_prompt = build_bb_planner_prompt(question, context, history, level)
+        planner_prompt = build_bb_planner_prompt(question, context, history, level)
         loop = asyncio.get_event_loop()
         raw = await loop.run_in_executor(
-            None, lambda: generate_response(planner_prompt, [], tier="faster", system_prompt=sys_prompt)
+            None, lambda: generate_response(planner_prompt, [], tier="faster")
         )
         text = (raw.get("text") or "").strip()
         plan = extract_json_safe(text)
@@ -339,7 +339,7 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                 )
 
                 # B3) Build context-enriched BB prompt
-                system_prompt, prompt = build_bb_main_prompt(
+                prompt = build_bb_main_prompt(
                     context=str(context) if context else "",
                     question=req.question,
                     level=req.student_level or 5,
@@ -377,7 +377,7 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     merged_context = _merge_context_with_image_data(context, req.image_data)
 
                 # N3) Build intent-routed prompt
-                system_prompt, prompt = build_prompt(
+                prompt = build_prompt(
                     context=merged_context,
                     question=req.question,
                     student_level=req.student_level,
@@ -395,8 +395,6 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
             # Debug dump
             try:
                 with open("prompt.txt", "w") as f:
-                    if system_prompt:
-                        f.write(f"[SYSTEM]\n{system_prompt}\n\n[USER]\n")
                     f.write(prompt)
             except Exception:
                 pass
@@ -424,7 +422,7 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     }
                 else:
                     result: Dict[str, Any] = await loop.run_in_executor(
-                        None, lambda: generate_response(prompt, normalized_images, tier=model_tier, system_prompt=system_prompt)
+                        None, lambda: generate_response(prompt, normalized_images, tier=model_tier)
                     )
                 
                 # Check for valid response structure
@@ -449,7 +447,7 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     logger.info("Retrying without images...")
                     try:
                         result = await loop.run_in_executor(
-                            None, lambda: generate_response(prompt, [], tier=model_tier, system_prompt=system_prompt)
+                            None, lambda: generate_response(prompt, [], tier=model_tier)
                         )
                         if not result or not isinstance(result, dict):
                             logger.error(f"Invalid LLM response on image-less retry: {type(result)}")
