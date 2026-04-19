@@ -61,35 +61,36 @@ TTS VOICE RULES (MANDATORY -- set tts_engine and voice_role for EVERY frame):
 - Output ONLY the JSON object.
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student question: Topic: Eelectron emissions
-Lesson title: Eelectron emissions
+Student question: Topic: What if we create a new memory brain?
+Lesson title: What if we create a new memory brain?
 Category: general
 
 
 CONTINUATION — DO NOT repeat anything already taught.
-Student's original question: Eelectron emissions
+Student's original question: What if we create a new memory brain?
 
 Steps ALREADY TAUGHT (do NOT repeat or reintroduce these):
-  1. Thermionic Emission: Heat Power! — "So, how do we get these electrons to jump off? One common way is by using heat! When you h"
-  2. Photoelectric Effect: Light Power! — "Besides heat, there's another amazing way to make electrons jump off a surface: using ligh"
+  1. New Memory Brains? — "Hey everyone! Imagine for a moment, what if we could create a brand new memory brain? Woul"
+  2. How Our Brain Works — "But before we build new brains, let's quickly think about how our own amazing brain works."
+  3. Bioengineering Our Future — "So, how do we create artificial memory? That's where bioengineering comes in! It's a field"
+  4. What Could They Do? — "What could these new artificial memory systems do? One amazing possibility is helping peop"
+  5. The Neuron's Message — "Have you ever wondered how your brain tells your body to move or feel something? It's all "
+  6. Lesson Recap — "So, to recap: Neurons have long axons that carry signals. These axons end in branches that"
 
-Total steps covered so far: 2 / 8
-Continue from step 3. Build on what was taught — go deeper, give examples, advance the lesson.
+Total steps covered so far: 6 / 8
+Continue from step 7. Build on what was taught — go deeper, give examples, advance the lesson.
 
 Now continue teaching the NEXT steps listed below. Build on what was already covered — go deeper, add detail, advance the lesson. Do NOT reintroduce or re-explain concepts from the above steps.
 
-Generate EXACTLY 5 steps with APPROXIMATELY 4 frames each.
+Generate EXACTLY 2 steps with APPROXIMATELY 4 frames each.
 Steps to generate in this batch:
-- Step 3
-- Step 4
-- Step 5
-- Step 6
-- Step 7
+- Step 7: What if we create a new memory brain?
+- Step 8: What if we create a new memory brain?
 
-Do NOT include a summary frame — the lesson continues after these steps.
+The very last frame of the last step MUST be a summary frame recapping the entire lesson.
 Student level: Class 5
 Topic type: science_process | Scope: medium
-Key concepts to cover (ALL of these): Photoelectric Effect, Work Function, Threshold Frequency, Photon Energy
+Key concepts to cover (ALL of these): artificial memory, neural networks, data storage, brain-computer interface
 Generate EXACTLY 5 steps — no more, no less.
 
 CHAPTER CONTEXT (use this as the primary source — ground the lesson here):
