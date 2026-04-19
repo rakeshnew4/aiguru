@@ -11,6 +11,10 @@ from app.services.prompt_service import (
     build_intent_classifier_prompt,
     build_bb_planner_prompt,
     build_bb_main_prompt,
+    get_normal_mode_system_prompt,
+    get_blackboard_mode_system_prompt,
+    build_normal_mode_user_content,
+    build_blackboard_mode_user_content,
 )
 from app.services.llm_service import generate_response
 from app.services.strands_agent import run_agent
@@ -421,8 +425,38 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                         },
                     }
                 else:
+                    # ── Separate system prompt from user content (enables caching) ──
+                    system_prompt = None
+                    user_content = prompt
+                    
+                    if req.mode == "normal":
+                        system_prompt = get_normal_mode_system_prompt(req.student_level or 5)
+                        user_content = build_normal_mode_user_content(
+                            context=merged_context,
+                            history="\n".join(req.history or []),
+                            question=req.question,
+                            intent=intent,
+                            complexity=complexity,
+                        )
+                    elif req.mode == "blackboard":
+                        system_prompt = get_blackboard_mode_system_prompt()
+                        user_content = build_blackboard_mode_user_content(
+                            context=str(context) if context else "",
+                            question=req.question,
+                            level=req.student_level or 5,
+                            history=req.history or [],
+                            plan=plan,
+                            lang=lang,
+                        )
+                    
                     result: Dict[str, Any] = await loop.run_in_executor(
-                        None, lambda: generate_response(prompt, normalized_images, tier=model_tier)
+                        None, 
+                        lambda: generate_response(
+                            user_content, 
+                            normalized_images, 
+                            tier=model_tier,
+                            system_prompt=system_prompt
+                        )
                     )
                 
                 # Check for valid response structure

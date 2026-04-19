@@ -61,37 +61,36 @@ TTS VOICE RULES (MANDATORY -- set tts_engine and voice_role for EVERY frame):
 - Output ONLY the JSON object.
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student question: Topic: Electrons
-Lesson title: Electrons
+Student question: Topic: Eelectron emissions
+Lesson title: Eelectron emissions
 Category: general
 
 
 CONTINUATION — DO NOT repeat anything already taught.
-Student's original question: Electrons
+Student's original question: Eelectron emissions
 
 Steps ALREADY TAUGHT (do NOT repeat or reintroduce these):
-  1. What are Electrons? — "Hey everyone! Today, we're going on an amazing adventure into the world of atoms, and our "
-  2. Where Do Electrons Live? — "Imagine an atom like a tiny solar system. In the center, we have the nucleus, and zipping "
-  3. Electron's Role — "So, what do these tiny electrons actually do? They are the stars of the show when it comes"
-  4. Electron Summary — "To wrap up, remember that electrons are tiny subatomic particles with a negative charge th"
+  1. Thermionic Emission: Heat Power! — "So, how do we get these electrons to jump off? One common way is by using heat! When you h"
+  2. Photoelectric Effect: Light Power! — "Besides heat, there's another amazing way to make electrons jump off a surface: using ligh"
 
-Total steps covered so far: 4 / 8
-Continue from step 5. Build on what was taught — go deeper, give examples, advance the lesson.
+Total steps covered so far: 2 / 8
+Continue from step 3. Build on what was taught — go deeper, give examples, advance the lesson.
 
 Now continue teaching the NEXT steps listed below. Build on what was already covered — go deeper, add detail, advance the lesson. Do NOT reintroduce or re-explain concepts from the above steps.
 
-Generate EXACTLY 4 steps with APPROXIMATELY 4 frames each.
+Generate EXACTLY 5 steps with APPROXIMATELY 4 frames each.
 Steps to generate in this batch:
+- Step 3
+- Step 4
 - Step 5
 - Step 6
 - Step 7
-- Step 8
 
-The very last frame of the last step MUST be a summary frame recapping the entire lesson.
+Do NOT include a summary frame — the lesson continues after these steps.
 Student level: Class 5
-Topic type: definition | Scope: simple
-Key concepts to cover (ALL of these): Electron charge, Electron mass, Electron location in atom
-Generate EXACTLY 4 steps — no more, no less.
+Topic type: science_process | Scope: medium
+Key concepts to cover (ALL of these): Photoelectric Effect, Work Function, Threshold Frequency, Photon Energy
+Generate EXACTLY 5 steps — no more, no less.
 
 CHAPTER CONTEXT (use this as the primary source — ground the lesson here):
 Context for page blackboard__chunk

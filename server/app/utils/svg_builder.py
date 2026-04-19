@@ -14,6 +14,11 @@ New shapes in v3:
   polygon, ellipse, diamond, dashed_line, dotted_line, curved_arrow,
   double_arrow, elbow_arrow, rounded_rect, parallelogram, arc, angle_arc,
   highlight_box, axis_tick, grid_line
+New shapes in v4:
+  hexagon, half_circle, quarter_circle, human
+Extended colour keys (v4):
+  orange, green, pink, purple, teal, yellow, red, blue, gold, coral, mint,
+  white, sky, brown
 Animation storytelling:
   Each shape carries an animation_stage (int). Shapes at the same stage
   animate together; delay is stage-based so the diagram "teaches" step-by-step.
@@ -38,6 +43,21 @@ COLORS = {
     "highlight": HIGHLIGHT,
     "secondary": ACCENT,
     "dim":       DIM,
+    # ── Extended palette (v4) ──────────────────────────────────────────────
+    "orange":    "#FFB74D",
+    "green":     "#81C784",
+    "pink":      "#F48FB1",
+    "purple":    "#CE93D8",
+    "teal":      "#4DB6AC",
+    "yellow":    "#FFF176",
+    "red":       "#EF5350",
+    "blue":      "#42A5F5",
+    "gold":      "#FFD54F",
+    "coral":     "#FF7043",
+    "mint":      "#A8D8A8",
+    "white":     "#FFFFFF",
+    "sky":       "#87CEEB",
+    "brown":     "#A1887F",
 }
 
 # Base delay between animation stages (seconds)
@@ -72,7 +92,22 @@ def _escape(value: str) -> str:
 
 
 def _resolve_color(key: str) -> str:
-    return COLORS.get(key, STROKE)
+    """Resolve a colour key to a hex string.
+
+    Accepted inputs (in priority order):
+      1. A key in the COLORS dict  (e.g. "orange", "highlight")
+      2. A CSS hex value           (e.g. "#FF6B6B", "#4FC3F7")
+      3. A 3-char shorthand hex    (e.g. "#F00")
+      4. Any other string — falls back to STROKE so lines are always visible.
+    """
+    k = str(key).strip()
+    if k in COLORS:
+        return COLORS[k]
+    # Pass hex values through directly (validates basic format)
+    import re as _re
+    if _re.match(r"^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$", k):
+        return k
+    return COLORS.get(k, STROKE)
 
 
 # ── Shape → SVG string (with SMIL animation) ─────────────────────────────────
@@ -488,6 +523,129 @@ def _render_shape(el: dict, delay: float) -> tuple[str, float]:
             f'dur="0.30s" begin="{delay:.2f}s" fill="freeze"/></text>'
         )
         return svg, delay + 0.25
+
+    # ── hexagon ───────────────────────────────────────────────────────────────
+    # Shortcut: delegates to the generic polygon renderer with sides=6.
+    elif shape == "hexagon":
+        return _render_shape({**el, "shape": "polygon", "sides": 6, "angle_offset": el.get("angle_offset", 0)}, delay)
+
+    # ── half_circle ───────────────────────────────────────────────────────────
+    # direction: "top" (dome up, flat at bottom),  "bottom" (dome down),
+    #            "left" (dome left),               "right"  (dome right)
+    elif shape == "half_circle":
+        cx        = _clamp(float(el.get("cx", 200)), 10, 390)
+        cy        = _clamp(float(el.get("cy", 150)), 10, 290)
+        r         = _clamp(float(el.get("r",   60)),  5, 130)
+        direction = el.get("direction", "top")
+        fill_key  = el.get("fill_color", "none")
+        fill_val  = _resolve_color(fill_key) if fill_key != "none" else "none"
+        fill_opacity = "0.18" if fill_val != "none" else "0"
+        arc_len   = math.pi * r  # semicircle arc length
+        if direction == "top":
+            d = f"M {cx - r:.2f} {cy:.2f} A {r} {r} 0 0 1 {cx + r:.2f} {cy:.2f}"
+        elif direction == "bottom":
+            d = f"M {cx - r:.2f} {cy:.2f} A {r} {r} 0 0 0 {cx + r:.2f} {cy:.2f}"
+        elif direction == "left":
+            d = f"M {cx:.2f} {cy - r:.2f} A {r} {r} 0 0 0 {cx:.2f} {cy + r:.2f}"
+        else:  # right
+            d = f"M {cx:.2f} {cy - r:.2f} A {r} {r} 0 0 1 {cx:.2f} {cy + r:.2f}"
+        closed = " Z" if fill_val != "none" else ""
+        svg = (
+            f'<path d="{d}{closed}" stroke="{color}" stroke-width="2.5" '
+            f'fill="{fill_val}" fill-opacity="{fill_opacity}" stroke-linecap="round" '
+            f'stroke-dasharray="{arc_len:.2f}" stroke-dashoffset="{arc_len:.2f}">'
+            f'<animate attributeName="stroke-dashoffset" from="{arc_len:.2f}" to="0" '
+            f'dur="0.45s" begin="{delay:.2f}s" fill="freeze"/></path>'
+        )
+        return svg, delay + 0.38
+
+    # ── quarter_circle ────────────────────────────────────────────────────────
+    # start_deg: starting angle in degrees (0 = 3-o'clock, 90 = 6-o'clock).
+    # When fill_color is set the shape is rendered as a filled pie slice.
+    elif shape == "quarter_circle":
+        cx        = _clamp(float(el.get("cx", 200)), 10, 390)
+        cy        = _clamp(float(el.get("cy", 150)), 10, 290)
+        r         = _clamp(float(el.get("r",   60)),  5, 130)
+        start_deg = float(el.get("start_deg", 0))
+        end_deg   = start_deg + 90
+        sa = math.radians(start_deg - 90)
+        ea = math.radians(end_deg   - 90)
+        x1 = cx + r * math.cos(sa)
+        y1 = cy + r * math.sin(sa)
+        x2 = cx + r * math.cos(ea)
+        y2 = cy + r * math.sin(ea)
+        arc_len   = math.pi * r / 2
+        fill_key  = el.get("fill_color", "none")
+        fill_val  = _resolve_color(fill_key) if fill_key != "none" else "none"
+        fill_opacity = "0.18" if fill_val != "none" else "0"
+        if fill_val != "none":
+            # Pie slice
+            d = (f"M {cx:.2f} {cy:.2f} L {x1:.2f} {y1:.2f} "
+                 f"A {r} {r} 0 0 1 {x2:.2f} {y2:.2f} Z")
+        else:
+            d = f"M {x1:.2f} {y1:.2f} A {r} {r} 0 0 1 {x2:.2f} {y2:.2f}"
+        svg = (
+            f'<path d="{d}" stroke="{color}" stroke-width="2.5" '
+            f'fill="{fill_val}" fill-opacity="{fill_opacity}" stroke-linecap="round" opacity="0">'
+            f'<animate attributeName="opacity" from="0" to="1" '
+            f'dur="0.40s" begin="{delay:.2f}s" fill="freeze"/></path>'
+        )
+        return svg, delay + 0.35
+
+    # ── human (stick figure) ──────────────────────────────────────────────────
+    # Parameters: cx, cy (centre of torso), scale (default 1.0).
+    # Parts animate in: head → body → arms → legs.
+    elif shape == "human":
+        cx       = _clamp(float(el.get("cx", 200)), 20, 380)
+        cy       = _clamp(float(el.get("cy", 150)), 20, 275)
+        scale    = _clamp(float(el.get("scale", 1.0)), 0.4, 2.5)
+        head_r   = 12 * scale
+        neck_len = 6  * scale
+        body_len = 36 * scale
+        arm_len  = 26 * scale
+        leg_len  = 34 * scale
+        arm_angle = math.radians(40)
+        leg_spread = math.radians(20)
+        # Anchor points
+        head_cy    = _clamp(cy - body_len / 2 - neck_len - head_r, head_r + 2, 290)
+        shoulder_y = _clamp(cy - body_len / 2, 4, 294)
+        hip_y      = _clamp(cy + body_len / 2, 4, 294)
+        foot_y     = _clamp(hip_y + leg_len,   4, 298)
+        arm_dx = arm_len * math.cos(arm_angle)
+        arm_dy = arm_len * math.sin(arm_angle)
+        leg_dx = leg_len * math.sin(leg_spread)
+        d0 = f"{delay:.2f}"
+        d1 = f"{delay + 0.12:.2f}"
+        d2 = f"{delay + 0.24:.2f}"
+        d3 = f"{delay + 0.36:.2f}"
+        anim = lambda t: (f'<animate attributeName="opacity" from="0" to="1" '
+                          f'dur="0.25s" begin="{t}s" fill="freeze"/>')
+        parts = [
+            # Head
+            (f'<circle cx="{cx:.1f}" cy="{head_cy:.1f}" r="{head_r:.1f}" '
+             f'stroke="{color}" stroke-width="2" fill="none" opacity="0">' + anim(d0) + '</circle>'),
+            # Body
+            (f'<line x1="{cx:.1f}" y1="{shoulder_y:.1f}" x2="{cx:.1f}" y2="{hip_y:.1f}" '
+             f'stroke="{color}" stroke-width="2" stroke-linecap="round" opacity="0">' + anim(d1) + '</line>'),
+            # Left arm
+            (f'<line x1="{cx:.1f}" y1="{shoulder_y:.1f}" '
+             f'x2="{cx - arm_dx:.1f}" y2="{shoulder_y + arm_dy:.1f}" '
+             f'stroke="{color}" stroke-width="2" stroke-linecap="round" opacity="0">' + anim(d2) + '</line>'),
+            # Right arm
+            (f'<line x1="{cx:.1f}" y1="{shoulder_y:.1f}" '
+             f'x2="{cx + arm_dx:.1f}" y2="{shoulder_y + arm_dy:.1f}" '
+             f'stroke="{color}" stroke-width="2" stroke-linecap="round" opacity="0">' + anim(d2) + '</line>'),
+            # Left leg
+            (f'<line x1="{cx:.1f}" y1="{hip_y:.1f}" '
+             f'x2="{cx - leg_dx:.1f}" y2="{foot_y:.1f}" '
+             f'stroke="{color}" stroke-width="2" stroke-linecap="round" opacity="0">' + anim(d3) + '</line>'),
+            # Right leg
+            (f'<line x1="{cx:.1f}" y1="{hip_y:.1f}" '
+             f'x2="{cx + leg_dx:.1f}" y2="{foot_y:.1f}" '
+             f'stroke="{color}" stroke-width="2" stroke-linecap="round" opacity="0">' + anim(d3) + '</line>'),
+        ]
+        return "\n".join(parts), delay + 0.55
+
     return "", delay
 
 
