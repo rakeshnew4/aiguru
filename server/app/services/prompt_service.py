@@ -85,16 +85,49 @@ blackboard_prompt = (
     " Think like the most engaging teacher ever -- make every student say"
     ' "WOW, I actually get this now!"\n\n'
     "Return ONLY valid JSON (no code fences, no extra text):\n"
-    '{"steps": [{"title": "2-5 word heading", "image_show_confidencescore": 0.8, "image_description": "specific wikimedia search phrase", "lang": "<USE THE REQUESTED LANGUAGE TAG e.g. hi-IN or en-US>", "frames": [{"frame_type": "concept", "text": "board content max 3 lines", "highlight": ["key term"], "speech": "teacher says 1-2 sentences IN THE LANG LANGUAGE", "tts_engine": "gemini", "voice_role": "teacher", "duration_ms": 2500, "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1, "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": [], "svg_elements": []}]}]}\n\n'
+    '{"steps": [{"title": "2-5 word heading", "image_show_confidencescore": 0.8, "image_description": "specific wikimedia search phrase", "lang": "<USE THE REQUESTED LANGUAGE TAG e.g. hi-IN or en-US>", "frames": [{"frame_type": "concept", "text": "board content max 3 lines", "highlight": ["key term"], "speech": "teacher says 1-2 sentences IN THE LANG LANGUAGE", "tts_engine": "gemini", "voice_role": "teacher", "duration_ms": 2500, "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1, "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": [], "diagram_type": "", "data": {}, "svg_elements": []}]}]}\n\n'
     "FRAME TYPES -- mix ALL of these for maximum engagement:\n"
     "concept    -> Core teaching: formula, definition, step, key fact. Use **bold**. Most common type.\n"
     "memory     -> Mnemonic, rhyme, acronym, or fun trick. Make it catchy and unforgettable!\n"
-    "diagram    -> Animated step-by-step drawing. Use for geometry, structures, circuits, graphs.\n"
-    "           MUST provide svg_elements: array of shape objects drawn sequentially on a 400x300 canvas.\n"
-    '           Shapes: {"shape":"line","x1":N,"y1":N,"x2":N,"y2":N} | {"shape":"circle","cx":N,"cy":N,"r":N}\n'
-    '                   {"shape":"rect","x":N,"y":N,"w":N,"h":N} | {"shape":"text","x":N,"y":N,"value":"label"}\n'
-    "           Coordinates 0-400 (x) / 0-300 (y). Each shape appears one-by-one with smooth animation.\n"
-    "           text field: 1-line caption shown above the diagram. speech: explain what is being drawn.\n"
+    "diagram    -> Animated scientific/math diagram. Server renders it from semantic data — DO NOT use raw coordinates.\n"
+    '           OUTPUT: "diagram_type": "<type>", "data": {<type-specific keys>}, "svg_elements": []\n'
+    "           CHOOSE the best diagram_type from this list:\n"
+    "             atom            → Bohr model with electron orbits\n"
+    "             solar_system    → Sun + planets in orbit\n"
+    "             waveform_signal → Sound/light/EM wave on axes\n"
+    "             wave            → alias for waveform_signal\n"
+    "             triangle        → Labelled triangle (can show height, angles)\n"
+    "             circle_radius   → Circle with radius/diameter labels\n"
+    "             rectangle_area  → Rectangle with width/height\n"
+    "             geometry_angles → Angle diagram (acute/right/obtuse/supplementary)\n"
+    "             line_graph      → Scatter/line plot from (x,y) points\n"
+    "             graph_function  → Mathematical curve: quadratic/linear/cubic/sine/cosine/abs\n"
+    "             number_line     → Number line with marked points and highlighted range\n"
+    "             fraction_bar    → Visual fraction comparison bars (up to 4 fractions)\n"
+    "             flow            → Flowchart / process steps (linear)\n"
+    "             cycle           → Cyclical process (water cycle, nitrogen cycle, etc.)\n"
+    "             comparison      → Side-by-side comparison (A vs B, with bullet points)\n"
+    "             labeled_diagram → Central concept with surrounding labeled parts\n"
+    "             anatomy         → alias for labeled_diagram\n"
+    "             cell            → alias for labeled_diagram (biology cell diagram)\n"
+    "           DATA SCHEMAS — provide ONLY keys listed for chosen type:\n"
+    '             atom:            {"nucleus_label":"He","nucleus_color":"highlight","orbits":[{"electrons":2,"color":"secondary","label":"K shell"}],"duration":12}\n'
+    '             solar_system:    {"sun_label":"Sun","planets":[{"label":"Earth","color":"blue","duration":20},{"label":"Mars","color":"highlight","duration":32}]}\n'
+    '             waveform_signal: {"title":"Sound Wave","wave_type":"sine","cycles":2.5,"amplitude":50,"x_label":"time (s)","y_label":"amplitude","color":"secondary"}\n'
+    '             triangle:        {"labels":["A","B","C"],"show_height":true,"show_incircle":false}\n'
+    '             circle_radius:   {"radius":70,"label":"r = 7 cm"}\n'
+    '             rectangle_area:  {"width":140,"height":80}\n'
+    '             geometry_angles: {"angle_deg":60,"angle_type":"acute","labels":["A","O","B"],"title":"Acute Angle","show_second":false}\n'
+    '             line_graph:      {"x_label":"Time (s)","y_label":"Speed (m/s)","points":[[0,0],[1,4],[2,7],[3,9]]}\n'
+    '             graph_function:  {"function":"quadratic","a":1,"b":0,"c":0,"x_range":[-4,4],"label":"y = x²","color":"secondary"}\n'
+    '             number_line:     {"start":-5,"end":5,"marked_points":[0,2,-3],"highlight_range":[1,4],"label":"Number Line"}\n'
+    '             fraction_bar:    {"fractions":[{"num":1,"den":2},{"num":3,"den":4}],"title":"Comparing Fractions"}\n'
+    '             flow:            {"title":"Photosynthesis","steps":["Light absorbed","Water split","CO₂ fixed","Glucose made","O₂ released"]}\n'
+    '             cycle:           {"title":"Water Cycle","steps":["Evaporation","Condensation","Precipitation","Collection"]}\n'
+    '             comparison:      {"left":"Mitosis","right":"Meiosis","left_points":["2 cells","diploid","growth"],"right_points":["4 cells","haploid","reproduction"]}\n'
+    '             labeled_diagram: {"center":"Cell","center_shape":"circle","parts":["Nucleus","Membrane","Cytoplasm","Ribosome","Vacuole"]}\n'
+    "           FALLBACK: If no diagram_type fits, use svg_elements with raw shapes (coordinates 0-400 x, 0-300 y).\n"
+    "           text field: 1-line caption above the diagram. speech: explain what the diagram shows.\n"
     "quiz_mcq   -> Multiple choice. MUST provide exactly 4 quiz_options and quiz_correct_index (0-3).\n"
     "quiz_typed -> Open-ended typed answer. MUST provide quiz_model_answer and quiz_keywords (3-6 key terms).\n"
     "quiz_voice -> Open-ended spoken answer. Same fields as quiz_typed.\n"
@@ -109,6 +142,7 @@ blackboard_prompt = (
     "- quiz_order: quiz_options = 3-5 SHUFFLED step texts. quiz_correct_order = 0-based correct position indices.\n"
     "- NEVER include quiz_correct_index for quiz_typed, quiz_voice, or quiz_order (leave as -1).\n"
     "- Non-quiz frames: quiz_options=[], quiz_correct_index=-1, quiz_model_answer=\"\", quiz_keywords=[], fill_blanks=[], quiz_correct_order=[], svg_elements=[].\n"
+    '- Non-diagram frames: set diagram_type="" and data={}.\n'
     "- image_show_confidencescore for any quiz frame: always 0.0 (no image on quiz frames).\n\n"
     "IMAGE GUIDANCE:\n"
     "- image_description: A Wikimedia Commons search phrase for a REAL well-known educational diagram.\n"
@@ -430,6 +464,21 @@ def build_bb_main_prompt(
     hist_snippet = "\n".join(_fmt(h) for h in history_entries)
     lang_instr = language_instructions.get(lang or "en-US", "")
 
+    # ── Diagram hint: classify best diagram_type for this question ───────────
+    # Helps the LLM immediately choose the right semantic diagram_type.
+    try:
+        from app.utils.diagram_router import classify_diagram_need
+        decision = classify_diagram_need(question, subject_hint=topic_type, topic_keywords=key_concepts)
+        _diagram_hint = ""
+        if decision.needed and decision.diagram_type:
+            _diagram_hint = (
+                f"\nDIAGRAM RECOMMENDATION: This topic likely needs a "
+                f'"{decision.diagram_type}" diagram (confidence {decision.confidence:.0%}). '
+                f"Use diagram_type=\"{decision.diagram_type}\" for your diagram frame(s).\n"
+            )
+    except Exception:
+        _diagram_hint = ""
+
     parts = [blackboard_prompt, "\n\n---LESSON BRIEF (follow these instructions exactly)---\n"]
     parts.append(f"Student question: {question}\n")
     parts.append(f"Student level: Class {level}\n")
@@ -437,6 +486,8 @@ def build_bb_main_prompt(
     if concepts_str:
         parts.append(f"Key concepts to cover (ALL of these): {concepts_str}\n")
     parts.append(f"Generate EXACTLY {steps_count} steps — no more, no less.\n")
+    if _diagram_hint:
+        parts.append(_diagram_hint)
 
     if ctx_snippet:
         parts.append(f"\nCHAPTER CONTEXT (use this as the primary source — ground the lesson here):\n{ctx_snippet}\n")
@@ -534,6 +585,8 @@ def get_blackboard_mode_system_prompt() -> str:
         "• speech field: plain readable text ONLY — no markdown, no $$...$$, no **bold** — TTS reads this aloud\n"
         "• text field (board): **bold** and formulas OK; max 2 lines; always English\n"
         "• svg_elements: x/x1/x2 must be 0-400; y/y1/y2/cy must be 0-300 — never exceed canvas\n"
+        "• diagram frames: always set diagram_type to one of the supported types; data keys must match the schema\n"
+        "• non-diagram frames: diagram_type must be empty string \"\", data must be {}\n"
         "• Step count: generate EXACTLY the steps_count from LESSON BRIEF — no more, no less\n"
         "• Last step: MUST end with a quiz frame immediately followed by a summary frame\n"
         "• lang field: MUST match the OUTPUT LANGUAGE tag exactly — NEVER default to en-US\n"

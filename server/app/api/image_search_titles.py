@@ -252,6 +252,7 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
         #   1. NEW  — LLM outputs diagram_type + data  → Python layout engine → shapes → HTML
         #   2. LEGACY — LLM outputs raw svg_elements   → build_animated_svg directly
         from app.utils.svg_builder import build_animated_svg, build_from_diagram_type
+        from app.utils.diagram_router import classify_diagram_need
         for step in data["steps"]:
             if not isinstance(step, dict):
                 continue
@@ -271,6 +272,20 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
                     html = ""
                     d_type = frame.get("diagram_type", "")
                     d_data = frame.get("data") or {}
+
+                    # ── Auto-classify if LLM omitted diagram_type ─────────────────
+                    if not d_type:
+                        step_title = step.get("title", "")
+                        step_speech = frame.get("speech", "")
+                        query = f"{step_title} {step_speech}"
+                        decision = classify_diagram_need(query, subject_hint="")
+                        if decision.needed and decision.diagram_type:
+                            d_type = decision.diagram_type
+                            d_data = {}   # use renderer defaults — no LLM data available
+                            logger.info(
+                                "diagram_router auto-classified type='%s' (conf=%.2f) for step '%s'",
+                                d_type, decision.confidence, step_title,
+                            )
 
                     if d_type:
                         # ── Path 1: structured diagram_type → Python renders shapes ──
