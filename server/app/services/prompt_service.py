@@ -455,3 +455,186 @@ def build_bb_main_prompt(
     )
 
     return "".join(parts)
+
+
+# ── System Prompt Extraction (for Prompt Caching) ────────────────────────────
+
+# These functions extract the stable system prompt and dynamic user content separately.
+# This enables provider caching: system prompt is cached, only user content changes per request.
+# Gemini: implicit cache (≥1024 tokens) + 5-min TTL
+# Anthropic: explicit cache_control header
+
+def get_normal_mode_system_prompt() -> str:
+    """
+    Extract the stable system prompt for normal-mode responses (explain/calculate/define).
+    This is role definition + output format, and NEVER changes unless rules change.
+    Designed to reach ~1000-1200 tokens for optimal caching.
+    NOTE: student_level is intentionally NOT here — it belongs in the user content so this
+    prompt stays identical across all class levels, enabling Gemini implicit cache hits.
+    """
+    system_parts = [
+        # ── Core role instruction ──────────────────────────────────────────
+        "You are an expert, engaging AI tutor for school students (Class 1-12) in an educational app.\n\n"
+        
+        # ── Shared output format rules ─────────────────────────────────────
+        "MANDATORY OUTPUT FORMAT:\n"
+        "Return ONLY valid JSON — no markdown code fences, no extra text:\n"
+        '{"user_question":"<short restatement>","answer":"<full answer>","user_attachment_transcription":"<ALL text from image if any>","extra_details_or_summary":"<optional bonus info>"}\n\n'
+        
+        # ── Math formatting ────────────────────────────────────────────────
+        "MATH FORMATTING (CRITICAL):\n"
+        "• ALL math uses $$...$$ — inline: $$x=5$$ or $$a^2+b^2=c^2$$\n"
+        "• NEVER plain text math like x=5 or a^2+b^2=c^2\n"
+        "• NEVER use code blocks (```)\n"
+        "• Inside $$...$$: use standard LaTeX syntax\n"
+        "• Example: derivative is $$\\frac{dy}{dx}$$, not dy/dx\n\n"
+        
+        # ── Response calibration guidelines ────────────────────────────────
+        "RESPONSE GUIDELINES:\n"
+        "• Use context FIRST if answer is there\n"
+        "• Combine context + knowledge if partially there\n"
+        "• Answer from knowledge if not in context\n"
+        "• Bold (**term**) key concepts on first use\n"
+        "• Include concrete examples or worked solutions\n"
+        "• Structure: hook (punchy) → explanation → real-world connection → memory tip\n\n"
+        
+        # ── Image handling ─────────────────────────────────────────────────
+        "IMAGE TRANSCRIPTION (if image provided):\n"
+        "• Read EVERY visible text word-for-word (headings, labels, numbers, formulas)\n"
+        "• Describe all diagrams, figures, tables with labels\n"
+        "• Put transcription in user_attachment_transcription field\n"
+        "• This transcription becomes context for follow-up questions\n\n"
+    ]
+
+    # ── Gemini Flash Lite output accuracy ────────────────────────────────────
+    system_parts.append(
+        "OUTPUT STRICTNESS (Gemini Flash Lite):\n"
+        "• Return EXACTLY one JSON object — no text before, no text after, no ```json wrapper\n"
+        "• All four JSON fields must be present; use empty string '' for unused fields\n"
+        "• answer field: **bold** key terms on first use, $$...$$ for ALL math (never plain text)\n\n"
+    )
+    return "".join(system_parts)
+
+
+def get_blackboard_mode_system_prompt() -> str:
+    """
+    Returns the original blackboard_prompt (unchanged) as the cacheable system prefix,
+    plus Gemini Flash Lite accuracy notes for better output consistency.
+    Cached by Gemini implicit cache (≥1024 tokens, 5-min TTL).
+    """
+    # Accuracy additions for Gemini Flash Lite — appended AFTER the original prompt rules
+    # so the original prompt is never modified.
+    _ACCURACY_NOTES = (
+        "\n\nGEMINI FLASH LITE OUTPUT ACCURACY (apply to EVERY frame without exception):\n"
+        "• Output EXACTLY one JSON object — no text before, no text after, no ```json wrapper\n"
+        "• quiz_correct_index: integer 0/1/2/3 ONLY for quiz_mcq; MUST be -1 for every other frame type\n"
+        "• duration_ms: integer 2000-5000 — NEVER a string\n"
+        "• tts_engine: ONLY 'android' | 'gemini' | 'google'\n"
+        "• voice_role: ONLY 'teacher' | 'assistant' | 'quiz' | 'feedback'\n"
+        "• speech field: plain readable text ONLY — no markdown, no $$...$$, no **bold** — TTS reads this aloud\n"
+        "• text field (board): **bold** and formulas OK; max 2 lines; always English\n"
+        "• svg_elements: x/x1/x2 must be 0-400; y/y1/y2/cy must be 0-300 — never exceed canvas\n"
+        "• Step count: generate EXACTLY the steps_count from LESSON BRIEF — no more, no less\n"
+        "• Last step: MUST end with a quiz frame immediately followed by a summary frame\n"
+        "• lang field: MUST match the OUTPUT LANGUAGE tag exactly — NEVER default to en-US\n"
+    )
+    return blackboard_prompt + _ACCURACY_NOTES
+
+
+def build_normal_mode_user_content(
+    context: str,
+    history: str,
+    question: str,
+    intent: str = "explain",
+    complexity: str = "medium",
+    student_level: int = 5,
+) -> str:
+    """
+    Dynamic user content for normal mode — context + history + question + intent guidance.
+    Intent-specific instructions live here (not in system prompt) so the system prompt
+    never changes between requests and is always reused from cache.
+    student_level is placed here (not in system prompt) to ensure cache identity.
+    """
+    _EXPLAIN_GUIDE = {
+        "low":    "Short answer: key fact in 2-3 sentences + 1 brief example. No long sections.",
+        "medium": "Structured: key concept + 1 worked example + 1 real-world connection.",
+        "high":   "Full structure: hook → mechanism → worked example → real-world application → memory tip.",
+    }
+    _INTENT_GUIDE = {
+        "greet":        "Respond warmly in 1-2 sentences and invite a question.",
+        "definition":   "**Definition** (1-2 sentences) + **Example** (1 concrete case) + **Key fact** (if relevant).",
+        "calculate":    "Steps: 1. What to find  2. Formula  3. Step-by-step working  4. Final answer (clear/boxed)  5. Quick check. ALL math in $$...$$ — never skip steps.",
+        "followup":     "Build DIRECTLY on the previous explanation — do NOT restart from basics. Answer only what they ask now.",
+        "image_explain": "1. Transcribe ALL visible text word-for-word (headings, labels, formulas, captions). 2. Describe all diagrams. 3. Answer using image content + knowledge.",
+        "practice":     "Generate EXACTLY 3 problems (Easy / Medium / Hard) each with complete step-by-step solutions.",
+    }
+    guide = _INTENT_GUIDE.get(intent) or _EXPLAIN_GUIDE.get(complexity, _EXPLAIN_GUIDE["medium"])
+
+    return (
+        f"Student class level: Class {student_level}\n\n"
+        f"CONTEXT (chapter notes):\n{context or '(No context provided)'}\n\n"
+        f"CONVERSATION HISTORY:\n{history or '(First message)'}\n\n"
+        f"STUDENT QUESTION: {question}\n\n"
+        f"ANSWER GUIDANCE: {guide}\n"
+    )
+
+
+def build_blackboard_mode_user_content(
+    context: str,
+    question: str,
+    level: int,
+    history: list = None,
+    plan: dict = None,
+    lang: str = "en-US",
+) -> str:
+    """
+    Dynamic user content for BB mode — lesson brief only (NO blackboard_prompt prefix).
+    Pairs with get_blackboard_mode_system_prompt() to enable prompt caching.
+    Mirrors the dynamic portion of build_bb_main_prompt() exactly.
+    """
+    topic_type = (plan or {}).get("topic_type", "other")
+    scope = (plan or {}).get("scope", "medium")
+    key_concepts = (plan or {}).get("key_concepts") or []
+    steps_count = max(4, min(6, int((plan or {}).get("steps_count") or 5)))
+    concepts_str = ", ".join(str(c) for c in key_concepts) if key_concepts else ""
+    ctx_snippet = (context or "")[:2000].strip()
+    history_entries = (history or [])[-6:]
+
+    def _fmt(h: str) -> str:
+        if h.startswith("user:"):
+            return f"Student: {h[5:].strip()}"
+        if h.startswith("assistant:"):
+            return f"Teacher: {h[10:].strip()}"
+        return h
+
+    hist_snippet = "\n".join(_fmt(h) for h in history_entries)
+    lang_instr = language_instructions.get(lang or "en-US", "")
+    resolved_lang = lang or "en-US"
+
+    parts = ["\n---LESSON BRIEF (follow these instructions exactly)---\n"]
+    parts.append(f"Student question: {question}\n")
+    parts.append(f"Student level: Class {level}\n")
+    parts.append(f"Topic type: {topic_type} | Scope: {scope}\n")
+    if concepts_str:
+        parts.append(f"Key concepts to cover (ALL of these): {concepts_str}\n")
+    parts.append(f"Generate EXACTLY {steps_count} steps — no more, no less.\n")
+
+    if ctx_snippet:
+        parts.append(
+            f"\nCHAPTER CONTEXT (use this as the primary source — ground the lesson here):\n{ctx_snippet}\n"
+        )
+    if hist_snippet:
+        parts.append(
+            f"\nRECENT CONVERSATION (last 3 turns — do NOT re-teach what was already covered):\n{hist_snippet}\n"
+        )
+
+    parts.append("\n---END LESSON BRIEF---\n")
+    parts.append(lang_instr)
+    parts.append(
+        f'\nOUTPUT LANGUAGE: Set ALL step "lang" fields to "{resolved_lang}". '
+        f'Write ALL "speech" fields in the language for tag "{resolved_lang}" '
+        f'(hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.). '
+        f'Board "text" field stays in English (formulas/keywords only).'
+    )
+
+    return "".join(parts)
