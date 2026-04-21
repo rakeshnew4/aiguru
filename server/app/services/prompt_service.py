@@ -664,6 +664,20 @@ def build_blackboard_mode_user_content(
     lang_instr = language_instructions.get(lang or "en-US", "")
     resolved_lang = lang or "en-US"
 
+    # ── Diagram hint: classify best diagram_type for this question ───────────
+    _diagram_hint = ""
+    try:
+        from app.utils.diagram_router import classify_diagram_need
+        decision = classify_diagram_need(question, subject_hint=topic_type, topic_keywords=key_concepts)
+        if decision.needed and decision.diagram_type:
+            _diagram_hint = (
+                f"\nDIAGRAM RECOMMENDATION: This topic likely needs a "
+                f'"{decision.diagram_type}" diagram (confidence {decision.confidence:.0%}). '
+                f"Use diagram_type=\"{decision.diagram_type}\" for your diagram frame(s).\n"
+            )
+    except Exception:
+        pass
+
     parts = ["\n---LESSON BRIEF (follow these instructions exactly)---\n"]
     parts.append(f"Student question: {question}\n")
     parts.append(f"Student level: Class {level}\n")
@@ -671,6 +685,8 @@ def build_blackboard_mode_user_content(
     if concepts_str:
         parts.append(f"Key concepts to cover (ALL of these): {concepts_str}\n")
     parts.append(f"Generate EXACTLY {steps_count} steps — no more, no less.\n")
+    if _diagram_hint:
+        parts.append(_diagram_hint)
 
     if ctx_snippet:
         parts.append(

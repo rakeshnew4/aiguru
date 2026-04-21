@@ -244,85 +244,20 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
         if "steps" not in data or not isinstance(data["steps"], list):
             return query
 
-        # ── SVG diagram frames: build svg_html server-side, suppress Wikimedia ──
-        # Steps that contain a "diagram" frame get their visual from the SVG —
-        # no Wikimedia photo is needed.
-        #
-        # Two paths:
-        #   1. NEW  — LLM outputs diagram_type + data  → Python layout engine → shapes → HTML
-        #   2. LEGACY — LLM outputs raw svg_elements   → build_animated_svg directly
         from app.utils.svg_builder import build_animated_svg, build_from_diagram_type
         from app.utils.diagram_router import classify_diagram_need
-        for step in data["steps"]:
-            if not isinstance(step, dict):
-                continue
-            has_diagram = any(
-                isinstance(f, dict) and f.get("frame_type") == "diagram"
-                for f in step.get("frames", [])
-            )
-            if has_diagram:
-                # Suppress Wikimedia image for this step — the diagram IS the visual
-                step["image_show_confidencescore"] = 0.0
-                step.pop("image_description", None)
-                # Convert diagram data → svg_html for every diagram frame
-                for frame in step.get("frames", []):
-                    if not isinstance(frame, dict) or frame.get("frame_type") != "diagram":
-                        continue
+        from app.services.enrichment_service import build_enrichment_tasks
 
-                    html = ""
-                    d_type = frame.get("diagram_type", "")
-                    d_data = frame.get("data") or {}
+        loop = asyncio.get_event_loop()
 
-                    # ── Auto-classify if LLM omitted diagram_type ─────────────────
-                    if not d_type:
-                        step_title = step.get("title", "")
-                        step_speech = frame.get("speech", "")
-                        query = f"{step_title} {step_speech}"
-                        decision = classify_diagram_need(query, subject_hint="")
-                        if decision.needed and decision.diagram_type:
-                            d_type = decision.diagram_type
-                            d_data = {}   # use renderer defaults — no LLM data available
-                            logger.info(
-                                "diagram_router auto-classified type='%s' (conf=%.2f) for step '%s'",
-                                d_type, decision.confidence, step_title,
-                            )
+        # ── Phase 1: Launch enrichment tasks + wikimedia searches in parallel ──
+        # Enrichment: diagram data enrichment + quiz answer validation (faster model).
+        # Wikimedia: per-step image searches.
+        # ALL run concurrently → near-zero extra wall-clock time.
 
-                    if d_type:
-                        # ── Path 1: structured diagram_type → Python renders shapes ──
-                        shapes = build_from_diagram_type(d_type, d_data)
-                        if shapes:
-                            html = build_animated_svg(shapes)
-                            if html:
-                                logger.info(
-                                    "Built structured svg_html (type=%s) for step '%s'",
-                                    d_type, step.get("title", "")
-                                )
+        enr_futs, diagram_refs, quiz_refs = build_enrichment_tasks(data["steps"], loop)
 
-                    if not html:
-                        # ── Path 2: legacy raw svg_elements fallback ──────────────
-                        svg_elems = frame.get("svg_elements")
-                        if svg_elems:
-                            elems_json = (
-                                json.dumps(svg_elems)
-                                if isinstance(svg_elems, list)
-                                else str(svg_elems)
-                            )
-                            html = build_animated_svg(elems_json)
-                            if html:
-                                logger.info(
-                                    "Built legacy svg_html for step '%s'",
-                                    step.get("title", "")
-                                )
-
-                    if html:
-                        frame["svg_html"] = html
-
-                    # Clean up fields not needed by Android
-                    frame.pop("svg_elements", None)
-                    frame.pop("diagram_type", None)
-                    frame.pop("data", None)
-
-        # Collect per-step image descriptions (only high-confidence steps)
+        # Collect wikimedia descriptions
         descriptions = []
         for step in data["steps"]:
             if isinstance(step, dict):
@@ -335,7 +270,6 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
             else:
                 descriptions.append("")
 
-        # Run per-step Wikimedia searches in parallel
         async def search_or_skip(desc: str) -> List[str]:
             if not desc:
                 return []
@@ -345,15 +279,107 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
                 logger.warning("Image search failed for '%s': %s", desc, e)
                 return []
 
-        per_step_results = await asyncio.gather(*[search_or_skip(d) for d in descriptions])
+        wiki_futs = [search_or_skip(d) for d in descriptions]
 
-        # Combine: per-step results + planner pre-fetches → one deduplicated pool
+        # Run everything in parallel: [enr_fut_0, ..., wiki_fut_0, ...]
+        all_results = await asyncio.gather(
+            *enr_futs, *wiki_futs,
+            return_exceptions=True,
+        )
+
+        enr_results = all_results[:len(enr_futs)]
+        per_step_results = all_results[len(enr_futs):]
+
+        # ── Phase 2: Apply enrichment results ─────────────────────────────────
+        # Diagram data: update frame["data"] before SVG building
+        for i, (step, frame) in enumerate(diagram_refs):
+            r = enr_results[i]
+            if isinstance(r, dict) and r:
+                frame["data"] = r
+
+        # Quiz answers: update quiz_correct_index
+        quiz_offset = len(diagram_refs)
+        for i, (step, frame) in enumerate(quiz_refs):
+            r = enr_results[quiz_offset + i]
+            if isinstance(r, int) and 0 <= r < len(frame.get("quiz_options", [])):
+                frame["quiz_correct_index"] = r
+
+        # ── Phase 3: Build SVG diagrams (using enriched data) ─────────────────
+        for step in data["steps"]:
+            if not isinstance(step, dict):
+                continue
+            has_diagram = any(
+                isinstance(f, dict) and f.get("frame_type") == "diagram"
+                for f in step.get("frames", [])
+            )
+            if not has_diagram:
+                continue
+
+            # Suppress Wikimedia image for diagram steps — the SVG IS the visual
+            step["image_show_confidencescore"] = 0.0
+            step.pop("image_description", None)
+
+            for frame in step.get("frames", []):
+                if not isinstance(frame, dict) or frame.get("frame_type") != "diagram":
+                    continue
+
+                html = ""
+                d_type = (frame.get("diagram_type") or "").strip()
+                d_data = frame.get("data") or {}
+
+                # ── Auto-classify if LLM omitted diagram_type ────────────────
+                if not d_type:
+                    step_title = step.get("title", "")
+                    step_speech = frame.get("speech", "")
+                    _q = f"{step_title} {step_speech}"
+                    decision = classify_diagram_need(_q, subject_hint="")
+                    if decision.needed and decision.diagram_type:
+                        d_type = decision.diagram_type
+                        d_data = {}
+                        logger.info(
+                            "diagram_router auto-classified type='%s' (conf=%.2f) for step '%s'",
+                            d_type, decision.confidence, step_title,
+                        )
+
+                if d_type:
+                    # Path 1: structured diagram_type → Python renders shapes
+                    shapes = build_from_diagram_type(d_type, d_data)
+                    if shapes:
+                        html = build_animated_svg(shapes)
+                        if html:
+                            logger.info(
+                                "Built svg_html (type=%s enriched=%s) for step '%s'",
+                                d_type, bool(d_data), step.get("title", ""),
+                            )
+
+                if not html:
+                    # Path 2: legacy raw svg_elements fallback
+                    svg_elems = frame.get("svg_elements")
+                    if svg_elems:
+                        elems_json = (
+                            json.dumps(svg_elems)
+                            if isinstance(svg_elems, list)
+                            else str(svg_elems)
+                        )
+                        html = build_animated_svg(elems_json)
+                        if html:
+                            logger.info("Built legacy svg_html for step '%s'", step.get("title", ""))
+
+                if html:
+                    frame["svg_html"] = html
+
+                frame.pop("svg_elements", None)
+                frame.pop("diagram_type", None)
+                frame.pop("data", None)
+
+        # ── Phase 4: Image title selection from wikimedia results ─────────────
         all_candidates: List[str] = []
         for titles in per_step_results:
-            all_candidates.extend(titles)
+            if isinstance(titles, list):
+                all_candidates.extend(titles)
         if extra_candidates:
             all_candidates.extend(extra_candidates)
-        all_candidates = list(dict.fromkeys(all_candidates))  # deduplicate, preserve order
+        all_candidates = list(dict.fromkeys(all_candidates))
 
         if not all_candidates:
             logger.info("No Wikimedia candidates found — clearing image descriptions")
@@ -362,13 +388,10 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
                     step.pop("image_description", None)
             return json.dumps(data)
 
-        # Use LLM to pick best title per step (runs sync in executor)
-        loop = asyncio.get_event_loop()
         picks: Dict[int, str] = await loop.run_in_executor(
             None, lambda: _pick_titles_sync(data["steps"], all_candidates)
         )
 
-        # Apply picks; clear image_description for steps that didn't get one
         for i, step in enumerate(data["steps"]):
             if not isinstance(step, dict):
                 continue
@@ -378,8 +401,7 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
             if i in picks:
                 step["image_description"] = picks[i]
                 logger.info("Step %d → image: %s", i, picks[i])
-            elif (step.get("image_description") or ""):
-                # Had a description but no match found — remove to avoid bad fallback image
+            elif step.get("image_description"):
                 step.pop("image_description", None)
                 logger.info("Step %d: no image match, description cleared", i)
 
