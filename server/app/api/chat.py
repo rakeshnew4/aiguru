@@ -226,6 +226,12 @@ def _extract_page_transcript(
     )
     return str(transcript).strip() or None if transcript else None
 
+def _remove_trailing_commas(text: str) -> str:
+    """Remove trailing commas before ] or } — common LLM JSON error."""
+    import re
+    return re.sub(r",\s*([}\]])", r"\1", text)
+
+
 def extract_json_safe(text):
     """
     Robustly extract and parse the first top-level JSON object from text.
@@ -234,6 +240,7 @@ def extract_json_safe(text):
       - ```json ... ``` fenced JSON
       - Prefix/suffix prose around the JSON
       - Nested objects / arrays / LaTeX braces inside string values
+      - Trailing commas before } or ]
     """
     import json
     import re
@@ -247,6 +254,12 @@ def extract_json_safe(text):
     # Fast path: entire (stripped) text is valid JSON
     try:
         return json.loads(stripped)
+    except json.JSONDecodeError:
+        pass
+
+    # Retry with trailing comma removal
+    try:
+        return json.loads(_remove_trailing_commas(stripped))
     except json.JSONDecodeError:
         pass
 
@@ -276,10 +289,85 @@ def extract_json_safe(text):
                 depth -= 1
                 if depth == 0:
                     candidate = stripped[start:i + 1]
-                    return json.loads(candidate)
+                    try:
+                        return json.loads(candidate)
+                    except json.JSONDecodeError:
+                        return json.loads(_remove_trailing_commas(candidate))
         i += 1
 
     raise ValueError("Unmatched braces — no complete JSON object found")
+
+
+# ── Normal-mode JSON fields expected by Android ──────────────────────────────
+_NORMAL_FIELDS = ("user_question", "answer", "user_attachment_transcription", "extra_details_or_summary")
+
+# Valid values for BB frame fields
+_VALID_TTS_ENGINES = {"android", "gemini", "google"}
+_VALID_VOICE_ROLES = {"teacher", "assistant", "quiz", "feedback"}
+
+
+def _sanitize_normal_response(text: str) -> str:
+    """
+    Parse and re-serialize a normal-mode LLM JSON response.
+    Fills missing required fields with empty strings.
+    Returns a clean JSON string safe for Android to parse.
+    Falls back to a safe stub if the response is completely unparseable.
+    """
+    try:
+        parsed = extract_json_safe(text)
+        for field in _NORMAL_FIELDS:
+            if field not in parsed:
+                parsed[field] = ""
+        return json.dumps(parsed, ensure_ascii=False)
+    except Exception as e:
+        logger.warning("Normal JSON repair failed (%s) — returning safe stub", e)
+        return json.dumps({
+            "user_question": "",
+            "answer": text[:2000] if text else "[No response]",
+            "user_attachment_transcription": "",
+            "extra_details_or_summary": "",
+        }, ensure_ascii=False)
+
+
+def _sanitize_bb_response(text: str) -> str:
+    """
+    Parse and re-serialize a blackboard-mode LLM JSON response.
+    Coerces field types (duration_ms → int, quiz_correct_index → int,
+    tts_engine / voice_role → valid enum values) to prevent Android crashes.
+    Falls back to the original text on catastrophic failure.
+    """
+    try:
+        parsed = extract_json_safe(text)
+        steps = parsed.get("steps")
+        if not isinstance(steps, list):
+            logger.warning("BB response missing 'steps' list — returning original")
+            return text
+        for step in steps:
+            for frame in step.get("frames", []):
+                # Coerce duration_ms to int
+                dm = frame.get("duration_ms")
+                if dm is not None and not isinstance(dm, int):
+                    try:
+                        frame["duration_ms"] = int(dm)
+                    except (ValueError, TypeError):
+                        frame["duration_ms"] = 2500
+                # Coerce quiz_correct_index to int
+                qci = frame.get("quiz_correct_index")
+                if qci is not None and not isinstance(qci, int):
+                    try:
+                        frame["quiz_correct_index"] = int(qci)
+                    except (ValueError, TypeError):
+                        frame["quiz_correct_index"] = -1
+                # Validate tts_engine
+                if frame.get("tts_engine") not in _VALID_TTS_ENGINES:
+                    frame["tts_engine"] = "gemini"
+                # Validate voice_role
+                if frame.get("voice_role") not in _VALID_VOICE_ROLES:
+                    frame["voice_role"] = "teacher"
+        return json.dumps(parsed, ensure_ascii=False)
+    except Exception as e:
+        logger.warning("BB JSON repair failed (%s) — returning original text", e)
+        return text
 
 
 def _status_frame(message: str, progress: int) -> str:
@@ -430,13 +518,14 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     user_content = prompt
                     
                     if req.mode == "normal":
-                        system_prompt = get_normal_mode_system_prompt(req.student_level or 5)
+                        system_prompt = get_normal_mode_system_prompt()
                         user_content = build_normal_mode_user_content(
                             context=merged_context,
                             history="\n".join(req.history or []),
                             question=req.question,
                             intent=intent,
                             complexity=complexity,
+                            student_level=req.student_level or 5,
                         )
                     elif req.mode == "blackboard":
                         system_prompt = get_blackboard_mode_system_prompt()
@@ -449,15 +538,23 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                             lang=lang,
                         )
                     
-                    result: Dict[str, Any] = await loop.run_in_executor(
-                        None, 
+                    # Run the LLM in the background and emit SSE keepalive pings
+                    # every 3 s so Android's read-timeout doesn't fire while we wait.
+                    # (BB model typically takes 8-15 s; normal is 2-5 s.)
+                    _llm_future = loop.run_in_executor(
+                        None,
                         lambda: generate_response(
-                            user_content, 
-                            normalized_images, 
+                            user_content,
+                            normalized_images,
                             tier=model_tier,
-                            system_prompt=system_prompt
-                        )
+                            system_prompt=system_prompt,
+                        ),
                     )
+                    while not _llm_future.done():
+                        await asyncio.sleep(3)
+                        if not _llm_future.done():
+                            yield ": ping\n\n"  # SSE comment = keepalive, invisible to app
+                    result: Dict[str, Any] = await _llm_future
                 
                 # Check for valid response structure
                 if not result or not isinstance(result, dict):
@@ -481,7 +578,7 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     logger.info("Retrying without images...")
                     try:
                         result = await loop.run_in_executor(
-                            None, lambda: generate_response(prompt, [], tier=model_tier)
+                            None, lambda: generate_response(user_content, [], tier=model_tier, system_prompt=system_prompt)
                         )
                         if not result or not isinstance(result, dict):
                             logger.error(f"Invalid LLM response on image-less retry: {type(result)}")
@@ -499,11 +596,30 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
             if req.mode == "blackboard":
                 yield _status_frame("🖼️ Matching visuals to your lesson...", 87)
                 try:
-                    extra_wiki = await wiki_task  # pre-fetched while BB LLM was running
-                    result["text"] = await get_titles(result["text"], extra_candidates=extra_wiki)
+                    # wiki_task may already be done (pre-fetched while BB LLM ran);
+                    # if still running, send keepalives until it finishes.
+                    while not wiki_task.done():
+                        await asyncio.sleep(2)
+                        if not wiki_task.done():
+                            yield ": ping\n\n"
+                    extra_wiki = wiki_task.result()
+
+                    # get_titles does per-step Wikimedia searches + LLM image picker;
+                    # run it as a task so we can interleave keepalive pings.
+                    _titles_task = asyncio.ensure_future(
+                        get_titles(result["text"], extra_candidates=extra_wiki)
+                    )
+                    while not _titles_task.done():
+                        await asyncio.sleep(2)
+                        if not _titles_task.done():
+                            yield ": ping\n\n"
+                    result["text"] = await _titles_task
                     logger.info("BB image matching complete")
                 except Exception as e:
                     logger.warning("BB image matching failed: %s — using raw LLM output", e)
+                # Emit 99% progress so Android knows data is coming
+                yield _status_frame("✅ Building your lesson...", 99)
+
             # 5) Emit page_transcript BEFORE the answer so Android can persist
             #    it to Firestore system-context as early as possible.
             try:
@@ -511,7 +627,7 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     json.dump(result, f, indent=2)
             except Exception as e:
                 logger.warning(f"Failed to write response.json: {e}")
-            
+
             page_transcript = _extract_page_transcript(result, normalized_images, req.image_data)
             if page_transcript:
                 logger.info(
@@ -526,12 +642,28 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                 logger.warning("No text content in response")
                 text_content = "[No response generated]"
 
+            # Sanitize LLM output: strip fences, fix trailing commas, coerce field types.
+            # This prevents JSON parsing errors on Android without fabricating content.
+            cached_tokens = result.get("tokens", {}).get("cachedTokens", 0)
+            logger.info(
+                "Sanitizing response | mode=%s | text_len=%d | cached_tokens=%d",
+                req.mode, len(text_content), cached_tokens,
+            )
+            if req.mode == "blackboard":
+                text_content = _sanitize_bb_response(text_content)
+            elif req.mode == "normal":
+                text_content = _sanitize_normal_response(text_content)
+
+            logger.info("Emitting main data frame | text_len=%d", len(text_content))
+
             # Send the full JSON envelope as-is so the client can store every field
             # (user_question, answer, user_attachment_transcription,
             #  extra_details_or_summary) in Firestore.
             # Blackboard mode already returns its own JSON for BlackboardGenerator.
             # Android extracts only the 'answer' field for display.
-            yield f"data: {json.dumps({'text': text_content, 'cached': False})}\n\n"
+            yield f"data: {json.dumps({'text': text_content, 'cached': cached_tokens > 0})}\n\n"
+
+            logger.info("Main data frame sent")
 
             # 6b) Determine whether the LLM thinks this answer is worth showing
             #     on the blackboard (only for normal chat mode, not blackboard itself).
@@ -572,9 +704,23 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
             else:
                 yield f"data: {json.dumps({'done': True, 'suggest_blackboard': suggest_bb})}\n\n"
 
+            logger.info("Done frame sent | mode=%s", req.mode)
+
+        except GeneratorExit:
+            logger.warning("Client disconnected (GeneratorExit) — stream was closed early")
+        except BrokenPipeError as exc:
+            logger.warning("Client disconnected (BrokenPipeError): %s", exc)
+        except GeneratorExit:
+            # Android client disconnected (read-timeout or user navigated away).
+            # GeneratorExit is a BaseException, not Exception — log it and exit cleanly.
+            logger.info("chat_stream: client disconnected (GeneratorExit)")
+            return
         except Exception as exc:
             logger.exception("Error in chat_stream: %s", exc)
-            yield f"data: {json.dumps({'error': str(exc)})}\n\n"
+            try:
+                yield f"data: {json.dumps({'error': str(exc)})}\n\n"
+            except Exception:
+                pass  # client already gone
 
     return StreamingResponse(
         generator(),

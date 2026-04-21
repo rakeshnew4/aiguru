@@ -464,15 +464,17 @@ def build_bb_main_prompt(
 # Gemini: implicit cache (≥1024 tokens) + 5-min TTL
 # Anthropic: explicit cache_control header
 
-def get_normal_mode_system_prompt(student_level: int = 5) -> str:
+def get_normal_mode_system_prompt() -> str:
     """
     Extract the stable system prompt for normal-mode responses (explain/calculate/define).
     This is role definition + output format, and NEVER changes unless rules change.
     Designed to reach ~1000-1200 tokens for optimal caching.
+    NOTE: student_level is intentionally NOT here — it belongs in the user content so this
+    prompt stays identical across all class levels, enabling Gemini implicit cache hits.
     """
     system_parts = [
         # ── Core role instruction ──────────────────────────────────────────
-        f"You are an expert, engaging AI tutor for Class {student_level} students in an educational app.\n\n"
+        "You are an expert, engaging AI tutor for school students (Class 1-12) in an educational app.\n\n"
         
         # ── Shared output format rules ─────────────────────────────────────
         "MANDATORY OUTPUT FORMAT:\n"
@@ -545,11 +547,13 @@ def build_normal_mode_user_content(
     question: str,
     intent: str = "explain",
     complexity: str = "medium",
+    student_level: int = 5,
 ) -> str:
     """
     Dynamic user content for normal mode — context + history + question + intent guidance.
     Intent-specific instructions live here (not in system prompt) so the system prompt
     never changes between requests and is always reused from cache.
+    student_level is placed here (not in system prompt) to ensure cache identity.
     """
     _EXPLAIN_GUIDE = {
         "low":    "Short answer: key fact in 2-3 sentences + 1 brief example. No long sections.",
@@ -567,6 +571,7 @@ def build_normal_mode_user_content(
     guide = _INTENT_GUIDE.get(intent) or _EXPLAIN_GUIDE.get(complexity, _EXPLAIN_GUIDE["medium"])
 
     return (
+        f"Student class level: Class {student_level}\n\n"
         f"CONTEXT (chapter notes):\n{context or '(No context provided)'}\n\n"
         f"CONVERSATION HISTORY:\n{history or '(First message)'}\n\n"
         f"STUDENT QUESTION: {question}\n\n"
