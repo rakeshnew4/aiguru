@@ -596,6 +596,50 @@ def get_blackboard_mode_system_prompt() -> str:
         "• Step count: generate EXACTLY the steps_count from LESSON BRIEF — no more, no less\n"
         "• Last step: MUST end with a quiz frame immediately followed by a summary frame\n"
         "• lang field: MUST match the OUTPUT LANGUAGE tag exactly — NEVER default to en-US\n"
+        "\n"
+        "DIAGRAM SELECTION — CRITICAL: match EXACTLY to what the student asked about.\n"
+        "Read the student's question in LESSON BRIEF and pick the diagram that directly illustrates it.\n"
+        "NEVER use a generic or approximate diagram type — always pick the most specific match.\n"
+        "\n"
+        "KEYWORD → DIAGRAM TYPE mapping (follow this strictly):\n"
+        '• incircle / inscribed circle / circle inside triangle / inradius / in-radius\n'
+        '  → diagram_type: "triangle", data: {"labels":["A","B","C"],"show_incircle":true}\n'
+        '• circumscribed circle / circumcircle / circumradius / circle outside triangle\n'
+        '  → diagram_type: "triangle", data: {"labels":["A","B","C"],"show_circumcircle":true}\n'
+        '• triangle area / angle bisector / altitude / median / triangle perimeter\n'
+        '  → diagram_type: "triangle", data: {"labels":["A","B","C"]}\n'
+        '• area of circle / radius / diameter / circumference\n'
+        '  → diagram_type: "circle_radius", data: {"radius":5,"show_area":true}\n'
+        '• area of rectangle / perimeter of rectangle / area of square\n'
+        '  → diagram_type: "rectangle_area", data: {"width":8,"height":5}\n'
+        '• angles / complementary angles / supplementary angles / types of angles\n'
+        '  → diagram_type: "geometry_angles"\n'
+        '• Bohr model / electron shells / atomic structure / element name + electrons / protons\n'
+        '  → diagram_type: "atom", data: {"nucleus_label":"...", "orbits":[...]}\n'
+        '• solar system / planetary orbit / planet revolves\n'
+        '  → diagram_type: "solar_system"\n'
+        '• sound wave / light wave / wavelength / frequency / EM wave / transverse wave\n'
+        '  → diagram_type: "waveform_signal"\n'
+        '• y=f(x) / parabola / graph / plotting function / quadratic graph\n'
+        '  → diagram_type: "graph_function"\n'
+        '• number line / integers / fractions on number line\n'
+        '  → diagram_type: "number_line"\n'
+        '• fraction / numerator denominator / fraction bar\n'
+        '  → diagram_type: "fraction_bar"\n'
+        '• cell structure / anatomy / labeled parts / plant cell / animal cell\n'
+        '  → diagram_type: "labeled_diagram", data: {"title":"...","labels":[...]}\n'
+        '• process with steps (photosynthesis / water cycle / nitrogen cycle / digestion)\n'
+        '  → diagram_type: "cycle" or "flow"\n'
+        '• compare two things (mitosis vs meiosis / plant vs animal cell)\n'
+        '  → diagram_type: "comparison"\n'
+        "\n"
+        "DIAGRAM ACCURACY RULES:\n"
+        "• If the question mentions incircle, inradius, or inscribed circle → triangle with show_incircle=true ALWAYS\n"
+        "• NEVER show rectangle_area for a question about circles or triangles\n"
+        "• NEVER show circle_radius for a question about triangles\n"
+        "• NEVER show atom for a non-chemistry/non-physics question\n"
+        "• If unsure which diagram type fits, use labeled_diagram with relevant labels\n"
+        "• Only use diagram frames where a visual truly helps — formula-only steps use concept frame\n"
     )
     return blackboard_prompt + _ACCURACY_NOTES
 
@@ -672,17 +716,57 @@ def build_blackboard_mode_user_content(
 
     # ── Diagram hint: classify best diagram_type for this question ───────────
     _diagram_hint = ""
-    try:
-        from app.utils.diagram_router import classify_diagram_need
-        decision = classify_diagram_need(question, subject_hint=topic_type, topic_keywords=key_concepts)
-        if decision.needed and decision.diagram_type:
+    # Keyword-based forced diagram rules (override everything)
+    _q_lower = (question or "").lower()
+    _k_lower = " ".join(str(c) for c in key_concepts).lower()
+    _combined = _q_lower + " " + _k_lower
+    _forced_type = ""
+    if any(w in _combined for w in ("incircle", "inradius", "in-radius", "inscribed circle", "in circle")):
+        _forced_type = "triangle"
+        _forced_data = '{"labels":["A","B","C"],"show_incircle":true}'
+        _forced_reason = "incircle/inradius keyword detected → triangle with show_incircle"
+    elif any(w in _combined for w in ("circumcircle", "circumradius", "circumscribed")):
+        _forced_type = "triangle"
+        _forced_data = '{"labels":["A","B","C"],"show_circumcircle":true}'
+        _forced_reason = "circumcircle keyword detected → triangle with show_circumcircle"
+    elif any(w in _combined for w in ("bohr", "electron shell", "atomic structure", "electrons orbit")):
+        _forced_type = "atom"
+        _forced_data = ''
+        _forced_reason = "atomic structure keyword → atom"
+    elif any(w in _combined for w in ("solar system", "planet orbit", "planetary")):
+        _forced_type = "solar_system"
+        _forced_data = ''
+        _forced_reason = "solar system keyword → solar_system"
+    elif any(w in _combined for w in ("wavelength", "frequency", "sound wave", "light wave", "waveform", "transverse wave")):
+        _forced_type = "waveform_signal"
+        _forced_data = ''
+        _forced_reason = "wave keyword → waveform_signal"
+
+    if _forced_type:
+        if _forced_data:
             _diagram_hint = (
-                f"\nDIAGRAM RECOMMENDATION: This topic likely needs a "
-                f'"{decision.diagram_type}" diagram (confidence {decision.confidence:.0%}). '
-                f"Use diagram_type=\"{decision.diagram_type}\" for your diagram frame(s).\n"
+                f"\n⚠ REQUIRED DIAGRAM (keyword match — do NOT change this): "
+                f'diagram_type="{_forced_type}" with data={_forced_data}\n'
+                f"Reason: {_forced_reason}\n"
             )
-    except Exception:
-        pass
+        else:
+            _diagram_hint = (
+                f"\n⚠ REQUIRED DIAGRAM (keyword match — do NOT change this): "
+                f'diagram_type="{_forced_type}"\n'
+                f"Reason: {_forced_reason}\n"
+            )
+    else:
+        try:
+            from app.utils.diagram_router import classify_diagram_need
+            decision = classify_diagram_need(question, subject_hint=topic_type, topic_keywords=key_concepts)
+            if decision.needed and decision.diagram_type:
+                _diagram_hint = (
+                    f"\nDIAGRAM RECOMMENDATION: This topic likely needs a "
+                    f'"{decision.diagram_type}" diagram (confidence {decision.confidence:.0%}). '
+                    f"Use diagram_type=\"{decision.diagram_type}\" for your diagram frame(s).\n"
+                )
+        except Exception:
+            pass
 
     parts = ["\n---LESSON BRIEF (follow these instructions exactly)---\n"]
     parts.append(f"Student question: {question}\n")

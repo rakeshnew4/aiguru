@@ -102,33 +102,29 @@ TTS VOICE RULES (MANDATORY -- set tts_engine and voice_role for EVERY frame):
 - Output ONLY the JSON object.
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student question: Topic: Protons aand nuetrons and electrons, charges
-Lesson title: Protons aand nuetrons and electrons, charges
+Student question: Topic: How chemical bomds formed in benzene
+
+[Context: {"user_question":"How chemical bonds are formed in benzene","answer":"Benzene is a fascinating molecule where chemical bonds are formed through a process called **delocalization**, which is a special type of **covalent bonding**. Unlike typical single or double bonds that are fixed between two atoms, the electrons in benzene are spread out over the entire ring of carbon atoms.
+
+Here's how it works]
+Lesson title: How chemical bomds formed in benzene
+
+[Context: {"user_quest
 Category: general
 
+This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
-CONTINUATION — DO NOT repeat anything already taught.
-Student's original question: Protons aand nuetrons and electrons, charges
-
-Steps ALREADY TAUGHT (do NOT repeat or reintroduce these):
-  1.  — "Hello students! Today, we're going to explore the tiny, amazing world of atoms, the fundam"
-  2.  — "Protons are like the atom's positive team members. They carry a positive electric charge a"
-  3. Neutrons: The Neutral Ones — "Neutrons are the third part of an atom, and they have no charge at all. They are neutral."
-
-Total steps covered so far: 3 / 4
-Continue from step 4. Build on what was taught — go deeper, give examples, advance the lesson.
-
-Now continue teaching the NEXT steps listed below. Build on what was already covered — go deeper, add detail, advance the lesson. Do NOT reintroduce or re-explain concepts from the above steps.
-
-Generate EXACTLY 1 steps with APPROXIMATELY 3 frames each.
+Generate EXACTLY 0 steps with APPROXIMATELY 4 frames each.
 Steps to generate in this batch:
-- Step 4
+
 
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
 Student level: Class 5
-Topic type: definition | Scope: simple
-Key concepts to cover (ALL of these): proton charge, neutron charge, electron charge
-Generate EXACTLY 4 steps — no more, no less.
+Topic type: science_process | Scope: medium
+Key concepts to cover (ALL of these): covalent bonding, delocalization, pi system, resonance structures
+Generate EXACTLY 5 steps — no more, no less.
+
+DIAGRAM RECOMMENDATION: This topic likely needs a "atom" diagram (confidence 82%). Use diagram_type="atom" for your diagram frame(s).
 
 CHAPTER CONTEXT (use this as the primary source — ground the lesson here):
 Context for page blackboard__chunk

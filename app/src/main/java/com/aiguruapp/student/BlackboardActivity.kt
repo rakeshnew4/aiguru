@@ -1213,7 +1213,8 @@ class BlackboardActivity : AppCompatActivity() {
 
             // Server already built the full animated HTML — just load it
             val diagramWebView = android.webkit.WebView(this).apply {
-                settings.javaScriptEnabled = false
+                settings.javaScriptEnabled = true      // required for SVG+JS animation
+                settings.domStorageEnabled = true       // some WebViews need this for rAF
                 settings.loadWithOverviewMode = true
                 settings.useWideViewPort = true
                 isVerticalScrollBarEnabled = false
@@ -1225,7 +1226,11 @@ class BlackboardActivity : AppCompatActivity() {
                 ).apply { topMargin = (8 * dp).toInt() }
             }
             board.addView(diagramWebView)
-            diagramWebView.loadDataWithBaseURL(null, frame.svgHtml, "text/html", "UTF-8", null)
+            // Use file:///android_asset/ as base URL so the WebView has a real origin
+            // (null base URL → about:blank origin which can block requestAnimationFrame)
+            diagramWebView.loadDataWithBaseURL(
+                "file:///android_asset/", frame.svgHtml, "text/html", "UTF-8", null
+            )
 
             stepsScrollView.post { stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }
             if (!isPaused && frame.speech.isNotBlank()) {

@@ -244,7 +244,7 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
         if "steps" not in data or not isinstance(data["steps"], list):
             return query
 
-        from app.utils.svg_builder import build_animated_svg, build_from_diagram_type
+        from app.utils.svg_builder import build_animated_svg, build_from_diagram_type, build_atom_html
         from app.utils.diagram_router import classify_diagram_need
         from app.services.enrichment_service import build_enrichment_tasks
 
@@ -342,15 +342,24 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
                         )
 
                 if d_type:
-                    # Path 1: structured diagram_type → Python renders shapes
-                    shapes = build_from_diagram_type(d_type, d_data)
-                    if shapes:
-                        html = build_animated_svg(shapes)
+                    # ── Atom: JS physics engine (elliptical orbits, glow, phase reveal) ──
+                    if d_type.lower() in ("atom",):
+                        html = build_atom_html(d_data)
                         if html:
                             logger.info(
-                                "Built svg_html (type=%s enriched=%s) for step '%s'",
-                                d_type, bool(d_data), step.get("title", ""),
+                                "Built atom JS animation for step '%s'",
+                                step.get("title", ""),
                             )
+                    # Path 1: all other structured diagram_types → SMIL SVG
+                    if not html:
+                        shapes = build_from_diagram_type(d_type, d_data)
+                        if shapes:
+                            html = build_animated_svg(shapes)
+                            if html:
+                                logger.info(
+                                    "Built svg_html (type=%s enriched=%s) for step '%s'",
+                                    d_type, bool(d_data), step.get("title", ""),
+                                )
 
                 if not html:
                     # Path 2: legacy raw svg_elements fallback

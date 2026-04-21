@@ -407,6 +407,8 @@ def _sanitize_bb_response(text: str) -> str:
             logger.warning("BB response missing 'steps' list — returning original")
             return text
 
+        structural_changes = 0  # count unwraps / renames — skip size check if > 0
+
         for step in steps:
             if not isinstance(step, dict):
                 continue
@@ -415,6 +417,7 @@ def _sanitize_bb_response(text: str) -> str:
             # LLM sometimes outputs "step_title" instead of "title"
             if "title" not in step and "step_title" in step:
                 step["title"] = step.pop("step_title")
+                structural_changes += 1
             # Ensure lang is present at step level
             if "lang" not in step:
                 step["lang"] = "en-US"
@@ -436,6 +439,7 @@ def _sanitize_bb_response(text: str) -> str:
                         "BB sanitizer: unwrapping nested frames in step '%s'",
                         step.get("title", "?"),
                     )
+                    structural_changes += len(nested)
                     for inner in nested:
                         if isinstance(inner, dict):
                             _coerce_frame(inner)
@@ -448,15 +452,24 @@ def _sanitize_bb_response(text: str) -> str:
 
         sanitized = json.dumps(parsed, ensure_ascii=False)
 
-        # Sanity check: if the output shrank by more than 60%, the parser
-        # likely found a small inner object — return original to be safe.
-        if len(sanitized) < len(text) * 0.4:
+        # Sanity check: if the output shrank by more than 60% AND we made no
+        # structural changes, the parser likely found a small inner object —
+        # return original to be safe.
+        # Skip this check when structural changes were made (nested unwrapping,
+        # step_title → title renames): those changes legitimately reduce size.
+        if structural_changes == 0 and len(sanitized) < len(text) * 0.4:
             logger.warning(
                 "BB sanitizer: output (%d) is much smaller than input (%d) "
                 "— possible wrong-object parse, returning original",
                 len(sanitized), len(text),
             )
             return text
+
+        if structural_changes > 0:
+            logger.info(
+                "BB sanitizer: applied %d structural fix(es) | %d→%d chars",
+                structural_changes, len(text), len(sanitized),
+            )
 
         return sanitized
     except Exception as e:
