@@ -108,6 +108,8 @@ class BlackboardActivity : AppCompatActivity() {
         const val EXTRA_SESSION_ID      = "extra_session_id"
         /** BbDuration label string, e.g. "2 min". Determines totalSteps & framesPerStep. */
         const val EXTRA_DURATION        = "extra_duration"
+        /** Optional Base64-encoded image to include in the lesson generation (e.g. from home dialog camera). */
+        const val EXTRA_IMAGE_BASE64    = "extra_image_base64"
     }
 
     // ── Views ─────────────────────────────────────────────────────────────────
@@ -434,7 +436,8 @@ class BlackboardActivity : AppCompatActivity() {
                                 messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
                                 userId         = userId,
                                 conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
-                                recordSession  = !isReplay
+                                recordSession  = !isReplay,
+                                imageBase64    = intent.getStringExtra(EXTRA_IMAGE_BASE64)
                             )
                         }
                     }
@@ -451,7 +454,8 @@ class BlackboardActivity : AppCompatActivity() {
                             messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
                             userId         = userId,
                             conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
-                            recordSession  = false
+                            recordSession  = false,
+                            imageBase64    = intent.getStringExtra(EXTRA_IMAGE_BASE64)
                         )
                     }
                 }
@@ -469,7 +473,8 @@ class BlackboardActivity : AppCompatActivity() {
                         messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
                         userId         = userId,
                         conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
-                        recordSession  = false
+                        recordSession  = false,
+                        imageBase64    = intent.getStringExtra(EXTRA_IMAGE_BASE64)
                     )
                 }
             }
@@ -551,14 +556,43 @@ class BlackboardActivity : AppCompatActivity() {
         messageId: String? = null,
         userId: String? = null,
         conversationId: String? = null,
-        recordSession: Boolean = false
+        recordSession: Boolean = false,
+        imageBase64: String? = null
     ) {
         lifecycleScope.launch(Dispatchers.IO) {
+            // ── Local message cache: skip LLM if this message was already explained ──
+            val msgCacheKey = messageId?.takeIf { it.isNotBlank() }
+            if (msgCacheKey != null && imageBase64.isNullOrBlank()) {
+                val cachedJson = getSharedPreferences("bb_msg_cache", MODE_PRIVATE)
+                    .getString(msgCacheKey, null)
+                if (!cachedJson.isNullOrBlank()) {
+                    val cachedSteps = BlackboardGenerator.deserializeSteps(cachedJson, preferredLanguageTag)
+                    if (cachedSteps.isNotEmpty()) {
+                        lifecycleScope.launch(Dispatchers.Main) {
+                            steps = cachedSteps
+                            computedFontSp = computeFontSize(steps)
+                            progressSeekBar.max = steps.sumOf { it.frames.size }
+                            loadingGroup.visibility = View.GONE
+                            contentGroup.visibility = View.VISIBLE
+                            saveSessionBtn.visibility = View.VISIBLE
+                            findViewById<android.widget.LinearLayout>(R.id.bbAskBar)?.visibility = View.VISIBLE
+                            if (isTeacherMode) publishLessonBtn.visibility = View.VISIBLE
+                            buildDots()
+                            setupBoard()
+                            preloadUpcoming(0, 0, count = 3)
+                            showFrame(0, 0)
+                        }
+                        return@launch
+                    }
+                }
+            }
+
             // ── Step 1: Get lesson outline from LLM ────────────────────────
             runOnUiThread { loadingText.text = "Planning lesson…" }
             BlackboardGenerator.callIntent(
                 topic            = message,
                 totalSteps       = totalStepsTarget,
+                imageBase64      = imageBase64,
                 preferredLanguageTag = preferredLanguageTag,
                 onSuccess = { intent_ ->
                     bbIntent = intent_
@@ -572,6 +606,7 @@ class BlackboardActivity : AppCompatActivity() {
                         chunkStepTitles  = firstTitles,
                         framesPerStep    = framesPerStepTarget,
                         isLastChunk      = isOnlyChunk,
+                        imageBase64      = imageBase64,
                         preferredLanguageTag = preferredLanguageTag,
                         onStatus = { statusMsg, _ ->
                             runOnUiThread { loadingText.text = statusMsg }
@@ -597,6 +632,12 @@ class BlackboardActivity : AppCompatActivity() {
                             }
                             lifecycleScope.launch(Dispatchers.Main) {
                                 steps = generated
+                                // Cache by messageId so re-opening the same message skips re-generation
+                                if (!msgCacheKey.isNullOrBlank()) {
+                                    getSharedPreferences("bb_msg_cache", MODE_PRIVATE).edit()
+                                        .putString(msgCacheKey, BlackboardGenerator.serializeSteps(steps))
+                                        .apply()
+                                }
                                 computedFontSp = computeFontSize(steps)
         progressSeekBar.max = (totalStepsTarget * framesPerStepTarget).coerceAtLeast(generated.sumOf { it.frames.size })
                                 loadingGroup.visibility = View.GONE
@@ -608,6 +649,8 @@ class BlackboardActivity : AppCompatActivity() {
                                 setupBoard()
                                 preloadUpcoming(0, 0, count = 3)
                                 showFrame(0, 0)
+                                incrementLocalBbCounter()
+                                showFirstTimerTipsIfNeeded()
                                 val taskId = intent.getStringExtra(EXTRA_TASK_ID).orEmpty()
                                 if (taskId.isNotBlank() && !userId.isNullOrBlank()) {
                                     val studentName = com.aiguruapp.student.utils.SessionManager.getStudentName(this@BlackboardActivity)
@@ -729,6 +772,42 @@ class BlackboardActivity : AppCompatActivity() {
                 }
             )
         }
+    }
+
+    // ── Local usage counter + first-timer tips ─────────────────────────────────
+
+    private fun incrementLocalBbCounter() {
+        val prefs = getSharedPreferences("bb_prefs", MODE_PRIVATE)
+        val current = prefs.getInt("bb_sessions_alltime", 0)
+        prefs.edit().putInt("bb_sessions_alltime", current + 1).apply()
+    }
+
+    private fun showFirstTimerTipsIfNeeded() {
+        val prefs    = getSharedPreferences("bb_prefs", MODE_PRIVATE)
+        val sessions = prefs.getInt("bb_sessions_alltime", 0)
+        if (sessions > 3) return   // only show for first 3 sessions
+
+        val tips = when (sessions) {
+            1 -> "👋 Welcome to Blackboard Mode!\n\n" +
+                    "• Tap ▶ / ◀ to move between slides\n" +
+                    "• Tap ⏸ to pause the lesson\n" +
+                    "• Tap 💬 to ask follow-up questions\n" +
+                    "• Tap 💾 Save to keep this lesson"
+            2 -> "📷 Did you know?\n\n" +
+                    "Tap the 📷 icon in the ask bar to attach a photo of your textbook — the AI will explain it!"
+            3 -> "🎤 Voice questions work too!\n\n" +
+                    "Tap 🎤 in the ask bar and speak your question hands-free."
+            else -> return
+        }
+
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            if (!isFinishing) {
+                androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setMessage(tips)
+                    .setPositiveButton("Got it! 👍", null)
+                    .show()
+            }
+        }, 1500)
     }
 
     // ── Save session to chapter notes ──────────────────────────────────────────

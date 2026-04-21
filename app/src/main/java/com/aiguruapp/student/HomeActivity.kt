@@ -186,6 +186,11 @@ class HomeActivity : BaseActivity() {
             confirmLogout()
         }
 
+        // ? Help / guide button
+        findViewById<View?>(R.id.helpGuideBtn)?.setOnClickListener {
+            showAppGuide()
+        }
+
         // Plan badge still navigates to subscription
         findViewById<TextView?>(R.id.planBadgeText)?.setOnClickListener {
             startActivity(
@@ -512,6 +517,41 @@ class HomeActivity : BaseActivity() {
             .show()
     }
 
+    private fun showAppGuide() {
+        val guide = """
+🎓  Blackboard Mode
+Animated step-by-step lessons on any topic. Tap the big purple card or pick a chapter → use the Blackboard button.
+
+💬  Ask AI (Chat)
+Ask any question about your syllabus. The AI answers with explanations, examples and diagrams.
+
+📷  Camera / Image Q&A
+Inside chat or the Blackboard dialog tap 📷 to attach a photo of your textbook — the AI explains it.
+
+🎤  Voice Input
+Tap 🎤 in any question bar and ask out loud — hands-free Q&A.
+
+📌  Saved Sessions
+Your saved Blackboard lessons are stored per-chapter. Open a chapter → Saved tab to replay them.
+
+📖  NCERT Viewer
+Chapters with NCERT books auto-download the PDF and let you read or ask about any page.
+
+🏆  Progress & Stats
+Open the ☰ drawer → Progress to see your learning streaks, BB sessions and quiz scores.
+
+💡  Tips
+• After 3 chapters, the app will ask you to rate it — your feedback helps us improve!
+• Upgrade your plan for unlimited sessions and AI voice narration.
+        """.trimIndent()
+
+        AlertDialog.Builder(this)
+            .setTitle("📚 App Guide & Features")
+            .setMessage(guide)
+            .setPositiveButton("Got it! 👍", null)
+            .show()
+    }
+
     private fun confirmLogout() {
         AlertDialog.Builder(this)
             .setTitle("Logout")
@@ -642,6 +682,14 @@ class HomeActivity : BaseActivity() {
         val bbBtn = findViewById<com.google.android.material.card.MaterialCardView>(R.id.quickActionBbBtn)
         bbBtn?.setOnClickListener { showBbTopicDialog() }
 
+        // Show cumulative BB session count as a subtle badge on the card
+        val bbCountBadge = findViewById<android.widget.TextView?>(R.id.bbSessionsCountBadge)
+        val bbDoneCount = getSharedPreferences("bb_prefs", MODE_PRIVATE).getInt("bb_sessions_alltime", 0)
+        if (bbDoneCount > 0 && bbCountBadge != null) {
+            bbCountBadge.text = "🎯 $bbDoneCount session${if (bbDoneCount == 1) "" else "s"} completed"
+            bbCountBadge.visibility = android.view.View.VISIBLE
+        }
+
         // Pulse animation on the BB hero card to draw attention
         bbBtn?.post {
             val pulse = android.animation.ObjectAnimator.ofPropertyValuesHolder(
@@ -691,6 +739,19 @@ class HomeActivity : BaseActivity() {
 
     /** Shows a polished bottom sheet to collect topic + duration, then launches BB mode. */
     private fun showBbTopicDialog() {
+        // Guests must sign in before using Blackboard mode
+        if (SessionManager.isGuestMode(this)) {
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Sign in Required")
+                .setMessage("Blackboard mode is available for registered students. Sign in to unlock animated lessons, save sessions, and track your progress!")
+                .setPositiveButton("Sign In") { _, _ ->
+                    startActivity(Intent(this, LoginActivity::class.java))
+                }
+                .setNegativeButton("Not Now", null)
+                .show()
+            return
+        }
+
         val dp     = resources.displayMetrics.density
         val labels = BlackboardGenerator.BbDuration.labels
         var selectedDurationLabel = BlackboardGenerator.BbDuration.MIN_2.label
@@ -966,6 +1027,10 @@ class HomeActivity : BaseActivity() {
             homeTopicInput = null;   homeMicTile = null
             val uid  = SessionManager.getFirestoreUserId(this)
             val lang = SessionManager.getPreferredLang(this).ifBlank { "en-US" }
+            val capturedImage = homePendingImageBase64.also {
+                homePendingImageBase64 = null
+                homePendingImageUri = null
+            }
             startActivity(
                 Intent(this, BlackboardActivity::class.java)
                     .putExtra(BlackboardActivity.EXTRA_MESSAGE,  topic)
@@ -974,6 +1039,7 @@ class HomeActivity : BaseActivity() {
                     .putExtra(BlackboardActivity.EXTRA_CHAPTER,  "General")
                     .putExtra(BlackboardActivity.EXTRA_USER_ID,  uid)
                     .putExtra(BlackboardActivity.EXTRA_LANGUAGE_TAG, lang)
+                    .apply { if (capturedImage != null) putExtra(BlackboardActivity.EXTRA_IMAGE_BASE64, capturedImage) }
             )
         }
 

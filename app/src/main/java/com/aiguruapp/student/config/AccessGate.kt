@@ -94,7 +94,8 @@ object AccessGate {
         ),
         BLACKBOARD(
             "blackboard", "Visual Blackboard",
-            { role, limits -> role != Role.GUEST && limits.blackboardEnabled }
+            // Allow guests to SEE the button — sign-in prompt fires in HomeActivity when they tap
+            { _, limits -> limits.blackboardEnabled }
         ),
         LIBRARY(
             "library", "Chapter Library",

@@ -30,6 +30,10 @@ class NotesRepository(
         }
     }
 
+    fun delete(type: String) {
+        prefs().edit().remove(key(type)).apply()
+    }
+
     fun loadAll(
         onResult:  (String) -> Unit,
         onEmpty:   () -> Unit,
@@ -60,6 +64,35 @@ class NotesRepository(
             if (text.isEmpty()) onEmpty() else onResult(text)
         } catch (_: Exception) {
             onFailure()
+        }
+    }
+
+    /**
+     * Returns each saved note as a Triple of (type, heading, content).
+     * Useful for per-section display with editing.
+     */
+    fun loadAllTyped(): List<Triple<String, String, String>> {
+        return try {
+            prefs().all.entries
+                .filter { it.key.startsWith(prefix) }
+                .sortedBy { entry ->
+                    val type = entry.key.removePrefix(prefix)
+                    when (type) { "chapter" -> "0"; "exercises" -> "z"; else -> type }
+                }
+                .mapNotNull { entry ->
+                    val type    = entry.key.removePrefix(prefix)
+                    val content = entry.value as? String ?: return@mapNotNull null
+                    if (content.isBlank()) return@mapNotNull null
+                    val heading = when {
+                        type == "chapter"        -> "📖 Chapter Notes"
+                        type.startsWith("page_") -> "📄 Page ${type.removePrefix("page_")} Notes"
+                        type == "exercises"      -> "✏️ Exercise Notes"
+                        else                     -> "📋 ${type.replaceFirstChar { it.uppercaseChar() }}"
+                    }
+                    Triple(type, heading, content)
+                }
+        } catch (_: Exception) {
+            emptyList()
         }
     }
 }

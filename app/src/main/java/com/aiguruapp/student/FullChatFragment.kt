@@ -540,18 +540,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                 if (!bbCheck.allowed) {
                     showError(bbCheck.upgradeMessage)
                 } else {
-                    val convId =
-                        "${FirestoreManager.safeId(subjectName)}__${FirestoreManager.safeId(chapterName)}"
-                    startActivity(
-                        Intent(requireContext(), BlackboardActivity::class.java)
-                            .putExtra(BlackboardActivity.EXTRA_MESSAGE, TutorController.extractAnswerForDisplay(msg.content))
-                            .putExtra(BlackboardActivity.EXTRA_MESSAGE_ID, msg.id)
-                            .putExtra(BlackboardActivity.EXTRA_USER_ID, userId)
-                            .putExtra(BlackboardActivity.EXTRA_CONVERSATION_ID, convId)
-                            .putExtra(BlackboardActivity.EXTRA_LANGUAGE_TAG, currentLang)
-                            .putExtra(BlackboardActivity.EXTRA_SUBJECT, subjectName)
-                            .putExtra(BlackboardActivity.EXTRA_CHAPTER, chapterName)
-                    )
+                    showBbDurationPickerAndLaunch(msg)
                 }
             },
             onSaveNoteClick = { msg ->
@@ -714,6 +703,43 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                     sendMessage(q)
                     messageInput.setText("")
                 }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    // ── BB Duration Picker ────────────────────────────────────────────────────
+
+    /**
+     * Shows a simple duration picker dialog, then launches [BlackboardActivity]
+     * with the chosen duration and the message content.
+     * Default selection is MIN_2 (4 steps — compact lesson).
+     */
+    private fun showBbDurationPickerAndLaunch(msg: com.aiguruapp.student.models.Message) {
+        val labels = com.aiguruapp.student.chat.BlackboardGenerator.BbDuration.labels
+        var selectedIdx = labels.indexOfFirst {
+            it == com.aiguruapp.student.chat.BlackboardGenerator.BbDuration.MIN_2.label
+        }.coerceAtLeast(0)
+
+        // Build single-choice list dialog
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("⏱ Session length")
+            .setSingleChoiceItems(labels, selectedIdx) { _, which -> selectedIdx = which }
+            .setPositiveButton("▶ Start") { _, _ ->
+                val durationLabel = labels[selectedIdx]
+                val convId =
+                    "${FirestoreManager.safeId(subjectName)}__${FirestoreManager.safeId(chapterName)}"
+                startActivity(
+                    Intent(requireContext(), BlackboardActivity::class.java)
+                        .putExtra(BlackboardActivity.EXTRA_MESSAGE, TutorController.extractAnswerForDisplay(msg.content))
+                        .putExtra(BlackboardActivity.EXTRA_MESSAGE_ID, msg.id)
+                        .putExtra(BlackboardActivity.EXTRA_USER_ID, userId)
+                        .putExtra(BlackboardActivity.EXTRA_CONVERSATION_ID, convId)
+                        .putExtra(BlackboardActivity.EXTRA_LANGUAGE_TAG, currentLang)
+                        .putExtra(BlackboardActivity.EXTRA_SUBJECT, subjectName)
+                        .putExtra(BlackboardActivity.EXTRA_CHAPTER, chapterName)
+                        .putExtra(BlackboardActivity.EXTRA_DURATION, durationLabel)
+                )
             }
             .setNegativeButton("Cancel", null)
             .show()
@@ -1365,6 +1391,9 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         showLoading(true)
         sendButton.isEnabled = false
 
+        // Track total messages sent — show app guide to first-time users after 3rd message
+        incrementChatMessageCounter()
+
         val sysPrompt = TutorController.buildSystemPrompt(tutorSession) +
                 PromptRepository.getLanguageInstruction(currentLang)
         val ctxMessage = userText
@@ -1841,6 +1870,56 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
     }
 
+    // ── First-time guide on message counter ────────────────────────────────────
+
+    /**
+     * Increments the lifetime chat message counter in SharedPreferences.
+     * When the user sends their 3rd message ever, show the App Guide dialog once.
+     */
+    private fun incrementChatMessageCounter() {
+        val ctx = context ?: return
+        val prefs = ctx.getSharedPreferences("chat_prefs", android.content.Context.MODE_PRIVATE)
+        val current = prefs.getInt("total_messages_sent", 0) + 1
+        prefs.edit().putInt("total_messages_sent", current).apply()
+        if (current == 3) {
+            // Delay so the loading animation is already shown before the dialog appears
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                if (!isAdded || !isResumed) return@postDelayed
+                showAppGuideDialog()
+            }, 1800)
+        }
+    }
+
+    private fun showAppGuideDialog() {
+        val guide = """
+🎓  Blackboard Mode
+Animated step-by-step lessons on any topic. Tap any AI reply → "Explain in BB" to start.
+
+💬  Ask AI (Chat)
+You're using it right now! Ask anything about your chapter. Try voice 🎤 or attach a photo 📷.
+
+📌  Saved Sessions
+Tap 💾 in Blackboard mode to save a lesson. Find it in the Saved tab → BB Sessions.
+
+📋  Notes
+Tap ✨ Generate in the chat options menu to create study notes. Edit them in the Saved tab → Notes.
+
+🎤  Voice Input & Voice Mode
+Tap 🎤 to ask hands-free, or enable Voice Chat Mode for a full spoken conversation.
+
+📖  NCERT Viewer
+Chapters with NCERT books let you read pages and ask questions about specific pages.
+
+💡  Tip
+After a Blackboard lesson, use the ask bar (💬 button) to ask follow-up questions!
+        """.trimIndent()
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("📚 Welcome — Quick Guide")
+            .setMessage(guide)
+            .setPositiveButton("Got it! 👍", null)
+            .show()
+    }
+
     /** Refresh the quota pill in the top info bar with today's remaining questions. */
     private fun updateQuotaBanner() {
         // quota display moved to HomeActivity
@@ -1887,9 +1966,11 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         }
     }
 
+    @Suppress("OVERRIDE_DEPRECATION")
     override fun onRequestPermissionsResult(
         requestCode: Int, permissions: Array<out String>, grantResults: IntArray
     ) {
+        @Suppress("DEPRECATION")
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == PERMISSION_REQUEST_CODE &&
             grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED

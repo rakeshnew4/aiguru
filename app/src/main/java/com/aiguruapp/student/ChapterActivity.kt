@@ -250,9 +250,10 @@ class ChapterActivity : BaseActivity() {
             override fun onTabReselected(tab: TabLayout.Tab) {}
         })
 
-        // Start on Pages tab (index 0)
-        showOnly(pagesContent)
-        tabLayout.getTabAt(0)?.select()
+        // Start on Chat tab (index 1)
+        showOnly(chatContainer)
+        getOrCreateChatFragment()
+        tabLayout.getTabAt(1)?.select()
     }
 
     // ─── Saved tab ────────────────────────────────────────────────────────────
@@ -319,9 +320,10 @@ class ChapterActivity : BaseActivity() {
                     savedBbAdapter = com.aiguruapp.student.adapters.SavedBbMiniAdapter(
                         sessions = savedBbSessions,
                         onReplay = { session ->
-                            val topic   = session["topic"] as? String ?: return@SavedBbMiniAdapter
-                            val convId  = session["conversation_id"] as? String
-                            val msgId   = session["message_id"] as? String
+                            val topic     = session["topic"] as? String ?: return@SavedBbMiniAdapter
+                            val sessionId = session["session_id"] as? String ?: session["id"] as? String ?: ""
+                            val convId    = session["conversation_id"] as? String
+                            val msgId     = session["message_id"] as? String
                             @Suppress("UNCHECKED_CAST")
                             val ttsKeys = (session["tts_keys"] as? List<String>) ?: emptyList()
                             startActivity(
@@ -331,6 +333,8 @@ class ChapterActivity : BaseActivity() {
                                     putExtra(BlackboardActivity.EXTRA_SUBJECT, subjectName)
                                     putExtra(BlackboardActivity.EXTRA_CHAPTER, chapterName)
                                     putExtra(BlackboardActivity.EXTRA_IS_REPLAY, true)
+                                    // Pass sessionId so steps load from Firestore — no LLM re-generation
+                                    if (sessionId.isNotBlank()) putExtra(BlackboardActivity.EXTRA_SESSION_ID, sessionId)
                                     if (ttsKeys.isNotEmpty()) putExtra(BlackboardActivity.EXTRA_TTS_KEYS, ArrayList(ttsKeys))
                                     if (!convId.isNullOrBlank()) putExtra(BlackboardActivity.EXTRA_CONVERSATION_ID, convId)
                                     if (!msgId.isNullOrBlank())  putExtra(BlackboardActivity.EXTRA_MESSAGE_ID, msgId)
@@ -362,12 +366,12 @@ class ChapterActivity : BaseActivity() {
     private var notesTabLoaded = false
 
     private fun loadSavedNotesIfNeeded() {
-        if (notesTabLoaded) return
+        // Always re-read notes (SharedPreferences is instant) so freshly generated notes show up
         notesTabLoaded = true
-        val notesLoading = findViewById<android.widget.ProgressBar>(R.id.notesLoading)
-        val notesScroll  = findViewById<View>(R.id.notesScrollView)
-        val notesEmpty   = findViewById<View>(R.id.notesEmpty)
-        val notesText    = findViewById<android.widget.TextView>(R.id.notesText)
+        val notesLoading    = findViewById<android.widget.ProgressBar>(R.id.notesLoading)
+        val notesScroll     = findViewById<View>(R.id.notesScrollView)
+        val notesEmpty      = findViewById<View>(R.id.notesEmpty)
+        val notesContainer  = findViewById<android.widget.LinearLayout>(R.id.notesCardsContainer)
 
         notesLoading.visibility = View.VISIBLE
         notesScroll.visibility  = View.GONE
@@ -375,21 +379,128 @@ class ChapterActivity : BaseActivity() {
 
         val userId = com.aiguruapp.student.utils.SessionManager.getFirestoreUserId(this)
         val repo = com.aiguruapp.student.chat.NotesRepository(this, userId, subjectName, chapterName)
-        repo.loadAll(
-            onResult  = { text ->
-                notesLoading.visibility = View.GONE
-                notesText.text          = text
-                notesScroll.visibility  = View.VISIBLE
-            },
-            onEmpty   = {
-                notesLoading.visibility = View.GONE
-                notesEmpty.visibility   = View.VISIBLE
-            },
-            onFailure = {
-                notesLoading.visibility = View.GONE
-                notesEmpty.visibility   = View.VISIBLE
+        val notesList = repo.loadAllTyped()
+
+        notesLoading.visibility = View.GONE
+        if (notesList.isEmpty()) {
+            notesEmpty.visibility = View.VISIBLE
+            findViewById<View>(R.id.generateNotesBtn)?.setOnClickListener { showGenerateOptions() }
+            return
+        }
+
+        // Build per-section cards with Markwon markdown rendering + edit button
+        val markwon = io.noties.markwon.Markwon.builder(this)
+            .usePlugin(io.noties.markwon.ext.tables.TablePlugin.create(this))
+            .usePlugin(io.noties.markwon.ext.strikethrough.StrikethroughPlugin.create())
+            .build()
+        val dp = resources.displayMetrics.density
+
+        notesContainer.removeAllViews()
+
+        notesList.forEach { (type, heading, content) ->
+            // Section card wrapper
+            val card = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                setBackgroundColor(android.graphics.Color.parseColor("#1A1A2E"))
+                val lp = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { bottomMargin = (12 * dp).toInt() }
+                layoutParams = lp
+                setPadding((14 * dp).toInt(), (12 * dp).toInt(), (14 * dp).toInt(), (14 * dp).toInt())
+                (background as? android.graphics.drawable.GradientDrawable)?.cornerRadius = 12 * dp
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                    cornerRadius = 12 * dp
+                    setColor(android.graphics.Color.parseColor("#1A1A2E"))
+                    setStroke((1 * dp).toInt(), android.graphics.Color.parseColor("#2A2A50"))
+                }
             }
-        )
+
+            // Header row: heading text + Edit button
+            val headerRow = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { bottomMargin = (8 * dp).toInt() }
+            }
+            val headingView = android.widget.TextView(this).apply {
+                text = heading
+                textSize = 14f
+                android.graphics.Typeface.DEFAULT_BOLD.let { setTypeface(it) }
+                setTextColor(android.graphics.Color.parseColor("#C0A0FF"))
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f
+                )
+            }
+            val editBtn = android.widget.TextView(this).apply {
+                text = "✏️ Edit"
+                textSize = 12f
+                setTextColor(android.graphics.Color.parseColor("#8899CC"))
+                setPadding((10 * dp).toInt(), (4 * dp).toInt(), (10 * dp).toInt(), (4 * dp).toInt())
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                    cornerRadius = 16 * dp
+                    setColor(android.graphics.Color.parseColor("#22223A"))
+                }
+            }
+            // Content view rendered with Markwon
+            val contentView = android.widget.TextView(this).apply {
+                textSize = 14f
+                setTextColor(android.graphics.Color.parseColor("#D0D8E8"))
+                setLineSpacing(0f, 1.5f)
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }
+            markwon.setMarkdown(contentView, content)
+
+            editBtn.setOnClickListener {
+                // Edit dialog: show raw markdown in an EditText
+                val editInput = android.widget.EditText(this).apply {
+                    setText(content)
+                    minLines = 8
+                    gravity = android.view.Gravity.TOP or android.view.Gravity.START
+                    setTextColor(android.graphics.Color.parseColor("#E0E8F0"))
+                    setBackgroundColor(android.graphics.Color.parseColor("#0D0D1A"))
+                    setPadding((12 * dp).toInt(), (10 * dp).toInt(), (12 * dp).toInt(), (10 * dp).toInt())
+                }
+                androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle("Edit: $heading")
+                    .setView(editInput)
+                    .setPositiveButton("💾 Save") { _, _ ->
+                        val edited = editInput.text.toString().trim()
+                        if (edited.isNotBlank()) {
+                            repo.save(edited, type)
+                            // Refresh this card's content view inline
+                            markwon.setMarkdown(contentView, edited)
+                            android.widget.Toast.makeText(this, "Notes saved", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    .setNeutralButton("🗑️ Delete section") { _, _ ->
+                        repo.delete(type)
+                        notesContainer.removeView(card)
+                        if (notesContainer.childCount == 0) {
+                            notesScroll.visibility = View.GONE
+                            notesEmpty.visibility  = View.VISIBLE
+                            findViewById<View>(R.id.generateNotesBtn)?.setOnClickListener { showGenerateOptions() }
+                        }
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            }
+
+            headerRow.addView(headingView)
+            headerRow.addView(editBtn)
+            card.addView(headerRow)
+            card.addView(contentView)
+            notesContainer.addView(card)
+        }
+
+        notesScroll.visibility = View.VISIBLE
     }
 
     /** Switch programmatically to the Chat tab (called by Ask AI buttons in the pages view). */
@@ -412,6 +523,14 @@ class ChapterActivity : BaseActivity() {
     override fun onStop() {
         super.onStop()
         metricsTracker.endSession(this, pdfPageCount)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Reload BB sessions in case user just saved one in BlackboardActivity
+        loadSavedBbSessions()
+        // Reset notes tab so next visit re-reads freshly saved content
+        notesTabLoaded = false
     }
 
     private fun loadMasteryScore() {
@@ -558,11 +677,21 @@ class ChapterActivity : BaseActivity() {
         // Show attribution banner
         findViewById<TextView>(R.id.ncertAttributionText).visibility = View.VISIBLE
 
-        // If already cached from a previous session — show pages directly
-        val cachedPdf = java.io.File(cacheDir, "pdf_cache/$ncertPdfId.pdf")
-        if (cachedPdf.exists()) {
+        // Check if cached PDF is for the SAME URL (prevents stale cache from wrong URL)
+        val cachedPdf    = java.io.File(cacheDir, "pdf_cache/$ncertPdfId.pdf")
+        val cachedUrlFile = java.io.File(cacheDir, "pdf_cache/$ncertPdfId.url")
+        val cachedUrl    = if (cachedUrlFile.exists()) cachedUrlFile.readText().trim() else ""
+
+        if (cachedPdf.exists() && (url.isBlank() || cachedUrl == url)) {
+            // Cache hit with matching URL — show pages directly
             loadNcertPagesFromCache()
             return
+        } else if (cachedPdf.exists() && cachedUrl != url && url.isNotBlank()) {
+            // URL changed (chapter re-configured) — delete stale cache and re-download
+            cachedPdf.delete()
+            cachedUrlFile.delete()
+            // Also clear rendered page images for this chapter
+            java.io.File(cacheDir, "pdf_pages/$ncertPdfId").deleteRecursively()
         }
 
         if (url.isBlank()) {
@@ -618,6 +747,8 @@ class ChapterActivity : BaseActivity() {
                     response.body!!.byteStream().use { input ->
                         destFile.outputStream().use { output -> input.copyTo(output) }
                     }
+                    // Persist the URL used for this download so we can detect URL changes later
+                    java.io.File(cacheDir, "pdf_cache/$ncertPdfId.url").writeText(ncertUrl)
                     withContext(Dispatchers.Main) { hideDownloadOverlay(); loadNcertPagesFromCache() }
                     return@launch
                 } catch (e: Exception) {

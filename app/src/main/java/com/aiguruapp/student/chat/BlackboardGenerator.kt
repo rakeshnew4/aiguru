@@ -34,12 +34,12 @@ object BlackboardGenerator {
         val totalSteps: Int,
         val framesPerStep: Int
     ) {
-        SEC_30("30 sec",  3,  2),
-        MIN_1 ("1 min",   5,  3),
-        MIN_2 ("2 min",   8,  4),
-        MIN_3 ("3 min",  12,  4),
-        MIN_5 ("5 min",  20,  5),
-        MIN_10("10 min", 40,  5);
+        SEC_30("30 sec",  2,  2),
+        MIN_1 ("1 min",   3,  3),
+        MIN_2 ("2 min",   4,  3),  // default — compact 4-slide lesson
+        MIN_3 ("3 min",   8,  4),
+        MIN_5 ("5 min",  16,  5),
+        MIN_10("10 min", 32,  5);
 
         companion object {
             fun fromLabel(label: String): BbDuration =
@@ -121,6 +121,7 @@ object BlackboardGenerator {
     fun callIntent(
         topic: String,
         totalSteps: Int,
+        imageBase64: String? = null,
         preferredLanguageTag: String? = null,
         onSuccess: (BlackboardIntent) -> Unit,
         onError: (String) -> Unit
@@ -146,6 +147,7 @@ object BlackboardGenerator {
             mode        = "blackboard_intent",
             languageTag = preferredLanguageTag ?: "en-US",
             history     = emptyList(),
+            imageBase64 = imageBase64,
             onToken     = { token -> buffer.append(token) },
             onDone      = { _, _, _ -> latch.countDown() },
             onError     = { e -> err = e; latch.countDown() }
@@ -200,6 +202,7 @@ object BlackboardGenerator {
         framesPerStep: Int,
         previousContext: String = "",
         isLastChunk: Boolean = false,
+        imageBase64: String? = null,
         preferredLanguageTag: String? = null,
         onStatus: ((String, Int) -> Unit)? = null,
         onSuccess: (List<BlackboardStep>) -> Unit,
@@ -256,6 +259,7 @@ $svgNote$lastFrameNote$langInstruction"""
             mode         = "blackboard",
             languageTag  = preferredLanguageTag ?: "en-US",
             history      = emptyList(),
+            imageBase64  = imageBase64,
             onToken      = { token -> buffer.append(token) },
             onStatus     = onStatus,
             onDone       = { _, _, _ -> latch.countDown() },
@@ -550,6 +554,63 @@ $svgNote$lastFrameNote$langInstruction"""
             )
         }
         return arr.toString()
+    }
+
+    /**
+     * Parse a JSON string produced by [serializeSteps] back into a list of [BlackboardStep].
+     * Returns an empty list if the JSON is blank or malformed.
+     */
+    fun deserializeSteps(json: String, langFallback: String = "en-US"): List<BlackboardStep> {
+        if (json.isBlank()) return emptyList()
+        return try {
+            val arr = JSONArray(json)
+            (0 until arr.length()).map { i ->
+                val stepObj = arr.getJSONObject(i)
+                val langTag = normalizeLanguageTag(
+                    raw      = stepObj.optString("lang", stepObj.optString("language", "")),
+                    fallback = langFallback
+                )
+                val framesArr = stepObj.getJSONArray("frames")
+                val frames = (0 until framesArr.length()).map { j ->
+                    val f        = framesArr.getJSONObject(j)
+                    val hlArr    = f.optJSONArray("highlight")
+                    val optsArr  = f.optJSONArray("quiz_options")
+                    val kwArr    = f.optJSONArray("quiz_keywords")
+                    val fillArr  = f.optJSONArray("fill_blanks")
+                    val orderArr = f.optJSONArray("quiz_correct_order")
+                    val fType    = f.optString("frame_type", "concept")
+                    val rawEngine = f.optString("tts_engine", "")
+                    val rawRole   = f.optString("voice_role",  "")
+                    val (aEngine, aRole) = smartAssignTts(fType)
+                    BlackboardFrame(
+                        text             = f.getString("text"),
+                        highlight        = hlArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                        speech           = f.optString("speech", ""),
+                        durationMs       = f.optLong("duration_ms", 2000),
+                        frameType        = fType,
+                        ttsEngine        = rawEngine.ifBlank { aEngine },
+                        voiceRole        = rawRole.ifBlank { aRole },
+                        quizAnswer       = f.optString("quiz_answer", ""),
+                        quizOptions      = optsArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                        quizCorrectIndex = f.optInt("quiz_correct_index", -1),
+                        quizModelAnswer  = f.optString("quiz_model_answer", ""),
+                        quizKeywords     = kwArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                        fillBlanks       = fillArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                        quizCorrectOrder = orderArr?.let { a -> (0 until a.length()).map { a.getInt(it) } } ?: emptyList(),
+                        svgHtml          = f.optString("svg_html", "")
+                    )
+                }
+                BlackboardStep(
+                    title                = stepObj.optString("title", ""),
+                    frames               = frames,
+                    languageTag          = langTag,
+                    image_description    = stepObj.optString("image_description", ""),
+                    imageConfidenceScore = stepObj.optDouble("image_show_confidencescore", 0.0).toFloat()
+                )
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
     /**
