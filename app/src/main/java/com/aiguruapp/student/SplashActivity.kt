@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.WindowCompat
@@ -73,6 +74,15 @@ class SplashActivity : AppCompatActivity() {
 
         prefs = getSharedPreferences(AppUpdateManager.PREFS_NAME, Context.MODE_PRIVATE)
 
+        // Block back during a mandatory force-update.
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (pendingForceUpdate != null) return // block back during force update
+                isEnabled = false
+                onBackPressedDispatcher.onBackPressed()
+            }
+        })
+
         // Bootstrap data fetch — runs in parallel, not on the critical path.
         AppStartRepository.fetchAll {
             Log.d(TAG, "Bootstrap data ready — plans=${AppStartRepository.plans.size}, " +
@@ -136,13 +146,6 @@ class SplashActivity : AppCompatActivity() {
             pendingForceUpdate = null
             proceedToApp()
         }
-    }
-
-    /** Pressing Back during mandatory update or maintenance does nothing. */
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        if (pendingForceUpdate != null) return // block back for force update
-        super.onBackPressed()
     }
 
     // ── Result handling ───────────────────────────────────────────────────
@@ -237,7 +240,9 @@ class SplashActivity : AppCompatActivity() {
     private fun proceedToApp() {
         if (hasProceeded) return
         hasProceeded = true
-        startActivity(Intent(this, HomeActivity::class.java))
+        val dest = if (!OnboardingActivity.isDone(this)) OnboardingActivity::class.java
+                   else HomeActivity::class.java
+        startActivity(Intent(this, dest))
         finish()
     }
 

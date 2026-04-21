@@ -13,6 +13,7 @@ import android.widget.ImageButton
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 
 /**
@@ -77,6 +78,16 @@ class NcertViewerActivity : AppCompatActivity() {
 
         // Load via Google Docs Viewer — renders the PDF without any native PDF plugin
         webView.loadUrl(docsViewerUrl(rawUrl))
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (webView.canGoBack()) webView.goBack()
+                else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        })
     }
 
     private fun setupWebView() {
@@ -118,10 +129,6 @@ class NcertViewerActivity : AppCompatActivity() {
                 progressBar.progress = newProgress
             }
         }
-    }
-
-    override fun onBackPressed() {
-        if (webView.canGoBack()) webView.goBack() else super.onBackPressed()
     }
 
     override fun onDestroy() {

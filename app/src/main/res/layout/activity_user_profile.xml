@@ -344,6 +344,22 @@
 
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- Rate App -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/rateAppButton"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="12dp"
+            android:text="⭐ Rate AfterClassAI"
+            android:textSize="15sp"
+            android:textColor="@color/colorPrimary"
+            app:backgroundTint="#FFF8E1"
+            app:cornerRadius="14dp"
+            app:strokeColor="@color/colorPrimary"
+            app:strokeWidth="1dp" />
+
         <!-- Logout -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/logoutButton"

@@ -217,6 +217,10 @@ class UserProfileActivity : BaseActivity() {
         logoutButton.setOnClickListener { confirmLogout() }
         deleteAccountButton.setOnClickListener { confirmDeleteAccount() }
 
+        // Rate App
+        findViewById<com.google.android.material.button.MaterialButton>(R.id.rateAppButton)
+            .setOnClickListener { openPlayStoreListing() }
+
         // ── Referral section ──────────────────────────────────────────────────
         setupReferralSection()
     }
@@ -463,5 +467,16 @@ class UserProfileActivity : BaseActivity() {
                 }
             }
         )
+    }
+
+    private fun openPlayStoreListing() {
+        val packageName = "com.aiguruapp.student"
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("market://details?id=$packageName"))
+                .apply { setPackage("com.android.vending") })
+        } catch (e: Exception) {
+            startActivity(Intent(Intent.ACTION_VIEW,
+                android.net.Uri.parse("https://play.google.com/store/apps/details?id=$packageName")))
+        }
     }
 }

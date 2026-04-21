@@ -75,6 +75,12 @@
             android:name=".HomeActivity"
             android:exported="false" />
 
+        <!-- First-launch onboarding walkthrough -->
+        <activity
+            android:name=".OnboardingActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
         <activity android:name=".LoginActivity" android:exported="false"/>
         <activity android:name=".EmailAuthActivity" android:exported="false" android:windowSoftInputMode="adjustResize"/>
         <activity android:name=".SchoolLoginActivity" android:exported="false"/>
