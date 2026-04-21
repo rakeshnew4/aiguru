@@ -232,6 +232,29 @@ def _remove_trailing_commas(text: str) -> str:
     return re.sub(r",\s*([}\]])", r"\1", text)
 
 
+def _fix_invalid_escapes(text: str) -> str:
+    """
+    Walk the raw LLM text and double any backslash that is not the start of a
+    valid JSON escape sequence.
+
+    Valid JSON escapes: \\\\ \\" \\/ \\b \\f \\n \\r \\t \\uXXXX
+    Invalid examples from LaTeX/math in LLM output: \\p (pi), \\e (epsilon),
+    \\S (Sigma), \\a (alpha) — these cause json.JSONDecodeError on large BBs.
+
+    Uses re.sub with a 2-char consuming pattern so that the second backslash
+    in a valid \\\\ escape is never re-processed.
+    """
+    import re
+    _VALID_AFTER = frozenset('"\\\/bfnrtu')
+
+    def _replacer(m: re.Match) -> str:
+        pair = m.group(0)           # always 2 chars: backslash + next char
+        return pair if pair[1] in _VALID_AFTER else ('\\\\' + pair[1:])
+
+    # re.DOTALL lets . match newline so trailing backslash edge-cases are caught
+    return re.sub(r'\\(.)', _replacer, text, flags=re.DOTALL)
+
+
 def extract_json_safe(text):
     """
     Robustly extract and parse the first top-level JSON object from text.
@@ -241,6 +264,7 @@ def extract_json_safe(text):
       - Prefix/suffix prose around the JSON
       - Nested objects / arrays / LaTeX braces inside string values
       - Trailing commas before } or ]
+      - Invalid backslash escapes from LaTeX/math in string values (e.g. \\p, \\e)
     """
     import json
     import re
@@ -260,6 +284,13 @@ def extract_json_safe(text):
     # Retry with trailing comma removal
     try:
         return json.loads(_remove_trailing_commas(stripped))
+    except json.JSONDecodeError:
+        pass
+
+    # Retry with invalid escape fix + trailing comma removal
+    # (handles large BBs with LaTeX like \pi, \alpha inside string values)
+    try:
+        return json.loads(_fix_invalid_escapes(_remove_trailing_commas(stripped)))
     except json.JSONDecodeError:
         pass
 
@@ -289,10 +320,19 @@ def extract_json_safe(text):
                 depth -= 1
                 if depth == 0:
                     candidate = stripped[start:i + 1]
-                    try:
-                        return json.loads(candidate)
-                    except json.JSONDecodeError:
-                        return json.loads(_remove_trailing_commas(candidate))
+                    # Try each strategy in order: direct → trailing commas → escape fix
+                    for attempt in (
+                        candidate,
+                        _remove_trailing_commas(candidate),
+                        _fix_invalid_escapes(_remove_trailing_commas(candidate)),
+                    ):
+                        try:
+                            return json.loads(attempt)
+                        except json.JSONDecodeError:
+                            continue
+                    raise json.JSONDecodeError(
+                        "All repair strategies failed", candidate, 0
+                    )
         i += 1
 
     raise ValueError("Unmatched braces — no complete JSON object found")
