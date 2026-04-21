@@ -369,11 +369,35 @@ def _sanitize_normal_response(text: str) -> str:
         }, ensure_ascii=False)
 
 
+def _coerce_frame(frame: dict) -> None:
+    """In-place coercion of a single BB frame's field types."""
+    dm = frame.get("duration_ms")
+    if dm is not None and not isinstance(dm, int):
+        try:
+            frame["duration_ms"] = int(dm)
+        except (ValueError, TypeError):
+            frame["duration_ms"] = 2500
+    qci = frame.get("quiz_correct_index")
+    if qci is not None and not isinstance(qci, int):
+        try:
+            frame["quiz_correct_index"] = int(qci)
+        except (ValueError, TypeError):
+            frame["quiz_correct_index"] = -1
+    if frame.get("tts_engine") not in _VALID_TTS_ENGINES:
+        frame["tts_engine"] = "gemini"
+    if frame.get("voice_role") not in _VALID_VOICE_ROLES:
+        frame["voice_role"] = "teacher"
+
+
 def _sanitize_bb_response(text: str) -> str:
     """
     Parse and re-serialize a blackboard-mode LLM JSON response.
-    Coerces field types (duration_ms → int, quiz_correct_index → int,
-    tts_engine / voice_role → valid enum values) to prevent Android crashes.
+    - Coerces field types (duration_ms → int, quiz_correct_index → int,
+      tts_engine / voice_role → valid enum values) to prevent Android crashes.
+    - Flattens nested frames: the LLM sometimes wraps actual frames inside
+      another frame object (frame.frames[]). We detect and unwrap this.
+    - Sanity-checks that the output is not dramatically smaller than the input
+      (which would indicate the parser found a wrong inner object).
     Falls back to the original text on catastrophic failure.
     """
     try:
@@ -382,29 +406,59 @@ def _sanitize_bb_response(text: str) -> str:
         if not isinstance(steps, list):
             logger.warning("BB response missing 'steps' list — returning original")
             return text
+
         for step in steps:
-            for frame in step.get("frames", []):
-                # Coerce duration_ms to int
-                dm = frame.get("duration_ms")
-                if dm is not None and not isinstance(dm, int):
-                    try:
-                        frame["duration_ms"] = int(dm)
-                    except (ValueError, TypeError):
-                        frame["duration_ms"] = 2500
-                # Coerce quiz_correct_index to int
-                qci = frame.get("quiz_correct_index")
-                if qci is not None and not isinstance(qci, int):
-                    try:
-                        frame["quiz_correct_index"] = int(qci)
-                    except (ValueError, TypeError):
-                        frame["quiz_correct_index"] = -1
-                # Validate tts_engine
-                if frame.get("tts_engine") not in _VALID_TTS_ENGINES:
-                    frame["tts_engine"] = "gemini"
-                # Validate voice_role
-                if frame.get("voice_role") not in _VALID_VOICE_ROLES:
-                    frame["voice_role"] = "teacher"
-        return json.dumps(parsed, ensure_ascii=False)
+            if not isinstance(step, dict):
+                continue
+
+            # ── Normalize step-level field names ──────────────────────────
+            # LLM sometimes outputs "step_title" instead of "title"
+            if "title" not in step and "step_title" in step:
+                step["title"] = step.pop("step_title")
+            # Ensure lang is present at step level
+            if "lang" not in step:
+                step["lang"] = "en-US"
+
+            raw_frames = step.get("frames", [])
+            if not isinstance(raw_frames, list):
+                continue
+
+            flattened = []
+            for frame in raw_frames:
+                if not isinstance(frame, dict):
+                    continue
+                # ── Flatten nested frames ──────────────────────────────────
+                # LLM sometimes outputs wrapper objects where the actual frames
+                # are inside frame["frames"]. Unwrap and process those instead.
+                nested = frame.get("frames")
+                if isinstance(nested, list) and nested:
+                    logger.warning(
+                        "BB sanitizer: unwrapping nested frames in step '%s'",
+                        step.get("title", "?"),
+                    )
+                    for inner in nested:
+                        if isinstance(inner, dict):
+                            _coerce_frame(inner)
+                            flattened.append(inner)
+                else:
+                    _coerce_frame(frame)
+                    flattened.append(frame)
+
+            step["frames"] = flattened
+
+        sanitized = json.dumps(parsed, ensure_ascii=False)
+
+        # Sanity check: if the output shrank by more than 60%, the parser
+        # likely found a small inner object — return original to be safe.
+        if len(sanitized) < len(text) * 0.4:
+            logger.warning(
+                "BB sanitizer: output (%d) is much smaller than input (%d) "
+                "— possible wrong-object parse, returning original",
+                len(sanitized), len(text),
+            )
+            return text
+
+        return sanitized
     except Exception as e:
         logger.warning("BB JSON repair failed (%s) — returning original text", e)
         return text
@@ -689,6 +743,13 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                 "Sanitizing response | mode=%s | text_len=%d | cached_tokens=%d",
                 req.mode, len(text_content), cached_tokens,
             )
+            # Save pre-sanitize BB text for post-mortem debugging
+            if req.mode == "blackboard":
+                try:
+                    with open("bb_presanitize.json", "w") as _f:
+                        _f.write(text_content)
+                except Exception:
+                    pass
             if req.mode == "blackboard":
                 text_content = _sanitize_bb_response(text_content)
             elif req.mode == "normal":

@@ -86,6 +86,12 @@ blackboard_prompt = (
     ' "WOW, I actually get this now!"\n\n'
     "Return ONLY valid JSON (no code fences, no extra text):\n"
     '{"steps": [{"title": "2-5 word heading", "image_show_confidencescore": 0.8, "image_description": "specific wikimedia search phrase", "lang": "<USE THE REQUESTED LANGUAGE TAG e.g. hi-IN or en-US>", "frames": [{"frame_type": "concept", "text": "board content max 3 lines", "highlight": ["key term"], "speech": "teacher says 1-2 sentences IN THE LANG LANGUAGE", "tts_engine": "gemini", "voice_role": "teacher", "duration_ms": 2500, "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1, "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": [], "diagram_type": "", "data": {}, "svg_elements": []}]}]}\n\n'
+    "CRITICAL OUTPUT STRUCTURE RULES:\n"
+    "- steps[] is a flat array of step objects. Each step has a flat frames[] array.\n"
+    "- frames[] items are DIRECT frame objects — NEVER nest a frames[] array inside a frame.\n"
+    "- Every frame object MUST be at steps[i].frames[j] — one and only one level of nesting.\n"
+    "- WRONG: {steps:[{frames:[{frame_type:'concept', frames:[ACTUAL_FRAME]}]}]}\n"
+    "- RIGHT:  {steps:[{title:'...', frames:[{frame_type:'concept', text:'...', speech:'...'}]}]}\n\n"
     "FRAME TYPES -- mix ALL of these for maximum engagement:\n"
     "concept    -> Core teaching: formula, definition, step, key fact. Use **bold**. Most common type.\n"
     "memory     -> Mnemonic, rhyme, acronym, or fun trick. Make it catchy and unforgettable!\n"
