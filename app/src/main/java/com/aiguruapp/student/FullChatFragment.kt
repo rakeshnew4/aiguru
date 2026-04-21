@@ -141,6 +141,9 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     private var userId = ""
     private var cachedMetadata = UserMetadata()
 
+    /** Count of successful AI answers this session — drives the rating prompt. */
+    private var sessionAnswerCount = 0
+
     // ── Modular Components ────────────────────────────────────────────────────
     private lateinit var historyRepo: ChatHistoryRepository
     private lateinit var notesRepo: NotesRepository
@@ -1481,6 +1484,8 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                         )
                         sendButton.isEnabled = true
                         showLoading(false)
+                        sessionAnswerCount++
+                        maybeShowRatingPrompt()
                         val rawResponse = accumulated.toString()
                         if (rawResponse.isNotEmpty()) {
                             val reply = TutorController.parseResponse(rawResponse)
@@ -1610,11 +1615,39 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     // ── Blackboard Nudge ──────────────────────────────────────────────────────
 
     /**
+     * Shows a non-intrusive "Enjoying AfterClassAI?" dialog after the 3rd successful answer
+     * in a session. Uses SharedPreferences to ensure it appears only once ever.
+     * Positive path → Play Store. Negative path → silently dismissed.
+     */
+    private fun maybeShowRatingPrompt() {
+        if (sessionAnswerCount != 3) return
+        val ctx = requireContext()
+        val prefs = ctx.getSharedPreferences("rating_prompt", android.content.Context.MODE_PRIVATE)
+        if (prefs.getBoolean("shown", false)) return
+        prefs.edit().putBoolean("shown", true).apply()
+
+        android.app.AlertDialog.Builder(ctx)
+            .setTitle("Enjoying AfterClassAI? ⭐")
+            .setMessage("You've already solved a few questions 🎉\nWould you like to rate us on the Play Store?")
+            .setPositiveButton("Rate Now ⭐") { _, _ ->
+                val pkg = "com.aiguruapp.student"
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("market://details?id=$pkg"))
+                        .apply { setPackage("com.android.vending") })
+                } catch (e: Exception) {
+                    startActivity(Intent(Intent.ACTION_VIEW,
+                        android.net.Uri.parse("https://play.google.com/store/apps/details?id=$pkg")))
+                }
+            }
+            .setNegativeButton("Not Now", null)
+            .show()
+    }
+
+    /**
      * Quietly draws attention to the Explain (BB) button — scrolls the message into
      * view and briefly highlights the button with a single blue flash (no animation pop).
      */
     private fun showBlackboardNudge(msg: Message) {
-        blackboardNudgeSnackbar?.dismiss()
         val bbLimits = AdminConfigRepository.resolveEffectiveLimits(
             cachedMetadata.planId, cachedMetadata.planLimits
         )
