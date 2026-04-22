@@ -13,6 +13,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowCompat
 import com.bumptech.glide.Glide
 
 /**
@@ -43,10 +44,7 @@ class FullscreenImageActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         // Full-screen black window
-        window.setFlags(
-            WindowManager.LayoutParams.FLAG_FULLSCREEN,
-            WindowManager.LayoutParams.FLAG_FULLSCREEN
-        )
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         supportActionBar?.hide()
 
         val uriStr = intent.getStringExtra(EXTRA_IMAGE_URI)
