@@ -28,10 +28,11 @@ class TasksActivity : BaseActivity() {
 
     private val tasks         = mutableListOf<Map<String, Any>>()
     private val completedIds  = mutableSetOf<String>()
-
+    private val taskProgress = mutableMapOf<String, Map<String, Any>>()
     private val userId   by lazy { SessionManager.getFirestoreUserId(this) }
     private val schoolId by lazy { SessionManager.getSchoolId(this) }
     private val grade    by lazy { SessionManager.getGrade(this) }
+    private val section  by lazy { SessionManager.getSection(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,6 +49,7 @@ class TasksActivity : BaseActivity() {
         adapter = TasksAdapter(
             tasks        = tasks,
             completedIds = completedIds,
+            taskProgress = taskProgress,
             onViewLesson = { task -> launchLesson(task) },
             onTakeQuiz   = { task -> launchQuiz(task) },
             onMarkDone   = { task -> markDone(task) }
@@ -69,11 +71,14 @@ class TasksActivity : BaseActivity() {
         loadingBar.visibility   = View.VISIBLE
         emptyState.visibility   = View.GONE
         recyclerView.visibility = View.GONE
-        // First load completed IDs, then tasks
-        FirestoreManager.loadCompletedTaskIds(
+        // First load task progress, then tasks
+        FirestoreManager.loadAllTaskProgress(
             userId    = userId,
-            onSuccess = { ids ->
-                completedIds.clear(); completedIds.addAll(ids)
+            onSuccess = { progressMap ->
+                taskProgress.clear()
+                taskProgress.putAll(progressMap)
+                completedIds.clear()
+                completedIds.addAll(progressMap.keys)
                 loadTasks()
             },
             onFailure = { loadTasks() }
@@ -84,6 +89,7 @@ class TasksActivity : BaseActivity() {
         FirestoreManager.loadTasksForSchool(
             schoolId  = schoolId,
             grade     = grade,
+            section   = section,
             onSuccess = { list ->
                 loadingBar.visibility = View.GONE
                 tasks.clear(); tasks.addAll(list); adapter.notifyDataSetChanged()
@@ -185,6 +191,7 @@ class TasksActivity : BaseActivity() {
     private class TasksAdapter(
         private val tasks:        List<Map<String, Any>>,
         private val completedIds: Set<String>,
+        private val taskProgress: Map<String, Map<String, Any>>,
         private val onViewLesson: (Map<String, Any>) -> Unit,
         private val onTakeQuiz:   (Map<String, Any>) -> Unit,
         private val onMarkDone:   (Map<String, Any>) -> Unit
@@ -216,33 +223,69 @@ class TasksActivity : BaseActivity() {
         override fun getItemCount() = tasks.size
 
         override fun onBindViewHolder(holder: VH, pos: Int) {
-            val task   = tasks[pos]
-            val type   = task["task_type"] as? String ?: "quiz"
-            val taskId = task["task_id"] as? String ?: task["id"] as? String ?: ""
-            val done   = completedIds.contains(taskId)
+            val task     = tasks[pos]
+            val type     = task["task_type"] as? String ?: "quiz"
+            val taskId   = task["task_id"] as? String ?: task["id"] as? String ?: ""
+            val progress = taskProgress[taskId]
+            val bbDone   = progress?.get("bb_completed")   == true
+            val quizDone = progress?.get("quiz_completed") == true
+            val done = when (type) {
+                "bb_lesson" -> bbDone
+                "quiz"      -> quizDone
+                "both"      -> bbDone && quizDone
+                else        -> completedIds.contains(taskId)
+            }
 
             holder.badge.text = typeLabels[type] ?: type
             holder.badge.setBackgroundColor(typeColors[type] ?: android.graphics.Color.GRAY)
             holder.title.text = task["title"] as? String ?: ""
-            val desc = task["description"] as? String ?: ""
-            holder.desc.text  = desc
-            holder.desc.visibility = if (desc.isBlank()) View.GONE else View.VISIBLE
-            val subj = task["subject"] as? String ?: ""
-            val chap = task["chapter"] as? String ?: ""
-            holder.meta.text  = if (subj.isNotBlank()) "$subj · $chap" else ""
+
+            // Show description, or BB read progress as secondary info line
+            val desc        = task["description"] as? String ?: ""
+            val stepsViewed = (progress?.get("bb_steps_viewed") as? Number)?.toInt() ?: 0
+            val totalSteps  = (progress?.get("bb_total_steps")  as? Number)?.toInt() ?: 0
+            val progressText = when {
+                desc.isNotBlank()                 -> desc
+                bbDone                            -> "📖 Lesson fully read"
+                stepsViewed > 0 && totalSteps > 0 -> "📖 Read $stepsViewed/$totalSteps steps"
+                else                              -> ""
+            }
+            holder.desc.text  = progressText
+            holder.desc.visibility = if (progressText.isBlank()) View.GONE else View.VISIBLE
+
+            // Meta line: subject · chapter · due date
+            val subj    = task["subject"]  as? String ?: ""
+            val chap    = task["chapter"]  as? String ?: ""
+            val dueDate = (task["due_date"] as? Number)?.toLong() ?: 0L
+            val metaParts = mutableListOf<String>()
+            if (subj.isNotBlank()) metaParts.add("$subj · $chap")
+            if (dueDate > 0L && !done) {
+                val dayMs = 86_400_000L
+                val diff  = dueDate - System.currentTimeMillis()
+                metaParts.add(when {
+                    diff < 0        -> "⚠️ Overdue"
+                    diff < dayMs    -> "📅 Due today"
+                    diff < 2*dayMs  -> "📅 Due tomorrow"
+                    else            -> "📅 Due in ${(diff / dayMs).toInt()}d"
+                })
+            }
+            holder.meta.text  = metaParts.joinToString("  •  ")
 
             // Completed state
             holder.completedBadge.visibility = if (done) View.VISIBLE else View.GONE
             holder.itemView.alpha = if (done) 0.6f else 1.0f
 
             // Show relevant action buttons
-            val hasLesson = (type == "bb_lesson" || type == "both")
-            val hasQuiz   = (type == "quiz"      || type == "both") &&
-                            (task["quiz_json"] as? String)?.isNotBlank() == true
+            val hasLesson = type == "bb_lesson" || type == "both"
+            val hasQuiz   = (type == "quiz" || type == "both") &&
+                            ((task["quiz_json"] as? String)?.isNotBlank() == true ||
+                             (task["quiz_id"]   as? String)?.isNotBlank() == true)
+            // For "both" tasks: quiz is locked until the BB lesson has been read
+            val quizUnlocked = type != "both" || bbDone
 
-            holder.viewLessonBtn.visibility = if (hasLesson && !done) View.VISIBLE else View.GONE
-            holder.takeQuizBtn.visibility   = if (hasQuiz   && !done) View.VISIBLE else View.GONE
-            holder.markDoneBtn.visibility   = if (!done && (hasLesson || hasQuiz)) View.VISIBLE else View.GONE
+            holder.viewLessonBtn.visibility = if (hasLesson && !bbDone)                 View.VISIBLE else View.GONE
+            holder.takeQuizBtn.visibility   = if (hasQuiz && !quizDone && quizUnlocked) View.VISIBLE else View.GONE
+            holder.markDoneBtn.visibility   = if (!done && (hasLesson || hasQuiz))       View.VISIBLE else View.GONE
 
             holder.viewLessonBtn.setOnClickListener { onViewLesson(task) }
             holder.takeQuizBtn.setOnClickListener   { onTakeQuiz(task) }

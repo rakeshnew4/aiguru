@@ -1234,7 +1234,11 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
             navigate { startActivity(Intent(this, UserProfileActivity::class.java)) }
         }
         findViewById<LinearLayout>(R.id.drawerItemProgress).setOnClickListener {
-            navigate { startActivity(Intent(this, ProgressDashboardActivity::class.java)) }
+            navigate {
+                val target = if (SessionManager.isParent(this)) ParentDashboardActivity::class.java
+                else ProgressDashboardActivity::class.java
+                startActivity(Intent(this, target))
+            }
         }
         findViewById<LinearLayout>(R.id.drawerItemTeacher).setOnClickListener {
             navigate { startActivity(Intent(this, TeacherDashboardActivity::class.java)) }

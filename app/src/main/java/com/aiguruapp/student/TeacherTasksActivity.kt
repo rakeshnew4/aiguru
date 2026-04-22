@@ -53,6 +53,7 @@ class TeacherTasksActivity : BaseActivity() {
     private lateinit var taskChapterInput: TextInputEditText
     private lateinit var taskSchoolInput: TextInputEditText
     private lateinit var taskGradeInput: TextInputEditText
+    private lateinit var taskSectionInput: TextInputEditText
     private lateinit var taskTypeGroup: RadioGroup
     private lateinit var bbTopicLayout: View
     private lateinit var bbTopicInput: TextInputEditText
@@ -88,8 +89,9 @@ class TeacherTasksActivity : BaseActivity() {
         taskDescInput        = findViewById(R.id.taskDescInput)
         taskSubjectInput     = findViewById(R.id.taskSubjectInput)
         taskChapterInput     = findViewById(R.id.taskChapterInput)
-        taskSchoolInput      = findViewById(R.id.taskSchoolInput)
-        taskGradeInput       = findViewById(R.id.taskGradeInput)
+        taskSchoolInput        = findViewById(R.id.taskSchoolInput)
+        taskGradeInput        = findViewById(R.id.taskGradeInput)
+        taskSectionInput      = findViewById(R.id.taskSectionInput)
         taskTypeGroup        = findViewById(R.id.taskTypeGroup)
         bbTopicLayout        = findViewById(R.id.bbTopicLayout)
         bbTopicInput         = findViewById(R.id.bbTopicInput)
@@ -153,6 +155,9 @@ class TeacherTasksActivity : BaseActivity() {
         val sessionGrade  = SessionManager.getGrade(this)
         if (sessionSchool.isNotBlank()) taskSchoolInput.setText(sessionSchool)
         if (sessionGrade.isNotBlank())  taskGradeInput.setText(sessionGrade)
+        // Pre-fill section from session if available
+        val sessionSection = SessionManager.getSection(this)
+        if (sessionSection.isNotBlank()) taskSectionInput.setText(sessionSection)
 
         findViewById<MaterialButton>(R.id.createTaskButton).setOnClickListener {
             createPanel.visibility = if (createPanel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
@@ -244,6 +249,7 @@ class TeacherTasksActivity : BaseActivity() {
             teacherId   = userId,
             schoolId    = school,
             grade       = taskGradeInput.text.toString().trim(),
+            section     = taskSectionInput.text.toString().trim(),
             title       = title,
             description = taskDescInput.text.toString().trim(),
             taskType    = taskType,
@@ -271,6 +277,7 @@ class TeacherTasksActivity : BaseActivity() {
         taskTitleInput.setText(""); taskDescInput.setText("")
         taskSubjectInput.setText(""); taskChapterInput.setText("")
         bbTopicInput.setText(""); bbTopicInput.isEnabled = true
+        taskSectionInput.setText("")
         generatedQuizJson = ""; selectedBbCacheId = ""; selectedQuizId = ""; quizStatusText.text = ""
     }
 

@@ -30,6 +30,8 @@ object SessionManager {
     private const val KEY_PREF_LANG = "pref_lang"
     private const val KEY_GUEST_QUOTA_USED = "guest_quota_used_ms"
     private const val KEY_IS_TEACHER = "is_teacher"
+    private const val KEY_IS_PARENT = "is_parent"
+    private const val KEY_SECTION = "section"
 
     private fun prefs(context: Context): SharedPreferences =
         context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -58,6 +60,8 @@ object SessionManager {
             // Clear any previous plan on new login
             putString(KEY_PLAN_ID, "")
             putString(KEY_PLAN_NAME, "")
+            putBoolean(KEY_IS_TEACHER, false)
+            putBoolean(KEY_IS_PARENT, false)
             apply()
         }
     }
@@ -99,8 +103,15 @@ object SessionManager {
     fun isTeacher(context: Context): Boolean =
         prefs(context).getBoolean(KEY_IS_TEACHER, false)
 
+    fun isParent(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_IS_PARENT, false)
+
     fun saveIsTeacher(context: Context, teacher: Boolean) {
         prefs(context).edit().putBoolean(KEY_IS_TEACHER, teacher).apply()
+    }
+
+    fun saveIsParent(context: Context, parent: Boolean) {
+        prefs(context).edit().putBoolean(KEY_IS_PARENT, parent).apply()
     }
 
     fun hasSubscription(context: Context): Boolean =
@@ -164,6 +175,12 @@ object SessionManager {
         prefs(context).edit().putString(KEY_GRADE, grade).apply()
     }
 
+    fun getSection(context: Context): String = prefs(context).getString(KEY_SECTION, "") ?: ""
+
+    fun saveSection(context: Context, section: String) {
+        prefs(context).edit().putString(KEY_SECTION, section).apply()
+    }
+
     fun saveStudentName(context: Context, studentName: String) {
         prefs(context).edit().putString(KEY_STUDENT_NAME, studentName.ifBlank { "Student" }).apply()
     }
@@ -222,6 +239,7 @@ object SessionManager {
             schoolId  = getSchoolId(context),
             schoolName = getSchoolName(context),
             grade     = getGrade(context),
+            section   = getSection(context),
             planId    = getPlanId(context).ifBlank { "free" },
             planName  = getPlanName(context).ifBlank { "Free" },
             createdAt = prefs.getLong("metadata_created", now),

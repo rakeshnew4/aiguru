@@ -5,6 +5,7 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.app.AlertDialog
 import android.content.ContentValues
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
@@ -55,6 +56,7 @@ import com.aiguruapp.student.models.UserMetadata
 import com.aiguruapp.student.utils.FeedbackManager
 import com.aiguruapp.student.utils.MediaManager
 import com.aiguruapp.student.utils.PromptRepository
+import com.aiguruapp.student.utils.SessionManager
 import com.aiguruapp.student.utils.TTSCallback
 import com.aiguruapp.student.utils.TextToSpeechManager
 import com.aiguruapp.student.utils.VoiceManager
@@ -138,6 +140,8 @@ class BlackboardActivity : AppCompatActivity() {
     private var steps            = listOf<BlackboardGenerator.BlackboardStep>()
     private var currentStepIdx   = 0
     private var currentFrameIdx  = 0
+    private var maxStepReached   = -1   // highest step index visited (for task progress tracking)
+    private var bbStartTimeMs    = 0L   // when lesson content first became visible
     private var isPaused         = false
     private var typeAnimator:    ValueAnimator? = null
     private var seekBarAnimator: ValueAnimator? = null
@@ -366,11 +370,11 @@ class BlackboardActivity : AppCompatActivity() {
             aiTtsEngine.selfHostedUrl = AdminConfigRepository.ttsSelfHostedUrl()
         }
 
-        // Read user fields directly from Firestore (raw map access, same as HomeActivity)
-        // to avoid toObject() deserialization issues with unknown/renamed fields.
+        // Read user fields directly from Firestore — force SERVER source so the quota counter
+        // is never served from the local disk cache (which may be stale from previous sessions).
         com.google.firebase.firestore.FirebaseFirestore.getInstance()
             .collection("users_table").document(userId ?: "")
-            .get()
+            .get(com.google.firebase.firestore.Source.SERVER)
             .addOnSuccessListener { doc ->
                 if (doc.exists()) {
                     val planId         = doc.getString("planId") ?: "free"
@@ -613,9 +617,10 @@ class BlackboardActivity : AppCompatActivity() {
                         },
                         onSuccess = { generated ->
                             if (recordSession && !userId.isNullOrBlank()) {
+                                // Server already incremented the quota counter via check_and_record_quota().
+                                // Keep local metadata in sync for accurate UI display — no Firestore write.
                                 val isNewQuotaDay = cachedMetadata.questionsUpdatedAt > 0L &&
                                     PlanEnforcer.isNewQuotaDay(cachedMetadata.questionsUpdatedAt)
-                                PlanEnforcer.recordQuestionAsked(userId, isBlackboard = true, previousUpdatedAt = cachedMetadata.questionsUpdatedAt)
                                 cachedMetadata = cachedMetadata.copy(
                                     bbSessionsToday = if (isNewQuotaDay) 1 else cachedMetadata.bbSessionsToday + 1,
                                     questionsUpdatedAt = System.currentTimeMillis()
@@ -651,21 +656,28 @@ class BlackboardActivity : AppCompatActivity() {
                                 showFrame(0, 0)
                                 incrementLocalBbCounter()
                                 showFirstTimerTipsIfNeeded()
-                                val taskId = intent.getStringExtra(EXTRA_TASK_ID).orEmpty()
-                                if (taskId.isNotBlank() && !userId.isNullOrBlank()) {
-                                    val studentName = com.aiguruapp.student.utils.SessionManager.getStudentName(this@BlackboardActivity)
-                                    FirestoreManager.markTaskBbComplete(
-                                        userId      = userId,
-                                        taskId      = taskId,
-                                        studentName = studentName
-                                    )
+                                // Record lesson start time — actual read tracking happens step-by-step in showFrame()
+                                if (!isTeacherMode && intent.hasExtra(EXTRA_TASK_ID)) {
+                                    bbStartTimeMs = System.currentTimeMillis()
                                 }
                             }
                         },
                         onError = { err ->
                             lifecycleScope.launch(Dispatchers.Main) {
-                                loadingText.text = "Couldn't build lesson. Please try again."
-                                android.util.Log.e("Blackboard", "Chunk error: $err")
+                                if (err.startsWith("QUOTA_EXCEEDED:")) {
+                                    loadingText.text = err.removePrefix("QUOTA_EXCEEDED:")
+                                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                        startActivity(
+                                            Intent(
+                                                this@BlackboardActivity,
+                                                SubscriptionActivity::class.java
+                                            )
+                                            .putExtra("schoolId", SessionManager.getSchoolId(this@BlackboardActivity)))
+                                    }, 1500)
+                                } else {
+                                    loadingText.text = "Couldn't build lesson. Please try again."
+                                    android.util.Log.e("Blackboard", "Chunk error: $err")
+                                }
                             }
                         }
                     )
@@ -699,8 +711,16 @@ class BlackboardActivity : AppCompatActivity() {
                         },
                         onError = { e ->
                             lifecycleScope.launch(Dispatchers.Main) {
-                                loadingText.text = "Couldn't build lesson. Please try again."
-                                android.util.Log.e("Blackboard", "Generation error: $e")
+                                if (e.startsWith("QUOTA_EXCEEDED:")) {
+                                    loadingText.text = e.removePrefix("QUOTA_EXCEEDED:")
+                                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                        startActivity(Intent(this@BlackboardActivity, SubscriptionActivity::class.java)
+                                            .putExtra("schoolId", SessionManager.getSchoolId(this@BlackboardActivity)))
+                                    }, 1500)
+                                } else {
+                                    loadingText.text = "Couldn't build lesson. Please try again."
+                                    android.util.Log.e("Blackboard", "Generation error: $e")
+                                }
                             }
                         }
                     )
@@ -768,6 +788,19 @@ class BlackboardActivity : AppCompatActivity() {
                 },
                 onError = { err ->
                     android.util.Log.w("Blackboard", "Next chunk error: $err")
+                    if (err.startsWith("QUOTA_EXCEEDED:")) {
+                        lifecycleScope.launch(Dispatchers.Main) {
+                            android.widget.Toast.makeText(
+                                this@BlackboardActivity,
+                                err.removePrefix("QUOTA_EXCEEDED:"),
+                                android.widget.Toast.LENGTH_LONG
+                            ).show()
+                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                startActivity(Intent(this@BlackboardActivity, SubscriptionActivity::class.java)
+                                    .putExtra("schoolId", SessionManager.getSchoolId(this@BlackboardActivity)))
+                            }, 1500)
+                        }
+                    }
                     isGeneratingNextChunk = false
                 }
             )
@@ -896,15 +929,9 @@ class BlackboardActivity : AppCompatActivity() {
                         setupBoard()
                         preloadUpcoming(0, 0, count = 3)
                         showFrame(0, 0)
-                        // Mark BB progress on task if launched from a task
-                        val taskId = intent.getStringExtra(EXTRA_TASK_ID).orEmpty()
-                        if (taskId.isNotBlank() && !userId.isNullOrBlank()) {
-                            val studentName = com.aiguruapp.student.utils.SessionManager.getStudentName(this@BlackboardActivity)
-                            com.aiguruapp.student.firestore.FirestoreManager.markTaskBbComplete(
-                                userId      = userId,
-                                taskId      = taskId,
-                                studentName = studentName
-                            )
+                        // Record lesson start time — actual read tracking happens step-by-step in showFrame()
+                        if (!isTeacherMode && intent.hasExtra(EXTRA_TASK_ID)) {
+                            bbStartTimeMs = System.currentTimeMillis()
                         }
                     }
                 },
@@ -1093,6 +1120,7 @@ class BlackboardActivity : AppCompatActivity() {
         typeAnimator?.cancel()
         handWriter.visibility = View.INVISIBLE
         updateCounterAndDots()
+        trackTaskBbProgress(stepIdx)
 
         // Trigger next chunk when 2 steps from the end
         if (!isGeneratingNextChunk && steps.size < totalStepsTarget && stepIdx >= steps.size - 2) {
@@ -1802,6 +1830,32 @@ class BlackboardActivity : AppCompatActivity() {
         bbProgressHintTv.visibility = if (nearEnd) View.VISIBLE else View.GONE
         if (nearEnd) bbProgressHintTv.text =
             if (currentStepIdx == steps.size - 1) "🎓 Replay?" else "🔥 Almost done!"
+    }
+
+    /**
+     * Called on each forward step-navigation to incrementally save BB read progress for
+     * task homework. Only fires when the student moves to a step they haven't reached yet,
+     * so back-navigation doesn't reset progress. Auto-marks bb_completed when last step reached.
+     */
+    private fun trackTaskBbProgress(stepIdx: Int) {
+        if (isTeacherMode) return
+        val tid = intent.getStringExtra(EXTRA_TASK_ID).orEmpty()
+        val uid = intent.getStringExtra(EXTRA_USER_ID).orEmpty()
+        if (tid.isBlank() || uid.isBlank()) return
+        if (stepIdx <= maxStepReached) return   // only track forward navigation
+        maxStepReached = stepIdx
+        val totalSteps  = maxOf(if (steps.size >= totalStepsTarget) totalStepsTarget else steps.size, 1)
+        val durationMs  = if (bbStartTimeMs > 0L) System.currentTimeMillis() - bbStartTimeMs else 0L
+        val isCompleted = stepIdx >= totalSteps - 1
+        com.aiguruapp.student.firestore.FirestoreManager.saveTaskBbProgress(
+            userId      = uid,
+            taskId      = tid,
+            stepsViewed = stepIdx + 1,
+            totalSteps  = totalSteps,
+            durationMs  = durationMs,
+            isCompleted = isCompleted,
+            studentName = com.aiguruapp.student.utils.SessionManager.getStudentName(this)
+        )
     }
 
     // ── Frame text rendering ──────────────────────────────────────────────────

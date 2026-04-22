@@ -1240,11 +1240,13 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             return
         }
 
-        // Read usage counters directly from users_table (same approach as HomeActivity).
-        // Avoids toObject() deserialization issues — just raw field access.
+        // Read usage counters directly from users_table — force SERVER source so we
+        // never read a stale local-cache value after a rapid sequence of messages.
+        // Source.DEFAULT would serve the Firestore disk cache, which may not yet reflect
+        // the FieldValue.increment() from the previous message, letting bypasses through.
         com.google.firebase.firestore.FirebaseFirestore.getInstance()
             .collection("users_table").document(userId)
-            .get()
+            .get(com.google.firebase.firestore.Source.SERVER)
             .addOnSuccessListener { doc ->
                 if (doc.exists()) {
                     val chatToday      = doc.getLong("chat_questions_today")?.toInt() ?: 0
@@ -1488,13 +1490,11 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                                 tokensUpdatedAt = System.currentTimeMillis()
                             )
                         }
-                        // Increment question counter in-memory and Firestore
-                        // Guard against day-rollover: if it's a new UTC day, reset to 1 instead
-                        // of adding to yesterday's stale count (which would falsely trigger the limit)
+                        // Server already incremented the quota counter via check_and_record_quota().
+                        // Keep local metadata in sync for accurate UI display — no Firestore write.
                         val isNewQuotaDay = cachedMetadata.questionsUpdatedAt > 0L &&
                             PlanEnforcer.isNewQuotaDay(cachedMetadata.questionsUpdatedAt)
-                        PlanEnforcer.recordQuestionAsked(userId, isBlackboard = false, previousUpdatedAt = cachedMetadata.questionsUpdatedAt)
-                        
+
                         // GUEST: Record usage in /devices collection
                         if (isGuest) {
                             PlanEnforcer.recordGuestUsage(userIdOrDeviceId, isBlackboard = false)
@@ -1594,7 +1594,22 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                 }
 
                 val onError: (String) -> Unit = { err ->
-                    act.runOnUiThread { sendButton.isEnabled = true; showLoading(false); showError("Error: $err") }
+                    act.runOnUiThread {
+                        sendButton.isEnabled = true
+                        showLoading(false)
+                        if (err.startsWith("QUOTA_EXCEEDED:")) {
+                            // Server returned HTTP 429 — quota exhausted
+                            showError(err.removePrefix("QUOTA_EXCEEDED:"))
+                            Handler(Looper.getMainLooper()).postDelayed({
+                                startActivity(
+                                    Intent(ctx, SubscriptionActivity::class.java)
+                                        .putExtra("schoolId", SessionManager.getSchoolId(ctx))
+                                )
+                            }, 1500)
+                        } else {
+                            showError("Error: $err")
+                        }
+                    }
                 }
 
                 val client = buildAiClient()

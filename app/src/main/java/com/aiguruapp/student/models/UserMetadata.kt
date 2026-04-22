@@ -30,6 +30,9 @@ data class UserMetadata(
     @get:PropertyName("grade")
     val grade: String = "",  // "8th", "9th", etc.
 
+    @get:PropertyName("section")
+    val section: String = "",
+
     // ── Subscription / plan ──────────────────────────────────────
     @get:PropertyName("planId")
     val planId: String = "free",

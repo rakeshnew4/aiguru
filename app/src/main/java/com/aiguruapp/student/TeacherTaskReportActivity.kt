@@ -97,8 +97,17 @@ class TeacherTaskReportActivity : BaseActivity() {
         val bbDone   = completions.count { it["bb_completed"]   == true }
         val quizDone = completions.count { it["quiz_completed"] == true }
         val bothDone = completions.count { it["bb_completed"] == true && it["quiz_completed"] == true }
-        statBbDone.text   = "$bbDone\n🎓 BB Done"
-        statQuizDone.text = "$quizDone\n🧠 Quiz Done"
+        val quizScores = completions
+            .filter { it["quiz_completed"] == true }
+            .mapNotNull { c ->
+                val s = (c["quiz_score"] as? Number)?.toInt() ?: return@mapNotNull null
+                val t = (c["quiz_total"]  as? Number)?.toInt() ?: return@mapNotNull null
+                if (t > 0) s * 100 / t else null
+            }
+        val avgScore = if (quizScores.isEmpty()) -1 else quizScores.average().toInt()
+        statBbDone.text   = "$bbDone\n🏃‍ BB Read"
+        statQuizDone.text = if (avgScore >= 0) "$quizDone\n🧠 Quiz\nAvg $avgScore%"
+                            else "$quizDone\n🧠 Quiz Done"
         statBothDone.text = "$bothDone\n✅ Both Done"
     }
 
@@ -158,10 +167,29 @@ class TeacherTaskReportActivity : BaseActivity() {
 
             holder.name.text = name
 
-            // BB badge
-            val showBb = taskType == "bb_lesson" || taskType == "both"
-            holder.bbBadge.visibility = if (showBb && bbDone) View.VISIBLE else View.GONE
-            holder.bbBadge.backgroundTintList = android.content.res.ColorStateList.valueOf(bbColor)
+            // BB badge — shows full read ✓, or partial progress (orange), or hidden
+            val showBb  = taskType == "bb_lesson" || taskType == "both"
+            val bbSteps = (item["bb_steps_viewed"] as? Number)?.toInt() ?: 0
+            val bbTotal = (item["bb_total_steps"]  as? Number)?.toInt() ?: 0
+            if (showBb) {
+                holder.bbBadge.visibility = View.VISIBLE
+                when {
+                    bbDone              -> {
+                        holder.bbBadge.text = "📚 Read ✓"
+                        holder.bbBadge.backgroundTintList =
+                            android.content.res.ColorStateList.valueOf(bbColor)
+                    }
+                    bbSteps > 0 && bbTotal > 0 -> {
+                        holder.bbBadge.text = "📖 $bbSteps/$bbTotal steps"
+                        holder.bbBadge.backgroundTintList =
+                            android.content.res.ColorStateList.valueOf(
+                                android.graphics.Color.parseColor("#FF9800"))
+                    }
+                    else -> holder.bbBadge.visibility = View.GONE
+                }
+            } else {
+                holder.bbBadge.visibility = View.GONE
+            }
 
             // Quiz badge
             val showQuiz = taskType == "quiz" || taskType == "both"

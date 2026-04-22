@@ -121,7 +121,10 @@
         <activity android:name=".FullscreenImageActivity" android:exported="false"
             android:theme="@style/Theme.AIGuru.Fullscreen"/>
         <activity android:name=".ProgressDashboardActivity" android:exported="false"/>
+        <activity android:name=".ParentDashboardActivity" android:exported="false"/>
         <activity android:name=".TeacherDashboardActivity" android:exported="false"/>
+        <!-- School Admin Panel: shows teacher list and school engagement stats -->
+        <activity android:name=".SchoolAdminActivity" android:exported="false"/>
         <!-- Notes viewer (per-chapter student notes) -->
         <activity android:name=".notes.NotesActivity"
             android:exported="false"

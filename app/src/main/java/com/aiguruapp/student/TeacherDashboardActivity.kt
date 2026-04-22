@@ -12,6 +12,7 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.aiguruapp.student.firestore.FirestoreManager
 import com.aiguruapp.student.firestore.StudentStatsManager
 import com.aiguruapp.student.models.School
 import com.aiguruapp.student.models.StudentStats
@@ -69,6 +70,12 @@ class TeacherDashboardActivity : BaseActivity() {
         findViewById<MaterialButton>(R.id.btnSavedContent).setOnClickListener {
             startActivity(Intent(this, TeacherSavedContentActivity::class.java))
         }
+        findViewById<MaterialButton>(R.id.btnSchoolAdmin).setOnClickListener {
+            startActivity(Intent(this, SchoolAdminActivity::class.java))
+        }
+
+        // Load attendance summary
+        loadAttendanceSummary()
     }
 
     private fun setupDropdowns() {
@@ -335,6 +342,31 @@ class TeacherDashboardActivity : BaseActivity() {
         mastery >= 75 -> Color.parseColor("#2E7D32")
         mastery >= 40 -> Color.parseColor("#E65100")
         else          -> Color.parseColor("#B71C1C")
+    }
+
+    private fun loadAttendanceSummary() {
+        val schoolId = SessionManager.getSchoolId(this)
+        if (schoolId.isBlank()) return
+
+        val tvAttendance = findViewById<TextView>(R.id.tvAttendanceSummary)
+        tvAttendance.text = "Loading..."
+
+        FirestoreManager.getSchoolEngagementToday(
+            schoolId = schoolId,
+            grade = "",  // All grades
+            onSuccess = { stats ->
+                runOnUiThread {
+                    val activeToday = stats["activeToday"] as? Int ?: 0
+                    val totalStudents = stats["totalStudents"] as? Int ?: 0
+                    tvAttendance.text = "$activeToday of $totalStudents students active today"
+                }
+            },
+            onFailure = { _ ->
+                runOnUiThread {
+                    tvAttendance.text = "Unable to load"
+                }
+            }
+        )
     }
 
     private fun showLoading() {

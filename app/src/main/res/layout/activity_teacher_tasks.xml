@@ -191,7 +191,20 @@
 
             </LinearLayout>
 
-            <!-- Task type selector -->
+            <!-- Section row (class division like A, B, C) -->
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="10dp"
+                android:hint="Section / Division (optional — e.g. A, B)">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/taskSectionInput"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:singleLine="true"
+                    android:inputType="textCapCharacters" />
+            </com.google.android.material.textfield.TextInputLayout>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

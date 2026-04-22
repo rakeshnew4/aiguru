@@ -34,9 +34,11 @@ class SchoolJoinActivity : BaseActivity() {
     private lateinit var etUsername: TextInputEditText
     private lateinit var etPassword: TextInputEditText
     private lateinit var etStudentName: TextInputEditText
+    private lateinit var etSection: TextInputEditText
     private lateinit var tvBenefitsBanner: android.widget.TextView
     private lateinit var cardBenefitsBanner: View
     private lateinit var btnRoleStudent: MaterialButton
+    private lateinit var btnRoleParent: MaterialButton
     private lateinit var btnRoleTeacher: MaterialButton
     private lateinit var btnJoin: MaterialButton
     private lateinit var btnSkip: MaterialButton
@@ -44,6 +46,7 @@ class SchoolJoinActivity : BaseActivity() {
 
     private var matchedSchool: School? = null
     private var isTeacherMode = false
+    private var isParentMode = false
     private var allSchools: List<School> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,9 +57,11 @@ class SchoolJoinActivity : BaseActivity() {
         etUsername       = findViewById(R.id.etUsername)
         etPassword       = findViewById(R.id.etPassword)
         etStudentName    = findViewById(R.id.etStudentName)
+        etSection        = findViewById(R.id.etSection)
         tvBenefitsBanner = findViewById(R.id.tvBenefitsBanner)
         cardBenefitsBanner = findViewById(R.id.cardBenefitsBanner)
         btnRoleStudent   = findViewById(R.id.btnRoleStudent)
+        btnRoleParent    = findViewById(R.id.btnRoleParent)
         btnRoleTeacher   = findViewById(R.id.btnRoleTeacher)
         btnJoin          = findViewById(R.id.btnJoinSchool)
         btnSkip          = findViewById(R.id.btnSkipSchool)
@@ -84,10 +89,17 @@ class SchoolJoinActivity : BaseActivity() {
         updateRoleUI()
         btnRoleStudent.setOnClickListener {
             isTeacherMode = false
+            isParentMode = false
+            updateRoleUI()
+        }
+        btnRoleParent.setOnClickListener {
+            isTeacherMode = false
+            isParentMode = true
             updateRoleUI()
         }
         btnRoleTeacher.setOnClickListener {
             isTeacherMode = true
+            isParentMode = false
             updateRoleUI()
         }
     }
@@ -98,9 +110,16 @@ class SchoolJoinActivity : BaseActivity() {
         if (isTeacherMode) {
             btnRoleTeacher.setBackgroundColor(purple); btnRoleTeacher.setTextColor(white)
             btnRoleStudent.setBackgroundColor(white);  btnRoleStudent.setTextColor(purple)
+            btnRoleParent.setBackgroundColor(white);   btnRoleParent.setTextColor(purple)
             btnJoin.text = "Join as Teacher"
+        } else if (isParentMode) {
+            btnRoleParent.setBackgroundColor(purple);  btnRoleParent.setTextColor(white)
+            btnRoleStudent.setBackgroundColor(white);  btnRoleStudent.setTextColor(purple)
+            btnRoleTeacher.setBackgroundColor(white);  btnRoleTeacher.setTextColor(purple)
+            btnJoin.text = "Join as Parent"
         } else {
             btnRoleStudent.setBackgroundColor(purple); btnRoleStudent.setTextColor(white)
+            btnRoleParent.setBackgroundColor(white);   btnRoleParent.setTextColor(purple)
             btnRoleTeacher.setBackgroundColor(white);  btnRoleTeacher.setTextColor(purple)
             btnJoin.text = "Join School"
         }
@@ -152,6 +171,7 @@ class SchoolJoinActivity : BaseActivity() {
                             studentName = name
                         )
                         SessionManager.saveIsTeacher(this, true)
+                        SessionManager.saveIsParent(this, false)
                         onTeacherJoinSuccess(school)
                     }
                 },
@@ -189,7 +209,17 @@ class SchoolJoinActivity : BaseActivity() {
                                 studentName = displayName
                             )
                             SessionManager.saveIsTeacher(this, false)
-                            onJoinSuccess(school, username)
+                            SessionManager.saveIsParent(this, isParentMode)
+                            val gradeFromRoster = (doc.getString("grade") ?: "").trim()
+                            if (gradeFromRoster.isNotBlank()) SessionManager.saveGrade(this, gradeFromRoster)
+
+                            // Save section from input, or fallback to roster section
+                            val sectionInput = etSection.text.toString().trim()
+                            val sectionFromRoster = (doc.getString("section") ?: "").trim()
+                            val section = if (sectionInput.isNotBlank()) sectionInput else sectionFromRoster
+                            if (section.isNotBlank()) SessionManager.saveSection(this, section)
+
+                            if (isParentMode) onParentJoinSuccess(school) else onJoinSuccess(school, username)
                         } else {
                             Toast.makeText(this, "Incorrect password. Check with your teacher.", Toast.LENGTH_LONG).show()
                         }
@@ -213,6 +243,20 @@ class SchoolJoinActivity : BaseActivity() {
         FirestoreManager.saveUserMetadata(meta)
         Toast.makeText(this, "✅ Joined ${school.name}!", Toast.LENGTH_SHORT).show()
         goHome()
+    }
+
+    private fun onParentJoinSuccess(school: School) {
+        val freePlan = school.plans.firstOrNull { it.isFree }
+        if (freePlan != null) {
+            SessionManager.savePlan(this, freePlan.id, freePlan.name)
+        }
+        val meta = SessionManager.buildUserMetadata(this)
+        FirestoreManager.saveUserMetadata(meta)
+        Toast.makeText(this, "✅ Parent view enabled for ${school.name}", Toast.LENGTH_SHORT).show()
+        startActivity(Intent(this, ParentDashboardActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        })
+        finish()
     }
 
     private fun onTeacherJoinSuccess(school: School) {

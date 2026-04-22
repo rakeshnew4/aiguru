@@ -791,6 +791,23 @@ def _status_frame(message: str, progress: int) -> str:
 
 @router.post("/chat-stream")
 async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
+
+    # ── Server-side quota gate ────────────────────────────────────────────────
+    # Runs BEFORE the stream starts so the client gets a clean HTTP 429 (not an
+    # error buried inside an SSE payload) when the daily limit is reached.
+    # The Android client removed its own Firestore writes; the server is now the
+    # single source of truth for usage counters.
+    _uid = req.user_id or auth.uid
+    if _uid and _uid != "guest_user":
+        _mode_type = "blackboard" if req.mode == "blackboard" else "chat"
+        _allowed, _quota_reason = await asyncio.get_event_loop().run_in_executor(
+            None, user_service.check_and_record_quota, _uid, _mode_type
+        )
+        if not _allowed:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=429, detail=_quota_reason)
+    # ─────────────────────────────────────────────────────────────────────────
+
     async def generator():
         try:
             # Log chat event (fire-and-forget)

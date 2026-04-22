@@ -100,11 +100,11 @@
 
                 </com.google.android.material.card.MaterialCardView>
 
-                <!-- Student / Teacher role toggle -->
+                <!-- Student / Parent / Teacher role toggle -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="I am a…"
+                    android:text="I am a..."
                     android:textSize="13sp"
                     android:textColor="@color/colorTextSecondary"
                     android:layout_marginBottom="8dp" />
@@ -120,22 +120,34 @@
                         android:layout_width="0dp"
                         android:layout_height="40dp"
                         android:layout_weight="1"
-                        android:text="👨‍🎓 Student"
+                        android:text="Student"
                         android:textAllCaps="false"
-                        android:textSize="13sp"
-                        android:layout_marginEnd="8dp"
+                        android:textSize="12sp"
+                        android:layout_marginEnd="6dp"
                         app:cornerRadius="20dp"
                         app:backgroundTint="@color/colorPrimary"
                         android:textColor="#FFFFFF" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnRoleParent"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_weight="1"
+                        android:text="Parent"
+                        android:textAllCaps="false"
+                        android:textSize="12sp"
+                        android:layout_marginEnd="6dp"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        app:cornerRadius="20dp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnRoleTeacher"
                         android:layout_width="0dp"
                         android:layout_height="40dp"
                         android:layout_weight="1"
-                        android:text="👩‍🏫 Teacher"
+                        android:text="Teacher"
                         android:textAllCaps="false"
-                        android:textSize="13sp"
+                        android:textSize="12sp"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         app:cornerRadius="20dp" />
 
@@ -196,22 +208,43 @@
 
                 </com.google.android.material.textfield.TextInputLayout>
 
-                <!-- Optional: school-assigned student ID / roll number -->
-                <com.google.android.material.textfield.TextInputLayout
+                <!-- Optional: school-assigned student ID / roll number + section row -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Student ID / Roll No. (optional)"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:orientation="horizontal"
                     android:layout_marginBottom="20dp">
 
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etStudentId"
-                        android:layout_width="match_parent"
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:inputType="text"
-                        android:maxLength="30" />
+                        android:layout_weight="1.5"
+                        android:hint="Student ID / Roll No. (optional)"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        android:layout_marginEnd="8dp">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etStudentId"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="text"
+                            android:maxLength="30" />
+                    </com.google.android.material.textfield.TextInputLayout>
 
-                </com.google.android.material.textfield.TextInputLayout>
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:hint="Section (e.g. A)"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/etSection"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textCapCharacters"
+                            android:maxLength="5" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                </LinearLayout>
 
                 <!-- Join button -->
                 <com.google.android.material.button.MaterialButton

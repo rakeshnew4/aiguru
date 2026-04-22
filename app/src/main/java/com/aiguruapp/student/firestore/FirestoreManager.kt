@@ -894,6 +894,7 @@ object FirestoreManager {
         bbCacheId: String = "",     // NEW: reference to bb_cache/{id}
         quizId: String = "",        // NEW: reference to quizzes/{id}
         dueDate: Long = 0L,         // NEW: optional due date (epoch ms, 0 = no deadline)
+        section: String = "",       // NEW: class section/division e.g. "A", "B" (empty = all sections)
         onSuccess: (String) -> Unit = {},
         onFailure: (Exception?) -> Unit = {}
     ) {
@@ -916,6 +917,7 @@ object FirestoreManager {
         if (bbCacheId.isNotBlank()) data["bb_cache_id"] = bbCacheId
         if (quizId.isNotBlank())    data["quiz_id"]     = quizId
         if (dueDate > 0)            data["due_date"]    = dueDate
+        if (section.isNotBlank())   data["section"]     = section
         // Legacy fallback: if no quizId but quizJson provided (old flow), keep it
         if (quizJson.isNotBlank() && quizId.isBlank()) data["quiz_json"] = quizJson
         db.collection("school_tasks").document(docId)
@@ -926,12 +928,14 @@ object FirestoreManager {
 
     /**
      * Load active tasks for a school + grade (student view).
+     * If [section] is provided, only tasks for that section (or tasks with no section set) are returned.
      */
     fun loadTasksForSchool(
         schoolId: String,
         grade: String,
         onSuccess: (List<Map<String, Any>>) -> Unit,
-        onFailure: (Exception?) -> Unit = {}
+        onFailure: (Exception?) -> Unit = {},
+        section: String = ""
     ) {
         if (schoolId.isBlank()) { onSuccess(emptyList()); return }
         db.collection("school_tasks")
@@ -944,9 +948,14 @@ object FirestoreManager {
                     doc.data?.toMutableMap()?.also { it["id"] = doc.id }
                 }
                 // Filter by grade (empty grade = all grades)
-                val filtered = if (grade.isBlank()) all else all.filter { task ->
+                val gradeFiltered = if (grade.isBlank()) all else all.filter { task ->
                     val tGrade = task["grade"] as? String ?: ""
                     tGrade.isBlank() || tGrade == grade
+                }
+                // Filter by section: tasks with no section set are visible to everyone
+                val filtered = if (section.isBlank()) gradeFiltered else gradeFiltered.filter { task ->
+                    val tSection = task["section"] as? String ?: ""
+                    tSection.isBlank() || tSection.equals(section, ignoreCase = true)
                 }
                 onSuccess(filtered)
             }
@@ -1129,6 +1138,75 @@ object FirestoreManager {
             .get()
             .addOnSuccessListener { snap ->
                 onSuccess(snap.documents.map { it.id }.toSet())
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * Save granular BB lesson read progress for a task.
+     * Called on each forward step-navigation so the teacher can see exactly how far
+     * each student has progressed (e.g. "3/5 steps").
+     * Automatically sets bb_completed = true when stepsViewed >= totalSteps.
+     * Safe to call repeatedly — uses merge so partial writes accumulate.
+     */
+    fun saveTaskBbProgress(
+        userId: String,
+        taskId: String,
+        stepsViewed: Int,
+        totalSteps: Int,
+        durationMs: Long,
+        isCompleted: Boolean,
+        studentName: String = "",
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") { onFailure(null); return }
+        val now = System.currentTimeMillis()
+        val base = mutableMapOf<String, Any>(
+            "task_id"         to taskId,
+            "bb_steps_viewed" to stepsViewed,
+            "bb_total_steps"  to totalSteps,
+            "bb_duration_ms"  to durationMs,
+            "last_updated_at" to now
+        )
+        if (isCompleted) {
+            base["bb_completed"]    = true
+            base["bb_completed_at"] = now
+        }
+        val completionData = base.toMutableMap().also {
+            it["user_id"]      = userId
+            it["student_name"] = studentName
+        }
+        usersRef(userId).collection("task_completions").document(taskId)
+            .set(base, SetOptions.merge())
+            .addOnSuccessListener {
+                if (taskId.isNotBlank()) {
+                    db.collection("school_tasks").document(taskId)
+                        .collection("completions").document(userId)
+                        .set(completionData, SetOptions.merge())
+                }
+                onSuccess()
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * Load full task-progress map for all tasks a student has interacted with.
+     * Returns Map<taskId, progressData> enabling detailed progress UIs
+     * (steps read, quiz score, completed flags, etc.)
+     */
+    fun loadAllTaskProgress(
+        userId: String,
+        onSuccess: (Map<String, Map<String, Any>>) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") { onSuccess(emptyMap()); return }
+        usersRef(userId).collection("task_completions").get()
+            .addOnSuccessListener { snap ->
+                val result = snap.documents.associate { doc ->
+                    doc.id to (doc.data?.toMutableMap() ?: mutableMapOf<String, Any>())
+                }
+                onSuccess(result)
             }
             .addOnFailureListener { onFailure(it) }
     }
@@ -1407,6 +1485,206 @@ object FirestoreManager {
                 })
             }
             .addOnFailureListener { onFailure(it) }
+    }
+
+    // ── School Admin & Engagement ─────────────────────────────────────────────
+
+    /**
+     * Returns engagement summary for a school today.
+     * Queries users_table for students in this school whose questions_updated_at
+     * is from today's UTC date, giving a live "active today" count.
+     *
+     * @param onSuccess Map with keys:
+     *   "totalStudents" (Int), "activeToday" (Int), "activeTodayIds" (List<String>)
+     */
+    fun getSchoolEngagementToday(
+        schoolId: String,
+        grade: String = "",
+        onSuccess: (Map<String, Any>) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (schoolId.isBlank()) { onSuccess(mapOf("totalStudents" to 0, "activeToday" to 0)); return }
+        var query = db.collection("users_table")
+            .whereEqualTo("schoolId", schoolId)
+        if (grade.isNotBlank()) query = query.whereEqualTo("grade", grade)
+        query.get()
+            .addOnSuccessListener { snap ->
+                val nowMs = System.currentTimeMillis()
+                val todayStart = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+                    set(java.util.Calendar.HOUR_OF_DAY, 0)
+                    set(java.util.Calendar.MINUTE, 0)
+                    set(java.util.Calendar.SECOND, 0)
+                    set(java.util.Calendar.MILLISECOND, 0)
+                }.timeInMillis
+                val activeTodayIds = mutableListOf<String>()
+                snap.documents.forEach { doc ->
+                    val updatedAt = doc.getLong("questions_updated_at") ?: 0L
+                    if (updatedAt >= todayStart) {
+                        activeTodayIds.add(doc.getString("userId") ?: doc.id)
+                    }
+                }
+                onSuccess(mapOf(
+                    "totalStudents" to snap.size(),
+                    "activeToday"   to activeTodayIds.size,
+                    "activeTodayIds" to activeTodayIds
+                ))
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * Load all teachers for a school from schools/{schoolId}/teachers subcollection.
+     */
+    fun loadSchoolTeachers(
+        schoolId: String,
+        onSuccess: (List<Map<String, Any>>) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (schoolId.isBlank()) { onSuccess(emptyList()); return }
+        db.collection("schools").document(schoolId)
+            .collection("teachers")
+            .get()
+            .addOnSuccessListener { snap ->
+                onSuccess(snap.documents.mapNotNull { doc ->
+                    doc.data?.toMutableMap()?.also { it["username"] = doc.id }
+                })
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
+     * Aggregates per-teacher metrics for school admin view.
+     * Returns one map per teacher containing:
+     * - username, teacher_id, name
+     * - studentCount (students in grades where this teacher assigned tasks)
+     * - taskCount (active tasks assigned by teacher)
+     * - engagedStudents (students who submitted any completion)
+     * - completionRate (0..100, based on completion submissions)
+     */
+    fun loadSchoolTeacherMetrics(
+        schoolId: String,
+        onSuccess: (List<Map<String, Any>>) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (schoolId.isBlank()) { onSuccess(emptyList()); return }
+
+        loadSchoolTeachers(
+            schoolId = schoolId,
+            onSuccess = { teachers ->
+                db.collection("schools").document(schoolId)
+                    .collection("students")
+                    .get()
+                    .addOnSuccessListener { studentsSnap ->
+                        db.collection("school_tasks")
+                            .whereEqualTo("school_id", schoolId)
+                            .whereEqualTo("is_active", true)
+                            .get()
+                            .addOnSuccessListener { tasksSnap ->
+                                val taskDocs = tasksSnap.documents
+
+                                val teacherRows = teachers.map { t -> t.toMutableMap() }.toMutableList()
+                                val teacherIndexByKey = mutableMapOf<String, Int>()
+                                teacherRows.forEachIndexed { idx, row ->
+                                    val username = (row["username"] as? String ?: "").trim()
+                                    val teacherId = (row["teacher_id"] as? String ?: "").trim()
+                                    if (username.isNotBlank()) teacherIndexByKey[username] = idx
+                                    if (teacherId.isNotBlank()) teacherIndexByKey[teacherId] = idx
+                                }
+
+                                val taskCount = IntArray(teacherRows.size)
+                                val completionTotal = IntArray(teacherRows.size)
+                                val completionDone = IntArray(teacherRows.size)
+                                val gradesByTeacher = Array(teacherRows.size) { mutableSetOf<String>() }
+                                val engagedUsersByTeacher = Array(teacherRows.size) { mutableSetOf<String>() }
+                                val tasksByTeacher = Array(teacherRows.size) { mutableListOf<com.google.firebase.firestore.DocumentSnapshot>() }
+
+                                taskDocs.forEach { taskDoc ->
+                                    val taskTeacher = (taskDoc.getString("teacher_id") ?: "").trim()
+                                    val idx = teacherIndexByKey[taskTeacher] ?: return@forEach
+                                    tasksByTeacher[idx].add(taskDoc)
+                                    taskCount[idx] += 1
+                                    val grade = (taskDoc.getString("grade") ?: "").trim()
+                                    if (grade.isNotBlank()) gradesByTeacher[idx].add(grade)
+                                }
+
+                                val totalTaskDocs = tasksByTeacher.sumOf { it.size }
+                                if (totalTaskDocs == 0) {
+                                    teacherRows.forEachIndexed { idx, row ->
+                                        val grades = gradesByTeacher[idx]
+                                        val rosterCount = if (grades.isEmpty()) {
+                                            studentsSnap.size()
+                                        } else {
+                                            studentsSnap.documents.count { (it.getString("grade") ?: "").trim() in grades }
+                                        }
+                                        row["taskCount"] = 0
+                                        row["studentCount"] = rosterCount
+                                        row["engagedStudents"] = 0
+                                        row["completionRate"] = 0
+                                    }
+                                    onSuccess(teacherRows)
+                                    return@addOnSuccessListener
+                                }
+
+                                var pending = totalTaskDocs
+                                fun maybeFinish() {
+                                    if (pending > 0) return
+                                    teacherRows.forEachIndexed { idx, row ->
+                                        val grades = gradesByTeacher[idx]
+                                        val rosterCount = if (grades.isEmpty()) {
+                                            studentsSnap.size()
+                                        } else {
+                                            studentsSnap.documents.count { (it.getString("grade") ?: "").trim() in grades }
+                                        }
+                                        val total = completionTotal[idx]
+                                        val done = completionDone[idx]
+                                        val rate = if (total <= 0) 0 else ((done * 100.0) / total).toInt()
+
+                                        row["taskCount"] = taskCount[idx]
+                                        row["studentCount"] = rosterCount
+                                        row["engagedStudents"] = engagedUsersByTeacher[idx].size
+                                        row["completionRate"] = rate
+                                    }
+                                    onSuccess(teacherRows)
+                                }
+
+                                tasksByTeacher.forEachIndexed { idx, docs ->
+                                    docs.forEach { taskDoc ->
+                                        val taskType = (taskDoc.getString("task_type") ?: "quiz").trim()
+                                        db.collection("school_tasks").document(taskDoc.id)
+                                            .collection("completions")
+                                            .get()
+                                            .addOnSuccessListener { compSnap ->
+                                                compSnap.documents.forEach { comp ->
+                                                    completionTotal[idx] += 1
+                                                    val uid = (comp.getString("user_id") ?: comp.id).trim()
+                                                    if (uid.isNotBlank()) engagedUsersByTeacher[idx].add(uid)
+
+                                                    val bbDone = comp.getBoolean("bb_completed") == true
+                                                    val quizDone = comp.getBoolean("quiz_completed") == true
+                                                    val isDone = when (taskType) {
+                                                        "bb_lesson" -> bbDone
+                                                        "quiz" -> quizDone
+                                                        "both" -> bbDone && quizDone
+                                                        else -> bbDone || quizDone
+                                                    }
+                                                    if (isDone) completionDone[idx] += 1
+                                                }
+                                                pending -= 1
+                                                maybeFinish()
+                                            }
+                                            .addOnFailureListener {
+                                                pending -= 1
+                                                maybeFinish()
+                                            }
+                                    }
+                                }
+                            }
+                            .addOnFailureListener { onFailure(it) }
+                    }
+                    .addOnFailureListener { onFailure(it) }
+            },
+            onFailure = { onFailure(it) }
+        )
     }
 
 }

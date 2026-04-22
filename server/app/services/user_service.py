@@ -334,3 +334,99 @@ def log_activity(
         logger.debug("log_activity: event=%s uid=%s", event_type, uid)
     except Exception as exc:
         logger.warning("log_activity: failed to write event=%s: %s", event_type, exc)
+
+
+# ── Server-side quota gate ────────────────────────────────────────────────────
+
+def check_and_record_quota(uid: str, request_type: str) -> tuple[bool, str]:
+    """
+    Authoritative server-side quota gate.
+
+    Reads the live Firestore counter for the user, checks it against their plan
+    limit, and atomically increments it if the request is allowed.
+
+    Args:
+        uid:          Firebase Auth UID.
+        request_type: "chat" or "blackboard".
+
+    Returns:
+        (allowed: bool, reason: str)
+
+    Fails open (returns True, "") on Firestore/infrastructure errors so users
+    are never blocked due to backend issues.
+    """
+    if not uid or uid == "guest_user":
+        return True, ""
+
+    db = _get_db()
+    if db is None:
+        logger.warning("check_and_record_quota: Firestore unavailable — failing open uid=%s", uid)
+        return True, ""
+
+    try:
+        ref = db.collection("users_table").document(uid)
+        doc = ref.get()
+        if not doc.exists:
+            logger.warning("check_and_record_quota: no users_table doc for uid=%s — failing open", uid)
+            return True, ""
+
+        data = doc.to_dict() or {}
+        is_bb = request_type == "blackboard"
+        field = "bb_sessions_today" if is_bb else "chat_questions_today"
+        limit_field = "plan_daily_bb_limit" if is_bb else "plan_daily_chat_limit"
+        label = "Blackboard" if is_bb else "Chat"
+
+        # Read plan limit from user doc (written by server on plan activation)
+        raw_limit = data.get(limit_field)
+        limit = int(raw_limit) if raw_limit is not None else (2 if is_bb else 12)
+
+        # Enforce free-tier limits if plan has expired
+        plan_expiry = int(data.get("plan_expiry_date") or 0)
+        if plan_expiry > 0 and plan_expiry < _now_ms():
+            limit = 2 if is_bb else 12
+            logger.info("check_and_record_quota: plan expired for uid=%s — reverting to free limits", uid)
+
+        # UTC day rollover: if the last counter update was a previous calendar day
+        # the effective usage count resets to 0 (fresh daily allowance).
+        questions_updated_at = int(data.get("questions_updated_at") or 0)
+        current_count = int(data.get(field) or 0)
+        is_new_day = False
+        if questions_updated_at > 0:
+            try:
+                last_day = datetime.fromtimestamp(questions_updated_at / 1000, tz=timezone.utc).date()
+                today = datetime.now(tz=timezone.utc).date()
+                is_new_day = last_day < today
+            except (OSError, OverflowError, ValueError) as exc:
+                logger.warning("check_and_record_quota: timestamp parse error: %s", exc)
+
+        if is_new_day:
+            current_count = 0
+
+        # Block if limit exceeded (0 = unlimited)
+        if limit > 0 and current_count >= limit:
+            logger.info(
+                "check_and_record_quota: BLOCKED uid=%s type=%s count=%d/%d",
+                uid, request_type, current_count, limit,
+            )
+            return False, (
+                f"You've used all {limit} daily {label} sessions. "
+                f"Come back tomorrow or upgrade your plan to continue."
+            )
+
+        # Allowed — atomically increment the counter
+        now = _now_ms()
+        if is_new_day:
+            # Day just rolled over — reset to 1 rather than incrementing a stale value
+            ref.update({field: 1, "questions_updated_at": now})
+        else:
+            ref.update({field: Increment(1), "questions_updated_at": now})
+
+        logger.debug(
+            "check_and_record_quota: OK uid=%s type=%s count=%d→%d limit=%d",
+            uid, request_type, current_count, current_count + 1, limit,
+        )
+        return True, ""
+
+    except Exception as exc:
+        logger.error("check_and_record_quota: unexpected error uid=%s: %s", uid, exc)
+        return True, ""  # Fail open on any unexpected error

@@ -195,7 +195,20 @@ class ServerProxyClient(
                 return RETRY_NEEDED
             }
             if (!response.isSuccessful) {
-                onError("HTTP ${response.code}: ${response.message}")
+                if (response.code == 429) {
+                    // Server enforced quota limit — read the detail message from the body
+                    val detail = try {
+                        val body = response.body?.string() ?: ""
+                        org.json.JSONObject(body).optString("detail", "")
+                            .ifBlank { "Daily limit reached. Upgrade your plan to continue." }
+                    } catch (_: Exception) {
+                        "Daily limit reached. Upgrade your plan to continue."
+                    }
+                    onError("QUOTA_EXCEEDED:$detail")
+                } else {
+                    onError("HTTP ${response.code}: ${response.message}")
+                }
+                response.close()
                 return OK
             }
             var inputTokens = 0; var outputTokens = 0; var totalTokens = 0
