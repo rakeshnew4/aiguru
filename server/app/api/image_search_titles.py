@@ -271,6 +271,7 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
 
         from app.utils.svg_builder import build_animated_svg, build_from_diagram_type, build_atom_html
         from app.utils.svg_llm_builder import build_llm_svg
+        from app.utils.js_engine import build_js_diagram_html
         from app.utils.diagram_router import classify_diagram_need
         from app.services.enrichment_service import build_enrichment_tasks
 
@@ -378,9 +379,20 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
                         if html:
                             logger.info("Built atom JS animation for step '%s'", step_title)
 
-                    # ── All other types: LLM draws the real anatomy/structure ─
-                    # LLM produces rich, accurate SVG (heart chambers, cell parts,
-                    # lab apparatus, etc.) — up to 3 retries on parse failure.
+                    # ── JS engine: procedural, continuous animations ───────────
+                    # Handles: wave, solar_system, cycle, flow, plant, sun,
+                    # labeled_diagram, cell, comparison, etc.
+                    # Runs forever via requestAnimationFrame — no SMIL freeze.
+                    if not html:
+                        html = build_js_diagram_html(d_type, d_data)
+                        if html:
+                            logger.info(
+                                "Built JS engine animation (type=%s) for step '%s'",
+                                d_type, step_title,
+                            )
+
+                    # ── LLM SVG: complex anatomy / structures not in engine ───
+                    # Heart chambers, eye cross-section, circuit schematics, etc.
                     if not html:
                         html = build_llm_svg(
                             diagram_type = d_type,
