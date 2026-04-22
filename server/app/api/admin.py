@@ -378,6 +378,51 @@ def delete_offer(offer_id: str, _: str = Depends(_require_admin)):
     return {"ok": True}
 
 
+# ── BB Samples (Onboarding) ───────────────────────────────────────────────────
+
+@router.get("/bb-samples")
+def list_bb_samples(_: str = Depends(_require_admin)):
+    """List all global onboarding BB sample lessons."""
+    return _collection_list("bb_samples", 50)
+
+
+@router.post("/bb-samples")
+def create_bb_sample(payload: Dict[str, Any], _: str = Depends(_require_admin)):
+    """
+    Create or replace a BB sample lesson.
+    Required fields: id (doc key), title, subject, chapter, steps_json (JSON string).
+    """
+    import time as _time
+    doc_id = payload.pop("id", None) or payload.pop("_id", None)
+    if not doc_id:
+        raise HTTPException(status_code=400, detail="Field 'id' is required as the document key")
+    if not payload.get("steps_json"):
+        raise HTTPException(status_code=400, detail="Field 'steps_json' (JSON string) is required")
+    payload.setdefault("is_sample", True)
+    payload.setdefault("lang", "en-US")
+    payload.setdefault("created_at", int(_time.time() * 1000))
+    db = _get_db()
+    db.collection("bb_samples").document(doc_id).set(payload)
+    return {"id": doc_id, "ok": True}
+
+
+@router.put("/bb-samples/{sample_id}")
+def update_bb_sample(sample_id: str, payload: Dict[str, Any], _: str = Depends(_require_admin)):
+    """Update fields on an existing BB sample."""
+    payload.pop("_id", None)
+    db = _get_db()
+    db.collection("bb_samples").document(sample_id).set(payload, merge=True)
+    return {"ok": True}
+
+
+@router.delete("/bb-samples/{sample_id}")
+def delete_bb_sample(sample_id: str, _: str = Depends(_require_admin)):
+    """Delete a BB sample lesson."""
+    db = _get_db()
+    db.collection("bb_samples").document(sample_id).delete()
+    return {"ok": True}
+
+
 # ── Notifications ─────────────────────────────────────────────────────────────
 
 @router.get("/notifications")

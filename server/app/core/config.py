@@ -33,19 +33,19 @@ class Settings(BaseSettings):
     POWER_PROVIDER: str = "bedrock"  # bedrock, gemini, groq
     POWER_MODEL_ID: str = "anthropic.claude-3-5-sonnet-20241022-v2:0"
     POWER_TEMPERATURE: float = 0.7
-    POWER_MAX_TOKENS: int = 8192
+    POWER_MAX_TOKENS: int = 18192
     
     # CHEAPER: Balanced cost/performance for standard users
     CHEAPER_PROVIDER: str = "gemini"  # bedrock, gemini, groq
-    CHEAPER_MODEL_ID: str = "gemini-2.5-flash"
+    CHEAPER_MODEL_ID: str = "gemini-2.5-flash-lite"
     CHEAPER_TEMPERATURE: float = 0.7
-    CHEAPER_MAX_TOKENS: int = 4096
+    CHEAPER_MAX_TOKENS: int = 14096
     
     # FASTER: Quickest tier for small structured tasks (intent classifier, BB planner, grading)
     FASTER_PROVIDER: str = "gemini"
     FASTER_MODEL_ID: str = "gemini-2.5-flash-lite"
     FASTER_TEMPERATURE: float = 0.3
-    FASTER_MAX_TOKENS: int = 800
+    FASTER_MAX_TOKENS: int = 20000
     
     # ── Provider API Keys ──────────────────────────────────────────────────────
     GROQ_API_KEY: str = ""

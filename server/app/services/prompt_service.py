@@ -56,18 +56,22 @@ INTENT_CLASSIFIER_PROMPT = (
 # Tells the main BB LLM exactly how many steps to generate and what concepts to cover.
 
 BB_PLANNER_PROMPT = (
-    "You are a lesson planner for a visual animated blackboard school app.\n"
-    "Given the student's question, return a concise lesson plan. Output ONLY valid JSON — nothing else.\n\n"
-    'Question: "{question}"\n'
+    "You are a lesson analyst for a personal visual AI tutor responding to a student's SPECIFIC question.\n"
+    "Analyze exactly what the student is asking and return a focused lesson plan.\n"
+    "Output ONLY valid JSON — nothing else.\n\n"
+    'Student question (answer THIS specifically): "{question}"\n'
     'Chapter context (excerpt): "{context_snippet}"\n'
-    'Prior lesson excerpt (last reply): "{last_reply}"\n'
+    'Recent conversation (last 3 turns):\n{recent_history}\n'
     "Student class: {level}\n\n"
     "Output (one JSON object, NOTHING else):\n"
     '{{"topic_type":"<math_formula|science_process|definition|comparison|history|programming|other>",'
     '"scope":"<simple|medium|complex>",'
     '"key_concepts":["term1","term2"],'
     '"steps_count":<4|5|6>,'
-    '"image_search_terms":["wikimedia phrase 1","wikimedia phrase 2"]}}\n\n'
+    '"image_search_terms":["wikimedia phrase 1","wikimedia phrase 2"],'
+    '"question_focus":"one sentence: what EXACTLY the student wants to know or do",'
+    '"question_type":"<how_to|definition|calculation|conceptual|comparison|example|problem_solving>",'
+    '"prior_knowledge":"what student already knows from the conversation (empty string if new topic)"}}\n\n'
     "Rules:\n"
     "- simple (4 steps): single self-contained concept\n"
     "- medium (5 steps): standard topic with 1-2 sub-concepts\n"
@@ -75,7 +79,10 @@ BB_PLANNER_PROMPT = (
     "- image_search_terms: 2-3 SPECIFIC Wikimedia Commons search phrases for this exact topic\n"
     '  GOOD: "mitosis phases cell division", "Newton second law force mass diagram"\n'
     '  BAD: "biology", "science concept", "diagram"\n'
-    "- key_concepts: 2-4 core ideas the lesson MUST cover (actual concept names, not topic labels)"
+    "- key_concepts: 2-4 core ideas the lesson MUST cover (actual concept names, not topic labels)\n"
+    "- question_focus: be SPECIFIC. Bad: 'the student wants to learn about triangles'.\n"
+    "  Good: 'student wants to calculate the inradius of a triangle given its sides'\n"
+    "- prior_knowledge: summarise what the student already covered, so the lesson does NOT repeat it"
 )
 
 # ---Blackboard Prompt---
@@ -95,45 +102,87 @@ blackboard_prompt = (
     "FRAME TYPES -- mix ALL of these for maximum engagement:\n"
     "concept    -> Core teaching: formula, definition, step, key fact. Use **bold**. Most common type.\n"
     "memory     -> Mnemonic, rhyme, acronym, or fun trick. Make it catchy and unforgettable!\n"
-    "diagram    -> Animated scientific/math diagram. Server renders it from semantic data — DO NOT use raw coordinates.\n"
-    '           OUTPUT: "diagram_type": "<type>", "data": {<type-specific keys>}, "svg_elements": []\n'
-    "           CHOOSE the best diagram_type from this list:\n"
-    "             atom            → Bohr model with electron orbits\n"
-    "             solar_system    → Sun + planets in orbit\n"
-    "             waveform_signal → Sound/light/EM wave on axes\n"
-    "             wave            → alias for waveform_signal\n"
-    "             triangle        → Labelled triangle (can show height, angles)\n"
-    "             circle_radius   → Circle with radius/diameter labels\n"
-    "             rectangle_area  → Rectangle with width/height\n"
-    "             geometry_angles → Angle diagram (acute/right/obtuse/supplementary)\n"
-    "             line_graph      → Scatter/line plot from (x,y) points\n"
-    "             graph_function  → Mathematical curve: quadratic/linear/cubic/sine/cosine/abs\n"
-    "             number_line     → Number line with marked points and highlighted range\n"
-    "             fraction_bar    → Visual fraction comparison bars (up to 4 fractions)\n"
-    "             flow            → Flowchart / process steps (linear)\n"
-    "             cycle           → Cyclical process (water cycle, nitrogen cycle, etc.)\n"
-    "             comparison      → Side-by-side comparison (A vs B, with bullet points)\n"
-    "             labeled_diagram → Central concept with surrounding labeled parts\n"
-    "             anatomy         → alias for labeled_diagram\n"
-    "             cell            → alias for labeled_diagram (biology cell diagram)\n"
-    "           DATA SCHEMAS — provide ONLY keys listed for chosen type:\n"
-    '             atom:            {"nucleus_label":"He","nucleus_color":"highlight","orbits":[{"electrons":2,"color":"secondary","label":"K shell"}],"duration":12}\n'
-    '             solar_system:    {"sun_label":"Sun","planets":[{"label":"Earth","color":"blue","duration":20},{"label":"Mars","color":"highlight","duration":32}]}\n'
-    '             waveform_signal: {"title":"Sound Wave","wave_type":"sine","cycles":2.5,"amplitude":50,"x_label":"time (s)","y_label":"amplitude","color":"secondary"}\n'
-    '             triangle:        {"labels":["A","B","C"],"show_height":true,"show_incircle":false}\n'
-    '             circle_radius:   {"radius":70,"label":"r = 7 cm"}\n'
-    '             rectangle_area:  {"width":140,"height":80}\n'
-    '             geometry_angles: {"angle_deg":60,"angle_type":"acute","labels":["A","O","B"],"title":"Acute Angle","show_second":false}\n'
-    '             line_graph:      {"x_label":"Time (s)","y_label":"Speed (m/s)","points":[[0,0],[1,4],[2,7],[3,9]]}\n'
-    '             graph_function:  {"function":"quadratic","a":1,"b":0,"c":0,"x_range":[-4,4],"label":"y = x²","color":"secondary"}\n'
-    '             number_line:     {"start":-5,"end":5,"marked_points":[0,2,-3],"highlight_range":[1,4],"label":"Number Line"}\n'
-    '             fraction_bar:    {"fractions":[{"num":1,"den":2},{"num":3,"den":4}],"title":"Comparing Fractions"}\n'
-    '             flow:            {"title":"Photosynthesis","steps":["Light absorbed","Water split","CO₂ fixed","Glucose made","O₂ released"]}\n'
-    '             cycle:           {"title":"Water Cycle","steps":["Evaporation","Condensation","Precipitation","Collection"]}\n'
-    '             comparison:      {"left":"Mitosis","right":"Meiosis","left_points":["2 cells","diploid","growth"],"right_points":["4 cells","haploid","reproduction"]}\n'
-    '             labeled_diagram: {"center":"Cell","center_shape":"circle","parts":["Nucleus","Membrane","Cytoplasm","Ribosome","Vacuole"]}\n'
-    "           FALLBACK: If no diagram_type fits, use svg_elements with raw shapes (coordinates 0-400 x, 0-300 y).\n"
-    "           text field: 1-line caption above the diagram. speech: explain what the diagram shows.\n"
+    "diagram    -> Animated visual diagram. CHOOSE between two rendering paths:\n"
+    "\n"
+    "  ══ PATH 1: SEMANTIC TYPES (math-precise, zero coord work) ══\n"
+    "  Set diagram_type + data. Leave svg_elements=[]\n"
+    "  ONLY use for these exact types:\n"
+    "    atom            → Bohr model with electron orbits\n"
+    "    solar_system    → Sun + planets in orbit\n"
+    "    waveform_signal → Sound/light/EM wave on axes\n"
+    "    wave            → alias for waveform_signal\n"
+    "    triangle        → Labelled triangle (height, angles, incircle, circumcircle)\n"
+    "    circle_radius   → Circle with radius/diameter labels\n"
+    "    rectangle_area  → Rectangle with width/height\n"
+    "    geometry_angles → Angle diagram (acute/right/obtuse/supplementary)\n"
+    "    line_graph      → Scatter/line plot from (x,y) points\n"
+    "    graph_function  → Mathematical curve: quadratic/linear/cubic/sine/cosine/abs\n"
+    "    number_line     → Number line with marked points and highlighted range\n"
+    "    fraction_bar    → Visual fraction comparison bars (up to 4 fractions)\n"
+    "    flow            → Flowchart / process steps (linear)\n"
+    "    cycle           → Cyclical process (water cycle, nitrogen cycle, etc.)\n"
+    "    comparison      → Side-by-side comparison (A vs B)\n"
+    "    labeled_diagram → Central concept with surrounding labeled parts\n"
+    "    anatomy / cell  → alias for labeled_diagram\n"
+    '  OUTPUT: "diagram_type": "<type>", "data": {<keys>}, "svg_elements": []\n'
+    "  DATA SCHEMAS:\n"
+    '    atom:            {"nucleus_label":"He","nucleus_color":"highlight","orbits":[{"electrons":2,"color":"secondary","label":"K shell"}],"duration":12}\n'
+    '    solar_system:    {"sun_label":"Sun","planets":[{"label":"Earth","color":"blue","duration":20},{"label":"Mars","color":"red","duration":32}]}\n'
+    '    waveform_signal: {"title":"Sound Wave","wave_type":"sine","cycles":2.5,"amplitude":50,"x_label":"time (s)","y_label":"amplitude","color":"secondary"}\n'
+    '    triangle:        {"labels":["A","B","C"],"show_height":true,"show_incircle":false}\n'
+    '    circle_radius:   {"radius":70,"label":"r = 7 cm"}\n'
+    '    rectangle_area:  {"width":140,"height":80}\n'
+    '    geometry_angles: {"angle_deg":60,"angle_type":"acute","labels":["A","O","B"],"title":"Acute Angle","show_second":false}\n'
+    '    line_graph:      {"x_label":"Time (s)","y_label":"Speed (m/s)","points":[[0,0],[1,4],[2,7],[3,9]]}\n'
+    '    graph_function:  {"function":"quadratic","a":1,"b":0,"c":0,"x_range":[-4,4],"label":"y = x\u00b2","color":"secondary"}\n'
+    '    number_line:     {"start":-5,"end":5,"marked_points":[0,2,-3],"highlight_range":[1,4],"label":"Number Line"}\n'
+    '    fraction_bar:    {"fractions":[{"num":1,"den":2},{"num":3,"den":4}],"title":"Comparing Fractions"}\n'
+    '    flow:            {"title":"Photosynthesis","steps":["Light absorbed","Water split","CO\u2082 fixed","Glucose made","O\u2082 released"]}\n'
+    '    cycle:           {"title":"Water Cycle","steps":["Evaporation","Condensation","Precipitation","Collection"]}\n'
+    '    comparison:      {"left":"Mitosis","right":"Meiosis","left_points":["2 cells","diploid","growth"],"right_points":["4 cells","haploid","reproduction"]}\n'
+    '    labeled_diagram: {"center":"Cell","center_shape":"circle","parts":["Nucleus","Membrane","Cytoplasm","Ribosome","Vacuole"]}\n'
+    "\n"
+    "  ══ PATH 2: CUSTOM DRAWING (LLM plans every shape) ══\n"
+    "  USE THIS for: heart, lungs, kidney, neuron, digestive system, lab apparatus,\n"
+    "    circuit diagram, volcano, ecosystem, food chain, plant structure, skeletal system,\n"
+    "    blood flow, muscle contraction, Newton laws illustration, Archimedes, ANY structure\n"
+    "    not in PATH 1 list above.\n"
+    '  Set diagram_type="", data={}, and fill svg_elements=[...] with shape dicts.\n'
+    "  CANVAS: 400 wide x 300 tall. Origin top-left. Center=(200,150).\n"
+    "  Each shape needs animation_stage (int 0,1,2...). Stage 0 = first to appear.\n"
+    "  SHAPES + REQUIRED KEYS:\n"
+    '    {"shape":"circle","cx":200,"cy":150,"r":50,"color":"highlight","fill_color":"highlight","animation_stage":0}\n'
+    '    {"shape":"ellipse","cx":200,"cy":150,"rx":80,"ry":50,"color":"secondary","fill_color":"secondary","animation_stage":0}\n'
+    '    {"shape":"rect","x":100,"y":80,"w":200,"h":100,"color":"secondary","fill_color":"secondary","animation_stage":0}\n'
+    '    {"shape":"line","x1":50,"y1":150,"x2":350,"y2":150,"color":"primary","animation_stage":0}\n'
+    '    {"shape":"arrow","x1":200,"y1":200,"x2":200,"y2":80,"color":"secondary","animation_stage":1}\n'
+    '    {"shape":"curved_arrow","x1":100,"y1":150,"x2":300,"y2":150,"cpx":200,"cpy":80,"color":"highlight","animation_stage":1}\n'
+    '    {"shape":"dashed_line","x1":50,"y1":100,"x2":350,"y2":100,"color":"dim","animation_stage":0}\n'
+    '    {"shape":"arc","cx":200,"cy":150,"r":60,"start_deg":0,"end_deg":180,"color":"highlight","animation_stage":1}\n'
+    '    {"shape":"polygon","cx":200,"cy":150,"r":60,"sides":6,"color":"teal","animation_stage":0}\n'
+    '    {"shape":"diamond","cx":200,"cy":150,"hw":60,"hh":40,"color":"orange","fill_color":"orange","animation_stage":0}\n'
+    '    {"shape":"dot","cx":200,"cy":150,"r":5,"color":"highlight","animation_stage":1}\n'
+    '    {"shape":"text","x":200,"y":150,"value":"Label","color":"label","size":13,"anchor":"middle","bold":true,"animation_stage":1}\n'
+    "  COLORS: \"highlight\"(red), \"secondary\"(blue), \"label\"(yellow), \"dim\"(muted green),\n"
+    "    \"primary\"(white), \"orange\", \"green\", \"pink\", \"purple\", \"teal\", \"gold\", \"red\", \"blue\"\n"
+    "  EXAMPLE — Heart pumping blood:\n"
+    '    svg_elements: [\n'
+    '      {"shape":"ellipse","cx":200,"cy":158,"rx":72,"ry":82,"color":"highlight","fill_color":"highlight","animation_stage":0},\n'
+    '      {"shape":"arc","cx":170,"cy":118,"r":38,"start_deg":180,"end_deg":360,"color":"highlight","fill_color":"highlight","animation_stage":0},\n'
+    '      {"shape":"arc","cx":230,"cy":118,"r":38,"start_deg":180,"end_deg":360,"color":"highlight","fill_color":"highlight","animation_stage":0},\n'
+    '      {"shape":"dashed_line","x1":200,"y1":130,"x2":200,"y2":220,"color":"primary","animation_stage":1},\n'
+    '      {"shape":"text","x":155,"y":168,"value":"Right","color":"primary","size":11,"anchor":"middle","animation_stage":1},\n'
+    '      {"shape":"text","x":245,"y":168,"value":"Left","color":"primary","size":11,"anchor":"middle","animation_stage":1},\n'
+    '      {"shape":"arrow","x1":178,"y1":78,"x2":100,"y2":35,"color":"secondary","animation_stage":2},\n'
+    '      {"shape":"arrow","x1":222,"y1":78,"x2":300,"y2":35,"color":"orange","animation_stage":2},\n'
+    '      {"shape":"text","x":75,"y":28,"value":"To lungs","color":"secondary","size":10,"animation_stage":2},\n'
+    '      {"shape":"text","x":325,"y":28,"value":"To body","color":"orange","size":10,"animation_stage":2},\n'
+    '      {"shape":"arrow","x1":155,"y1":240,"x2":90,"y2":275,"color":"orange","animation_stage":3},\n'
+    '      {"shape":"arrow","x1":245,"y1":240,"x2":310,"y2":275,"color":"secondary","animation_stage":3},\n'
+    '      {"shape":"text","x":65,"y":290,"value":"From body","color":"orange","size":10,"animation_stage":3},\n'
+    '      {"shape":"text","x":335,"y":290,"value":"From lungs","color":"secondary","size":10,"animation_stage":3}\n'
+    '    ]\n'
+    "  text field: 1-line caption. speech: explain what diagram shows step by step.\n"
     "quiz_mcq   -> Multiple choice. MUST provide exactly 4 quiz_options and quiz_correct_index (0-3).\n"
     "quiz_typed -> Open-ended typed answer. MUST provide quiz_model_answer and quiz_keywords (3-6 key terms).\n"
     "quiz_voice -> Open-ended spoken answer. Same fields as quiz_typed.\n"
@@ -424,15 +473,19 @@ def build_bb_planner_prompt(
 ) -> str:
     """Returns the formatted BB planner prompt for the 'faster' model tier."""
     ctx_snippet = (context or "")[:500].strip()
-    last_reply = ""
-    for h in reversed(history or []):
-        if h.startswith("assistant:"):
-            last_reply = h[10:200].strip()
-            break
+    # Pass the last 3 turns of conversation (not just last reply) so the planner
+    # can understand what was already taught and what the student already knows.
+    def _fmt_h(h: str) -> str:
+        if h.startswith("user:"):      return f"  Student: {h[5:120].strip()}"
+        if h.startswith("assistant:"): return f"  Teacher: {h[10:120].strip()}"
+        return f"  {h[:120].strip()}"
+    recent = "\n".join(_fmt_h(h) for h in (history or [])[-6:])
+    if not recent:
+        recent = "  (No prior conversation — this is the student's first question)"
     return BB_PLANNER_PROMPT.format(
         question=question[:300],
         context_snippet=ctx_snippet,
-        last_reply=last_reply[:200],
+        recent_history=recent,
         level=level or 5,
     )
 
@@ -471,16 +524,24 @@ def build_bb_main_prompt(
     lang_instr = language_instructions.get(lang or "en-US", "")
 
     # ── Diagram hint: classify best diagram_type for this question ───────────
-    # Helps the LLM immediately choose the right semantic diagram_type.
+    # Suggests a PATH 1 diagram_type when confident; LLM may still choose PATH 2.
     try:
         from app.utils.diagram_router import classify_diagram_need
+        import re as _re
         decision = classify_diagram_need(question, subject_hint=topic_type, topic_keywords=key_concepts)
         _diagram_hint = ""
-        if decision.needed and decision.diagram_type:
+        _q_lower = question.lower().strip()
+        _is_definition_q = bool(_re.match(r"^(what is|what are|define|meaning of|what does)\b", _q_lower))
+        # Only hint when confident AND the type is a PATH 1 semantic type (not anatomy/custom)
+        _PATH2_TYPES = {"labeled_diagram", "anatomy", "cell"}
+        if (decision.needed and decision.diagram_type
+                and decision.confidence >= 0.40
+                and decision.diagram_type not in _PATH2_TYPES):
             _diagram_hint = (
-                f"\nDIAGRAM RECOMMENDATION: This topic likely needs a "
+                f"\nDIAGRAM RECOMMENDATION: This topic likely suits a "
                 f'"{decision.diagram_type}" diagram (confidence {decision.confidence:.0%}). '
-                f"Use diagram_type=\"{decision.diagram_type}\" for your diagram frame(s).\n"
+                f"If this is a standard math/science type, use diagram_type=\"{decision.diagram_type}\". "
+                f"If it needs a custom structure (anatomy, apparatus, body parts), use PATH 2 (svg_elements) instead.\n"
             )
     except Exception:
         _diagram_hint = ""
@@ -597,6 +658,19 @@ def get_blackboard_mode_system_prompt() -> str:
         "• Last step: MUST end with a quiz frame immediately followed by a summary frame\n"
         "• lang field: MUST match the OUTPUT LANGUAGE tag exactly — NEVER default to en-US\n"
         "\n"
+        "SPEECH STYLE — CRITICAL (this is a personal AI tutor, NOT a classroom lecture):\n"
+        "• NEVER open any speech with: 'Hi everyone', 'Hi students', 'Hello class', 'Hey everyone',\n"
+        "  'Today we are going to', 'Today we will', 'In this lesson', 'Let's begin our lesson',\n"
+        "  'Welcome to', 'Let me explain', 'Let's learn about', 'Great, let's'\n"
+        "• The student asked a SPECIFIC question — answer it DIRECTLY in the very first speech frame.\n"
+        "• Start speech immediately with the concept, formula, or direct answer.\n"
+        "  WRONG: 'Hi students! Today we are going to learn about photosynthesis.'\n"
+        "  RIGHT: 'Photosynthesis converts sunlight into glucose using CO₂ and water.'\n"
+        "  WRONG: 'Let's explore how to calculate the incircle radius!'\n"
+        "  RIGHT: 'The incircle radius r equals the triangle area divided by its semi-perimeter.'\n"
+        "• First speech frame must DIRECTLY answer or define the thing the student asked about.\n"
+        "• Subsequent frames: continue the explanation naturally — no filler resets.\n"
+        "\n"
         "DIAGRAM SELECTION — CRITICAL: match EXACTLY to what the student asked about.\n"
         "Read the student's question in LESSON BRIEF and pick the diagram that directly illustrates it.\n"
         "NEVER use a generic or approximate diagram type — always pick the most specific match.\n"
@@ -628,8 +702,9 @@ def get_blackboard_mode_system_prompt() -> str:
         '  → diagram_type: "fraction_bar"\n'
         '• cell structure / anatomy / labeled parts / plant cell / animal cell\n'
         '  → diagram_type: "labeled_diagram", data: {"title":"...","labels":[...]}\n'
-        '• process with steps (photosynthesis / water cycle / nitrogen cycle / digestion)\n'
+        '• NAMED multi-step process (photosynthesis / water cycle / nitrogen cycle / digestion)\n'
         '  → diagram_type: "cycle" or "flow"\n'
+        '  ⚠ ONLY when the question is specifically about how a process works — NOT for definitions.\n'
         '• compare two things (mitosis vs meiosis / plant vs animal cell)\n'
         '  → diagram_type: "comparison"\n'
         "\n"
@@ -638,6 +713,9 @@ def get_blackboard_mode_system_prompt() -> str:
         "• NEVER show rectangle_area for a question about circles or triangles\n"
         "• NEVER show circle_radius for a question about triangles\n"
         "• NEVER show atom for a non-chemistry/non-physics question\n"
+        "• NEVER use flow or cycle for definitions, formulas, or 'what is X' questions\n"
+        "• flow and cycle are ONLY for named biological/chemical/physical processes (photosynthesis, water cycle, digestion, etc.)\n"
+        "• Most lessons need 0 or 1 diagram frame — do NOT add diagrams just to add variety\n"
         "• If unsure which diagram type fits, use labeled_diagram with relevant labels\n"
         "• Only use diagram frames where a visual truly helps — formula-only steps use concept frame\n"
     )
@@ -689,6 +767,7 @@ def build_blackboard_mode_user_content(
     history: list = None,
     plan: dict = None,
     lang: str = "en-US",
+    image_data: dict = None,
 ) -> str:
     """
     Dynamic user content for BB mode — lesson brief only (NO blackboard_prompt prefix).
@@ -758,8 +837,10 @@ def build_blackboard_mode_user_content(
     else:
         try:
             from app.utils.diagram_router import classify_diagram_need
+            import re as _re2
             decision = classify_diagram_need(question, subject_hint=topic_type, topic_keywords=key_concepts)
-            if decision.needed and decision.diagram_type:
+            _is_def_q = bool(_re2.match(r"^(what is|what are|define|meaning of|what does)\b", question.lower().strip()))
+            if decision.needed and decision.diagram_type and decision.confidence >= 0.65 and not _is_def_q:
                 _diagram_hint = (
                     f"\nDIAGRAM RECOMMENDATION: This topic likely needs a "
                     f'"{decision.diagram_type}" diagram (confidence {decision.confidence:.0%}). '
@@ -768,13 +849,30 @@ def build_blackboard_mode_user_content(
         except Exception:
             pass
 
+    # Question focus from planner — tells the LLM exactly what was asked
+    question_focus = (plan or {}).get("question_focus", "").strip()
+    question_type  = (plan or {}).get("question_type", "").strip()
+    prior_knowledge = (plan or {}).get("prior_knowledge", "").strip()
+
     parts = ["\n---LESSON BRIEF (follow these instructions exactly)---\n"]
-    parts.append(f"Student question: {question}\n")
+    parts.append(f"Student's EXACT question: {question}\n")
+    if question_focus:
+        parts.append(f"What the student specifically wants: {question_focus}\n")
+    if question_type:
+        parts.append(f"Question type: {question_type}\n")
     parts.append(f"Student level: Class {level}\n")
     parts.append(f"Topic type: {topic_type} | Scope: {scope}\n")
+    if prior_knowledge:
+        parts.append(f"What student already knows (DO NOT repeat this): {prior_knowledge}\n")
     if concepts_str:
         parts.append(f"Key concepts to cover (ALL of these): {concepts_str}\n")
     parts.append(f"Generate EXACTLY {steps_count} steps — no more, no less.\n")
+    parts.append(
+        "STYLE: This is a personal AI tutor response — NOT a classroom lesson.\n"
+        "  • Answer the student's specific question directly.\n"
+        "  • First speech frame MUST directly state the answer/formula/definition.\n"
+        "  • NEVER start speech with greetings or 'Today we will learn'.\n"
+    )
     if _diagram_hint:
         parts.append(_diagram_hint)
 
@@ -786,6 +884,31 @@ def build_blackboard_mode_user_content(
         parts.append(
             f"\nRECENT CONVERSATION (last 3 turns — do NOT re-teach what was already covered):\n{hist_snippet}\n"
         )
+
+    # ── Image diagram replication ─────────────────────────────────────────────
+    # If the student attached an image containing diagrams, instruct the LLM to
+    # recreate those visuals as diagram frames using the server-side renderer.
+    _img_diagrams = (image_data or {}).get("diagrams") or []
+    _img_transcript = ((image_data or {}).get("transcript") or "").strip()
+    if _img_diagrams or _img_transcript:
+        img_parts = ["\nATTACHED IMAGE CONTEXT:"]
+        if _img_transcript:
+            img_parts.append(f"  Transcript: {_img_transcript[:500]}")
+        if _img_diagrams:
+            img_parts.append("  Diagrams found in the image:")
+            for d in _img_diagrams[:4]:
+                hdg = (d.get("heading") or "").strip()
+                dep = (d.get("depiction") or "").strip()
+                if hdg or dep:
+                    img_parts.append(f"    • {hdg}: {dep}".strip(": "))
+            img_parts.append(
+                "\n⚠ DIAGRAM REPLICATION RULE: For each diagram listed above, "
+                "include a diagram frame that RECREATES it. "
+                "Use PATH 1 (diagram_type) for: atom, cell, wave, cycle, flow, comparison, triangle, graph, etc. "
+                "Use PATH 2 (svg_elements with shapes) for anatomy, body structures, lab apparatus, "
+                "or any diagram not covered by a PATH 1 type."
+            )
+        parts.append("\n".join(img_parts) + "\n")
 
     parts.append("\n---END LESSON BRIEF---\n")
     parts.append(lang_instr)

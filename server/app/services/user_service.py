@@ -71,24 +71,24 @@ def create_user_if_missing(
     grade: str = "",
     school_id: str = "",
     school_name: str = "",
-) -> None:
+) -> bool:
     """
     Create users_table/{uid} with free-plan defaults on first sign-up.
     Idempotent – no-op if the document already exists.
 
-    Call this immediately after Firebase Auth registration completes.
+    Returns True if a new user was created, False if already existed.
     """
     if not uid or uid == "guest_user":
-        return
+        return False
 
     db = _get_db()
     if db is None:
-        return
+        return False
 
     ref = db.collection("users_table").document(uid)
     if ref.get().exists:
         logger.info("create_user_if_missing: users_table/%s already exists, skipping", uid)
-        return
+        return False
 
     now = _now_ms()
     identity = {
@@ -137,6 +137,41 @@ def create_user_if_missing(
     # subcollections and any legacy reads.
     db.collection("users").document(uid).set(identity, merge=True)
     logger.info("create_user_if_missing: mirrored identity to users/%s", uid)
+    return True
+
+
+def copy_samples_to_user(uid: str) -> None:
+    """
+    Copy global bb_samples to the new user's saved_bb_sessions_flat subcollection.
+    Called once on first registration (fire-and-forget).
+    """
+    if not uid or uid == "guest_user":
+        return
+    db = _get_db()
+    if db is None:
+        return
+    try:
+        samples_ref = db.collection("bb_samples")
+        samples = samples_ref.stream()
+        batch = db.batch()
+        count = 0
+        for doc in samples:
+            data = doc.to_dict()
+            if not data:
+                continue
+            target = (
+                db.collection("users").document(uid)
+                .collection("saved_bb_sessions_flat").document(doc.id)
+            )
+            batch.set(target, {**data, "is_sample": True, "uid": uid})
+            count += 1
+            if count >= 10:  # safety cap
+                break
+        if count:
+            batch.commit()
+            logger.info("copy_samples_to_user: copied %d samples to uid=%s", count, uid)
+    except Exception as exc:
+        logger.warning("copy_samples_to_user: failed for uid=%s: %s", uid, exc)
 
 
 def activate_plan(

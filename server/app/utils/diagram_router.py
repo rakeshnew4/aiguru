@@ -148,11 +148,11 @@ _DIAGRAM_KEYWORD_MAP: dict[str, str] = {
     " vs ": "comparison",
     "compare": "comparison",
     "bar graph": "comparison",
-    # Flow / cycle / process
-    "steps": "flow",
-    "process": "flow",
-    "stages": "cycle",
-    "phases": "cycle",
+    # Flow / cycle — only specific named processes, NOT generic words like "steps" or "process"
+    "photosynthesis steps": "flow",
+    "life cycle": "cycle",
+    "stages of": "cycle",
+    "phases of": "cycle",
     "cycle": "cycle",
 }
 
@@ -220,13 +220,11 @@ def classify_diagram_need(
                     best_score, best_type = score, dtype
 
     # ── Subject-level heuristics when keyword scan found nothing ──────────────
+    # NOTE: We intentionally do NOT fall back to "flow" for science_process —
+    # too many concept questions get misclassified as flowcharts.
     if not best_type:
-        if subject in ("math_formula", "science_process", "comparison"):
-            best_type = {
-                "math_formula":    "line_graph",
-                "science_process": "flow",
-                "comparison":      "comparison",
-            }[subject]
+        if subject == "comparison":
+            best_type = "comparison"
             best_score = 3   # low confidence
 
     if not best_type:

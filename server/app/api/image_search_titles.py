@@ -117,9 +117,13 @@ def extract_json_safe(text: str) -> Dict:
     raise ValueError(f"No valid JSON found in text. Preview: {text[:200]}")
 
 
-async def search_wikimedia_images(query: str, limit: int = 10) -> List[str]:
-    """Async search for Wikimedia Commons images. Returns list of matching image titles."""
-    url = "https://commons.wikimedia.org/w/api.php"
+async def search_wikimedia_images(query: str, limit: int = 10) -> List[Dict[str, str]]:
+    """
+    Async search for Wikimedia Commons images.
+    Returns list of {"title": ..., "url": ...} dicts so callers can resolve
+    a picked title directly to its URL without a second network round-trip.
+    """
+    api_url = "https://commons.wikimedia.org/w/api.php"
     params = {
         "action": "query",
         "generator": "search",
@@ -133,23 +137,27 @@ async def search_wikimedia_images(query: str, limit: int = 10) -> List[str]:
 
     try:
         client = get_http_client()
-        response = await client.get(url, params=params)
+        response = await client.get(api_url, params=params)
         response.raise_for_status()
         data = response.json()
 
-        titles = []
+        results = []
         if "query" in data and "pages" in data["query"]:
             for page in data["query"]["pages"].values():
                 if "imageinfo" in page:
                     info = page["imageinfo"][0]
-                    # Filter for common image formats
-                    if info.get("url", "").lower().endswith(
-                        (".png", ".jpg", ".jpeg", ".gif")
-                    ):
-                        titles.append(page["title"])
+                    img_url = info.get("url", "")
+                    img_url_lower = img_url.lower()
+                    mime = info.get("mime", "").lower()
+                    is_image = (
+                        img_url_lower.endswith((".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"))
+                        or mime.startswith(("image/",))
+                    )
+                    if is_image and img_url:
+                        results.append({"title": page["title"], "url": img_url})
 
-        logger.info(f"Found {len(titles)} images for query: {query[:50]}")
-        return titles
+        logger.info(f"Found {len(results)} images for query: {query[:50]}")
+        return results
 
     except httpx.HTTPError as e:
         logger.error(f"Wikimedia API error for query '{query}': {e}")
@@ -159,14 +167,25 @@ async def search_wikimedia_images(query: str, limit: int = 10) -> List[str]:
         return []
 
 
-def _pick_titles_sync(steps: list, all_candidates: list) -> Dict[int, str]:
+def _pick_titles_sync(steps: list, all_candidates: List[Dict[str, str]]) -> Dict[int, str]:
     """
     Sync LLM-based image title picker.
-    For each high-confidence step, asks the 'faster' model to pick the best
-    Wikimedia title from all_candidates.  Falls back to word-overlap on failure.
-    Returns {step_index: title_string}.
+    all_candidates: list of {"title": ..., "url": ...} dicts.
+    Returns {step_index: direct_image_url}.
     """
     from app.services.llm_service import generate_response
+
+    # Build title→url lookup
+    title_to_url: Dict[str, str] = {}
+    for item in all_candidates:
+        if isinstance(item, dict):
+            title = item.get("title", "").replace("File:", "").strip()
+            url = item.get("url", "")
+            if title and url:
+                title_to_url[title] = url
+
+    if not title_to_url:
+        return {}
 
     # Gather steps that actually need an image
     needs_image = []
@@ -184,9 +203,7 @@ def _pick_titles_sync(steps: list, all_candidates: list) -> Dict[int, str]:
     if not needs_image:
         return {}
 
-    clean = [t.replace("File:", "").strip() for t in all_candidates if t and isinstance(t, str)][:30]
-    if not clean:
-        return {}
+    clean_titles = list(title_to_url.keys())[:30]
 
     steps_text = "\n".join(
         f'[{s["idx"]}] Step "{s["title"]}" — image needed for: "{s["desc"]}"'
@@ -198,7 +215,7 @@ def _pick_titles_sync(steps: list, all_candidates: list) -> Dict[int, str]:
         "Output ONLY valid JSON mapping step index (string key) to the EXACT title string or null.\n\n"
         f"Steps needing images:\n{steps_text}\n\n"
         "Available Wikimedia titles:\n"
-        + "\n".join(f"- {t}" for t in clean)
+        + "\n".join(f"- {t}" for t in clean_titles)
         + '\n\nOutput example: {"0": "Photosynthesis diagram.svg", "3": null, "5": "Newton laws.png"}'
     )
     try:
@@ -210,19 +227,27 @@ def _pick_titles_sync(steps: list, all_candidates: list) -> Dict[int, str]:
             try:
                 idx = int(k)
                 if v and isinstance(v, str):
-                    result[idx] = v.replace("File:", "").strip()
+                    clean_title = v.replace("File:", "").strip()
+                    url = title_to_url.get(clean_title, "")
+                    if url:
+                        result[idx] = url
+                        logger.info("Step %d → image URL resolved: %s", idx, url[:80])
             except (ValueError, TypeError):
                 pass
-        logger.info("LLM image picker assigned %d images", len(result))
+        logger.info("LLM image picker assigned %d image URLs", len(result))
         return result
     except Exception as exc:
         logger.warning("LLM image picker failed (%s) — falling back to word-overlap", exc)
-        # Fallback: word-overlap scoring (original algorithm)
+        # Fallback: word-overlap scoring
+        raw_titles = [item.get("title", "") for item in all_candidates if isinstance(item, dict)]
         fallback: Dict[int, str] = {}
         for item in needs_image:
-            best = _best_title_match(item["desc"], all_candidates)
-            if best:
-                fallback[item["idx"]] = best.replace("File:", "").strip()
+            best_title = _best_title_match(item["desc"], raw_titles)
+            if best_title:
+                clean = best_title.replace("File:", "").strip()
+                url = title_to_url.get(clean, "")
+                if url:
+                    fallback[item["idx"]] = url
         return fallback
 
 
@@ -245,6 +270,7 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
             return query
 
         from app.utils.svg_builder import build_animated_svg, build_from_diagram_type, build_atom_html
+        from app.utils.svg_llm_builder import build_llm_svg
         from app.utils.diagram_router import classify_diagram_need
         from app.services.enrichment_service import build_enrichment_tasks
 
@@ -327,8 +353,9 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
                 d_type = (frame.get("diagram_type") or "").strip()
                 d_data = frame.get("data") or {}
 
-                # ── Auto-classify if LLM omitted diagram_type ────────────────
-                if not d_type:
+                # ── Auto-classify only when LLM set NEITHER diagram_type NOR svg_elements ──
+                # If LLM already planned svg_elements, trust that — don't override it.
+                if not d_type and not frame.get("svg_elements"):
                     step_title = step.get("title", "")
                     step_speech = frame.get("speech", "")
                     _q = f"{step_title} {step_speech}"
@@ -342,23 +369,35 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
                         )
 
                 if d_type:
-                    # ── Atom: JS physics engine (elliptical orbits, glow, phase reveal) ──
-                    if d_type.lower() in ("atom",):
+                    step_title  = step.get("title", "")
+                    frame_speech = frame.get("speech", "")
+
+                    # ── Atom: compact proven JS+SVG animation (~5KB) ──────────
+                    if d_type.lower() == "atom":
                         html = build_atom_html(d_data)
                         if html:
-                            logger.info(
-                                "Built atom JS animation for step '%s'",
-                                step.get("title", ""),
-                            )
-                    # Path 1: all other structured diagram_types → SMIL SVG
+                            logger.info("Built atom JS animation for step '%s'", step_title)
+
+                    # ── All other types: LLM draws the real anatomy/structure ─
+                    # LLM produces rich, accurate SVG (heart chambers, cell parts,
+                    # lab apparatus, etc.) — up to 3 retries on parse failure.
+                    if not html:
+                        html = build_llm_svg(
+                            diagram_type = d_type,
+                            data         = d_data,
+                            topic        = step_title,
+                            speech       = frame_speech,
+                        )
+
+                    # ── Fallback: Python SMIL builder (geometric, no LLM) ────
                     if not html:
                         shapes = build_from_diagram_type(d_type, d_data)
                         if shapes:
                             html = build_animated_svg(shapes)
                             if html:
                                 logger.info(
-                                    "Built svg_html (type=%s enriched=%s) for step '%s'",
-                                    d_type, bool(d_data), step.get("title", ""),
+                                    "Built SMIL svg_html (type=%s) for step '%s' [fallback]",
+                                    d_type, step_title,
                                 )
 
                 if not html:
@@ -382,13 +421,25 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
                 frame.pop("data", None)
 
         # ── Phase 4: Image title selection from wikimedia results ─────────────
-        all_candidates: List[str] = []
-        for titles in per_step_results:
-            if isinstance(titles, list):
-                all_candidates.extend(titles)
+        # all_candidates: list of {"title": ..., "url": ...} dicts
+        all_candidates: List[Dict[str, str]] = []
+        for result in per_step_results:
+            if isinstance(result, list):
+                all_candidates.extend(result)
         if extra_candidates:
-            all_candidates.extend(extra_candidates)
-        all_candidates = list(dict.fromkeys(all_candidates))
+            # extra_candidates may be dicts (from _prefetch_wikimedia) or legacy strings
+            for item in extra_candidates:
+                if isinstance(item, dict):
+                    all_candidates.append(item)
+        # Deduplicate by URL
+        seen_urls: set = set()
+        deduped: List[Dict[str, str]] = []
+        for item in all_candidates:
+            url = item.get("url", "")
+            if url and url not in seen_urls:
+                seen_urls.add(url)
+                deduped.append(item)
+        all_candidates = deduped
 
         if not all_candidates:
             logger.info("No Wikimedia candidates found — clearing image descriptions")
@@ -408,8 +459,9 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
             if score <= 0:
                 continue
             if i in picks:
+                # Store the direct image URL — Android loads it without re-querying Wikimedia
                 step["image_description"] = picks[i]
-                logger.info("Step %d → image: %s", i, picks[i])
+                logger.info("Step %d → image URL: %s", i, picks[i][:80])
             elif step.get("image_description"):
                 step.pop("image_description", None)
                 logger.info("Step %d: no image match, description cleared", i)

@@ -471,7 +471,7 @@ $svgNote$lastFrameNote$langInstruction"""
                 val rawRole  = frameObj.optString("voice_role",  "")
                 val (aEng, aRole) = smartAssignTts(fType)
                 BlackboardFrame(
-                    text             = frameObj.getString("text"),
+                    text             = frameObj.optString("text", ""),
                     highlight        = hlArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
                     speech           = frameObj.optString("speech", ""),
                     durationMs       = frameObj.optLong("duration_ms", 2000),

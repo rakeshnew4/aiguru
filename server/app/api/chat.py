@@ -1,3 +1,4 @@
+import re
 import asyncio
 import json
 from typing import Optional, List, Dict, Any
@@ -139,7 +140,8 @@ def _classify_intent(question: str, has_image: bool, last_reply: str) -> dict:
 async def _bb_plan(question: str, context: str, history: list, level: int) -> dict:
     """
     Fast BB lesson planner (~150ms, 'faster' model).
-    Returns plan dict with topic_type, scope, steps_count, key_concepts, image_search_terms.
+    Returns plan dict with topic_type, scope, steps_count, key_concepts,
+    image_search_terms, question_focus, question_type, prior_knowledge.
     Falls back to safe defaults on any error.
     """
     defaults = {
@@ -148,6 +150,9 @@ async def _bb_plan(question: str, context: str, history: list, level: int) -> di
         "key_concepts": [],
         "steps_count": 5,
         "image_search_terms": [],
+        "question_focus": "",
+        "question_type": "conceptual",
+        "prior_knowledge": "",
     }
     try:
         planner_prompt = build_bb_planner_prompt(question, context, history, level)
@@ -164,6 +169,15 @@ async def _bb_plan(question: str, context: str, history: list, level: int) -> di
             plan["key_concepts"] = []
         if not isinstance(plan.get("image_search_terms"), list):
             plan["image_search_terms"] = []
+        # Ensure new fields are strings, falling back gracefully
+        plan.setdefault("question_focus", "")
+        plan.setdefault("question_type", "conceptual")
+        plan.setdefault("prior_knowledge", "")
+        logger.info(
+            "BB planner extras | focus=%r type=%s prior=%r",
+            plan["question_focus"][:80], plan["question_type"],
+            plan["prior_knowledge"][:60],
+        )
         return plan
     except Exception as exc:
         logger.warning("BB planner failed (%s) — using defaults", exc)
@@ -180,11 +194,11 @@ async def _prefetch_wikimedia(search_terms: list) -> list:
     try:
         tasks = [search_wikimedia_images(term, limit=8) for term in search_terms[:4]]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        titles = []
+        candidates = []
         for r in results:
             if isinstance(r, list):
-                titles.extend(r)
-        return titles
+                candidates.extend(r)  # each item is now {"title": ..., "url": ...}
+        return candidates
     except Exception as exc:
         logger.warning("Wikimedia prefetch failed: %s", exc)
         return []
@@ -255,6 +269,113 @@ def _fix_invalid_escapes(text: str) -> str:
     return re.sub(r'\\(.)', _replacer, text, flags=re.DOTALL)
 
 
+def _fix_unbalanced_braces(text: str) -> str:
+    """
+    Walk JSON text (string-aware) and drop closing braces / brackets that do
+    not match the innermost open delimiter on the stack.
+
+    Fixes two LLM structural bugs at once:
+      1. Extra } in the middle: "data": {}}}, {"frame_type"
+                                          ^^ second } is dropped
+      2. Trailing garbage after root closes: ...}]}]}\n]}
+                                                      ^^^ all dropped
+
+    Applied AFTER _fix_invalid_escapes so the string-scanner's backslash
+    handling sees only valid \\X sequences (not raw \X that would confuse it).
+    """
+    result: list[str] = []
+    stack: list[str] = []   # '{' or '['
+    in_string = False
+    i = 0
+    n = len(text)
+    while i < n:
+        ch = text[i]
+        if in_string:
+            if ch == '\\':
+                result.append(ch)
+                i += 1
+                if i < n:
+                    result.append(text[i])
+                i += 1
+                continue
+            elif ch == '"':
+                in_string = False
+            result.append(ch)
+        else:
+            if ch == '"':
+                in_string = True
+                result.append(ch)
+            elif ch == '{':
+                stack.append('{')
+                result.append(ch)
+            elif ch == '[':
+                stack.append('[')
+                result.append(ch)
+            elif ch == '}':
+                if stack and stack[-1] == '{':
+                    stack.pop()
+                    result.append(ch)
+                # else: mismatched / extra } — drop it silently
+            elif ch == ']':
+                if stack and stack[-1] == '[':
+                    stack.pop()
+                    result.append(ch)
+                # else: mismatched / extra ] — drop it silently
+            else:
+                result.append(ch)
+        i += 1
+    return ''.join(result)
+
+
+def _fix_literal_newlines(text: str) -> str:
+    """
+    Walk JSON text and replace literal newline/carriage-return/tab/control
+    characters that appear INSIDE string values with their JSON escape
+    equivalents (\\n, \\r, \\t, \\uXXXX).
+
+    LLMs sometimes emit multi-line speech strings without escaping the newlines,
+    which makes the text syntactically invalid JSON even though the brace
+    structure is correct — causing 'All repair strategies failed' at char 0.
+    This is applied AFTER _fix_invalid_escapes so backslash sequences are clean.
+    """
+    result: list[str] = []
+    in_string = False
+    i = 0
+    n = len(text)
+    while i < n:
+        ch = text[i]
+        if in_string:
+            if ch == '\\':
+                # Already-escaped sequence — copy both chars verbatim.
+                result.append(ch)
+                i += 1
+                if i < n:
+                    result.append(text[i])
+                i += 1
+                continue
+            elif ch == '"':
+                in_string = False
+                result.append(ch)
+            elif ch == '\n':
+                result.append('\\n')
+            elif ch == '\r':
+                result.append('\\r')
+            elif ch == '\t':
+                result.append('\\t')
+            elif ord(ch) < 0x20:        # other ASCII control chars
+                result.append(f'\\u{ord(ch):04x}')
+            else:
+                result.append(ch)
+        else:
+            if ch == '"':
+                in_string = True
+                result.append(ch)
+            else:
+                result.append(ch)
+        i += 1
+    return ''.join(result)
+
+
 def extract_json_safe(text):
     """
     Robustly extract and parse the first top-level JSON object from text.
@@ -294,6 +415,22 @@ def extract_json_safe(text):
     except json.JSONDecodeError:
         pass
 
+    # Retry with literal newline fix (LLM emits multi-line speech strings)
+    try:
+        return json.loads(_fix_literal_newlines(_fix_invalid_escapes(_remove_trailing_commas(stripped))))
+    except json.JSONDecodeError:
+        pass
+
+    # Retry with unbalanced-brace fix — handles LLM structural bugs:
+    #   "data": {}}}, {"frame_type"   →  extra } dropped
+    #   trailing \n]}  after root     →  dropped
+    # This MUST come after _fix_invalid_escapes so the string-scanner
+    # sees valid \\X sequences, not raw \X that would mis-track quote depth.
+    try:
+        return json.loads(_fix_unbalanced_braces(_fix_literal_newlines(_fix_invalid_escapes(_remove_trailing_commas(stripped)))))
+    except json.JSONDecodeError:
+        pass
+
     # Scan for the first '{' then walk with balanced-brace counting,
     # correctly skipping string contents (including escaped chars).
     start = stripped.find('{')
@@ -320,11 +457,25 @@ def extract_json_safe(text):
                 depth -= 1
                 if depth == 0:
                     candidate = stripped[start:i + 1]
-                    # Try each strategy in order: direct → trailing commas → escape fix
+                    # Try each strategy in order:
+                    #  1. direct parse
+                    #  2. trailing commas removed
+                    #  3. invalid escape sequences fixed
+                    #  4. literal newlines/control chars fixed (LLM multi-line strings)
+                    #  5. all three combined
+                    #  6. unbalanced braces removed (extra } from LLM)
+                    _tc  = _remove_trailing_commas(candidate)
+                    _esc = _fix_invalid_escapes(_tc)
+                    _nl  = _fix_literal_newlines(_esc)
+                    _ub  = _fix_unbalanced_braces(_nl)
                     for attempt in (
                         candidate,
-                        _remove_trailing_commas(candidate),
-                        _fix_invalid_escapes(_remove_trailing_commas(candidate)),
+                        _tc,
+                        _esc,
+                        _nl,
+                        _fix_literal_newlines(_fix_invalid_escapes(candidate)),
+                        _ub,
+                        _fix_unbalanced_braces(_fix_literal_newlines(_fix_invalid_escapes(candidate))),
                     ):
                         try:
                             return json.loads(attempt)
@@ -345,6 +496,47 @@ _NORMAL_FIELDS = ("user_question", "answer", "user_attachment_transcription", "e
 _VALID_TTS_ENGINES = {"android", "gemini", "google"}
 _VALID_VOICE_ROLES = {"teacher", "assistant", "quiz", "feedback"}
 
+# ── Speech opener patterns to strip (classroom filler that annoys students) ───
+# Applied to every frame's speech field in _sanitize_bb_response.
+_OPENER_RE = [
+    # "Hi/Hello/Hey everyone/students/class/all/folks[!,. ]"
+    re.compile(r'^(hi|hello|hey)[,!]?\s+(everyone|students|class|there|all|folks)[!,.]?\s+', re.I),
+    # "Today we are going to learn/explore/discuss/cover/study [about] " — prefix only
+    re.compile(r'^today[,]?\s+we(?:\s+are|\s*\'re)?\s+going\s+to\s+(?:learn(?:\s+about)?|explore|discuss|cover|study|look\s+at|talk\s+about)\s+', re.I),
+    # "Today we will learn/explore/study/cover [about] " — prefix only
+    re.compile(r'^today[,]?\s+we\s+will\s+(?:learn(?:\s+about)?|explore|discuss|cover|study|look\s+at|talk\s+about)\s+', re.I),
+    # "In this lesson/session/step/video, we [are going to / will] cover/explore/study/learn about "
+    re.compile(r'^in\s+this\s+(lesson|session|step|video)[,.]?\s+we(?:\s+are\s+going\s+to|\s+will)?\s+(?:learn(?:\s+about)?|explore|discuss|cover|study|look\s+at)\s+', re.I),
+    # "Let's begin/start our lesson/session on "
+    re.compile(r'^let\s*\'?s\s+(?:begin|start)\s+(?:our\s+)?(?:lesson|session|class|exploration)\s+on\s+', re.I),
+    # "Let's learn about / explore [how] / dive into "
+    re.compile(r'^let\s*\'?s\s+(?:learn\s+about|explore|discuss|dive\s+into)\s+(?:how\s+)?', re.I),
+    # "Welcome to today's/our lesson/session on " — single-sentence specific form
+    re.compile(r'^welcome\s+to\s+(?:today\'s\s+)?(?:lesson|session|class|our\s+\w+)\s+on\s+', re.I),
+    # "Welcome to [phrase ending !.] " — multi-sentence form, keeps content after punctuation
+    re.compile(r'^welcome\s+to\s+[^.!?]{0,80}[.!]\s+', re.I),
+    # "Great/Alright/Okay/So, let's explore/learn/study [how] "
+    re.compile(r'^(great|alright|okay|so)[!,]?\s+let\s*\'?s\s+(?:explore|learn\s+about|discuss|cover|study)\s+(?:how\s+)?', re.I),
+]
+
+def _strip_speech_opener(speech: str) -> str:
+    """Remove generic classroom-lecture filler from the start of a speech string.
+    Applies up to 3 passes so chained openers (e.g. 'Hi everyone! Today we will...')
+    are fully removed. Stops when no pattern matches or remaining text is too short.
+    """
+    if not speech or len(speech) < 20:
+        return speech
+    for _ in range(3):
+        changed = False
+        for pat in _OPENER_RE:
+            cleaned = pat.sub('', speech).lstrip()
+            if cleaned != speech and len(cleaned) >= 10:
+                speech = cleaned
+                changed = True
+                break
+        if not changed:
+            break
+    return speech
 
 def _sanitize_normal_response(text: str) -> str:
     """
@@ -369,6 +561,19 @@ def _sanitize_normal_response(text: str) -> str:
         }, ensure_ascii=False)
 
 
+_VALID_FRAME_TYPES = frozenset({
+    "concept", "memory", "diagram", "quiz_mcq", "quiz_typed",
+    "quiz_voice", "quiz_order", "summary",
+})
+# Diagram sub-types the LLM sometimes uses as frame_type by mistake
+_DIAGRAM_SUB_TYPES = frozenset({
+    "atom", "solar_system", "waveform_signal", "wave", "triangle",
+    "circle_radius", "rectangle_area", "geometry_angles", "line_graph",
+    "graph_function", "number_line", "fraction_bar",
+    "flow", "cycle", "comparison", "labeled_diagram", "anatomy", "cell",
+    "cell_diagram", "flow_arrow", "custom",
+})
+
 def _coerce_frame(frame: dict) -> None:
     """In-place coercion of a single BB frame's field types."""
     dm = frame.get("duration_ms")
@@ -387,11 +592,108 @@ def _coerce_frame(frame: dict) -> None:
         frame["tts_engine"] = "gemini"
     if frame.get("voice_role") not in _VALID_VOICE_ROLES:
         frame["voice_role"] = "teacher"
+    # Ensure every frame has a 'text' field — diagram frames often omit it,
+    # which causes a JSONException in Android's BlackboardGenerator.parseStepsArray
+    # (it uses getString("text") which throws if the key is absent).
+    if "text" not in frame or frame["text"] is None:
+        frame["text"] = ""
+    # Normalize frame_type: LLM sometimes uses diagram sub-type as frame_type
+    # e.g. frame_type="flow" instead of frame_type="diagram" + diagram_type="flow"
+    ftype = frame.get("frame_type", "")
+    if ftype not in _VALID_FRAME_TYPES:
+        if ftype in _DIAGRAM_SUB_TYPES:
+            # Move it: set frame_type="diagram", preserve the value as diagram_type
+            if not frame.get("diagram_type"):
+                frame["diagram_type"] = ftype
+            frame["frame_type"] = "diagram"
+        else:
+            frame["frame_type"] = "concept"
+
+
+def _repair_ndjson_bb_response(text: str) -> str:
+    """
+    Repair NDJSON (newline-delimited JSON) BB responses where the LLM outputs
+    multiple separate JSON objects instead of wrapping them in {"steps": [...]}.
+
+    Pattern (broken):
+        {"steps": [...initial_step...]}
+        {"lang": "...", "frames": [...]}
+        {"lang": "...", "frames": [...]}
+
+    Pattern (fixed):
+        {"steps": [...initial_step..., step2_obj, step3_obj, ...]}
+    """
+    try:
+        # Find all top-level JSON objects in the text
+        objects = []
+        i = 0
+        while i < len(text):
+            # Skip whitespace and delimiters
+            while i < len(text) and text[i] in ' \t\n\r,':
+                i += 1
+            if i >= len(text) or text[i] != '{':
+                break
+            # Extract one object
+            depth = 0
+            in_str = False
+            start = i
+            while i < len(text):
+                ch = text[i]
+                if in_str:
+                    if ch == '\\':
+                        i += 2
+                        continue
+                    if ch == '"':
+                        in_str = False
+                else:
+                    if ch == '"':
+                        in_str = True
+                    elif ch == '{':
+                        depth += 1
+                    elif ch == '}':
+                        depth -= 1
+                        if depth == 0:
+                            try:
+                                obj = json.loads(text[start:i+1])
+                                objects.append(obj)
+                            except (json.JSONDecodeError, ValueError):
+                                pass
+                            i += 1
+                            break
+                i += 1
+
+        if len(objects) <= 1:
+            return text  # Not NDJSON, return as-is
+
+        # Check if first object has "steps" array
+        first_obj = objects[0]
+        if not isinstance(first_obj, dict) or "steps" not in first_obj:
+            return text
+
+        steps = first_obj["steps"]
+        if not isinstance(steps, list):
+            return text
+
+        # Collect all remaining objects as additional steps
+        # (they typically have "lang", "frames", etc. — the structure of a step)
+        for obj in objects[1:]:
+            if isinstance(obj, dict) and "frames" in obj:
+                steps.append(obj)
+
+        logger.info(
+            "BB NDJSON repair: combined %d objects into 1 with %d steps",
+            len(objects), len(steps),
+        )
+        return json.dumps(first_obj, ensure_ascii=False)
+    except Exception as e:
+        logger.debug("NDJSON repair failed (%s) — returning original", e)
+        return text
 
 
 def _sanitize_bb_response(text: str) -> str:
     """
     Parse and re-serialize a blackboard-mode LLM JSON response.
+    - Repairs NDJSON output (multiple top-level JSON objects).
     - Coerces field types (duration_ms → int, quiz_correct_index → int,
       tts_engine / voice_role → valid enum values) to prevent Android crashes.
     - Flattens nested frames: the LLM sometimes wraps actual frames inside
@@ -401,6 +703,9 @@ def _sanitize_bb_response(text: str) -> str:
     Falls back to the original text on catastrophic failure.
     """
     try:
+        # Repair NDJSON if present (must be done before extract_json_safe)
+        text = _repair_ndjson_bb_response(text)
+
         parsed = extract_json_safe(text)
         steps = parsed.get("steps")
         if not isinstance(steps, list):
@@ -443,9 +748,11 @@ def _sanitize_bb_response(text: str) -> str:
                     for inner in nested:
                         if isinstance(inner, dict):
                             _coerce_frame(inner)
+                            inner["speech"] = _strip_speech_opener(inner.get("speech") or "")
                             flattened.append(inner)
                 else:
                     _coerce_frame(frame)
+                    frame["speech"] = _strip_speech_opener(frame.get("speech") or "")
                     flattened.append(frame)
 
             step["frames"] = flattened
@@ -643,6 +950,7 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                             history=req.history or [],
                             plan=plan,
                             lang=lang,
+                            image_data=req.image_data,
                         )
                     
                     # Run the LLM in the background and emit SSE keepalive pings

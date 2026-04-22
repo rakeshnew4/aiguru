@@ -65,7 +65,7 @@ async def register_user(req: RegisterRequest, auth: AuthUser = Depends(require_a
     # Create user in Firestore (sync via executor)
     loop = asyncio.get_event_loop()
     try:
-        await loop.run_in_executor(
+        is_new_user = await loop.run_in_executor(
             None,
             user_service.create_user_if_missing,
             req.userId,
@@ -78,6 +78,10 @@ async def register_user(req: RegisterRequest, auth: AuthUser = Depends(require_a
     except Exception as exc:
         logger.error("register_user: failed to create Firestore user uid=%s: %s", req.userId, exc)
         raise HTTPException(status_code=500, detail="Failed to register user in Firestore")
+
+    # For brand-new users: copy onboarding sample BB sessions (fire-and-forget)
+    if is_new_user:
+        loop.run_in_executor(None, user_service.copy_samples_to_user, req.userId)
 
     # Create LiteLLM API key if enabled
     litellm_key = None
