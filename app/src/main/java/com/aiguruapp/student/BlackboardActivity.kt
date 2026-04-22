@@ -1241,13 +1241,22 @@ class BlackboardActivity : AppCompatActivity() {
 
             // Server already built the full animated HTML — just load it
             val diagramWebView = android.webkit.WebView(this).apply {
-                settings.javaScriptEnabled = true      // required for SVG+JS animation
-                settings.domStorageEnabled = true       // some WebViews need this for rAF
+                settings.javaScriptEnabled = true
+                settings.domStorageEnabled = true
                 settings.loadWithOverviewMode = true
                 settings.useWideViewPort = true
+                settings.allowFileAccess = true
+                settings.allowContentAccess = true
+                // Allow mixed content (needed for inline data URIs inside HTML)
+                settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                // Disable safe-browsing delays for local HTML content
+                settings.setSupportMultipleWindows(false)
+                settings.javaScriptCanOpenWindowsAutomatically = false
                 isVerticalScrollBarEnabled = false
                 isHorizontalScrollBarEnabled = false
                 setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                // Hardware acceleration is essential for requestAnimationFrame smoothness
+                setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     (280 * dp).toInt()

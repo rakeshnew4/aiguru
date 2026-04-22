@@ -111,14 +111,22 @@ blackboard_prompt = (
     "    solar_system    → Sun + planets in orbit\n"
     "    waveform_signal → Sound/light/EM wave on axes\n"
     "    wave            → alias for waveform_signal\n"
-    "    triangle        → Labelled triangle (height, angles, incircle, circumcircle)\n"
-    "    circle_radius   → Circle with radius/diameter labels\n"
-    "    rectangle_area  → Rectangle with width/height\n"
-    "    geometry_angles → Angle diagram (acute/right/obtuse/supplementary)\n"
-    "    line_graph      → Scatter/line plot from (x,y) points\n"
-    "    graph_function  → Mathematical curve: quadratic/linear/cubic/sine/cosine/abs\n"
+    "  ── GEOMETRY ──\n"
+    "    triangle        → Labelled triangle (height, angles, incircle, circumcircle, median)\n"
+    "    polygon         → Regular polygon: triangle..dodecagon (sides=3..12)\n"
+    "    circle_geometry → Circle with radius, diameter, chord, sector, tangent, arc\n"
+    "    angle           → Angle diagram (acute/right/obtuse/straight/reflex/supplementary)\n"
+    "    coordinate_plane→ Cartesian plane with points, lines, vectors\n"
+    "    pythagoras      → Pythagorean theorem visual with squares on sides\n"
+    "  ── DATA / GRAPHS ──\n"
+    "    graph_function  → Mathematical curve: quadratic/linear/cubic/sine/cosine/abs/sqrt\n"
+    "    line_graph      → Scatter/line plot from (x,y) points with filled area option\n"
+    "    bar_chart       → Animated rising bar chart (up to 8 bars)\n"
+    "    pie_chart       → Pie chart with legend (up to 8 slices)\n"
     "    number_line     → Number line with marked points and highlighted range\n"
-    "    fraction_bar    → Visual fraction comparison bars (up to 4 fractions)\n"
+    "    fraction_bar    → Animated fraction comparison bars (up to 5 fractions)\n"
+    "    venn_diagram    → Venn diagram (2 or 3 sets with intersection)\n"
+    "  ── PROCESS FLOWS ──\n"
     "    flow            → Flowchart / process steps (linear)\n"
     "    cycle           → Cyclical process (water cycle, nitrogen cycle, etc.)\n"
     "    comparison      → Side-by-side comparison (A vs B)\n"
@@ -126,21 +134,27 @@ blackboard_prompt = (
     "    anatomy / cell  → alias for labeled_diagram\n"
     '  OUTPUT: "diagram_type": "<type>", "data": {<keys>}, "svg_elements": []\n'
     "  DATA SCHEMAS:\n"
-    '    atom:            {"nucleus_label":"He","nucleus_color":"highlight","orbits":[{"electrons":2,"color":"secondary","label":"K shell"}],"duration":12}\n'
-    '    solar_system:    {"sun_label":"Sun","planets":[{"label":"Earth","color":"blue","duration":20},{"label":"Mars","color":"red","duration":32}]}\n'
-    '    waveform_signal: {"title":"Sound Wave","wave_type":"sine","cycles":2.5,"amplitude":50,"x_label":"time (s)","y_label":"amplitude","color":"secondary"}\n'
-    '    triangle:        {"labels":["A","B","C"],"show_height":true,"show_incircle":false}\n'
-    '    circle_radius:   {"radius":70,"label":"r = 7 cm"}\n'
-    '    rectangle_area:  {"width":140,"height":80}\n'
-    '    geometry_angles: {"angle_deg":60,"angle_type":"acute","labels":["A","O","B"],"title":"Acute Angle","show_second":false}\n'
-    '    line_graph:      {"x_label":"Time (s)","y_label":"Speed (m/s)","points":[[0,0],[1,4],[2,7],[3,9]]}\n'
-    '    graph_function:  {"function":"quadratic","a":1,"b":0,"c":0,"x_range":[-4,4],"label":"y = x\u00b2","color":"secondary"}\n'
+    '    atom:            {"nucleus_label":"He","orbits":[{"electrons":2,"color":"secondary","label":"K shell"}]}\n'
+    '    solar_system:    {"sun_label":"Sun","planets":[{"label":"Earth","color":"blue","duration":20}]}\n'
+    '    waveform_signal: {"title":"Sound Wave","wave_type":"sine","amplitude":50,"color":"secondary"}\n'
+    '    triangle:        {"labels":["A","B","C"],"type":"right","show_height":true,"show_incircle":true,"show_angles":true,"a_val":"3","b_val":"4","c_val":"5","show_pythagoras":true}\n'
+    '    polygon:         {"sides":6,"label":"Regular Hexagon","show_diagonals":true,"show_angles":true,"show_incircle":true,"color":"secondary"}\n'
+    '    circle_geometry: {"radius":80,"title":"Circle","show_diameter":true,"show_chord":true,"show_sector":true,"sector_angle":90,"show_tangent":true}\n'
+    '    angle:           {"angle_deg":60,"angle_type":"acute","labels":["A","O","B"],"title":"Acute Angle 60°","show_second":false}\n'
+    '    geometry_angles: {"angle_deg":90,"labels":["A","O","B"],"title":"Right Angle"}\n'
+    '    coordinate_plane:{"title":"Coordinate Plane","x_range":[-5,5],"y_range":[-4,4],"show_grid":true,"points":[{"x":2,"y":3,"label":"P"},{"x":-1,"y":2}],"vectors":[{"x1":0,"y1":0,"x2":3,"y2":2,"label":"v"}]}\n'
+    '    pythagoras:      {"a":3,"b":4,"show_squares":true,"title":"3-4-5 Right Triangle"}\n'
+    '    graph_function:  {"function":"quadratic","a":1,"b":0,"c":0,"x_range":[-4,4],"label":"y = x²","color":"secondary"}\n'
+    '    line_graph:      {"x_label":"Time (s)","y_label":"Speed (m/s)","points":[[0,0],[1,4],[2,7],[3,9]],"show_area":true}\n'
+    '    bar_chart:       {"title":"Rainfall (mm)","y_label":"mm","values":[{"label":"Jan","value":45},{"label":"Feb","value":30}]}\n'
+    '    pie_chart:       {"title":"Diet","values":[{"label":"Carbs","value":50},{"label":"Protein","value":30},{"label":"Fat","value":20}]}\n'
     '    number_line:     {"start":-5,"end":5,"marked_points":[0,2,-3],"highlight_range":[1,4],"label":"Number Line"}\n'
     '    fraction_bar:    {"fractions":[{"num":1,"den":2},{"num":3,"den":4}],"title":"Comparing Fractions"}\n'
-    '    flow:            {"title":"Photosynthesis","steps":["Light absorbed","Water split","CO\u2082 fixed","Glucose made","O\u2082 released"]}\n'
+    '    venn_diagram:    {"title":"Sets A and B","sets":[{"label":"A","items":["1","2","3"]},{"label":"B","items":["3","4","5"]}],"intersection":"3"}\n'
+    '    flow:            {"title":"Photosynthesis","steps":["Light absorbed","Water split","CO₂ fixed","Glucose made"]}\n'
     '    cycle:           {"title":"Water Cycle","steps":["Evaporation","Condensation","Precipitation","Collection"]}\n'
-    '    comparison:      {"left":"Mitosis","right":"Meiosis","left_points":["2 cells","diploid","growth"],"right_points":["4 cells","haploid","reproduction"]}\n'
-    '    labeled_diagram: {"center":"Cell","center_shape":"circle","parts":["Nucleus","Membrane","Cytoplasm","Ribosome","Vacuole"]}\n'
+    '    comparison:      {"left":"Mitosis","right":"Meiosis","left_points":["2 cells","diploid"],"right_points":["4 cells","haploid"]}\n'
+    '    labeled_diagram: {"center":"Cell","center_shape":"circle","parts":["Nucleus","Membrane","Cytoplasm","Ribosome"]}\n'
     "\n"
     "  ══ PATH 2: CUSTOM DRAWING (LLM plans every shape) ══\n"
     "  USE THIS for: heart, lungs, kidney, neuron, digestive system, lab apparatus,\n"

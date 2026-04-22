@@ -1,21 +1,565 @@
-/**
- * diagrams.js — High-level procedural diagram scene builders
- *
- * Each render function builds a complete scene inside the provided SVG and
- * registers all animations with the given DiagramEngine.
- *
- * Available renderers:
- *   Diagrams.atom(engine, svg, data)          — Bohr model with orbiting electrons
- *   Diagrams.solarSystem(engine, svg, data)   — Sun + orbiting planets
- *   Diagrams.wave(engine, svg, data)          — Animated sine / sound wave
- *   Diagrams.sun(engine, svg, data)           — Procedural sun with rays + glow
- *   Diagrams.plant(engine, svg, data)         — Simple branching plant
- *   Diagrams.flowArrow(engine, svg, data)     — Labelled linear flow diagram
- *
- * Descriptor shapes expected per type are described in each function's JSDoc.
- *
- * Requires: core.js, shapes.js, motion.js
- */
+'use strict';
+
+// ── SVG namespace constant ────────────────────────────────────────────────────
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS(SVG_NS, tag);
+  if (attrs) setAttrs(el, attrs);
+  return el;
+}
+
+function setAttrs(el, attrs) {
+  for (const [k, v] of Object.entries(attrs)) {
+    el.setAttribute(k, v);
+  }
+}
+
+function append(parent, ...children) {
+  for (const ch of children) parent.appendChild(ch);
+}
+
+// ── Colour palette (matches Python svg_builder.py) ────────────────────────────
+const COLORS = {
+  stroke:    '#F0EDD0',  // chalk white
+  label:     '#F5E3A0',  // chalk yellow
+  highlight: '#FF6B6B',  // warm red / emphasis
+  secondary: '#4FC3F7',  // sky blue
+  dim:       '#8BAB8B',  // muted green
+  bg:        '#1A2B1A',  // blackboard green
+  orange:    '#FFB74D',
+  green:     '#81C784',
+  pink:      '#F48FB1',
+  purple:    '#CE93D8',
+  teal:      '#4DB6AC',
+  yellow:    '#FFF176',
+  red:       '#EF5350',
+  blue:      '#42A5F5',
+  gold:      '#FFD54F',
+  coral:     '#FF7043',
+  mint:      '#A8D8A8',
+  white:     '#FFFFFF',
+  sky:       '#87CEEB',
+  brown:     '#A1887F',
+};
+
+function resolveColor(key) {
+  if (!key) return COLORS.stroke;
+  return COLORS[key] || key;
+}
+
+// ── SVG filter definitions ────────────────────────────────────────────────────
+
+function injectDefs(svg) {
+  const defs = svgEl('defs');
+
+  // Glow filter (used by electrons, highlight nodes)
+  const filter = svgEl('filter', { id: 'glow', x: '-50%', y: '-50%', width: '200%', height: '200%' });
+  const blur   = svgEl('feGaussianBlur', { in: 'SourceGraphic', stdDeviation: '2.5', result: 'blur' });
+  const merge  = svgEl('feMerge');
+  append(merge,
+    svgEl('feMergeNode', { in: 'blur' }),
+    svgEl('feMergeNode', { in: 'SourceGraphic' }),
+  );
+  append(filter, blur, merge);
+
+  // Arrowhead marker
+  const marker = svgEl('marker', {
+    id: 'arrow', markerWidth: '10', markerHeight: '7',
+    refX: '9', refY: '3.5', orient: 'auto',
+  });
+  const arrowPath = svgEl('path', { d: 'M0,0 L10,3.5 L0,7 Z', fill: COLORS.secondary });
+  append(marker, arrowPath);
+
+  append(defs, filter, marker);
+  svg.insertBefore(defs, svg.firstChild);
+}
+
+// ── DiagramEngine class ───────────────────────────────────────────────────────
+
+class DiagramEngine {
+  
+  constructor(svg, descriptor, opts = {}) {
+    this.svg        = svg;
+    this.descriptor = descriptor;
+    this.phaseMs    = opts.phaseMs  ?? 2500;
+    this.loop       = opts.loop     ?? true;
+
+    // Animation state
+    this._running    = false;
+    this._startTime  = null;    // performance.now() at last start
+    this._pausedAt   = null;    // elapsed ms when paused
+    this._rafId      = null;
+    this._motions    = [];      // [{update(elapsed)}] registered by motion.js
+
+    // Teaching phase state
+    this._phases     = [];      // [{elements, startMs, endMs}]
+    this._phaseIndex = -1;
+
+    injectDefs(svg);
+  }
+
+  // ── Motion registration ───────────────────────────────────────────────────
+
+  
+  addMotion(motion) {
+    this._motions.push(motion);
+  }
+
+  // ── Phase system ──────────────────────────────────────────────────────────
+
+  
+  addPhase(elements, startMs, endMs = -1) {
+    // Initially hide phase elements
+    for (const el of elements) el.setAttribute('opacity', '0');
+    this._phases.push({ elements, startMs, endMs });
+  }
+
+  _updatePhases(elapsed) {
+    for (const phase of this._phases) {
+      const active = elapsed >= phase.startMs &&
+                     (phase.endMs < 0 || elapsed < phase.endMs);
+      const target = active ? '1' : '0';
+      for (const el of phase.elements) {
+        if (el.getAttribute('opacity') !== target) {
+          el.setAttribute('opacity', target);
+        }
+      }
+    }
+  }
+
+  // ── Animation loop ────────────────────────────────────────────────────────
+
+  _tick(now) {
+    if (!this._running) return;
+
+    const base    = this._startTime;
+    let elapsed   = now - base;
+
+    // Phase wrap
+    const totalMs = this._phases.length > 0
+      ? this._phases[this._phases.length - 1].startMs + this.phaseMs
+      : Infinity;
+
+    if (this.loop && totalMs < Infinity && elapsed > totalMs + this.phaseMs) {
+      this._startTime = now;
+      elapsed = 0;
+    }
+
+    this._updatePhases(elapsed);
+    for (const m of this._motions) m.update(elapsed);
+
+    this._rafId = requestAnimationFrame(t => this._tick(t));
+  }
+
+  start() {
+    if (this._running) return;
+    this._running   = true;
+    this._startTime = performance.now() - (this._pausedAt ?? 0);
+    this._pausedAt  = null;
+    this._rafId     = requestAnimationFrame(t => this._tick(t));
+  }
+
+  pause() {
+    if (!this._running) return;
+    this._running  = false;
+    this._pausedAt = performance.now() - this._startTime;
+    if (this._rafId) { cancelAnimationFrame(this._rafId); this._rafId = null; }
+  }
+
+  replay() {
+    this.pause();
+    this._pausedAt  = null;
+    this._startTime = null;
+    // Reset phase visibility
+    for (const phase of this._phases) {
+      for (const el of phase.elements) el.setAttribute('opacity', '0');
+    }
+    this.start();
+  }
+
+  toggle() {
+    this._running ? this.pause() : this.start();
+  }
+}
+
+// ── Control button factory ────────────────────────────────────────────────────
+
+function createControls(engine, container) {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;gap:8px;justify-content:center;margin-top:6px;';
+
+  function btn(label, title, onClick) {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.title       = title;
+    b.style.cssText = (
+      'background:#2a3f2a;border:1px solid #4a6a4a;color:#e0f0e0;' +
+      'border-radius:6px;padding:4px 12px;font-size:14px;cursor:pointer;'
+    );
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  const pauseBtn  = btn('⏸', 'Pause / Resume', () => engine.toggle());
+  const replayBtn = btn('↺',  'Replay',          () => engine.replay());
+  append(wrap, pauseBtn, replayBtn);
+  (container ?? document.body).appendChild(wrap);
+  return wrap;
+}
+
+// ── Exports (window globals for inline script access) ─────────────────────────
+window.SVG_NS        = SVG_NS;
+window.svgEl         = svgEl;
+window.setAttrs      = setAttrs;
+window.append        = append;
+window.COLORS        = COLORS;
+window.resolveColor  = resolveColor;
+window.injectDefs    = injectDefs;
+window.DiagramEngine = DiagramEngine;
+window.createControls = createControls;
+
+'use strict';
+
+const Shapes = (() => {
+
+  // ── Defaults ────────────────────────────────────────────────────────────────
+  const DEF_STROKE  = () => resolveColor('stroke');
+  const DEF_LABEL   = () => resolveColor('label');
+  const DEF_SW      = 1.5;
+
+  // ── circle ──────────────────────────────────────────────────────────────────
+  
+  function circle(cx, cy, r, opts = {}) {
+    return svgEl('circle', {
+      cx, cy, r,
+      stroke:         resolveColor(opts.color) || DEF_STROKE(),
+      fill:           opts.fill  ? resolveColor(opts.fill) : 'none',
+      'stroke-width': opts.sw    ?? DEF_SW,
+      opacity:        opts.opacity ?? 1,
+      ...(opts.glow   ? { filter: 'url(#glow)' } : {}),
+      ...(opts.id     ? { id: opts.id }           : {}),
+    });
+  }
+
+  // ── ellipse ─────────────────────────────────────────────────────────────────
+  
+  function ellipse(cx, cy, rx, ry, opts = {}) {
+    const el = svgEl('ellipse', {
+      cx, cy, rx, ry,
+      stroke:         resolveColor(opts.color) || DEF_STROKE(),
+      fill:           opts.fill  ? resolveColor(opts.fill) : 'none',
+      'stroke-width': opts.sw    ?? DEF_SW,
+      opacity:        opts.opacity ?? 1,
+      ...(opts.id     ? { id: opts.id }           : {}),
+    });
+    if (opts.rotate) {
+      el.setAttribute('transform', `rotate(${opts.rotate},${cx},${cy})`);
+    }
+    return el;
+  }
+
+  // ── line ────────────────────────────────────────────────────────────────────
+  
+  function line(x1, y1, x2, y2, opts = {}) {
+    const el = svgEl('line', {
+      x1, y1, x2, y2,
+      stroke:         resolveColor(opts.color) || DEF_STROKE(),
+      'stroke-width': opts.sw    ?? DEF_SW,
+      opacity:        opts.opacity ?? 1,
+    });
+    if (opts.dash) el.setAttribute('stroke-dasharray', opts.dash);
+    return el;
+  }
+
+  
+  function dottedLine(x1, y1, x2, y2, opts = {}) {
+    return line(x1, y1, x2, y2, { dash: '4 3', sw: 1, ...opts });
+  }
+
+  // ── path ────────────────────────────────────────────────────────────────────
+  
+  function path(d, opts = {}) {
+    const el = svgEl('path', {
+      d,
+      stroke:         resolveColor(opts.color) || DEF_STROKE(),
+      fill:           opts.fill  ? resolveColor(opts.fill) : 'none',
+      'stroke-width': opts.sw    ?? DEF_SW,
+      opacity:        opts.opacity ?? 1,
+    });
+    if (opts.dash) el.setAttribute('stroke-dasharray', opts.dash);
+    return el;
+  }
+
+  // ── text / label ─────────────────────────────────────────────────────────────
+  
+  function text(x, y, content, opts = {}) {
+    const el = svgEl('text', {
+      x, y,
+      fill:               resolveColor(opts.color) || DEF_LABEL(),
+      'font-size':        opts.size   ?? 12,
+      'text-anchor':      opts.anchor ?? 'middle',
+      'dominant-baseline': 'middle',
+      'font-family':      'monospace, sans-serif',
+      opacity:            opts.opacity ?? 1,
+      ...(opts.weight ? { 'font-weight': opts.weight } : {}),
+    });
+    el.textContent = content;
+    return el;
+  }
+
+  
+  function label(x, y, content, opts = {}) {
+    return text(x, y, content, { color: 'label', size: 11, ...opts });
+  }
+
+  // ── arc ─────────────────────────────────────────────────────────────────────
+  
+  function arc(cx, cy, r, startDeg, endDeg, opts = {}) {
+    const toRad = d => d * Math.PI / 180;
+    const x1 = cx + r * Math.cos(toRad(startDeg));
+    const y1 = cy + r * Math.sin(toRad(startDeg));
+    const x2 = cx + r * Math.cos(toRad(endDeg));
+    const y2 = cy + r * Math.sin(toRad(endDeg));
+    const large = Math.abs(endDeg - startDeg) > 180 ? 1 : 0;
+    const d = `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
+    return path(d, opts);
+  }
+
+  // ── arrow (straight, with arrowhead marker) ──────────────────────────────────
+  
+  function arrow(x1, y1, x2, y2, opts = {}) {
+    return svgEl('line', {
+      x1, y1, x2, y2,
+      stroke:           resolveColor(opts.color) || resolveColor('secondary'),
+      'stroke-width':   opts.sw ?? 1.5,
+      'marker-end':     'url(#arrow)',
+    });
+  }
+
+  // ── curvedArrow (quadratic bezier) ──────────────────────────────────────────
+  
+  function curvedArrow(x1, y1, x2, y2, cpx, cpy, opts = {}) {
+    const d = `M ${x1} ${y1} Q ${cpx} ${cpy} ${x2} ${y2}`;
+    return svgEl('path', {
+      d,
+      stroke:         resolveColor(opts.color) || resolveColor('secondary'),
+      fill:           'none',
+      'stroke-width': opts.sw ?? 1.5,
+      'marker-end':   'url(#arrow)',
+    });
+  }
+
+  // ── rect ─────────────────────────────────────────────────────────────────────
+  
+  function rect(x, y, w, h, opts = {}) {
+    return svgEl('rect', {
+      x, y, width: w, height: h,
+      stroke:         resolveColor(opts.color) || DEF_STROKE(),
+      fill:           opts.fill  ? resolveColor(opts.fill) : 'none',
+      'stroke-width': opts.sw ?? DEF_SW,
+      rx:             opts.rx ?? 0,
+      opacity:        opts.opacity ?? 1,
+    });
+  }
+
+  
+  function roundedRect(x, y, w, h, opts = {}) {
+    return rect(x, y, w, h, { rx: 6, ...opts });
+  }
+
+  // ── polygon ──────────────────────────────────────────────────────────────────
+  
+  function polygon(points, opts = {}) {
+    return svgEl('polygon', {
+      points: points.map(([x, y]) => `${x},${y}`).join(' '),
+      stroke:         resolveColor(opts.color) || DEF_STROKE(),
+      fill:           opts.fill  ? resolveColor(opts.fill) : 'none',
+      'stroke-width': opts.sw ?? DEF_SW,
+      opacity:        opts.opacity ?? 1,
+    });
+  }
+
+  // ── radialLines (sun rays, atom nucleus spokes etc.) ─────────────────────────
+  
+  function radialLines(cx, cy, r1, r2, n, opts = {}) {
+    const g      = svgEl('g');
+    const start  = (opts.startAngle ?? 0) * Math.PI / 180;
+    for (let i = 0; i < n; i++) {
+      const angle = start + (i / n) * 2 * Math.PI;
+      const cos   = Math.cos(angle);
+      const sin   = Math.sin(angle);
+      append(g, line(
+        cx + r1 * cos, cy + r1 * sin,
+        cx + r2 * cos, cy + r2 * sin,
+        { color: opts.color, sw: opts.sw ?? 1.5 },
+      ));
+    }
+    return g;
+  }
+
+  // ── grid ────────────────────────────────────────────────────────────────────
+  
+  function grid(x, y, w, h, cols, rows, opts = {}) {
+    const g  = svgEl('g');
+    const cw = w / cols;
+    const rh = h / rows;
+    for (let c = 0; c <= cols; c++) {
+      append(g, line(x + c * cw, y, x + c * cw, y + h, { color: opts.color, sw: opts.sw ?? 0.5, dash: '2 2' }));
+    }
+    for (let r = 0; r <= rows; r++) {
+      append(g, line(x, y + r * rh, x + w, y + r * rh, { color: opts.color, sw: opts.sw ?? 0.5, dash: '2 2' }));
+    }
+    return g;
+  }
+
+  // ── angleArc (small arc near vertex to denote an angle) ─────────────────────
+  
+  function angleArc(vx, vy, angle1Deg, angle2Deg, r, opts = {}) {
+    return arc(vx, vy, r, angle1Deg, angle2Deg, { sw: 1.2, ...opts });
+  }
+
+  // ── axis tick mark ───────────────────────────────────────────────────────────
+  
+  function tick(x, y, horizontal, size = 4, opts = {}) {
+    return horizontal
+      ? line(x, y - size, x, y + size, opts)
+      : line(x - size, y, x + size, y, opts);
+  }
+
+  // ── Public API ───────────────────────────────────────────────────────────────
+  return {
+    circle, ellipse, line, dottedLine, path,
+    text, label,
+    arc, arrow, curvedArrow,
+    rect, roundedRect, polygon,
+    radialLines, grid,
+    angleArc, tick,
+  };
+})();
+
+window.Shapes = Shapes;
+
+'use strict';
+
+const Motion = (() => {
+
+  // ── orbit ────────────────────────────────────────────────────────────────────
+  
+  function orbit(el, cx, cy, rx, ry, periodMs, opts = {}) {
+    const phase  = (opts.phase  ?? 0) * 2 * Math.PI;
+    const dir    = opts.ccw ? -1 : 1;
+    const useCxy = opts.useCxy !== false;
+
+    return {
+      update(elapsed) {
+        const angle = dir * (elapsed / periodMs) * 2 * Math.PI + phase;
+        const x = cx + rx * Math.cos(angle);
+        const y = cy + ry * Math.sin(angle);
+        if (useCxy) {
+          el.setAttribute('cx', x);
+          el.setAttribute('cy', y);
+        } else {
+          el.setAttribute('x', x);
+          el.setAttribute('y', y);
+        }
+      },
+    };
+  }
+
+  // ── oscillate ────────────────────────────────────────────────────────────────
+  
+  function oscillate(el, attr, centre, amplitude, periodMs, opts = {}) {
+    const phase = (opts.phase ?? 0) * 2 * Math.PI;
+    return {
+      update(elapsed) {
+        const val = centre + amplitude * Math.sin((elapsed / periodMs) * 2 * Math.PI + phase);
+        el.setAttribute(attr, val);
+      },
+    };
+  }
+
+  // ── linearPath ───────────────────────────────────────────────────────────────
+  
+  function linearPath(el, x1, y1, x2, y2, periodMs, opts = {}) {
+    const useCxy = opts.useCxy !== false;
+    return {
+      update(elapsed) {
+        let t = (elapsed % (opts.pingpong ? periodMs * 2 : periodMs)) / periodMs;
+        if (opts.pingpong && t > 1) t = 2 - t;  // reverse on return
+        const x = x1 + (x2 - x1) * t;
+        const y = y1 + (y2 - y1) * t;
+        if (useCxy) {
+          el.setAttribute('cx', x);
+          el.setAttribute('cy', y);
+        } else {
+          el.setAttribute('x', x);
+          el.setAttribute('y', y);
+        }
+      },
+    };
+  }
+
+  // ── pulse ────────────────────────────────────────────────────────────────────
+  
+  function pulse(el, cx, cy, minScale, maxScale, periodMs) {
+    return {
+      update(elapsed) {
+        const t     = 0.5 - 0.5 * Math.cos((elapsed / periodMs) * 2 * Math.PI);
+        const scale = minScale + (maxScale - minScale) * t;
+        el.setAttribute('transform', `translate(${cx},${cy}) scale(${scale}) translate(${-cx},${-cy})`);
+      },
+    };
+  }
+
+  // ── fade ─────────────────────────────────────────────────────────────────────
+  
+  function fade(el, minOpacity, maxOpacity, periodMs, opts = {}) {
+    const phase = (opts.phase ?? 0) * 2 * Math.PI;
+    return {
+      update(elapsed) {
+        const t  = 0.5 - 0.5 * Math.cos((elapsed / periodMs) * 2 * Math.PI + phase);
+        const op = minOpacity + (maxOpacity - minOpacity) * t;
+        el.setAttribute('opacity', op);
+      },
+    };
+  }
+
+  // ── rotate ───────────────────────────────────────────────────────────────────
+  
+  function rotate(el, cx, cy, periodMs, opts = {}) {
+    const dir = opts.ccw ? -1 : 1;
+    return {
+      update(elapsed) {
+        const deg = dir * (elapsed / periodMs) * 360;
+        el.setAttribute('transform', `rotate(${deg},${cx},${cy})`);
+      },
+    };
+  }
+
+  // ── wave ─────────────────────────────────────────────────────────────────────
+  
+  function wave(pathEl, x0, x1, cy, amplitude, wavelength, periodMs) {
+    return {
+      update(elapsed) {
+        const phase = (elapsed / periodMs) * 2 * Math.PI;
+        const pts   = [];
+        const steps = Math.ceil((x1 - x0) / 4);
+        for (let i = 0; i <= steps; i++) {
+          const x = x0 + (i / steps) * (x1 - x0);
+          const y = cy + amplitude * Math.sin((x / wavelength) * 2 * Math.PI - phase);
+          pts.push(i === 0 ? `M ${x} ${y}` : `L ${x} ${y}`);
+        }
+        pathEl.setAttribute('d', pts.join(' '));
+      },
+    };
+  }
+
+  // ── Public API ───────────────────────────────────────────────────────────────
+  return { orbit, oscillate, linearPath, pulse, fade, rotate, wave };
+})();
+
+window.Motion = Motion;
 
 'use strict';
 
@@ -23,7 +567,7 @@ const Diagrams = (() => {
 
   // ── helpers ──────────────────────────────────────────────────────────────────
 
-  /** Default canvas size */
+  
   const W = 400, H = 300;
   const CX = W / 2, CY = H / 2;
 
@@ -36,19 +580,7 @@ const Diagrams = (() => {
   const SHELL_COLORS = ['#4FC3F7', '#FF6B6B', '#81C784', '#FFB74D', '#CE93D8'];
 
   // ── atom ─────────────────────────────────────────────────────────────────────
-  /**
-   * Bohr-model atom diagram.
-   *
-   * Descriptor fields (all optional, sensible defaults):
-   *   symbol      {string}   element symbol  default "H"
-   *   protons     {number}                   default 1
-   *   neutrons    {number}                   default 0
-   *   shells      {number[]} electrons per shell e.g. [2,8,1]
-   *
-   * @param {DiagramEngine} engine
-   * @param {SVGSVGElement} svg
-   * @param {Object}        data
-   */
+  
   function atom(engine, svg, data) {
     const symbol   = data.symbol   || 'H';
     const protons  = data.protons  || 1;
@@ -140,17 +672,7 @@ const Diagrams = (() => {
   }
 
   // ── solarSystem ──────────────────────────────────────────────────────────────
-  /**
-   * Solar system diagram.
-   *
-   * Descriptor fields (all optional):
-   *   planets  {Array<{name, color?, radius?, orbitR?, periodMs?}>}
-   *   showLabels {boolean} default true
-   *
-   * @param {DiagramEngine} engine
-   * @param {SVGSVGElement} svg
-   * @param {Object}        data
-   */
+  
   function solarSystem(engine, svg, data) {
     const showLabels = data.showLabels !== false;
     const planetDefs = data.planets || _defaultPlanets();
@@ -217,20 +739,7 @@ const Diagrams = (() => {
   }
 
   // ── wave (sine / sound / EM wave) ─────────────────────────────────────────────
-  /**
-   * Animated sine wave with optional labels.
-   *
-   * Descriptor fields:
-   *   label       {string}  wave label e.g. "Sound Wave"
-   *   wavelength  {number}  pixels per cycle, default 80
-   *   amplitude   {number}  default 40
-   *   color       {string}  default 'secondary'
-   *   showAxes    {boolean} default true
-   *
-   * @param {DiagramEngine} engine
-   * @param {SVGSVGElement} svg
-   * @param {Object}        data
-   */
+  
   function wave(engine, svg, data) {
     const amplitude  = data.amplitude  ?? 40;
     const wavelength = data.wavelength ?? 80;
@@ -273,17 +782,7 @@ const Diagrams = (() => {
   }
 
   // ── sun (procedural) ──────────────────────────────────────────────────────────
-  /**
-   * A glowing sun with animated rotating rays.
-   *
-   * Descriptor fields:
-   *   label  {string}  optional label below sun, default "Sun"
-   *   rays   {number}  number of rays, default 12
-   *
-   * @param {DiagramEngine} engine
-   * @param {SVGSVGElement} svg
-   * @param {Object}        data
-   */
+  
   function sun(engine, svg, data) {
     const rays  = data.rays  ?? 12;
     const label = data.label ?? 'Sun';
@@ -319,17 +818,7 @@ const Diagrams = (() => {
   }
 
   // ── plant (branching, procedural) ────────────────────────────────────────────
-  /**
-   * Simple branching plant.
-   *
-   * Descriptor fields:
-   *   label   {string}  default "Plant"
-   *   leaves  {number}  leaf pairs, default 2
-   *
-   * @param {DiagramEngine} engine
-   * @param {SVGSVGElement} svg
-   * @param {Object}        data
-   */
+  
   function plant(engine, svg, data) {
     const label  = data.label  ?? 'Plant';
     const leaves = data.leaves ?? 2;
@@ -367,13 +856,7 @@ const Diagrams = (() => {
   }
 
   // ── flowArrow (labelled linear process flow) ──────────────────────────────────
-  /**
-   * @param {DiagramEngine} engine
-   * @param {SVGSVGElement} svg
-   * @param {Object}        data
-   *   steps  {string[]}  step labels, max 5
-   *   title  {string}    optional title
-   */
+  
   function flowArrow(engine, svg, data) {
     const steps = (data.steps || ['Step 1', 'Step 2', 'Step 3']).slice(0, 5);
     const title = data.title || '';
@@ -417,18 +900,7 @@ const Diagrams = (() => {
   }
 
   // ── cycle (cyclical process diagram) ──────────────────────────────────────────
-  /**
-   * Cyclical process: steps arranged in a ring with curved arrows.
-   * Good for: water cycle, nitrogen cycle, life cycle, carbon cycle.
-   *
-   * Descriptor:
-   *   title  {string}    optional heading
-   *   steps  {string[]}  3-6 stage labels
-   *
-   * @param {DiagramEngine} engine
-   * @param {SVGSVGElement} svg
-   * @param {Object}        data
-   */
+  
   function cycle(engine, svg, data) {
     const steps = (data.steps || ['Evaporation', 'Condensation', 'Precipitation']).slice(0, 6);
     const title = data.title || '';
@@ -479,20 +951,7 @@ const Diagrams = (() => {
   }
 
   // ── labeled (labeled diagram — anatomy, cell, structure) ──────────────────────
-  /**
-   * Central concept surrounded by labeled parts with dotted connectors.
-   * Good for: cell biology, anatomy, labeled structures, force diagrams.
-   *
-   * Descriptor:
-   *   title        {string}   optional heading
-   *   center       {string}   center label, default "Cell"
-   *   center_shape {string}   "circle" (default) | "rect"
-   *   parts        {string[]} 2-8 part labels
-   *
-   * @param {DiagramEngine} engine
-   * @param {SVGSVGElement} svg
-   * @param {Object}        data
-   */
+  
   function labeled(engine, svg, data) {
     const title    = data.title        || '';
     const center   = data.center       || 'Cell';
@@ -560,21 +1019,7 @@ const Diagrams = (() => {
   }
 
   // ── comparison (side-by-side A vs B) ──────────────────────────────────────────
-  /**
-   * Two-column side-by-side comparison with bullet points.
-   * Good for: Mitosis vs Meiosis, AC vs DC, Plant vs Animal cell.
-   *
-   * Descriptor:
-   *   title        {string}   optional heading
-   *   left         {string}   left column heading
-   *   right        {string}   right column heading
-   *   left_points  {string[]} up to 4 bullet points
-   *   right_points {string[]} up to 4 bullet points
-   *
-   * @param {DiagramEngine} engine
-   * @param {SVGSVGElement} svg
-   * @param {Object}        data
-   */
+  
   function comparison(engine, svg, data) {
     const title      = data.title        || '';
     const leftTitle  = data.left         || 'A';
@@ -634,29 +1079,7 @@ const Diagrams = (() => {
   }
 
   // ── custom (free-form path-based drawing) ─────────────────────────────────────
-  /**
-   * Generic renderer: the LLM specifies individual SVG elements.
-   * Useful for any concept that needs custom geometry.
-   *
-   * Descriptor:
-   *   title    {string}  optional heading
-   *   elements {Array}   element descriptors — each has:
-   *     type   "path" | "circle" | "rect" | "text" | "line" | "arrow"
-   *     d      SVG path data string   (type=path)
-   *     cx,cy,r                       (type=circle)
-   *     x,y,w,h                       (type=rect)
-   *     x,y,text,size                 (type=text)
-   *     x1,y1,x2,y2                   (type=line | arrow)
-   *     color  "label"|"secondary"|"highlight"|"dim"|"green"|"gold"
-   *     fill   "bg" | color token     (optional)
-   *     sw     stroke-width           (optional, default 1.5)
-   *     animate "pulse" | "fade"      (optional)
-   *     delay  ms                     (optional)
-   *
-   * @param {DiagramEngine} engine
-   * @param {SVGSVGElement} svg
-   * @param {Object}        data
-   */
+  
   function custom(engine, svg, data) {
     const title    = data.title    || '';
     const elements = data.elements || [];
@@ -715,10 +1138,7 @@ const Diagrams = (() => {
   }
 
   // ── heart ────────────────────────────────────────────────────────────────────
-  /**
-   * Anatomical heart: parametric outline, beat pulse, blood flow particles.
-   * Descriptor: label {string}
-   */
+  
   function heart(engine, svg, data) {
     const label = data.label || 'Human Heart';
     const cx = CX, cy = CY + 8;
@@ -774,10 +1194,7 @@ const Diagrams = (() => {
   }
 
   // ── neuron ───────────────────────────────────────────────────────────────────
-  /**
-   * Neuron: soma + dendrites + myelinated axon + travelling action potential.
-   * Descriptor: label {string}
-   */
+  
   function neuron(engine, svg, data) {
     const label  = data.label || 'Neuron';
     const somaX  = 108, somaY = CY, somaR = 24;
@@ -839,10 +1256,7 @@ const Diagrams = (() => {
   }
 
   // ── pendulum ─────────────────────────────────────────────────────────────────
-  /**
-   * Simple pendulum with SHM physics.
-   * Descriptor: label {string}, angle {degrees, default 35}, period {seconds, default 2}
-   */
+  
   function pendulum(engine, svg, data) {
     const label    = data.label  || 'Pendulum';
     const maxAngle = (data.angle || 35) * Math.PI / 180;
@@ -903,10 +1317,7 @@ const Diagrams = (() => {
   }
 
   // ── springMass ───────────────────────────────────────────────────────────────
-  /**
-   * Horizontal spring–mass oscillator.
-   * Descriptor: label {string}, period {seconds, default 2}
-   */
+  
   function springMass(engine, svg, data) {
     const label    = data.label  || 'Spring–Mass';
     const periodMs = (data.period || 2) * 1000;
@@ -969,10 +1380,7 @@ const Diagrams = (() => {
   }
 
   // ── dna ──────────────────────────────────────────────────────────────────────
-  /**
-   * DNA double helix: two scrolling sine waves + base pair rungs.
-   * Descriptor: label {string}
-   */
+  
   function dna(engine, svg, data) {
     const label    = data.label || 'DNA Double Helix';
     const x0 = 35, x1 = W - 35, cy = CY, amp = 52;
@@ -1060,10 +1468,7 @@ const Diagrams = (() => {
   }
 
   // ── lens (convex lens ray diagram) ───────────────────────────────────────────
-  /**
-   * Convex lens with three principal rays and real inverted image.
-   * Descriptor: label {string}, focalLength {pixels, default 80}
-   */
+  
   function lens(engine, svg, data) {
     const label = data.label || 'Convex Lens';
     const fLen  = data.focalLength || 80;
@@ -1141,10 +1546,7 @@ const Diagrams = (() => {
   }
 
   // ── electricField ─────────────────────────────────────────────────────────────
-  /**
-   * Electric field between +/− charges: field lines + moving particles.
-   * Descriptor: label {string}
-   */
+  
   function electricField(engine, svg, data) {
     const label    = data.label || 'Electric Field';
     const c1x = CX - 105, c1y = CY;
@@ -1181,7 +1583,7 @@ const Diagrams = (() => {
             const pt  = el.getPointAtLength(t * len);
             particles[i].setAttribute('cx', pt.x.toFixed(1));
             particles[i].setAttribute('cy', pt.y.toFixed(1));
-          } catch (e) { /* getTotalLength may be unavailable */ }
+          } catch (e) {  }
         });
       },
     });
@@ -1206,7 +1608,6 @@ const Diagrams = (() => {
         { color: 'label', size: 13, weight: 'bold' }));
     }
   }
-
 
   // ════════════════════════════════════════════════════════════════════════════
   // MATHEMATICS RENDERERS

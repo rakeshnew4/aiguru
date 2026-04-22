@@ -153,9 +153,9 @@ CONTINUATION — DO NOT repeat anything already taught.
 Student's original question: Photo synthesis
 
 Steps ALREADY TAUGHT (do NOT repeat or reintroduce these):
-  1. What is Photosynthesis? — "Photosynthesis is the amazing process where plants use sunlight, water, and carbon dioxide"
-  2. The Process Unfolds — "Let's see how this process works. First, plants capture light energy using a pigment calle"
-  3. Why is it Important? — "Photosynthesis is vital because it's how plants create their own food, glucose. This gluco"
+  1. What is Photosynthesis? — "Photosynthesis is the process plants use to create their own food. They use sunlight, wate"
+  2. The Photosynthesis Reaction — "Let's see how this process works. First, chlorophyll in the leaves captures sunlight. Then"
+  3. Importance of Photosynthesis — "So, why is photosynthesis so important? Well, it's how plants make their food, which is th"
 
 Total steps covered so far: 3 / 4
 Continue from step 4. Build on what was taught — go deeper, give examples, advance the lesson.
@@ -169,7 +169,7 @@ Steps to generate in this batch:
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
 Student level: Class 5
 Topic type: science_process | Scope: medium
-Key concepts to cover (ALL of these): chlorophyll, light energy, carbon dioxide, water, glucose, oxygen
+Key concepts to cover (ALL of these): Chlorophyll, Light-dependent reactions, Calvin cycle
 Generate EXACTLY 5 steps — no more, no less.
 
 DIAGRAM RECOMMENDATION: This topic likely suits a "flow" diagram (confidence 97%). If this is a standard math/science type, use diagram_type="flow". If it needs a custom structure (anatomy, apparatus, body parts), use PATH 2 (svg_elements) instead.
