@@ -7,10 +7,10 @@ import android.view.View
 import android.widget.Button
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import com.aiguruapp.student.firestore.FirestoreManager
 import com.aiguruapp.student.utils.SessionManager
 import com.aiguruapp.student.chat.ServerProxyClient
 import com.aiguruapp.student.config.AdminConfigRepository
+import com.aiguruapp.student.firestore.FirestoreManager
 import com.aiguruapp.student.widget.BoxSpinnerView
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -30,7 +30,6 @@ class LoginActivity : BaseActivity() {
 
     private lateinit var googleSignInClient: GoogleSignInClient
     private lateinit var signInButton: Button
-    private lateinit var guestButton: Button
     private lateinit var loadingBar: BoxSpinnerView
     private val auth = FirebaseAuth.getInstance()
 
@@ -57,7 +56,6 @@ class LoginActivity : BaseActivity() {
         setContentView(R.layout.activity_login)
 
         signInButton = findViewById(R.id.googleSignInButton)
-        guestButton = findViewById(R.id.guestButton)
         loadingBar   = findViewById(R.id.loginProgressBar)
 
         // Already logged in — go straight home
@@ -88,29 +86,11 @@ class LoginActivity : BaseActivity() {
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, gso)
 
-        // Guest button — instant entry, no sign-in needed
-        guestButton.setOnClickListener {
-            val deviceId = SessionManager.getDeviceId(this)
-            // Assign a random short guest ID for this session
-            val guestId = "guest${(10000..99999).random()}"
-            SessionManager.loginAsGuest(this, deviceId)
-            SessionManager.saveFirebaseUid(this, guestId)
-            SessionManager.completeSignup(this)  // guests skip signup entirely
-            // Non-blocking: try to initialize device quota record
-            FirestoreManager.initializeGuestDevice(deviceId)
-            goHome()
-        }
-
         signInButton.setOnClickListener {
             setLoading(true)
             googleSignInClient.signOut().addOnCompleteListener {
                 signInLauncher.launch(googleSignInClient.signInIntent)
             }
-        }
-
-        // Email sign-in
-        findViewById<Button>(R.id.emailSignInButton).setOnClickListener {
-            startActivity(Intent(this, EmailAuthActivity::class.java))
         }
     }
 
@@ -177,12 +157,7 @@ class LoginActivity : BaseActivity() {
 
     private fun setLoading(loading: Boolean) {
         signInButton.isEnabled = !loading
-        if (loading) {
-            loadingBar.visibility = View.VISIBLE
-            loadingBar.start()
-        } else {
-            loadingBar.stop()
-            loadingBar.visibility = View.GONE
-        }
+        loadingBar.visibility = if (loading) View.VISIBLE else View.GONE
+        if (loading) loadingBar.start() else loadingBar.stop()
     }
 }

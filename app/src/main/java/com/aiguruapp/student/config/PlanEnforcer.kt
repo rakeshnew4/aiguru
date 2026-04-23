@@ -394,14 +394,16 @@ object PlanEnforcer {
     }
 
     /**
-     * Increment the question counter in Firestore after a successful AI response.
-     * Also resets the counter if the stored date is a previous day.
+     * Record a question asked in the in-memory session counter so that
+     * getQuestionsLeft() gives immediate feedback before the next Firestore read.
+     *
+     * The server (check_and_record_quota) is the sole writer of the persistent
+     * chat_questions_today / bb_sessions_today Firestore fields — Android no longer
+     * writes those fields to avoid double-counting.
      */
     fun recordQuestionAsked(userId: String, isBlackboard: Boolean, previousUpdatedAt: Long = 0L) {
         if (userId.isBlank() || userId == "guest_user") return
 
-        // Update in-memory counter immediately so getQuestionsLeft() reflects
-        // the increment before the Firestore server acknowledges the write.
         val today = utcDayOf(System.currentTimeMillis())
         synchronized(this) {
             if (inMemUserId != userId || inMemDayKey != today) {
@@ -412,23 +414,8 @@ object PlanEnforcer {
             }
             if (isBlackboard) inMemBbUsed++ else inMemChatUsed++
         }
-
-        val now = System.currentTimeMillis()
-        // On day rollover: reset counter to 1 instead of incrementing yesterday's stale value.
-        // Guard against unset (0L) timestamp — 0L must NOT be treated as "previous day"
-        // because it simply means the doc was just created or the caller passed no value.
-        val isNewDay = previousUpdatedAt > 0L && isNewQuotaDay(previousUpdatedAt)
-        val updates = mutableMapOf<String, Any>(
-            "questions_updated_at" to now
-        )
-        if (isBlackboard) {
-            updates["bb_sessions_today"] = if (isNewDay) 1L else FieldValue.increment(1L)
-        } else {
-            updates["chat_questions_today"] = if (isNewDay) 1L else FieldValue.increment(1L)
-        }
-        db.collection("users_table").document(userId)
-            .update(updates)
-            .addOnFailureListener { Log.e(TAG, "recordQuestionAsked failed uid=$userId: ${it.message}") }
+        // Firestore write intentionally removed: the server atomically increments
+        // the counter inside check_and_record_quota() before streaming begins.
     }
 
     // ── Guest Quota Checking ───────────────────────────────────────────────────

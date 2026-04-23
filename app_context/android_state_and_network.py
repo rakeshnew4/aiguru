@@ -177,5 +177,9 @@ RISKS_FOR_AGENTS = [
     "Changing AdminConfigRepository affects effective server URL, feature flags, and payment setup across the app.",
     "Changing ServerProxyClient response parsing affects all normal chat and Blackboard streaming behavior.",
     "Changing FirestoreManager or repository wrappers can affect offline behavior and many screens at once.",
+    # ── Recent design decisions ──────────────────────────────────────────────
+    "QUOTA WRITES REMOVED: PlanEnforcer.recordQuestionAsked() NO LONGER writes to Firestore. It only updates the in-memory counter. The server is the sole writer of chat_questions_today / bb_sessions_today.",
+    "QUOTA DISPLAY: HomeActivity.loadQuotaStrip() still reads users_table Firestore directly for initial display. A GET /users/quota API endpoint is available for server-authoritative reads.",
+    "LOGIN: Only Google sign-in is supported. Guest and email/password login are removed from LoginActivity.",
 ]
 

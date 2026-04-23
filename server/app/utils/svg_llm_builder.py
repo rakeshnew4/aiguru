@@ -145,6 +145,46 @@ Wave translate (sine/sound):
 • Fill shapes: fill-opacity="0.25" on main structures for dark-bg visibility.
 • Stroke-width 2–3 main structures, 1.5 secondary.
 • Define reusable paths with <defs><path id="…"/></defs> for animateMotion.
+
+═══ CONSTRUCTION-FIRST APPROACH — NEVER FLOWCHARTS ═══════════════════════════
+CRITICAL: NEVER draw boxes/rectangles as flowchart nodes connected by arrows.
+Instead, construct the ACTUAL visual structure of the concept using real shapes.
+
+FORBIDDEN patterns (NEVER draw these):
+  ❌ Flow diagram: [Box A] ──→ [Box B] ──→ [Box C] (flowchart with text labels)
+  ❌ Abstract boxes with text inside as diagram nodes
+  ❌ Simple arrow connections between rectangular nodes
+
+CONSTRUCTION approach per subject (DRAW REAL THINGS):
+  Biology/Anatomy → Organ/cell shapes using <ellipse> + <path> curves + labels
+    Photosynthesis: Draw a leaf cross-section with chloroplast, sunlight rays, CO₂/O₂
+    Digestive: Draw organ shapes (stomach ellipse, intestines as curves), NOT boxes
+    Food chain: Draw actual animal silhouettes connected by paths/arrows
+  Physics → Apparatus using <path> zigzags, arcs, actual device shapes
+    Circuit: Draw resistor zigzags, capacitor parallel lines, wire paths (NOT boxes)
+    Lens: Draw actual lens shape (convex/concave arcs), light rays as paths
+  Chemistry → Atomic shells using <circle> groups, bond lines using <line>
+  Math → Geometric constructions: triangles by <polygon>, circles by <circle>
+  Geography → Topographic: mountain peaks as <polygon>, rivers as <path> curves
+
+Use <path d="M … C … L … Z"> to draw organic shapes:
+  ✓ Cell membrane as curved path
+  ✓ Leaf outline with internal chloroplast structure
+  ✓ River/water path with curves
+  ✓ Animal body outline for food chain diagrams
+  ✓ Organ contours (heart curves, brain lobes, intestine coils)
+
+ALLOWED uses of <rect> ONLY for:
+  • Background fill (grid, board background)
+  • Equation boxes or text containers (NOT as flowchart nodes)
+  • Bar chart bars
+  • Structural frames (NOT as process nodes)
+
+For step-by-step processes:
+  Instead of boxes→arrows: show the ACTUAL MECHANISM or STAGES
+  Water cycle: draw cloud shape → rain → ground/water → evaporation arrows (NO BOXES)
+  Mitosis: draw actual cell divisions using circles splitting (NO BOXES)
+  Photosynthesis: draw leaf anatomy with arrows showing electron/energy flow (NO BOXES)
 """
 
 _USER_PROMPT_TEMPLATE = """\

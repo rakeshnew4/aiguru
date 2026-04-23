@@ -12,41 +12,166 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
-        <!-- Top brand section -->
+        <!-- Hero section -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="220dp"
+            android:layout_height="260dp"
             android:orientation="vertical"
             android:gravity="center"
             android:background="@color/colorPrimary"
-            android:paddingBottom="20dp">
+            android:paddingBottom="24dp"
+            android:paddingTop="16dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="🎓"
-                android:textSize="64sp" />
+                android:textSize="72sp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="AI Guru"
                 android:textColor="#FFFFFF"
-                android:textSize="32sp"
+                android:textSize="34sp"
                 android:textStyle="bold"
                 android:layout_marginTop="8dp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Your personal AI tutor"
+                android:text="Your personal AI tutor — NCERT &amp; beyond"
                 android:textColor="#CCE0FF"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:layout_marginTop="4dp" />
 
         </LinearLayout>
 
-        <!-- Auth card -->
+        <!-- Feature highlights row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="16dp"
+            android:paddingBottom="4dp">
+
+            <!-- Chat feature chip -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/bg_category_chip"
+                android:padding="12dp"
+                android:layout_marginEnd="6dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="💬"
+                    android:textSize="28sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Ask Anything"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorTextPrimary"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="12 free/day"
+                    android:textSize="10sp"
+                    android:textColor="@color/colorTextSecondary"
+                    android:gravity="center" />
+
+            </LinearLayout>
+
+            <!-- Blackboard feature chip -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/bg_category_chip"
+                android:padding="12dp"
+                android:layout_marginStart="6dp"
+                android:layout_marginEnd="6dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🖥️"
+                    android:textSize="28sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Visual Lessons"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorTextPrimary"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="2 free/day"
+                    android:textSize="10sp"
+                    android:textColor="@color/colorTextSecondary"
+                    android:gravity="center" />
+
+            </LinearLayout>
+
+            <!-- Quiz feature chip -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/bg_category_chip"
+                android:padding="12dp"
+                android:layout_marginStart="6dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🧠"
+                    android:textSize="28sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Smart Quizzes"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorTextPrimary"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Unlimited"
+                    android:textSize="10sp"
+                    android:textColor="@color/colorTextSecondary"
+                    android:gravity="center" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Sign-in card -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -64,91 +189,34 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Start learning"
+                    android:text="Start learning for free"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:textColor="@color/colorTextPrimary"
-                    android:layout_marginBottom="20dp" />
+                    android:layout_marginBottom="6dp" />
 
-                <!-- Continue as Guest -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/guestButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:text="🚀 Continue as Guest"
-                    android:textSize="15sp"
-                    android:textColor="#FFFFFF"
-                    android:textStyle="bold"
-                    app:backgroundTint="#FF6B35"
-                    app:cornerRadius="14dp"
-                    android:layout_marginBottom="16dp" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Sign in with Google to save your progress and get daily free questions."
+                    android:textSize="13sp"
+                    android:textColor="@color/colorTextSecondary"
+                    android:layout_marginBottom="24dp"
+                    android:lineSpacingMultiplier="1.4" />
 
-                <!-- Google Sign In -->
+                <!-- Google Sign In — primary action -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/googleSignInButton"
                     android:layout_width="match_parent"
-                    android:layout_height="52dp"
+                    android:layout_height="56dp"
                     android:text="Continue with Google"
-                    android:textSize="15sp"
+                    android:textSize="16sp"
                     android:textColor="#FFFFFF"
                     android:textStyle="bold"
                     app:backgroundTint="@color/colorPrimary"
                     app:cornerRadius="14dp"
                     app:icon="@android:drawable/ic_dialog_info"
                     app:iconGravity="textStart"
-                    android:layout_marginBottom="12dp" />
-
-                <!-- Email Sign In -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/emailSignInButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:text="Continue with Email"
-                    android:textSize="15sp"
-                    android:textColor="@color/colorPrimary"
-                    app:backgroundTint="@color/colorPrimaryLight"
-                    app:cornerRadius="14dp" />
-
-                <!-- Divider with text -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginTop="20dp"
-                    android:layout_marginBottom="16dp">
-
-                    <View
-                        android:layout_width="0dp"
-                        android:layout_height="1dp"
-                        android:layout_weight="1"
-                        android:background="@color/colorDivider" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Guest Benefits"
-                        android:textSize="12sp"
-                        android:textColor="@color/colorTextSecondary"
-                        android:paddingStart="8dp"
-                        android:paddingEnd="8dp" />
-
-                    <View
-                        android:layout_width="0dp"
-                        android:layout_height="1dp"
-                        android:layout_weight="1"
-                        android:background="@color/colorDivider" />
-
-                </LinearLayout>
-
-                <!-- Guest benefits info -->
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="✓ 10 AI chat questions\n✓ 3 visual blackboard lessons\n✓ No registration needed\n✓ Login anytime for daily free quota"
-                    android:textSize="12sp"
-                    android:textColor="@color/colorTextSecondary"
-                    android:lineSpacingMultiplier="1.5"
                     android:layout_marginBottom="16dp" />
 
                 <com.aiguruapp.student.widget.BoxSpinnerView
@@ -156,12 +224,25 @@
                     android:layout_width="56dp"
                     android:layout_height="56dp"
                     android:layout_gravity="center"
-                    android:layout_marginTop="16dp"
+                    android:layout_marginTop="8dp"
                     android:visibility="gone" />
 
             </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>
+
+        <!-- Privacy note -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="By continuing, you agree to our Terms of Service and Privacy Policy."
+            android:textSize="11sp"
+            android:textColor="@color/colorTextSecondary"
+            android:gravity="center"
+            android:paddingStart="32dp"
+            android:paddingEnd="32dp"
+            android:paddingBottom="24dp"
+            android:lineSpacingMultiplier="1.4" />
 
     </LinearLayout>
 

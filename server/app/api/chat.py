@@ -490,7 +490,7 @@ def extract_json_safe(text):
 
 
 # ── Normal-mode JSON fields expected by Android ──────────────────────────────
-_NORMAL_FIELDS = ("user_question", "answer", "user_attachment_transcription", "extra_details_or_summary")
+_NORMAL_FIELDS = ("user_question", "answer", "user_attachment_transcription", "extra_details_or_summary", "suggest_blackboard")
 
 # Valid values for BB frame fields
 _VALID_TTS_ENGINES = {"android", "gemini", "google"}
@@ -538,24 +538,50 @@ def _strip_speech_opener(speech: str) -> str:
             break
     return speech
 
+def _try_extract_answer_from_raw(text: str) -> str:
+    """
+    Last-resort attempt to pull just the answer value out of a partially-broken
+    JSON string without fully parsing it.  Returns empty string on failure.
+    """
+    import re
+    # Try to find "answer": "<value>" with a simple regex on the raw text.
+    # This handles cases where the outer JSON is broken but the answer key exists.
+    m = re.search(r'"answer"\s*:\s*"((?:[^"\\]|\\.)*)"\s*[,}]', text, re.DOTALL)
+    if m:
+        try:
+            return json.loads('"' + m.group(1) + '"')
+        except Exception:
+            return m.group(1)[:2000]
+    return ""
+
+
 def _sanitize_normal_response(text: str) -> str:
     """
     Parse and re-serialize a normal-mode LLM JSON response.
     Fills missing required fields with empty strings.
     Returns a clean JSON string safe for Android to parse.
-    Falls back to a safe stub if the response is completely unparseable.
+    Falls back safely without ever exposing raw JSON structure to the user.
     """
     try:
         parsed = extract_json_safe(text)
         for field in _NORMAL_FIELDS:
             if field not in parsed:
-                parsed[field] = ""
+                parsed[field] = False if field == "suggest_blackboard" else ""
         return json.dumps(parsed, ensure_ascii=False)
     except Exception as e:
-        logger.warning("Normal JSON repair failed (%s) — returning safe stub", e)
+        logger.warning("Normal JSON repair failed (%s) — attempting answer extraction", e)
+        # Try to rescue just the answer value from the broken JSON
+        rescued_answer = _try_extract_answer_from_raw(text or "")
+        if not rescued_answer:
+            # If text is plain (not JSON), use it directly; otherwise show a safe message
+            stripped = (text or "").strip()
+            if stripped and not stripped.startswith("{") and not stripped.startswith("["):
+                rescued_answer = stripped[:3000]
+            else:
+                rescued_answer = "I had trouble formatting my response. Please try asking again."
         return json.dumps({
             "user_question": "",
-            "answer": text[:2000] if text else "[No response]",
+            "answer": rescued_answer,
             "user_attachment_transcription": "",
             "extra_details_or_summary": "",
         }, ensure_ascii=False)
@@ -767,10 +793,10 @@ def _sanitize_bb_response(text: str) -> str:
         if structural_changes == 0 and len(sanitized) < len(text) * 0.4:
             logger.warning(
                 "BB sanitizer: output (%d) is much smaller than input (%d) "
-                "— possible wrong-object parse, returning original",
+                "— possible wrong-object parse; returning sanitized to avoid raw JSON exposure",
                 len(sanitized), len(text),
             )
-            return text
+            # Return the (small but valid) sanitized output rather than the raw LLM text.
 
         if structural_changes > 0:
             logger.info(
@@ -780,8 +806,9 @@ def _sanitize_bb_response(text: str) -> str:
 
         return sanitized
     except Exception as e:
-        logger.warning("BB JSON repair failed (%s) — returning original text", e)
-        return text
+        logger.warning("BB JSON repair failed (%s) — returning safe empty lesson", e)
+        # Never return raw LLM text; return a minimal valid BB structure instead.
+        return json.dumps({"steps": []}, ensure_ascii=False)
 
 
 def _status_frame(message: str, progress: int) -> str:

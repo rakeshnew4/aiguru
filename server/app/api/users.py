@@ -1,10 +1,15 @@
 """
-api/users.py — User registration endpoint.
+api/users.py — User registration and quota endpoints.
 
 POST /users/register
   Idempotent: safe to call on every login.
   Creates users_table/{uid} with free-plan defaults if it doesn't exist yet.
   Also creates a LiteLLM API key for per-user usage tracking if LiteLLM is enabled.
+
+GET /users/quota
+  Returns the current daily quota usage and limits for the authenticated user.
+  Android calls this after each response to refresh the quota display without
+  writing to Firestore directly.
 """
 
 from __future__ import annotations
@@ -115,3 +120,92 @@ async def register_user(req: RegisterRequest, auth: AuthUser = Depends(require_a
         message="User registered",
         litellm_key=litellm_key
     )
+
+
+class QuotaResponse(BaseModel):
+    chat_questions_today: int
+    bb_sessions_today: int
+    plan_daily_chat_limit: int
+    plan_daily_bb_limit: int
+    chat_questions_left: int
+    bb_sessions_left: int
+    questions_updated_at: int
+    plan_id: str
+    plan_name: str
+    plan_expiry_date: int
+
+
+@router.get("/quota", response_model=QuotaResponse)
+async def get_user_quota(auth: AuthUser = Depends(require_auth)):
+    """
+    Return the caller's live daily quota counters and plan limits.
+
+    Android uses this after each AI response to refresh the quota strip display,
+    replacing direct Firestore reads for quota state (all writes are server-side).
+    The server is the sole authority on chat_questions_today / bb_sessions_today.
+    """
+    uid = auth.uid
+    if not uid or uid == "guest_user":
+        raise HTTPException(status_code=400, detail="Valid authenticated user required")
+
+    loop = asyncio.get_event_loop()
+
+    def _read_quota():
+        from datetime import datetime, timezone
+        db = user_service._get_db()
+        if db is None:
+            return None
+        ref = db.collection("users_table").document(uid)
+        doc = ref.get()
+        if not doc.exists:
+            return None
+        data = doc.to_dict() or {}
+
+        questions_updated_at = int(data.get("questions_updated_at") or 0)
+        is_new_day = False
+        if questions_updated_at > 0:
+            try:
+                import time as _time
+                last_day = datetime.fromtimestamp(questions_updated_at / 1000, tz=timezone.utc).date()
+                today = datetime.now(tz=timezone.utc).date()
+                is_new_day = last_day < today
+            except Exception:
+                pass
+
+        chat_today = 0 if is_new_day else int(data.get("chat_questions_today") or 0)
+        bb_today   = 0 if is_new_day else int(data.get("bb_sessions_today") or 0)
+
+        plan_id   = (data.get("planId") or "free").strip() or "free"
+        plan_name = data.get("planName") or "Free"
+        plan_expiry = int(data.get("plan_expiry_date") or 0)
+
+        # Read limits from the user doc (written by server on plan activation)
+        chat_limit = int(data.get("plan_daily_chat_limit") or 12)
+        bb_limit   = int(data.get("plan_daily_bb_limit") or 2)
+
+        # Revert to free defaults if plan expired
+        import time as _t
+        if plan_expiry > 0 and plan_expiry < int(_t.time() * 1000):
+            chat_limit = 12
+            bb_limit   = 2
+
+        chat_left = max(0, chat_limit - chat_today) if chat_limit > 0 else -1
+        bb_left   = max(0, bb_limit   - bb_today)   if bb_limit   > 0 else -1
+
+        return {
+            "chat_questions_today": chat_today,
+            "bb_sessions_today": bb_today,
+            "plan_daily_chat_limit": chat_limit,
+            "plan_daily_bb_limit": bb_limit,
+            "chat_questions_left": chat_left,
+            "bb_sessions_left": bb_left,
+            "questions_updated_at": questions_updated_at,
+            "plan_id": plan_id,
+            "plan_name": plan_name,
+            "plan_expiry_date": plan_expiry,
+        }
+
+    result = await loop.run_in_executor(None, _read_quota)
+    if result is None:
+        raise HTTPException(status_code=404, detail="User quota data not found")
+    return QuotaResponse(**result)

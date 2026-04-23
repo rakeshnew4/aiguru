@@ -69,6 +69,17 @@ API_SUMMARY = {
             "Creates LiteLLM API key if proxy is enabled",
         ],
     },
+    "/users/quota": {
+        "file": "server/app/api/users.py",
+        "mode": "GET, authenticated",
+        "major_behaviors": [
+            "Returns live daily quota counters and plan limits for the caller",
+            "Handles UTC day rollover — treats stale counter as 0",
+            "Respects plan expiry — reverts to free limits when plan is expired",
+            "Android calls this after each AI response to refresh quota display",
+            "Server is sole writer of quota counters; Android only reads via this endpoint",
+        ],
+    },
     "/api/tts/synthesize": {
         "file": "server/app/api/tts.py",
         "major_behaviors": [
@@ -229,4 +240,10 @@ NOTES_FOR_AGENTS = [
     "chat.py writes prompt.txt and llm_service.py writes response.json as debug artifacts; these are side effects of the current implementation.",
     "The backend is the quota authority; Android now treats HTTP 429 as the real limit signal.",
     "Users/register is idempotent and safe to call after each login.",
+    # ── Recent changes ──────────────────────────────────────────────────────
+    "QUOTA WRITES: The server (check_and_record_quota) is the SOLE writer of chat_questions_today / bb_sessions_today. Android no longer writes these fields — double-counting was the previous bug.",
+    "QUOTA READ: GET /users/quota returns live counters + plan limits for Android quota display. Android no longer reads Firestore plans/ directly for quota.",
+    "JSON SAFETY: _sanitize_normal_response never returns raw JSON/LLM text to users; falls back to a friendly message or rescued answer field. BB fallback returns empty steps JSON.",
+    "SUGGEST_BLACKBOARD: Normal mode JSON now includes suggest_blackboard boolean field. LLM sets it based on whether topic benefits from a visual lesson.",
+    "LOGIN: Only Google sign-in is supported. Guest and email/password login removed.",
 ]

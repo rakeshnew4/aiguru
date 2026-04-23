@@ -193,7 +193,7 @@ def _pick_titles_sync(steps: list, all_candidates: List[Dict[str, str]]) -> Dict
         if not isinstance(step, dict):
             continue
         score = step.get("image_show_confidencescore") or 0
-        if score < 0.5:
+        if score < 0.35:
             continue
         desc = (step.get("image_description") or "").strip()
         if not desc:
@@ -290,7 +290,7 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
             if isinstance(step, dict):
                 desc = (step.get("image_description") or "").strip()
                 score = step.get("image_show_confidencescore") or 0
-                if desc and len(desc) > 3 and score > 0.5:
+                if desc and len(desc) > 3 and score >= 0.35:
                     descriptions.append(desc)
                 else:
                     descriptions.append("")
@@ -464,7 +464,7 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
             if not isinstance(step, dict):
                 continue
             score = step.get("image_show_confidencescore") or 0
-            if score <= 0:
+            if score < 0.35:
                 continue
             if i in picks:
                 # Store the direct image URL — Android loads it without re-querying Wikimedia
@@ -473,6 +473,25 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
             elif step.get("image_description"):
                 step.pop("image_description", None)
                 logger.info("Step %d: no image match, description cleared", i)
+
+        # ── Guarantee step 2 (index 1) has a visual (diagram or image) ──────────
+        if len(data["steps"]) > 1:
+            step1 = data["steps"][1]
+            if isinstance(step1, dict):
+                has_diagram = any(
+                    isinstance(f, dict) and f.get("frame_type") == "diagram" and f.get("svg_html")
+                    for f in step1.get("frames", [])
+                )
+                has_image = bool(
+                    (step1.get("image_description") or "").startswith("https://")
+                )
+                if not has_diagram and not has_image:
+                    # Inject image search from step title as fallback
+                    title = (step1.get("title") or "").strip()
+                    if title:
+                        step1["image_description"] = title
+                        step1["image_show_confidencescore"] = 0.6
+                        logger.info("Step 1: injected image search for '%s' to guarantee visual", title)
 
         return json.dumps(data)
 

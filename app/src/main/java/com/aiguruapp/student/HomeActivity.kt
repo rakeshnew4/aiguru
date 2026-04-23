@@ -289,38 +289,53 @@ class HomeActivity : BaseActivity() {
     }
 
     /**
-     * Update the usage section in the left navigation drawer.
+     * Update quota display on both the main screen strip and the navigation drawer.
      * @param chatLeft  remaining chat questions today (-1 = unlimited)
      * @param bbLeft    remaining blackboard sessions today (-1 = unlimited)
      * @param aiTtsCharsLeft remaining AI TTS chars today (-1 = unlimited / 0 = no quota)
      */
     private fun updateQuotaStripUI(chatLeft: Int, bbLeft: Int, aiTtsCharsLeft: Int) {
-        // Chat
-        val chatText = "$chatLeft more"
-        val chatColor = if (chatLeft in 0..3) "#BF360C" else "#1565C0"
-        findViewById<TextView?>(R.id.drawerChatLeft)?.apply {
-            text = chatText
-            setTextColor(Color.parseColor(chatColor))
-        }
-        findViewById<ProgressBar?>(R.id.drawerChatProgress)?.let { bar ->
-            val used = if (drawerChatLimit > 0 && chatLeft >= 0) drawerChatLimit - chatLeft else 0
-            bar.max = if (drawerChatLimit > 0) drawerChatLimit else 100
-            bar.progress = used.coerceAtLeast(0)
+
+        // ── Main screen: top quota strip (chat + BB chips) ────────────────
+        val quotaStrip = findViewById<LinearLayout?>(R.id.homeQuotaStrip)
+        if (quotaStrip != null && (drawerChatLimit > 0 || drawerBbLimit > 0)) {
+            quotaStrip.visibility = View.VISIBLE
+
+            val chatChipText = when {
+                chatLeft < 0  -> "Unlimited questions"
+                chatLeft == 0 -> "No questions left today"
+                chatLeft == 1 -> "1 question left today"
+                else          -> "$chatLeft questions left today"
+            }
+            val chatChipColor = if (chatLeft in 0..2) "#BF360C" else "#1565C0"
+            findViewById<TextView?>(R.id.homeQuotaChatText)?.apply {
+                text = chatChipText
+                setTextColor(Color.parseColor(chatChipColor))
+            }
+
+            val bbChipText = when {
+                bbLeft < 0  -> "Unlimited lessons"
+                bbLeft == 0 -> "No lessons left today"
+                bbLeft == 1 -> "1 lesson left today"
+                else        -> "$bbLeft lessons left today"
+            }
+            val bbChipColor = if (bbLeft in 0..0) "#BF360C" else "#7B1FA2"
+            findViewById<TextView?>(R.id.homeQuotaBbText)?.apply {
+                text = bbChipText
+                setTextColor(Color.parseColor(bbChipColor))
+            }
         }
 
-        // Blackboard
-        val bbText = "$bbLeft more"
-        val bbColor = if (bbLeft in 0..1) "#BF360C" else "#7B1FA2"
-        findViewById<TextView?>(R.id.drawerBbLeft)?.apply {
-            text = bbText
-            setTextColor(Color.parseColor(bbColor))
-        }
-        findViewById<ProgressBar?>(R.id.drawerBbProgress)?.let { bar ->
-            val used = if (drawerBbLimit > 0 && bbLeft >= 0) drawerBbLimit - bbLeft else 0
-            bar.max = if (drawerBbLimit > 0) drawerBbLimit else 100
-            bar.progress = used.coerceAtLeast(0)
+        // ── Main screen: Ask AI card subtitle ────────────────────────────
+        if (drawerChatLimit > 0 && chatLeft >= 0) {
+            val subtitle = when {
+                chatLeft == 0 -> "Limit reached today"
+                else          -> "$chatLeft questions left"
+            }
+            findViewById<TextView?>(R.id.chatQuotaSubtitle)?.text = subtitle
         }
 
+        // ── Main screen: BB card quota pill ──────────────────────────────
         val bbPill = findViewById<TextView?>(R.id.bbQuotaPill)
         if (bbPill != null) {
             if (drawerBbLimit <= 0) {
@@ -337,11 +352,37 @@ class HomeActivity : BaseActivity() {
             }
         }
 
-        // AI Voice credits
+        // ── Navigation drawer: chat progress bar ─────────────────────────
+        val chatText = if (chatLeft < 0) "Unlimited" else "$chatLeft left"
+        val chatColor = if (chatLeft in 0..3) "#BF360C" else "#1565C0"
+        findViewById<TextView?>(R.id.drawerChatLeft)?.apply {
+            text = chatText
+            setTextColor(Color.parseColor(chatColor))
+        }
+        findViewById<ProgressBar?>(R.id.drawerChatProgress)?.let { bar ->
+            val used = if (drawerChatLimit > 0 && chatLeft >= 0) drawerChatLimit - chatLeft else 0
+            bar.max = if (drawerChatLimit > 0) drawerChatLimit else 100
+            bar.progress = used.coerceAtLeast(0)
+        }
+
+        // ── Navigation drawer: BB progress bar ───────────────────────────
+        val bbText = if (bbLeft < 0) "Unlimited" else "$bbLeft left"
+        val bbColor = if (bbLeft in 0..1) "#BF360C" else "#7B1FA2"
+        findViewById<TextView?>(R.id.drawerBbLeft)?.apply {
+            text = bbText
+            setTextColor(Color.parseColor(bbColor))
+        }
+        findViewById<ProgressBar?>(R.id.drawerBbProgress)?.let { bar ->
+            val used = if (drawerBbLimit > 0 && bbLeft >= 0) drawerBbLimit - bbLeft else 0
+            bar.max = if (drawerBbLimit > 0) drawerBbLimit else 100
+            bar.progress = used.coerceAtLeast(0)
+        }
+
+        // ── Navigation drawer: AI Voice credits ──────────────────────────
         val voiceRow = findViewById<LinearLayout?>(R.id.drawerVoiceRow)
         if (aiTtsCharsLeft != 0) {
             voiceRow?.visibility = View.VISIBLE
-            val voiceText = "$aiTtsCharsLeft more"
+            val voiceText = if (aiTtsCharsLeft < 0) "Unlimited" else "$aiTtsCharsLeft chars left"
             val voiceColor = if (aiTtsCharsLeft in 0..1000) "#BF360C" else "#1E9B6B"
             findViewById<TextView?>(R.id.drawerVoiceLeft)?.apply {
                 text = voiceText
