@@ -9,6 +9,7 @@ Update this file when changing:
 - server/app/api/tts.py
 - server/app/api/payments.py
 - server/app/api/library.py
+- server/app/api/image_search_titles.py
 - Android caller classes that talk to these endpoints
 """
 
@@ -34,11 +35,11 @@ API_SUMMARY = {
         "mode": "SSE streaming endpoint",
         "major_behaviors": [
             "Checks chat/blackboard quota before opening the stream",
-            "Fetches page context",
-            "Normalizes image input",
+            "Fetches page context and normalizes image input",
             "Routes by req.mode: normal vs blackboard",
-            "Uses static system prompts plus dynamic user content",
+            "In blackboard mode, builds a plan and can prefetch Wikimedia candidates while the main LLM runs",
             "Calls generate_response() and emits text/status/done SSE frames",
+            "In blackboard mode, post-processes the LLM JSON through image_search_titles.get_titles() before streaming the final text payload",
         ],
     },
     "/bb/grade": {
@@ -107,10 +108,8 @@ def chat_stream(req, auth):
         raise HTTP 429
 
     log_activity_async("chat", ...)
-
     context = get_context(req.page_id)
     images = normalize_images(req)
-    has_image = bool(images)
 
     if req.mode == "blackboard":
         plan = bb_plan(req.question, context, req.history, req.student_level)
@@ -119,15 +118,10 @@ def chat_stream(req, auth):
         user_content = build_blackboard_mode_user_content(...)
         model_tier = plan_to_model_tier(req.user_plan)
     else:
-        if has_image:
-            intent = "image_explain"
-            complexity = "high"
-        else:
-            intent, complexity = classify_intent(...)
-        merged_context = context if has_image else merge_context_with_image_data(context, req.image_data)
+        intent, complexity = classify_or_derive_intent(...)
         system_prompt = get_normal_mode_system_prompt()
         user_content = build_normal_mode_user_content(...)
-        model_tier = "faster" if intent == "greet" else plan_to_model_tier(req.user_plan)
+        model_tier = choose_model_tier_from_intent_and_plan(...)
 
     result = generate_response(user_content, images, tier=model_tier, system_prompt=system_prompt)
     if result.provider == "error":
@@ -135,10 +129,44 @@ def chat_stream(req, auth):
         return
 
     if req.mode == "blackboard":
-        result.text = await get_titles(result.text, extra_candidates=await wiki_task)
+        prefetched = await wiki_task
+        result.text = await get_titles(result.text, extra_candidates=prefetched)
 
     stream_status_and_text_frames(...)
     stream_done_frame(tokens=result.tokens, page_transcript=extract_page_transcript(...))
+""".strip()
+
+
+BLACKBOARD_POST_PROCESSOR_PSEUDOCODE = """
+async def get_titles(bb_json, extra_candidates=None):
+    data = parse_blackboard_json(bb_json)
+    launch diagram-data enrichment + quiz-answer validation tasks
+    launch per-step Wikimedia searches for eligible image descriptions
+    await everything together
+    write enrichment results back into step frames
+
+    for each diagram frame:
+        d_type = frame.diagram_type
+        d_data = frame.data
+        if diagram_type and svg_elements are both missing:
+            d_type = classify_diagram_need(step_title + frame_speech)
+        html = try_in_order(
+            atom_html,
+            js_engine_html,
+            raw_llm_svg,
+            python_smil_builder,
+            legacy_svg_elements,
+        )
+        if html:
+            frame["svg_html"] = html
+        drop frame["svg_elements"], frame["diagram_type"], frame["data"]
+
+    merge prefetched Wikimedia candidates with live search results
+    dedupe candidates by URL
+    picks = choose_best_image_url_per_step_with_llm_fallback()
+    write direct URLs back into step["image_description"]
+    clear unmatched image_description fields
+    return updated_blackboard_json
 """.strip()
 
 
@@ -193,9 +221,12 @@ async def webhook(payload):
 
 NOTES_FOR_AGENTS = [
     "ServerProxyClient expects SSE frames shaped like data: {\"text\": ...}, status frames, and a terminal done frame.",
-    "chat.py writes prompt.txt and llm_service.py writes response.json as debug artifacts; these are side effects of the current implementation.",
     "Normal chat and Blackboard share the same /chat-stream endpoint but use different prompt builders and post-processing.",
+    "image_search_titles.get_titles() is now effectively a Blackboard post-processor, not just an image-title helper.",
+    "After Blackboard post-processing, image_description usually contains a direct Wikimedia image URL that Android can load directly.",
+    "Blackboard diagram frame render order is atom -> JS engine -> raw SVG LLM -> Python SMIL -> legacy svg_elements.",
+    "get_titles() removes diagram_type, data, and svg_elements from frames after svg_html is built, so downstream consumers should not expect those planning keys to survive.",
+    "chat.py writes prompt.txt and llm_service.py writes response.json as debug artifacts; these are side effects of the current implementation.",
     "The backend is the quota authority; Android now treats HTTP 429 as the real limit signal.",
     "Users/register is idempotent and safe to call after each login.",
 ]
-
