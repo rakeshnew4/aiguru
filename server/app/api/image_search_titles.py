@@ -342,10 +342,6 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
             if not has_diagram:
                 continue
 
-            # Suppress Wikimedia image for diagram steps — the SVG IS the visual
-            step["image_show_confidencescore"] = 0.0
-            step.pop("image_description", None)
-
             for frame in step.get("frames", []):
                 if not isinstance(frame, dict) or frame.get("frame_type") != "diagram":
                     continue

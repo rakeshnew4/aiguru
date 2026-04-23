@@ -63,6 +63,19 @@
             android:background="?attr/selectableItemBackgroundBorderless" />
 
         <TextView
+            android:id="@+id/shareBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:gravity="center"
+            android:text="↗ Share"
+            android:textSize="12sp"
+            android:textColor="#88AABB"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:layout_marginEnd="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+        <TextView
             android:id="@+id/replayBtn"
             android:layout_width="wrap_content"
             android:layout_height="32dp"

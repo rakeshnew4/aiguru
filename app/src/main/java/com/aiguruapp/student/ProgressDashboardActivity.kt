@@ -117,10 +117,70 @@ class ProgressDashboardActivity : BaseActivity() {
             }
         }
 
+        // Build weekly sparkline
+        val sparklineCard = findViewById<View>(R.id.weeklySparklineCard)
+        val sparklineContainer = findViewById<LinearLayout>(R.id.weeklySparklineContainer)
+        if (sparklineCard != null && sparklineContainer != null) {
+            buildWeeklySparkline(sparklineContainer, data)
+            sparklineCard.visibility = View.VISIBLE
+        }
+
         // Show list
         findViewById<View>(R.id.loadingLayout).visibility = View.GONE
         val scroll = findViewById<ScrollView>(R.id.chapterScrollView)
         scroll.visibility = View.VISIBLE
+    }
+
+    private fun buildWeeklySparkline(container: LinearLayout, data: List<ChapterSummary>) {
+        container.removeAllViews()
+        val now = System.currentTimeMillis()
+        val dayMs = 86_400_000L
+        val cal = java.util.Calendar.getInstance()
+
+        val counts = IntArray(7)
+        for (cs in data) {
+            if (cs.lastAccessed <= 0L) continue
+            val daysAgo = ((now - cs.lastAccessed) / dayMs).toInt()
+            if (daysAgo in 0..6) counts[6 - daysAgo]++
+        }
+
+        val labels = Array(7) { i ->
+            cal.timeInMillis = now - (6 - i) * dayMs
+            when (cal.get(java.util.Calendar.DAY_OF_WEEK)) {
+                java.util.Calendar.MONDAY    -> "Mon"
+                java.util.Calendar.TUESDAY   -> "Tue"
+                java.util.Calendar.WEDNESDAY -> "Wed"
+                java.util.Calendar.THURSDAY  -> "Thu"
+                java.util.Calendar.FRIDAY    -> "Fri"
+                java.util.Calendar.SATURDAY  -> "Sat"
+                else                         -> "Sun"
+            }
+        }
+
+        val maxCount = counts.max().coerceAtLeast(1)
+        for (i in 0..6) {
+            val col = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f)
+            }
+            val barHeightDp = ((counts[i].toFloat() / maxCount) * 38).toInt().coerceAtLeast(if (counts[i] > 0) 6 else 2)
+            col.addView(View(this).apply {
+                layoutParams = LinearLayout.LayoutParams(dp(16), dp(barHeightDp)).also { it.bottomMargin = dp(2) }
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                    cornerRadius = dp(3).toFloat()
+                    setColor(Color.parseColor(if (counts[i] > 0) "#1565C0" else "#E3F2FD"))
+                }
+            })
+            col.addView(TextView(this).apply {
+                text = labels[i]
+                textSize = 9f
+                gravity = Gravity.CENTER
+                setTextColor(Color.parseColor("#999999"))
+            })
+            container.addView(col)
+        }
     }
 
     private fun buildChapterCard(cs: ChapterSummary): View {

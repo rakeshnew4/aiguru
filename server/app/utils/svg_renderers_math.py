@@ -163,15 +163,31 @@ def _render_graph_function(data: dict) -> list:
     clr = data.get("color", "secondary")
 
     # Auto-label
+    def _fmt(v: float) -> str:
+        return str(int(v)) if v == int(v) else f"{v:.2f}".rstrip("0").rstrip(".")
+
     if not data.get("label"):
         if func_name == "linear":
-            lbl = f"y = {a:.0f}x + {b:.0f}" if b != 0 else f"y = {a:.0f}x"
+            terms = []
+            if a != 0: terms.append(f"{_fmt(a)}x")
+            if b != 0:
+                sign = "+" if b > 0 and terms else ""
+                terms.append(f"{sign}{_fmt(b)}")
+            lbl = "y = " + (" ".join(terms) or "0")
         elif func_name == "quadratic":
-            lbl = f"y = {a:.0f}x\u00b2 + {b:.0f}x + {c:.0f}"
+            terms = []
+            if a != 0: terms.append(f"{_fmt(a)}x\u00b2")
+            if b != 0:
+                sign = "+" if b > 0 and terms else ""
+                terms.append(f"{sign}{_fmt(b)}x")
+            if c != 0 or not terms:
+                sign = "+" if c > 0 and terms else ""
+                terms.append(f"{sign}{_fmt(c)}")
+            lbl = "y = " + (" ".join(terms) or "0")
         elif func_name == "cubic":
-            lbl = f"y = {a:.0f}x\u00b3"
+            lbl = f"y = {_fmt(a)}x\u00b3"
         elif func_name in ("sine", "cosine"):
-            lbl = f"y = {a:.0f}{func_name[:3]}(x)"
+            lbl = f"y = {_fmt(a)}{func_name[:3]}(x)"
         else:
             lbl = func_name
     else:
@@ -356,9 +372,9 @@ def _render_geometry_angles(data: dict) -> list:
                    "bold": True, "size": 13, "anchor": "middle",
                    "animation_stage": 1})
 
-    # Supplementary angle (180° partner) if requested
+    # Partner angle if requested (complementary = 90-ang; supplementary = 180-ang)
     if show2 and ang < 180:
-        sup_ang = 180 - ang
+        sup_ang = (90 - ang) if a_type == "complementary" and ang < 90 else (180 - ang)
         sup_rad = math.radians(180)
         ax3 = cx + arm_len * math.cos(sup_rad)
         ay3 = cy

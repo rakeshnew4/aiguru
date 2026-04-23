@@ -55,6 +55,11 @@ class OnboardingActivity : AppCompatActivity() {
             emoji = "⚡",
             title = "Learn Smarter",
             subtitle = "Understand concepts clearly, finish homework faster, and ace your exams with ease!"
+        ),
+        OnboardingPage(
+            emoji = "🎓",
+            title = "Animated Blackboard Lessons",
+            subtitle = "Ask any topic — get step-by-step animated visual lessons with AI voice narration."
         )
     )
 
@@ -64,6 +69,7 @@ class OnboardingActivity : AppCompatActivity() {
     private lateinit var nextButton: Button
     private lateinit var skipButton: TextView
     private lateinit var dotsContainer: LinearLayout
+    private lateinit var bbPreviewContainer: View
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,6 +81,7 @@ class OnboardingActivity : AppCompatActivity() {
         nextButton = findViewById(R.id.onboardingNextButton)
         skipButton = findViewById(R.id.onboardingSkipButton)
         dotsContainer = findViewById(R.id.onboardingDots)
+        bbPreviewContainer = findViewById(R.id.bbPreviewContainer)
 
         buildDots()
         updatePage()
@@ -97,6 +104,7 @@ class OnboardingActivity : AppCompatActivity() {
         titleView.text = page.title
         subtitleView.text = page.subtitle
         nextButton.text = if (currentPage == pages.size - 1) "Get Started 🚀" else "Next"
+        bbPreviewContainer.visibility = if (currentPage == pages.size - 1) View.VISIBLE else View.GONE
         updateDots()
     }
 

@@ -209,6 +209,9 @@ class BlackboardActivity : AppCompatActivity() {
     private lateinit var bbQuotaChip: android.widget.TextView
     private lateinit var saveSessionBtn: TextView
     private var sessionAlreadySaved = false
+    private lateinit var bbCompletionCard: View
+    private lateinit var stepNamesScrollView: android.widget.HorizontalScrollView
+    private lateinit var stepNamesContainer: LinearLayout
 
     // Cached user metadata for quota checks
     private var cachedMetadata = UserMetadata()
@@ -260,6 +263,9 @@ class BlackboardActivity : AppCompatActivity() {
         bbQuotaChip     = findViewById(R.id.bbQuotaChip)
         saveSessionBtn  = findViewById(R.id.saveSessionBtn)
         publishLessonBtn = findViewById(R.id.publishLessonBtn)
+        bbCompletionCard = findViewById(R.id.bbCompletionCard)
+        stepNamesScrollView = findViewById(R.id.stepNamesScrollView)
+        stepNamesContainer  = findViewById(R.id.stepNamesContainer)
         bbAskInput      = findViewById(R.id.bbAskInput)
         bbAskSendBtn    = findViewById(R.id.bbAskSend)
         bbAskToggle     = findViewById(R.id.bbAskToggle)
@@ -293,10 +299,21 @@ class BlackboardActivity : AppCompatActivity() {
         }
         saveSessionBtn.setOnClickListener { saveCurrentSession() }
         publishLessonBtn.setOnClickListener { publishCurrentLesson() }
+        findViewById<TextView>(R.id.completionSaveBtn).setOnClickListener {
+            bbCompletionCard.visibility = View.GONE
+            saveCurrentSession()
+        }
+        findViewById<TextView>(R.id.completionReplayBtn).setOnClickListener {
+            bbCompletionCard.visibility = View.GONE
+            restartLesson()
+        }
+        findViewById<TextView>(R.id.completionCloseBtn).setOnClickListener {
+            bbCompletionCard.visibility = View.GONE
+        }
         replayBtn.setOnClickListener { restartLesson() }
         pauseBtn.setOnClickListener  { togglePause() }
-        prevBtn.setOnClickListener   { prevStep() }
-        nextBtn.setOnClickListener   { nextStep() }
+        prevBtn.setOnClickListener   { it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY); prevStep() }
+        nextBtn.setOnClickListener   { it.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY); nextStep() }
 
         // Teacher mode: show publish button so this lesson can be shared with students
         isTeacherMode = com.aiguruapp.student.utils.SessionManager.isTeacher(this)
@@ -1120,6 +1137,7 @@ class BlackboardActivity : AppCompatActivity() {
         typeAnimator?.cancel()
         handWriter.visibility = View.INVISIBLE
         updateCounterAndDots()
+        updateStepNameStrip(stepIdx)
         trackTaskBbProgress(stepIdx)
 
         // Trigger next chunk when 2 steps from the end
@@ -1666,7 +1684,21 @@ class BlackboardActivity : AppCompatActivity() {
                 showFrame(currentStepIdx, currentFrameIdx + 1)
             currentStepIdx < steps.size - 1 ->
                 showFrame(currentStepIdx + 1, 0)
+            else -> showCompletionCard()
         }
+    }
+
+    private fun showCompletionCard() {
+        if (bbCompletionCard.visibility == View.VISIBLE) return
+        val subtitle = bbCompletionCard.findViewById<TextView?>(R.id.bbCompletionSubtitle)
+        subtitle?.text = "Great job! You covered ${steps.size} step${if (steps.size == 1) "" else "s"}."
+        bbCompletionCard.alpha = 0f
+        bbCompletionCard.visibility = View.VISIBLE
+        bbCompletionCard.animate().alpha(1f).setDuration(400).start()
+        // Pulse the save button to nudge the user
+        val saveBtn = bbCompletionCard.findViewById<TextView?>(R.id.completionSaveBtn)
+        saveBtn?.animate()?.scaleX(1.06f)?.scaleY(1.06f)?.setDuration(300)
+            ?.withEndAction { saveBtn.animate().scaleX(1f).scaleY(1f).setDuration(300).start() }?.start()
     }
 
     private fun nextStep() = advanceFrame()
@@ -3553,6 +3585,54 @@ class BlackboardActivity : AppCompatActivity() {
                 background = makeDotDrawable(i == 0)
             }
             dotsContainer.addView(dot)
+        }
+        buildStepNameStrip()
+    }
+
+    private fun buildStepNameStrip() {
+        stepNamesContainer.removeAllViews()
+        if (steps.isEmpty()) { stepNamesScrollView.visibility = View.GONE; return }
+        val dp = resources.displayMetrics.density
+        steps.forEachIndexed { i, step ->
+            val label = step.title.let { if (it.length > 22) it.take(22) + "…" else it }
+            val isActive = i == currentStepIdx
+            val pill = TextView(this).apply {
+                text = "${i + 1}. $label"
+                textSize = 11f
+                setTextColor(Color.parseColor(if (isActive) "#FFFFFF" else "#88AABB"))
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE; cornerRadius = 12 * dp
+                    setColor(if (isActive) Color.parseColor("#3C3CBD") else Color.parseColor("#1A1A2E"))
+                    setStroke((1 * dp).toInt(), if (isActive) Color.parseColor("#5C5CF0") else Color.parseColor("#334466"))
+                }
+                setPadding((10 * dp).toInt(), (5 * dp).toInt(), (10 * dp).toInt(), (5 * dp).toInt())
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { marginEnd = (6 * dp).toInt() }
+                setOnClickListener { if (i <= currentStepIdx) showFrame(i, 0) }
+            }
+            stepNamesContainer.addView(pill)
+        }
+        stepNamesScrollView.visibility = View.VISIBLE
+    }
+
+    private fun updateStepNameStrip(activeIdx: Int) {
+        val dp = resources.displayMetrics.density
+        for (i in 0 until stepNamesContainer.childCount) {
+            val pill = stepNamesContainer.getChildAt(i) as? TextView ?: continue
+            val isActive = i == activeIdx
+            pill.setTextColor(Color.parseColor(if (isActive) "#FFFFFF" else "#88AABB"))
+            (pill.background as? GradientDrawable)?.apply {
+                setColor(if (isActive) Color.parseColor("#3C3CBD") else Color.parseColor("#1A1A2E"))
+                setStroke((1 * dp).toInt(), if (isActive) Color.parseColor("#5C5CF0") else Color.parseColor("#334466"))
+            }
+        }
+        if (activeIdx < stepNamesContainer.childCount) {
+            stepNamesScrollView.post {
+                stepNamesContainer.getChildAt(activeIdx)?.let { pill ->
+                    stepNamesScrollView.smoothScrollTo(pill.left, 0)
+                }
+            }
         }
     }
 

@@ -54,6 +54,26 @@
             android:layout_height="0dp"
             android:visibility="gone" />
 
+        <!-- ── STEP-NAMES PROGRESS STRIP ────────────────────────────────── -->
+        <HorizontalScrollView
+            android:id="@+id/stepNamesScrollView"
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:scrollbars="none"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:visibility="gone"
+            android:clipToPadding="false">
+
+            <LinearLayout
+                android:id="@+id/stepNamesContainer"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:gravity="center_vertical" />
+
+        </HorizontalScrollView>
+
         <!-- ── LESSON CONTENT ─────────────────────────────────────────────── -->
         <ScrollView
             android:id="@+id/stepsScrollView"
@@ -435,6 +455,90 @@
                 android:background="@drawable/bg_send_circle" />
 
         </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- ── COMPLETION CELEBRATION CARD (overlay, shown at end of lesson) ──── -->
+    <LinearLayout
+        android:id="@+id/bbCompletionCard"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:background="#CC0A0A1C"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:elevation="12dp"
+        android:padding="32dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🎉"
+            android:textSize="64sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Lesson Complete!"
+            android:textColor="#E8F0FF"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginTop="12dp" />
+
+        <TextView
+            android:id="@+id/bbCompletionSubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Great job! You've finished all steps."
+            android:textColor="#88AABB"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:layout_marginTop="6dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginTop="28dp">
+
+            <TextView
+                android:id="@+id/completionSaveBtn"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="💾 Save"
+                android:gravity="center"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:background="@drawable/bg_chip_indigo"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:id="@+id/completionReplayBtn"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="↺ Restart"
+                android:gravity="center"
+                android:textColor="#AABBCC"
+                android:textSize="14sp"
+                android:background="@drawable/bg_chip_indigo" />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/completionCloseBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Continue reviewing ↑"
+            android:textColor="#556677"
+            android:textSize="12sp"
+            android:padding="12dp"
+            android:gravity="center"
+            android:layout_marginTop="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless" />
 
     </LinearLayout>
 

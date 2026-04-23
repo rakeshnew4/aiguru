@@ -92,7 +92,7 @@ class NcertViewerActivity : AppCompatActivity() {
 
     private fun setupWebView() {
         webView.settings.apply {
-            javaScriptEnabled = false          // PDFs via Docs Viewer need no JS
+            javaScriptEnabled = false
             domStorageEnabled = false
             allowFileAccess = false
             allowContentAccess = false
@@ -101,7 +101,11 @@ class NcertViewerActivity : AppCompatActivity() {
             displayZoomControls = false
             useWideViewPort = true
             loadWithOverviewMode = true
+            // Serve from disk cache on re-opens; fall back to network if not cached
+            cacheMode = android.webkit.WebSettings.LOAD_CACHE_ELSE_NETWORK
+            databaseEnabled = true
         }
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null)
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {

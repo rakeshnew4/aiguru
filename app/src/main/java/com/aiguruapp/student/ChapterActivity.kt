@@ -224,7 +224,7 @@ class ChapterActivity : BaseActivity() {
 
         tabLayout.addTab(tabLayout.newTab().setText("�  Pages"))
         tabLayout.addTab(tabLayout.newTab().setText("💬  Chat"))
-        tabLayout.addTab(tabLayout.newTab().setText("📌  Saved"))
+        tabLayout.addTab(tabLayout.newTab().setText("📌  BB Sessions"))
 
         fun showOnly(visible: View) {
             listOf(savedContent, pagesContent, chatContainer).forEach {

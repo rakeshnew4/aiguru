@@ -41,6 +41,10 @@
     <color name="colorWarning">#F57F17</color>
     <color name="colorWarningLight">#FFF8E1</color>
 
+    <!-- ── Quota pill — used on BB hero card and quota indicators ─── -->
+    <color name="quotaAvailable">#AAFFCC</color>
+    <color name="quotaExhausted">#FF8A80</color>
+
     <!-- ── Chat UI ──────────────────────────────────────────────────── -->
     <color name="chat_bg">#FFFFFF</color>
     <color name="user_bubble">#1A1A2E</color>

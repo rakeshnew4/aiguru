@@ -207,7 +207,7 @@ def _render_shape_ext(el: dict, shape: str, color: str, delay: float):
             f'dur="0.30s" begin="{delay:.2f}s" fill="freeze"/>'
             f'<animateTransform attributeName="transform" type="rotate" '
             f'from="{from_rot}" to="{to_rot}" '
-            f'dur="{dur:.1f}s" begin="{delay:.2f}s" repeatCount="indefinite"/>'
+            f'dur="{dur:.1f}s" begin="0s" repeatCount="indefinite"/>'
             f'</circle>'
         )
         return svg, delay + 0.28

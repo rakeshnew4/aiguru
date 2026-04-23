@@ -24,7 +24,7 @@ import re
 from typing import Optional
 
 from app.services.llm_service import generate_response
-from app.utils.svg_builder import build_from_diagram_type, build_animated_svg
+from app.utils.svg_builder import build_from_diagram_type, build_animated_svg, _RENDERERS
 
 logger = logging.getLogger(__name__)
 
@@ -42,40 +42,64 @@ You MUST:
 - Focus on understanding, not completeness
 
 Available diagram types:
-- flow         → process / steps (e.g. "How does digestion work?")
-- cycle        → continuous loops (e.g. "water cycle", "carbon cycle", "life cycle")
-- comparison   → differences between two things (e.g. "difference between X and Y")
-- line_graph   → trends / graphs (e.g. "how population grows", "speed vs time")
-- triangle     → geometry with three vertices
-                  • set show_incircle=true for "incircle / inscribed circle / inradius"
-                  • set show_circumcircle=true for "circumcircle / circumscribed"
-                  • set show_height=true for "altitude / height of triangle"
-                  • set show_median=true for "median"
-- circle_radius → circle with radius labelled
-- rectangle_area → area of a rectangle
+PROCESS / FLOW
+- flow           → steps/process (e.g. "How does photosynthesis work?")
+- cycle          → continuous loops (e.g. "water cycle", "carbon cycle")
+- comparison     → two things side-by-side (e.g. "mitosis vs meiosis")
+- labeled_diagram→ central concept with labelled parts (e.g. "cell organelles", "heart")
+
+GRAPHS / DATA
+- line_graph     → trends / scatter (e.g. "speed vs time")
+- graph_function → math curves: quadratic/linear/cubic/sine/cosine/abs
+- bar_chart      → vertical bars (e.g. "monthly rainfall")
+- number_line    → number line with marked points / range
+- fraction_bar   → visual fraction comparison bars
+
+GEOMETRY
+- triangle       → labelled triangle (height, incircle, circumcircle, median)
+- circle_radius  → circle with radius labelled
+- circle_geometry→ circle with chord/sector/tangent
+- rectangle_area → rectangle area diagram
+- geometry_angles→ angle types (acute/right/obtuse/reflex/supplementary)
+- pythagoras     → right triangle with a²+b²=c² labels
+
+SCIENCE
+- atom           → Bohr model with electron shells
+- waveform_signal→ sine/cosine wave on axes (sound, light)
+- solar_system   → Sun + planets in orbit
 
 Decision rules:
 - steps / process / how / working / explain → "flow"
-- cycle / life cycle / water cycle / carbon cycle / stages of → "cycle"
+- cycle / life cycle / stages of → "cycle"
 - difference / vs / compare / contrast → "comparison"
 - graph / plot / increase / decrease / trend → "line_graph"
+- quadratic / parabola / sine / cosine / cubic → "graph_function"
 - triangle / angles → "triangle"
 - radius / diameter / circle → "circle_radius"
 - area / rectangle / perimeter → "rectangle_area"
+- atom / electron / nucleus / Bohr → "atom"
+- wave / sound wave / light wave → "waveform_signal"
+- cell / organelle / anatomy / label → "labeled_diagram"
+- number line / integers → "number_line"
+- fraction / comparing fractions → "fraction_bar"
 - anything else → "flow"
 
 Data schemas by type:
-flow:           { "steps": ["Step 1", "Step 2", ...] }           ← max 5
-cycle:          { "steps": ["Stage 1", "Stage 2", ...] }         ← max 6, ideal 3–5
-comparison:     { "left": "A", "right": "B",
-                  "left_points": ["point 1", ...],
-                  "right_points": ["point 1", ...] }              ← max 4 points each
-triangle:       { "labels": ["A", "B", "C"],
-                  "show_height": false, "show_incircle": false,
-                  "show_circumcircle": false, "show_median": false }
-circle_radius:  { "radius": 60, "label": "r" }
-rectangle_area: { "width": 120, "height": 70 }
-line_graph:     { "points": [[0,0],[1,2],[2,4]], "x_label": "x", "y_label": "y" }
+flow:            { "steps": ["Step 1", ...] }                    ← max 5, each ≤ 22 chars
+cycle:           { "steps": ["Stage 1", ...] }                   ← max 6, ideal 3–5
+comparison:      { "left": "A", "right": "B",
+                   "left_points": [...], "right_points": [...] }  ← max 4 pts each
+triangle:        { "labels": ["A","B","C"], "show_height": false,
+                   "show_incircle": false, "show_circumcircle": false }
+circle_radius:   { "radius": 60, "label": "r" }
+rectangle_area:  { "width": 120, "height": 70 }
+line_graph:      { "points": [[0,0],[1,2],[2,4]], "x_label": "x", "y_label": "y" }
+graph_function:  { "function": "quadratic", "a": 1, "b": 0, "c": 0, "x_range": [-4,4] }
+atom:            { "nucleus_label": "H", "orbits": [{"electrons": 1, "color": "secondary"}] }
+waveform_signal: { "title": "Sound Wave", "wave_type": "sine", "amplitude": 50, "cycles": 2 }
+labeled_diagram: { "center": "Cell", "center_shape": "circle", "parts": ["Nucleus",...] }
+number_line:     { "start": -5, "end": 5, "marked_points": [0,2], "highlight_range": [1,4] }
+fraction_bar:    { "fractions": [{"num":1,"den":2},{"num":3,"den":4}], "title": "Fractions" }
 
 NEVER:
 - Include raw coordinates
@@ -171,8 +195,9 @@ def _auto_data_for_cycle(question: str) -> dict:
 def _sanitise_data(dtype: str, data: dict) -> dict:
     """Clip/validate LLM-supplied data to schema limits."""
     if dtype == "flow":
-        steps = [str(s)[:40] for s in (data.get("steps") or [])][:5]
-        return {"steps": steps or ["Step 1", "Step 2", "Step 3"]}
+        steps = [str(s)[:22] for s in (data.get("steps") or [])][:5]
+        return {"steps": steps or ["Step 1", "Step 2", "Step 3"],
+                "title": str(data.get("title", ""))[:20]}
 
     if dtype == "cycle":
         steps = [str(s)[:20] for s in (data.get("steps") or [])][:6]
@@ -227,12 +252,121 @@ def _sanitise_data(dtype: str, data: dict) -> dict:
             w, h = 120.0, 70.0
         return {"width": w, "height": h}
 
+    if dtype in ("geometry_angles", "angle", "angles"):
+        try:
+            ang = max(1.0, min(359.0, float(data.get("angle_deg", 60))))
+        except (TypeError, ValueError):
+            ang = 60.0
+        return {
+            "angle_deg":   ang,
+            "angle_type":  str(data.get("angle_type", "acute")),
+            "labels":      [str(l)[:6] for l in (data.get("labels") or ["A", "O", "B"])][:3],
+            "title":       str(data.get("title", ""))[:30],
+            "show_second": bool(data.get("show_second", False)),
+        }
+
+    if dtype == "atom":
+        orbits = data.get("orbits") or [{"electrons": 2, "color": "secondary"}]
+        if not isinstance(orbits, list):
+            orbits = [{"electrons": 2, "color": "secondary"}]
+        return {
+            "nucleus_label": str(data.get("nucleus_label", ""))[:3],
+            "nucleus_color": str(data.get("nucleus_color", "highlight")),
+            "orbits": [
+                {
+                    "electrons": max(1, min(18, int(o.get("electrons", 2)))),
+                    "color":     str(o.get("color", "secondary")),
+                }
+                for o in orbits[:4] if isinstance(o, dict)
+            ] or [{"electrons": 2, "color": "secondary"}],
+            "duration": max(4.0, min(20.0, float(data.get("duration", 12)))),
+        }
+
+    if dtype == "labeled_diagram":
+        parts = [str(p)[:20] for p in (data.get("parts") or [])][:6]
+        return {
+            "center":       str(data.get("center", ""))[:20],
+            "center_shape": str(data.get("center_shape", "circle")),
+            "parts":        parts or ["Part 1", "Part 2", "Part 3"],
+        }
+
+    if dtype == "graph_function":
+        try:
+            a = float(data.get("a", 1))
+            b = float(data.get("b", 0))
+            c = float(data.get("c", 0))
+        except (TypeError, ValueError):
+            a, b, c = 1.0, 0.0, 0.0
+        xr = data.get("x_range") or [-4, 4]
+        try:
+            xr = [float(xr[0]), float(xr[1])]
+        except (TypeError, IndexError, ValueError):
+            xr = [-4.0, 4.0]
+        return {
+            "function": str(data.get("function", "quadratic")).lower(),
+            "a": a, "b": b, "c": c,
+            "x_range": xr,
+            "color":   str(data.get("color", "secondary")),
+            "label":   str(data.get("label", ""))[:30],
+        }
+
+    if dtype in ("waveform_signal", "wave", "sine_wave"):
+        try:
+            amp    = max(10.0, min(100.0, float(data.get("amplitude", 50))))
+            cycles = max(0.5,  min(6.0,   float(data.get("cycles",    2))))
+        except (TypeError, ValueError):
+            amp, cycles = 50.0, 2.0
+        return {
+            "title":     str(data.get("title", "Wave"))[:30],
+            "wave_type": str(data.get("wave_type", "sine")),
+            "cycles":    cycles,
+            "amplitude": amp,
+            "x_label":   str(data.get("x_label", "time"))[:15],
+            "y_label":   str(data.get("y_label", "amplitude"))[:15],
+            "color":     str(data.get("color", "secondary")),
+        }
+
+    if dtype == "number_line":
+        try:
+            start = float(data.get("start", -5))
+            end   = float(data.get("end",    5))
+        except (TypeError, ValueError):
+            start, end = -5.0, 5.0
+        marks: list = []
+        for v in (data.get("marked_points") or [])[:8]:
+            try:
+                marks.append(float(v))
+            except (TypeError, ValueError):
+                pass
+        return {
+            "start":           start,
+            "end":             end,
+            "marked_points":   marks,
+            "highlight_range": data.get("highlight_range") or [],
+            "label":           str(data.get("label", "Number Line"))[:30],
+        }
+
+    if dtype == "fraction_bar":
+        fracs: list = []
+        for f in (data.get("fractions") or [])[:4]:
+            if isinstance(f, dict):
+                try:
+                    fracs.append({"num": max(0, int(f.get("num", 1))),
+                                  "den": max(1, int(f.get("den", 2)))})
+                except (TypeError, ValueError):
+                    pass
+        return {
+            "fractions": fracs or [{"num": 1, "den": 2}],
+            "title":     str(data.get("title", "Fractions"))[:30],
+        }
+
     return data or {}
 
 
 # ── LLM call ──────────────────────────────────────────────────────────────────
 
-_VALID_TYPES = frozenset(_DEFAULT_DATA.keys())
+# Derived from the actual renderer registry so it never goes stale.
+_VALID_TYPES = frozenset(_RENDERERS.keys())
 
 _FALLBACK_RESPONSE = {
     "diagram_type":  "flow",
@@ -275,6 +409,10 @@ def _call_llm(question: str) -> dict:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+# Per-process cache: same question never hits the LLM twice in the same server session.
+_diagram_cache: dict[str, dict] = {}
+
+
 def generate_diagram(question: str) -> dict:
     """
     Full pipeline: auto-detect → (LLM if needed) → validate → render SVG.
@@ -292,6 +430,10 @@ def generate_diagram(question: str) -> dict:
     if not question:
         return {"diagram_html": "", "explanation": "", "diagram_type": "flow",
                 "visual_intent": "", "source": "auto"}
+
+    cache_key = question.lower()
+    if cache_key in _diagram_cache:
+        return _diagram_cache[cache_key]
 
     # ── Step 1: try keyword auto-detection ───────────────────────────────────
     detected_type = _auto_detect(question)
@@ -333,10 +475,12 @@ def generate_diagram(question: str) -> dict:
         shapes = build_from_diagram_type("flow", {"steps": [question[:20], "…"]})
         html   = build_animated_svg(shapes) if shapes else ""
 
-    return {
+    result = {
         "diagram_type":  detected_type,
         "explanation":   explanation,
         "visual_intent": visual_intent,
         "diagram_html":  html,
         "source":        source,
     }
+    _diagram_cache[cache_key] = result
+    return result

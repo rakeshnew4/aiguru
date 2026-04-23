@@ -61,6 +61,9 @@ _RENDERERS = {
     "rectangle_area":  _render_rectangle_area,
     "geometry_angles": _render_geometry_angles,
     "angles":          _render_geometry_angles,
+    "angle":           _render_geometry_angles,
+    "pythagoras":      _render_triangle,       # triangle renderer uses show_height from data
+    "circle_geometry": _render_circle_radius,  # basic circle until dedicated renderer added
     # Graphs / data
     "line_graph":      _render_line_graph,
     "graph_function":  _render_graph_function,

@@ -32,6 +32,8 @@ class BbSavedSessionsActivity : BaseActivity() {
     private lateinit var emptyState: View
     private lateinit var adapter: SessionsAdapter
     private val sessions = mutableListOf<Map<String, Any>>()
+    private val allSessions = mutableListOf<Map<String, Any>>()
+    private var activeFilter: String? = null
 
     private lateinit var subject: String
     private lateinit var chapter: String
@@ -54,36 +56,85 @@ class BbSavedSessionsActivity : BaseActivity() {
         adapter = SessionsAdapter(
             sessions  = sessions,
             onReplay  = { session -> replaySession(session) },
-            onDelete  = { session -> confirmDelete(session) }
+            onDelete  = { session -> confirmDelete(session) },
+            onShare   = { session -> shareSession(session) }
         )
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = adapter
+
+        findViewById<com.google.android.material.button.MaterialButton>(R.id.emptyStateStartBbBtn)
+            .setOnClickListener {
+                finish()
+                startActivity(Intent(this, HomeActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP))
+            }
 
         loadSessions()
     }
 
     private fun loadSessions() {
-        // Use flat mirror collection — shows all sessions regardless of subject/chapter.
-        // Sessions saved from general BB mode default chapter="General", not "General Chat",
-        // so querying by chapter would miss them.
         FirestoreManager.loadAllSavedBbSessions(
             userId = userId,
             onSuccess = { list ->
-                sessions.clear()
-                sessions.addAll(list)
-                adapter.notifyDataSetChanged()
-                if (sessions.isEmpty()) {
-                    emptyState.visibility   = View.VISIBLE
-                    recyclerView.visibility = View.GONE
-                } else {
-                    emptyState.visibility   = View.GONE
-                    recyclerView.visibility = View.VISIBLE
-                }
+                allSessions.clear()
+                allSessions.addAll(list)
+                applyFilter(activeFilter)
+                buildFilterChips()
             },
             onFailure = {
                 Toast.makeText(this, "Couldn't load sessions", Toast.LENGTH_SHORT).show()
             }
         )
+    }
+
+    private fun applyFilter(subject: String?) {
+        activeFilter = subject
+        sessions.clear()
+        sessions.addAll(if (subject == null) allSessions
+                        else allSessions.filter { (it["subject"] as? String) == subject })
+        adapter.notifyDataSetChanged()
+        val empty = sessions.isEmpty()
+        emptyState.visibility   = if (empty) View.VISIBLE else View.GONE
+        recyclerView.visibility = if (empty) View.GONE else View.VISIBLE
+    }
+
+    private fun buildFilterChips() {
+        val scroll    = findViewById<android.widget.HorizontalScrollView>(R.id.filterScrollView) ?: return
+        val container = findViewById<android.widget.LinearLayout>(R.id.filterChipsContainer) ?: return
+        val subjects  = allSessions.mapNotNull { it["subject"] as? String }
+            .filter { it.isNotBlank() }.distinct().sorted()
+        if (subjects.isEmpty()) { scroll.visibility = View.GONE; return }
+
+        container.removeAllViews()
+        scroll.visibility = View.VISIBLE
+        val dp = resources.displayMetrics.density
+
+        fun makeChip(label: String, filterValue: String?): android.widget.TextView {
+            return android.widget.TextView(this).apply {
+                text = label
+                textSize = 12f
+                setTextColor(android.graphics.Color.WHITE)
+                val isActive = filterValue == activeFilter
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                    cornerRadius = 16 * dp
+                    setColor(if (isActive) android.graphics.Color.parseColor("#3D1A6E")
+                             else android.graphics.Color.parseColor("#252840"))
+                    setStroke((1 * dp).toInt(),
+                        if (isActive) android.graphics.Color.parseColor("#7B52CC")
+                        else android.graphics.Color.parseColor("#33AABBCC"))
+                }
+                setPadding((12 * dp).toInt(), (6 * dp).toInt(), (12 * dp).toInt(), (6 * dp).toInt())
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { marginEnd = (8 * dp).toInt() }
+                setOnClickListener { applyFilter(filterValue); buildFilterChips() }
+            }
+        }
+
+        container.addView(makeChip("All", null))
+        subjects.forEach { container.addView(makeChip(it, it)) }
     }
 
     private fun replaySession(session: Map<String, Any>) {
@@ -109,6 +160,17 @@ class BbSavedSessionsActivity : BaseActivity() {
         startActivity(intent)
     }
 
+    private fun shareSession(session: Map<String, Any>) {
+        val topic = session["topic"] as? String ?: return
+        val stepCount = (session["step_count"] as? Long)?.toInt() ?: (session["step_count"] as? Int) ?: 0
+        val steps = if (stepCount > 0) "$stepCount steps" else "BB Session"
+        val text = "I just studied \"$topic\" on AfterClass AI!\n\n📚 $steps covered step by step with AI lessons. 🎓"
+        startActivity(Intent.createChooser(
+            Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text) },
+            "Share lesson"
+        ))
+    }
+
     private fun confirmDelete(session: Map<String, Any>) {
         val sessionId = session["session_id"] as? String ?: session["id"] as? String ?: return
         AlertDialog.Builder(this)
@@ -121,6 +183,7 @@ class BbSavedSessionsActivity : BaseActivity() {
                     chapter   = chapter,
                     sessionId = sessionId,
                     onSuccess = {
+                        allSessions.removeAll { (it["session_id"] ?: it["id"]) == sessionId }
                         val idx = sessions.indexOfFirst {
                             (it["session_id"] ?: it["id"]) == sessionId
                         }
@@ -129,9 +192,10 @@ class BbSavedSessionsActivity : BaseActivity() {
                             adapter.notifyItemRemoved(idx)
                         }
                         if (sessions.isEmpty()) {
-                            emptyState.visibility  = View.VISIBLE
+                            emptyState.visibility   = View.VISIBLE
                             recyclerView.visibility = View.GONE
                         }
+                        buildFilterChips()
                     },
                     onFailure = {
                         Toast.makeText(this, "Delete failed", Toast.LENGTH_SHORT).show()
@@ -147,7 +211,8 @@ class BbSavedSessionsActivity : BaseActivity() {
     private class SessionsAdapter(
         private val sessions: List<Map<String, Any>>,
         private val onReplay: (Map<String, Any>) -> Unit,
-        private val onDelete: (Map<String, Any>) -> Unit
+        private val onDelete: (Map<String, Any>) -> Unit,
+        private val onShare:  (Map<String, Any>) -> Unit
     ) : RecyclerView.Adapter<SessionsAdapter.VH>() {
 
         private val dateFormat = SimpleDateFormat("d MMM yyyy, h:mm a", Locale.getDefault())
@@ -158,6 +223,7 @@ class BbSavedSessionsActivity : BaseActivity() {
             val date:      TextView = view.findViewById(R.id.sessionDate)
             val replayBtn: TextView = view.findViewById(R.id.replayBtn)
             val deleteBtn: TextView = view.findViewById(R.id.deleteBtn)
+            val shareBtn:  TextView = view.findViewById(R.id.shareBtn)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
@@ -179,6 +245,7 @@ class BbSavedSessionsActivity : BaseActivity() {
             holder.date.text      = if (savedAt > 0) dateFormat.format(Date(savedAt)) else ""
             holder.replayBtn.setOnClickListener { onReplay(session) }
             holder.deleteBtn.setOnClickListener { onDelete(session) }
+            holder.shareBtn.setOnClickListener  { onShare(session)  }
         }
     }
 }

@@ -45,6 +45,26 @@
         android:textSize="13sp"
         android:text="" />
 
+    <!-- Subject filter chips — populated dynamically, hidden until data loads -->
+    <HorizontalScrollView
+        android:id="@+id/filterScrollView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:paddingStart="12dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="8dp"
+        android:clipToPadding="false"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/filterChipsContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" />
+
+    </HorizontalScrollView>
+
     <!-- Empty state -->
     <LinearLayout
         android:id="@+id/emptyState"
@@ -79,6 +99,20 @@
             android:gravity="center"
             android:paddingStart="32dp"
             android:paddingEnd="32dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/emptyStateStartBbBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:layout_marginTop="20dp"
+            android:text="Start a BB Session"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            app:backgroundTint="#3D1A6E"
+            app:cornerRadius="22dp"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            xmlns:app="http://schemas.android.com/apk/res-auto" />
 
     </LinearLayout>
 

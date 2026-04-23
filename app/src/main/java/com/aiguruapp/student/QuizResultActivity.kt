@@ -12,6 +12,9 @@ import org.json.JSONArray
 
 class QuizResultActivity : BaseActivity() {
 
+    private var subjectName: String = ""
+    private var chapterTitle: String = ""
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_quiz_result)
@@ -21,8 +24,8 @@ class QuizResultActivity : BaseActivity() {
         val scorePercent  = intent.getIntExtra("scorePercent", 0)
         val timeTakenSec  = intent.getLongExtra("timeTakenSec", 0L)
         val difficulty    = intent.getStringExtra("difficulty") ?: "medium"
-        val chapterTitle  = intent.getStringExtra("chapterTitle") ?: ""
-        val subjectName   = intent.getStringExtra("subjectName") ?: ""
+        chapterTitle      = intent.getStringExtra("chapterTitle") ?: ""
+        subjectName       = intent.getStringExtra("subjectName") ?: ""
         val quizJson      = intent.getStringExtra("quizJson") ?: ""
         val answersJson   = intent.getStringExtra("answersJson") ?: "[]"
 
@@ -100,6 +103,17 @@ class QuizResultActivity : BaseActivity() {
     }
 
     // ── Build per-question breakdown ──────────────────────────────────────────
+
+    private fun launchBbForTopic(topic: String) {
+        val uid  = com.aiguruapp.student.utils.SessionManager.getFirestoreUserId(this)
+        val lang = com.aiguruapp.student.utils.SessionManager.getPreferredLang(this).ifBlank { "en-US" }
+        startActivity(Intent(this, BlackboardActivity::class.java)
+            .putExtra(BlackboardActivity.EXTRA_MESSAGE, topic)
+            .putExtra(BlackboardActivity.EXTRA_SUBJECT, subjectName)
+            .putExtra(BlackboardActivity.EXTRA_CHAPTER, chapterTitle)
+            .putExtra(BlackboardActivity.EXTRA_USER_ID, uid)
+            .putExtra(BlackboardActivity.EXTRA_LANGUAGE_TAG, lang))
+    }
 
     private fun buildBreakdown(quizJson: String, answersJson: String) {
         val container = findViewById<LinearLayout>(R.id.breakdownContainer)
@@ -266,6 +280,23 @@ class QuizResultActivity : BaseActivity() {
                 layoutParams = lp
             }
             inner.addView(expText)
+        }
+
+        // For wrong answers: offer to open BB mode on the question topic
+        if (!isCorrect && question.isNotBlank()) {
+            val bbBtn = com.google.android.material.button.MaterialButton(ctx).apply {
+                text = "🎓 Learn this on Blackboard"
+                textSize = 12f
+                isAllCaps = false
+                val lp = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                lp.topMargin = (10 * resources.displayMetrics.density).toInt()
+                layoutParams = lp
+                setOnClickListener { launchBbForTopic(question) }
+            }
+            inner.addView(bbBtn)
         }
 
         card.addView(inner)

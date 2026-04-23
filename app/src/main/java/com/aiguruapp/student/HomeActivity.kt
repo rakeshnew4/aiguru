@@ -321,6 +321,22 @@ class HomeActivity : BaseActivity() {
             bar.progress = used.coerceAtLeast(0)
         }
 
+        val bbPill = findViewById<TextView?>(R.id.bbQuotaPill)
+        if (bbPill != null) {
+            if (drawerBbLimit <= 0) {
+                bbPill.visibility = View.GONE
+            } else {
+                bbPill.visibility = View.VISIBLE
+                bbPill.text = when (bbLeft) {
+                    0    -> "No sessions left today"
+                    1    -> "1 session left today"
+                    else -> "$bbLeft sessions left today"
+                }
+                bbPill.setTextColor(ContextCompat.getColor(this,
+                    if (bbLeft == 0) R.color.quotaExhausted else R.color.quotaAvailable))
+            }
+        }
+
         // AI Voice credits
         val voiceRow = findViewById<LinearLayout?>(R.id.drawerVoiceRow)
         if (aiTtsCharsLeft != 0) {
@@ -584,7 +600,16 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
 
         StudentStatsManager.fetchUsageSummary(uid) { totalMessages, totalBbSessions, streakDays ->
             runOnUiThread {
-                // (streak/progress visible in drawer — not needed on home)
+                // Show persistent nudge card until the user's first BB session
+                val nudgeCard = findViewById<com.google.android.material.card.MaterialCardView?>(R.id.bbNudgeCard)
+                if (nudgeCard != null) {
+                    if (totalBbSessions == 0L) {
+                        nudgeCard.visibility = View.VISIBLE
+                        nudgeCard.setOnClickListener { showBbTopicDialog() }
+                    } else {
+                        nudgeCard.visibility = View.GONE
+                    }
+                }
             }
 
             // Show BB intro bottom sheet if never used BB
@@ -847,6 +872,52 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
             ).apply { bottomMargin = (18*dp).toInt() }
         }
         root.addView(topicInput)
+
+        // ── Topic suggestion chips ────────────────────────────────────────────
+        val suggestions = listOf(
+            "Newton's Laws of Motion", "Photosynthesis", "Pythagoras Theorem",
+            "Water Cycle", "French Revolution", "Acids & Bases", "Ohm's Law", "Cell Structure"
+        )
+        root.addView(TextView(this).apply {
+            text = "Quick topics"
+            textSize = 11f
+            setTextColor(Color.parseColor("#556677"))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (5*dp).toInt() }
+        })
+        val suggestionsScroll = android.widget.HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (16*dp).toInt() }
+        }
+        val suggestionsRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 0, (16*dp).toInt(), 0)
+        }
+        for (s in suggestions) {
+            suggestionsRow.addView(TextView(this).apply {
+                text = s
+                textSize = 12f
+                setTextColor(Color.parseColor("#AACCEE"))
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE; cornerRadius = 14*dp
+                    setColor(Color.parseColor("#1A2040"))
+                    setStroke((1*dp).toInt(), Color.parseColor("#335577"))
+                }
+                setPadding((12*dp).toInt(), (6*dp).toInt(), (12*dp).toInt(), (6*dp).toInt())
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { marginEnd = (8*dp).toInt() }
+                setOnClickListener {
+                    topicInput.setText(s)
+                    topicInput.setSelection(s.length)
+                }
+            })
+        }
+        suggestionsScroll.addView(suggestionsRow)
+        root.addView(suggestionsScroll)
 
         // ── Duration chips ────────────────────────────────────────────────────
         root.addView(TextView(this).apply {

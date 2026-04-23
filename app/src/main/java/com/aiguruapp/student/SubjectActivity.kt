@@ -77,6 +77,14 @@ class SubjectActivity : BaseActivity() {
         }
     }
 
+    private fun updateEmptyState() {
+        val empty = chaptersListData.isEmpty()
+        findViewById<android.view.View>(R.id.chaptersEmptyState)?.visibility =
+            if (empty) android.view.View.VISIBLE else android.view.View.GONE
+        chaptersRecyclerView.visibility =
+            if (empty) android.view.View.GONE else android.view.View.VISIBLE
+    }
+
     private fun setupRecyclerView() {
         chaptersRecyclerView = findViewById(R.id.chaptersRecyclerView)
         chapterAdapter = ChapterAdapter(
@@ -108,13 +116,21 @@ class SubjectActivity : BaseActivity() {
             ChapterItem(name = name, ncertPdfUrl = ncertUrlMap[idx + 1])
         })
         chapterAdapter.notifyDataSetChanged()
-        
+        updateEmptyState()
+
+        // Show skeleton while Firestore fetches (only when local data is empty)
+        val skeleton = findViewById<android.view.View>(R.id.chaptersSkeletonContainer)
+        if (localChapters.isEmpty()) {
+            skeleton?.visibility = android.view.View.VISIBLE
+            startSkeletonPulse(skeleton)
+        }
+
         // ALSO load from Firestore as fallback (survives app uninstall)
-        // This restores chapters even if local SharedPrefs were wiped
         FirestoreManager.loadChapters(userId, subjectName,
             onSuccess = { remoteList ->
                 val localSet = localChapters.toSet()
                 val toAdd = remoteList.filter { it !in localSet }
+                runOnUiThread { skeleton?.visibility = android.view.View.GONE }
                 if (toAdd.isNotEmpty()) {
                     val updated = localChapters + toAdd
                     saveChaptersLocally(updated)
@@ -124,11 +140,23 @@ class SubjectActivity : BaseActivity() {
                     })
                     runOnUiThread {
                         chapterAdapter.notifyDataSetChanged()
+                        updateEmptyState()
                     }
                 }
             },
-            onFailure = { /* Local list is sufficient; Firestore error is OK */ }
+            onFailure = {
+                runOnUiThread { skeleton?.visibility = android.view.View.GONE }
+            }
         )
+    }
+
+    private fun startSkeletonPulse(view: android.view.View?) {
+        view ?: return
+        val anim = android.view.animation.AlphaAnimation(0.4f, 1f).apply {
+            duration = 800; repeatCount = android.view.animation.Animation.INFINITE
+            repeatMode = android.view.animation.Animation.REVERSE
+        }
+        view.startAnimation(anim)
     }
 
     /**
@@ -341,6 +369,7 @@ class SubjectActivity : BaseActivity() {
             ChapterItem(name = n, ncertPdfUrl = ncertUrlMap[idx + 1])
         })
         chapterAdapter.notifyDataSetChanged()
+        updateEmptyState()
     }
 
     private fun showDeleteChapterDialog(name: String) {
@@ -363,5 +392,6 @@ class SubjectActivity : BaseActivity() {
             chaptersListData.removeAt(idx)
             chapterAdapter.notifyItemRemoved(idx)
         }
+        updateEmptyState()
     }
 }
