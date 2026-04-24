@@ -166,15 +166,14 @@ BB_PLANNER_PROMPT = (
     '{{"topic_type":"<math_formula|math_geometry|math_graph|science_biology|science_chemistry|science_physics|definition|comparison|history_civics|programming|geography_environment|other>",'
     '"scope":"<simple|medium|complex>",'
     '"key_concepts":["term1","term2"],'
-    '"steps_count":<4|5|6>,'
+    '"steps_count":<4|5>,'
     '"image_search_terms":["wikimedia phrase 1","wikimedia phrase 2"],'
     '"question_focus":"one sentence: what EXACTLY the student wants to know or do",'
     '"question_type":"<how_to|definition|calculation|conceptual|comparison|example|problem_solving>",'
     '"prior_knowledge":"what student already knows from the conversation (empty string if new topic)"}}\n\n'
     "Rules:\n"
     "- simple (4 steps): single self-contained concept\n"
-    "- medium (5 steps): standard topic with 1-2 sub-concepts\n"
-    "- complex (6 steps): multi-concept, sequential process, or continuation of prior lesson\n"
+    "- medium (5 steps): standard topic with 1-2 sub-concepts, or multi-concept/continuation\n"
     "- topic_type: pick the MOST SPECIFIC type:\n"
     "    math_formula → algebra, equations, arithmetic operations, calculus formulas\n"
     "    math_geometry → shapes, angles, triangles, circles, area, perimeter, volume\n"
@@ -274,71 +273,16 @@ blackboard_prompt = (
     '    comparison:      {"left":"Mitosis","right":"Meiosis","left_points":["2 cells","diploid"],"right_points":["4 cells","haploid"]}\n'
     '    labeled_diagram: {"center":"Cell","center_shape":"circle","parts":["Nucleus","Membrane","Cytoplasm","Ribosome"]}\n'
     "\n"
-    "  ══ PATH 2: CUSTOM DRAWING Examples(LLM plans every shape) ══\n"
-    "  USE THIS for: heart, lungs, kidney, neuron, digestive system, lab apparatus,\n"
-    "    circuit diagram, volcano, ecosystem, food chain, plant structure, skeletal system,\n"
-    "    blood flow, muscle contraction, Newton laws illustration, Archimedes, ANY structure\n"
-    "    not in PATH 1 list above.\n"
-    '  Set diagram_type="", data={}, and fill svg_elements=[...] with shape dicts.\n'
-    "  CANVAS: 400 wide x 300 tall. Origin top-left. Center=(200,150).\n"
-    "  Each shape needs animation_stage (int 0,1,2...). Stage 0 = first to appear.\n"
-    "  SHAPES + REQUIRED KEYS:\n"
-    '    {"shape":"circle","cx":200,"cy":150,"r":50,"color":"highlight","fill_color":"highlight","animation_stage":0}\n'
-    '    {"shape":"ellipse","cx":200,"cy":150,"rx":80,"ry":50,"color":"secondary","fill_color":"secondary","animation_stage":0}\n'
-    '    {"shape":"rect","x":100,"y":80,"w":200,"h":100,"color":"secondary","fill_color":"secondary","animation_stage":0}\n'
-    '    {"shape":"line","x1":50,"y1":150,"x2":350,"y2":150,"color":"primary","animation_stage":0}\n'
-    '    {"shape":"arrow","x1":200,"y1":200,"x2":200,"y2":80,"color":"secondary","animation_stage":1}\n'
-    '    {"shape":"curved_arrow","x1":100,"y1":150,"x2":300,"y2":150,"cpx":200,"cpy":80,"color":"highlight","animation_stage":1}\n'
-    '    {"shape":"dashed_line","x1":50,"y1":100,"x2":350,"y2":100,"color":"dim","animation_stage":0}\n'
-    '    {"shape":"arc","cx":200,"cy":150,"r":60,"start_deg":0,"end_deg":180,"color":"highlight","animation_stage":1}\n'
-    '    {"shape":"polygon","cx":200,"cy":150,"r":60,"sides":6,"color":"teal","animation_stage":0}\n'
-    '    {"shape":"diamond","cx":200,"cy":150,"hw":60,"hh":40,"color":"orange","fill_color":"orange","animation_stage":0}\n'
-    '    {"shape":"dot","cx":200,"cy":150,"r":5,"color":"highlight","animation_stage":1}\n'
-    '    {"shape":"text","x":200,"y":150,"value":"Label","color":"label","size":13,"anchor":"middle","bold":true,"animation_stage":1}\n'
-    "  COLORS: \"highlight\"(red), \"secondary\"(blue), \"label\"(yellow), \"dim\"(muted green),\n"
-    "    \"primary\"(white), \"orange\", \"green\", \"pink\", \"purple\", \"teal\", \"gold\", \"red\", \"blue\"\n"
-    "  EXAMPLE — Heart pumping blood Examples:\n"
-    '    svg_elements: [\n'
-    '      {"shape":"ellipse","cx":200,"cy":158,"rx":72,"ry":82,"color":"highlight","fill_color":"highlight","animation_stage":0},\n'
-    '      {"shape":"arc","cx":170,"cy":118,"r":38,"start_deg":180,"end_deg":360,"color":"highlight","fill_color":"highlight","animation_stage":0},\n'
-    '      {"shape":"arc","cx":230,"cy":118,"r":38,"start_deg":180,"end_deg":360,"color":"highlight","fill_color":"highlight","animation_stage":0},\n'
-    '      {"shape":"dashed_line","x1":200,"y1":130,"x2":200,"y2":220,"color":"primary","animation_stage":1},\n'
-    '      {"shape":"text","x":155,"y":168,"value":"Right","color":"primary","size":11,"anchor":"middle","animation_stage":1},\n'
-    '      {"shape":"text","x":245,"y":168,"value":"Left","color":"primary","size":11,"anchor":"middle","animation_stage":1},\n'
-    '      {"shape":"arrow","x1":178,"y1":78,"x2":100,"y2":35,"color":"secondary","animation_stage":2},\n'
-    '      {"shape":"arrow","x1":222,"y1":78,"x2":300,"y2":35,"color":"orange","animation_stage":2},\n'
-    '      {"shape":"text","x":75,"y":28,"value":"To lungs","color":"secondary","size":10,"animation_stage":2},\n'
-    '      {"shape":"text","x":325,"y":28,"value":"To body","color":"orange","size":10,"animation_stage":2},\n'
-    '      {"shape":"arrow","x1":155,"y1":240,"x2":90,"y2":275,"color":"orange","animation_stage":3},\n'
-    '      {"shape":"arrow","x1":245,"y1":240,"x2":310,"y2":275,"color":"secondary","animation_stage":3},\n'
-    '      {"shape":"text","x":65,"y":290,"value":"From body","color":"orange","size":10,"animation_stage":3},\n'
-    '      {"shape":"text","x":335,"y":290,"value":"From lungs","color":"secondary","size":10,"animation_stage":3}\n'
-    '    ]\n'
-    "  EXAMPLE — Newton's 3rd Law (action-reaction force pair, use PATH 2 for ALL physics force diagrams):\n"
-    '    svg_elements: [\n'
-    '      {"shape":"rect","x":155,"y":115,"w":90,"h":55,"color":"secondary","fill_color":"secondary","animation_stage":0},\n'
-    '      {"shape":"text","x":200,"y":148,"value":"Object","color":"primary","size":11,"anchor":"middle","bold":false,"animation_stage":0},\n'
-    '      {"shape":"arrow","x1":155,"y1":142,"x2":55,"y2":142,"color":"highlight","animation_stage":1},\n'
-    '      {"shape":"arrow","x1":245,"y1":142,"x2":345,"y2":142,"color":"green","animation_stage":1},\n'
-    '      {"shape":"text","x":105,"y":130,"value":"Action F₁","color":"highlight","size":10,"anchor":"middle","bold":false,"animation_stage":2},\n'
-    '      {"shape":"text","x":295,"y":130,"value":"Reaction F₂","color":"green","size":10,"anchor":"middle","bold":false,"animation_stage":2},\n'
-    '      {"shape":"text","x":200,"y":205,"value":"F₁ = −F₂  (equal & opposite)","color":"label","size":12,"anchor":"middle","bold":true,"animation_stage":3}\n'
-    '    ]\n'
-    "  PHYSICS/FORCE DIAGRAM RULE: For Newton's laws, free-body diagrams, inclined planes,\n"
-    "    springs, lenses, circuits — ALWAYS use PATH 2 svg_elements with arrow shapes.\n"
-    "    NEVER use labeled_diagram or solar_system for force/physics concepts.\n\n"
-    "  text field: 1-line caption. speech: explain what diagram shows step by step.\n"
-    "  DIAGRAM VISUAL RULE — fill visual_description (MANDATORY, NEVER leave empty) for diagram frames:\n"
-    "  2-3 sentences describing the EXACT visual layout: shapes present, their positions,\n"
-    "  labels, arrows, angle markers. This is used by the renderer — be precise, never vague.\n"
-    "  GOOD: 'Right triangle fills lower-left. Rectangle (block) on hypotenuse. Arrow from\n"
-    "    block pointing down-left labeled mg. Arrow perpendicular to surface labeled N.\n"
-    "    Angle θ at base-left corner with arc.'\n"
-    "  BAD (too vague): 'Shows Newton law diagram.' or 'Physics illustration.'\n"
-    "  PHYSICS/FORCE: describe every force vector direction, label, and object position.\n"
-    "  MATH GEOMETRY: describe angle values, side lengths, construction lines.\n"
-    "  diagram frames: visual_description MUST be non-empty. Empty = rendering failure.\n"
-    "  Non-diagram frames: visual_description must be empty string \"\".\n\n"
+    "  ══ PATH 2: CUSTOM VISUAL (intent only — engine renders) ══\n"
+    "  USE THIS for: heart, neuron, digestive system, circuit, volcano, food chain,\n"
+    "    Newton force diagram, lab apparatus, body structure, ANY shape not in PATH 1.\n"
+    '  Set diagram_type="custom", data={"intent":"1-sentence description of what to show"}, svg_elements=[]\n'
+    '  EXAMPLE: data={"intent":"heart cross-section with left and right ventricle, arrows for blood flow to lungs and body"}\n'
+    "  NEVER output svg_elements coordinates — the static engine renders from the intent.\n\n"
+    "  text field: 1-line caption. speech: explain what diagram shows.\n"
+    "  DIAGRAM VISUAL RULE — fill visual_description for ALL diagram frames:\n"
+    "  1-2 sentences: key shapes, their labels, arrows. Renderer uses this — be specific.\n"
+    "  Non-diagram frames: visual_description must be \"\".\n\n"
     "quiz_mcq   -> Multiple choice. MUST provide exactly 4 quiz_options and quiz_correct_index (0-3).\n"
     "quiz_typed -> Open-ended typed answer. MUST provide quiz_model_answer and quiz_keywords (3-6 key terms).\n"
     "quiz_voice -> Open-ended spoken answer. Same fields as quiz_typed.\n"
@@ -352,8 +296,11 @@ blackboard_prompt = (
 
     "- quiz_order: quiz_options = 3-5 SHUFFLED step texts. quiz_correct_order = 0-based correct position indices.\n"
     "- NEVER include quiz_correct_index for quiz_typed, quiz_voice, or quiz_order (leave as -1).\n"
-    "- Non-quiz frames: quiz_options=[], quiz_correct_index=-1, quiz_model_answer=\"\", quiz_keywords=[], fill_blanks=[], quiz_correct_order=[], svg_elements=[].\n"
-    '- Non-diagram frames: set diagram_type="", data={}, visual_description="".\n'
+    "SPARSE OUTPUT RULE: Omit any field equal to its default (empty string, [], {}, -1).\n"
+    "  Required on EVERY frame: frame_type, text, speech, tts_engine, voice_role, duration_ms.\n"
+    "  Only add fields that carry real data for that frame type (quiz_options for quiz_mcq, etc.).\n"
+    "  Non-quiz frames: omit quiz_options, quiz_correct_index, quiz_model_answer, quiz_keywords, fill_blanks, quiz_correct_order.\n"
+    '  Non-diagram frames: omit diagram_type, data, svg_elements, visual_description.\n'
     "IMAGE GUIDANCE:\n"
     "- image_description: A Wikimedia Commons search phrase for a REAL well-known educational diagram.\n"
     '  GOOD: "Bohr atomic model", "photosynthesis light reactions", "mitosis phases diagram", "Ohm law circuit"\n'
@@ -365,7 +312,7 @@ blackboard_prompt = (
     "  0.10 to 0.30 -> Abstract concept or pure definition frames\n"
     "  0.00         -> Quiz, memory, and summary frames -- NEVER show image\n\n"
     "RULES:\n"
-    "- 4 to 6 steps total, 2 to 5 frames per step. Mix frame types within every step.\n"
+    "- 4 to 5 steps total, 2 to 5 frames per step. Mix frame types within every step.\n"
     "- MANDATORY: Last step ends with a quiz frame THEN a summary frame.\n"
     "- MANDATORY: Step 2 (the second step, index 1) MUST have either a diagram frame OR image_description populated.\n"
     "  Choose any appropriate diagram_type (atom, labeled_diagram, waveform_signal, cycle, etc.).\n"
@@ -373,7 +320,7 @@ blackboard_prompt = (
     "- diagram_type: NEVER use 'flow'. For step-by-step processes use 'labeled_diagram' or 'cycle' instead.\n"
     "- text: Board keywords, formulas with arrows (->), **bold** key terms. Max 2 lines. Always English.\n"
     "- highlight: Exact substrings from text to chalk-highlight. Can be [].\n"
-    '- speech: Friendly teacher voice in the language matching the lang field. If lang=hi-IN speak Hindi; if lang=te-IN speak Telugu; if lang=en-US speak English. TTS-safe -- say "squared" not "^2".\n'
+    '- speech: Friendly teacher voice in the language matching the lang field. If lang=hi-IN speak Hindi; if lang=te-IN speak Telugu; if lang=en-US speak English. TTS-safe -- say "squared" not "^2". MAX 2 sentences (≤50 words). Never write a paragraph.\n'
     "- duration_ms: 2000 to 5000 ms per frame.\n"
     "- lang: BCP-47 tag from the OUTPUT LANGUAGE instruction. Set ALL step lang fields to the same requested tag. NEVER default to en-US when another language is requested.\n"
     "- ALL math in $$...$$ -- NEVER plain text math.\n"

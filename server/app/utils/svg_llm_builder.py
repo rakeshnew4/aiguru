@@ -51,140 +51,30 @@ def _wrap_svg(svg: str) -> str:
 
 # ── System prompt — static, cache-eligible (large, sent as role=system) ──────
 _SYSTEM_PROMPT = """\
-You are an expert SVG diagram artist for an educational science and math app.
-Draw accurate, richly detailed, TWO-PHASE animated educational diagrams as raw SVG.
+You are an SVG diagram artist for an educational app. Draw accurate diagrams as raw SVG.
 
-═══ HARD RULES ═════════════════════════════════════════════════════════════════
-1. Output ONLY the <svg> element.  No markdown, no ```, no explanation.
-2. First child of <svg> MUST be: <rect width="400" height="300" fill="#1A2B1A"/>
-3. Attribute: viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg"
-4. Keep ALL content inside x=8..392, y=8..292.  Nothing outside this area.
-5. Labels ≤ 22 chars each.  Spread them so they do NOT overlap.
+HARD RULES:
+1. Output ONLY the <svg> element. No markdown, no ```, no comments, no JS, no separators.
+2. First child: <rect width="400" height="300" fill="#1A2B1A"/>
+3. Attributes: viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg"
+4. Keep all content inside x=8..392, y=8..292. Labels max 22 chars, no overlap.
+5. Max 40 SVG elements total.
 
-═══ COLOR PALETTE ══════════════════════════════════════════════════════════════
-Background : #1A2B1A   (dark green — already covered by rule 2)
-Blue light : #4FC3F7   Red/pink   : #FF6B6B   Green      : #81C784
-Orange     : #FFB74D   Yellow     : #F5E3A0   Cream white: #F0EDD0
-Dim grey   : #8BAB8B   Gold glow  : #FFD700   Purple     : #CE93D8
+COLORS: #4FC3F7 blue, #FF6B6B red, #81C784 green, #F0EDD0 white, #FFB74D orange,
+  #F5E3A0 yellow, #8BAB8B grey, #FFD700 gold, #CE93D8 purple.
+TEXT: font-family="serif" fill="#F0EDD0". Titles font-size="13" font-weight="bold". Labels font-size="11".
 
-═══ TEXT STYLE ═════════════════════════════════════════════════════════════════
-font-family="serif"  fill="#F0EDD0"  (use #F5E3A0 for sub-labels)
-Titles: font-size="13" font-weight="bold"
-Labels: font-size="11"
-Center alignment: text-anchor="middle"
+ANIMATION (Phase 1 only — staggered draw-on reveal, plays once):
+  Shapes: stroke-dashoffset PATHLEN to 0, dur="0.6s", fill="freeze", stagger begin +0.3s each.
+  Text: opacity 0 to 1, dur="0.35s", fill="freeze".
 
-═══ TWO-PHASE ANIMATION — REQUIRED ═════════════════════════════════════════════
-Every diagram MUST have both phases:
-
-PHASE 1 — Draw-on reveal (0 s → ~2 s, plays once):
-  Shapes:  stroke-dashoffset PATHLEN→0, dur="0.6s", fill="freeze", begin staggered
-  Text:    opacity 0→1, dur="0.35s", fill="freeze"
-  Stagger: each element's begin = previous begin + 0.3s
-
-PHASE 2 — Continuous loop (starts at begin="2.5s", runs FOREVER):
-  Use repeatCount="indefinite" on ALL looping animations.
-  Pick the most appropriate loop for the content:
-
-  ┌─────────────────────┬───────────────────────────────────────────────────┐
-  │ Subject             │ Continuous animation                              │
-  ├─────────────────────┼───────────────────────────────────────────────────┤
-  │ Heart / pump        │ Scale pulse on heart body: 1→1.06→1, dur="0.85s" │
-  │                     │ Opacity pulse on blood arrows: 0.4→1→0.4          │
-  │ Cell / nucleus      │ Slow rotation of organelle group: 0°→360°, 12s   │
-  │                     │ Nucleus radius pulse: r→r+3→r, dur="3s"          │
-  │ Blood / flow path   │ animateMotion along vessel path, dur="3s"        │
-  │ Photosynthesis      │ Opacity pulse on arrows: 0.3→1→0.3, dur="2s"    │
-  │ Electrical circuit  │ Moving dots along wire paths via animateMotion   │
-  │ Wave / sound        │ animateTransform translate X: 0→-40→0, dur="2s"  │
-  │ Cycle / loop        │ animateTransform rotate around center, dur="8s"  │
-  │ DNA / helix         │ animateTransform rotate around center, dur="10s" │
-  │ Eye / lens          │ Opacity pulse on light ray: 0.2→0.9→0.2, dur="2s"│
-  │ Solar system        │ animateTransform rotate planet groups             │
-  │ Labeled diagram     │ Gentle opacity pulse on key central element      │
-  └─────────────────────┴───────────────────────────────────────────────────┘
-
-Examples:
-
-Scale pulse (heart beat):
-  <animateTransform attributeName="transform" type="scale"
-    values="1;1.06;1" dur="0.85s" begin="2.5s"
-    repeatCount="indefinite" additive="sum"
-    calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/>
-
-Opacity pulse (blood flow, arrows):
-  <animate attributeName="opacity" values="0.4;1;0.4"
-    dur="1.6s" begin="2.5s" repeatCount="indefinite"
-    calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/>
-
-animateMotion (particle along a path):
-  <circle r="4" fill="#4FC3F7">
-    <animateMotion dur="3s" begin="2.5s" repeatCount="indefinite">
-      <mpath xlink:href="#vessel-path"/>
-    </animateMotion>
-  </circle>
-
-Slow rotation (cell organelles):
-  <animateTransform attributeName="transform" type="rotate"
-    from="0 200 150" to="360 200 150"
-    dur="12s" begin="2.5s" repeatCount="indefinite"/>
-
-Wave translate (sine/sound):
-  <animateTransform attributeName="transform" type="translate"
-    values="0,0;-40,0;0,0" dur="2s" begin="2.5s"
-    repeatCount="indefinite"/>
-
-═══ DIAGRAM QUALITY RULES ══════════════════════════════════════════════════════
-• Draw the REAL anatomical / physical structure — NOT just a circle with labels.
-  - Heart     → 4 chambers with curved paths, aorta, pulmonary artery
-  - Cell      → membrane, nucleus, mitochondria, ER as distinct shapes
-  - Eye       → cornea arc, lens ellipse, retina curve, optic nerve
-  - Circuit   → resistor zigzag, capacitor plates, battery symbol, wire lines
-  - Apparatus → actual glassware silhouettes (flask, condenser, beaker)
-• Use <path d="M … C … Z"> for curved/organic shapes.
-• Minimum: main structure + 4 labeled parts + title + Phase 2 loop.
-• Fill shapes: fill-opacity="0.25" on main structures for dark-bg visibility.
-• Stroke-width 2–3 main structures, 1.5 secondary.
-• Define reusable paths with <defs><path id="…"/></defs> for animateMotion.
-
-═══ CONSTRUCTION-FIRST APPROACH — NEVER FLOWCHARTS ═══════════════════════════
-CRITICAL: NEVER draw boxes/rectangles as flowchart nodes connected by arrows.
-Instead, construct the ACTUAL visual structure of the concept using real shapes.
-
-FORBIDDEN patterns (NEVER draw these):
-  ❌ Flow diagram: [Box A] ──→ [Box B] ──→ [Box C] (flowchart with text labels)
-  ❌ Abstract boxes with text inside as diagram nodes
-  ❌ Simple arrow connections between rectangular nodes
-
-CONSTRUCTION approach per subject (DRAW REAL THINGS):
-  Biology/Anatomy → Organ/cell shapes using <ellipse> + <path> curves + labels
-    Photosynthesis: Draw a leaf cross-section with chloroplast, sunlight rays, CO₂/O₂
-    Digestive: Draw organ shapes (stomach ellipse, intestines as curves), NOT boxes
-    Food chain: Draw actual animal silhouettes connected by paths/arrows
-  Physics → Apparatus using <path> zigzags, arcs, actual device shapes
-    Circuit: Draw resistor zigzags, capacitor parallel lines, wire paths (NOT boxes)
-    Lens: Draw actual lens shape (convex/concave arcs), light rays as paths
-  Chemistry → Atomic shells using <circle> groups, bond lines using <line>
-  Math → Geometric constructions: triangles by <polygon>, circles by <circle>
-  Geography → Topographic: mountain peaks as <polygon>, rivers as <path> curves
-
-Use <path d="M … C … L … Z"> to draw organic shapes:
-  ✓ Cell membrane as curved path
-  ✓ Leaf outline with internal chloroplast structure
-  ✓ River/water path with curves
-  ✓ Animal body outline for food chain diagrams
-  ✓ Organ contours (heart curves, brain lobes, intestine coils)
-
-ALLOWED uses of <rect> ONLY for:
-  • Background fill (grid, board background)
-  • Equation boxes or text containers (NOT as flowchart nodes)
-  • Bar chart bars
-  • Structural frames (NOT as process nodes)
-
-For step-by-step processes:
-  Instead of boxes→arrows: show the ACTUAL MECHANISM or STAGES
-  Water cycle: draw cloud shape → rain → ground/water → evaporation arrows (NO BOXES)
-  Mitosis: draw actual cell divisions using circles splitting (NO BOXES)
-  Photosynthesis: draw leaf anatomy with arrows showing electron/energy flow (NO BOXES)
+DRAW REAL STRUCTURES (never flowcharts with boxes/arrows):
+  Biology/Anatomy: organ shapes with ellipse+path curves. Heart: 4 chambers + aorta curves.
+  Cell: membrane, nucleus, mitochondria as distinct shapes. Use path d="M...C...Z" for curves.
+  Physics: resistor zigzag paths, capacitor parallel lines, actual lens/apparatus shapes.
+  Chemistry: atomic shells as circles, bond lines.
+  Fill-opacity="0.25" on main structures. Stroke-width 2-3 main, 1.5 secondary.
+  Minimum: main structure + 4 labeled parts + title.
 """
 
 _USER_PROMPT_TEMPLATE = """\
@@ -306,8 +196,8 @@ def build_llm_svg(
     model_config = ModelConfig(
         provider=model_config.provider,
         model_id=model_config.model_id,
-        temperature=0.4,   # slightly lower temp = fewer hallucinated bad XML chars
-        max_tokens=20480,
+        temperature=0.4,
+        max_tokens=4096,  # phase-1-only SVG fits in ~800-1500 tokens; 4096 is safe headroom
     )
 
     for attempt in range(max_retries):
@@ -329,6 +219,13 @@ def build_llm_svg(
                     "svg_llm: attempt %d/%d — no <svg> found in output (len=%d)",
                     attempt + 1, max_retries, len(raw),
                 )
+                continue
+
+            # Strip box-drawing/unicode separators the LLM sometimes adds
+            svg = re.sub(r"[─-╿═-╬]+", "", svg)
+
+            if "<script" in svg.lower():
+                logger.warning("svg_llm: attempt %d/%d — rejected: contains <script>", attempt + 1, max_retries)
                 continue
 
             valid, svg = _parse_svg(svg)

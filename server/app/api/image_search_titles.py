@@ -50,6 +50,36 @@ def _has_force_description(visual_desc: str) -> bool:
     return any(kw in lower for kw in _FORCE_DIAGRAM_KEYWORDS)
 
 
+_FRAME_DEFAULTS: dict = {
+    "frame_type": "concept",
+    "text": "",
+    "highlight": [],
+    "speech": "",
+    "tts_engine": "gemini",
+    "voice_role": "teacher",
+    "duration_ms": 2500,
+    "quiz_answer": "",
+    "quiz_options": [],
+    "quiz_correct_index": -1,
+    "quiz_model_answer": "",
+    "quiz_keywords": [],
+    "fill_blanks": [],
+    "quiz_correct_order": [],
+    "diagram_type": "",
+    "data": {},
+    "svg_elements": [],
+    "visual_description": "",
+}
+
+
+def _normalize_frame(frame: dict) -> dict:
+    """Fill in missing fields with defaults after sparse LLM output."""
+    for key, default in _FRAME_DEFAULTS.items():
+        if key not in frame:
+            frame[key] = default
+    return frame
+
+
 def _best_title_match(description: str, titles: List[str]) -> Optional[str]:
     """
     Pick the Wikimedia title with the highest content-word overlap against the
@@ -402,13 +432,38 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
                 continue
 
             for frame in step.get("frames", []):
-                if not isinstance(frame, dict) or frame.get("frame_type") != "diagram":
+                if not isinstance(frame, dict):
+                    continue
+                _normalize_frame(frame)
+                if frame.get("frame_type") != "diagram":
                     continue
 
                 html = ""
                 d_type = (frame.get("diagram_type") or "").strip()
                 d_data = frame.get("data") or {}
                 visual_desc = (frame.get("visual_description") or "").strip()
+
+                # ── Custom intent-only type: route directly to LLM SVG builder ──
+                if d_type.lower() == "custom":
+                    intent = d_data.get("intent", "") if isinstance(d_data, dict) else ""
+                    step_title = step.get("title", "")
+                    frame_speech = frame.get("speech", "")
+                    html = build_llm_svg(
+                        diagram_type="custom",
+                        data={},
+                        topic=step_title,
+                        speech=frame_speech,
+                        visual_description=intent or visual_desc or step_title,
+                    )
+                    if html:
+                        logger.info("Built LLM SVG (custom intent) for step '%s'", step_title)
+                    if html:
+                        frame["svg_html"] = html
+                    frame.pop("svg_elements", None)
+                    frame.pop("diagram_type", None)
+                    frame.pop("data", None)
+                    frame.pop("visual_description", None)
+                    continue
 
                 # ── Auto-classify only when LLM set NEITHER diagram_type NOR svg_elements ──
                 # If LLM already planned svg_elements, trust that — don't override it.
