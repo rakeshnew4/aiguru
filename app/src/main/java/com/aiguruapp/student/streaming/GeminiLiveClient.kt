@@ -40,7 +40,7 @@ class GeminiLiveClient(
     companion object {
         private const val TAG = "GeminiLiveClient"
         // Native-audio model — higher quality, built-in voice activity detection
-        private const val MODEL = "models/gemini-2.5-flash-native-audio-preview-12-2025"
+        private const val MODEL = "models/gemini-3.1-flash-lite-preview-native-audio-preview-12-2025"
         // Gemini Live WebSocket endpoint
         private fun wsUrl(key: String) =
             "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=$key"

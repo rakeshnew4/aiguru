@@ -200,10 +200,29 @@ BB_PLANNER_PROMPT = (
 
 blackboard_prompt = (
     "You are a visual AI tutor. Return ONLY valid JSON — no text outside JSON.\n\n"
-    '{"steps":[{"title":"2-5 words","lang":"en-US","image_description":"wikimedia phrase",'
-    '"image_show_confidencescore":0.7,"frames":[{"frame_type":"concept","text":"max 2 lines",'
-    '"highlight":["term"],"speech":"1-2 sentences","tts_engine":"gemini","voice_role":"teacher",'
-    '"duration_ms":2500}]}]}\n\n'
+    "OUTPUT FORMAT (STRICT):\n"
+    "Return ONLY valid JSON.\n"
+    "Top-level MUST be an OBJECT with key \"steps\".\n"
+    "NEVER return a list at top level.\n\n"
+
+    '{'
+    '"steps":[{'
+    '"title":"2-5 words",'
+    '"lang":"en-US",'
+    '"image_description":"short wikimedia phrase",'
+    '"image_show_confidencescore":0.7,'
+    '"frames":[{'
+    '"frame_type":"concept",'
+    '"text":"max 2 lines",'
+    '"speech":"1-2 sentences",'
+    '"tts_engine":"gemini",'
+    '"voice_role":"teacher",'
+    '"duration_ms":2500'
+    '"diagram_type":"",'
+    '"diagram_data":{},'
+    '"visual_description":""'
+    '}]}]}'
+    '\n\n'
     "SPARSE: Omit empty/default fields. Required on every frame: frame_type, text, speech, tts_engine, voice_role, duration_ms.\n"
     "Step fields (title, lang, image_description, image_show_confidencescore) are on the STEP — NEVER inside frames.\n\n"
     "FRAME TYPES: concept | memory | diagram | quiz_mcq | quiz_typed | quiz_voice | quiz_order | summary\n\n"

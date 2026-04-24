@@ -51,7 +51,7 @@ async def create_user_api_key(user_id: str, user_metadata: Optional[Dict[str, An
                 headers={"Authorization": f"Bearer {LITELLM_MASTER_KEY}"},
                 json={
                     "user_id": user_id,
-                    "models": ["cheaper", "faster", "gemini-2.5-flash"],
+                    "models": ["cheaper", "faster", "gemini-3.1-flash-lite-preview"],
                     "duration": "365d",
                     "metadata": user_metadata or {}
                 }
@@ -230,7 +230,7 @@ async def call_litellm(
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "gemini-2.5-flash",
+                    "model": "gemini-3.1-flash-lite-preview",
                     "metadata": {"model_group": None},
                     "messages": messages,
                     "temperature": temperature,
@@ -276,7 +276,7 @@ async def stream_litellm(
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "gemini-2.5-flash",
+                    "model": "gemini-3.1-flash-lite-preview",
                     "metadata": {"model_group": None},
                     "messages": messages,
                     "temperature": temperature,

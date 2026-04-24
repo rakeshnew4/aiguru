@@ -82,7 +82,7 @@ Use these facts to avoid unnecessary exploration:
 - BB main LLM uses **sparse output** (only non-default fields) and **intent-only PATH 2** (`diagram_type="custom"`, `data={"intent":"..."}`). The engine renders — never the main LLM.
 - `_normalize_frame()` in `image_search_titles.py` restores all default fields after sparse parse.
 - `svg_llm_builder` uses Phase 1 animation only, max_tokens=4096; rejects output with `<script>`.
-- **LiteLLM proxy**: ensure thinking is disabled and model alias `gemini-2.5-flash-lite` routes to the lite model (not full flash). Check localhost:8006 admin UI if BB costs spike.
+- **LiteLLM proxy**: ensure thinking is disabled and model alias `gemini-3.1-flash-lite-preview` routes to the lite model (not full flash). Check localhost:8006 admin UI if BB costs spike.
 
 ## Task-Specific Rules
 

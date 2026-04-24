@@ -186,7 +186,7 @@ def build_llm_svg(
         visual_layout_line=visual_layout_line,
     )
 
-    # Use the "cheaper" tier (gemini-2.5-flash) for SVG — flash-lite struggles
+    # Use the "cheaper" tier (gemini-3.1-flash-lite-preview) for SVG — flash-lite struggles
     # to follow complex multi-rule system prompts reliably.
     # Also override max_tokens: SVG diagrams need 1500-2500 tokens; the default
     # "faster" tier cap of 800 truncates them mid-element (invalid XML).

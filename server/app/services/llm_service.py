@@ -442,15 +442,15 @@ def _call_litellm_proxy(
 
     messages.append({"role": "user", "content": content})
 
-    # All tiers use gemini-2.5-flash-lite through LiteLLM during testing
+    # All tiers use gemini-3.1-flash-lite-preview through LiteLLM during testing
     body = json.dumps({
-        "model": "gemini-2.5-flash-lite",
+        "model": "gemini-3.1-flash-lite-preview",
         "messages": messages,
         "temperature": model_config.temperature,
         "max_tokens": model_config.max_tokens,
     }).encode()
 
-    logger.debug(f"LiteLLM proxy request: model=gemini-2.5-flash-lite, has_system={'yes' if system_prompt else 'no'}, prompt_len={len(prompt)}, images={len(images) if images else 0}")
+    logger.debug(f"LiteLLM proxy request: model=gemini-3.1-flash-lite-preview, has_system={'yes' if system_prompt else 'no'}, prompt_len={len(prompt)}, images={len(images) if images else 0}")
 
     try:
         conn = http.client.HTTPConnection(host, port, timeout=300)
@@ -486,7 +486,7 @@ def _call_litellm_proxy(
                 "cachedTokens": usage.get("prompt_tokens_details", {}).get("cached_tokens", 0),
             },
             "provider": "litellm",
-            "model": data.get("model", "gemini-2.5-flash-lite"),
+            "model": data.get("model", "gemini-3.1-flash-lite-preview"),
         }
         logger.info(f"LiteLLM success: model={result['model']} | tokens={result['tokens']['totalTokens']} | cached={result['tokens']['cachedTokens']}")
         return result

@@ -20,7 +20,7 @@ def litellm_agent(prompt: str) -> Dict[str, Any]:
         "api_base": settings.LITELLM_PROXY_URL if settings.USE_LITELLM_PROXY else None,
         "use_litellm_proxy": settings.USE_LITELLM_PROXY
     },
-    model_id="gemini-2.5-flash-lite"
+    model_id="gemini-3.1-flash-lite-preview"
     )
 
     agent = Agent(model=model)
@@ -41,7 +41,7 @@ def _get_agent():
         from strands import Agent
         from strands.models.gemini import GeminiModel
 
-        model_cfg = settings.get_model_config("cheaper")  # gemini-2.5-flash by default
+        model_cfg = settings.get_model_config("cheaper")  # gemini-3.1-flash-lite-preview by default
         gemini_model = GeminiModel(
             client_args={"api_key": settings.GEMINI_API_KEY},
             model_id=model_cfg.model_id,

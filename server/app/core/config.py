@@ -22,7 +22,7 @@ class ModelConfig:
 class Settings(BaseSettings):
     # ── Legacy settings (for backward compatibility) ──────────────────────────
     GEMINI_API_KEY: str = ""
-    MODEL_ID: str = "gemini-2.5-flash"
+    MODEL_ID: str = "gemini-3.1-flash-lite-preview"
     TEMPERATURE: float = 0.7
     REDIS_URL: str = "redis://localhost:6379"
     USE_AGENT: bool = False
@@ -37,13 +37,13 @@ class Settings(BaseSettings):
     
     # CHEAPER: Balanced cost/performance for standard users
     CHEAPER_PROVIDER: str = "gemini"  # bedrock, gemini, groq
-    CHEAPER_MODEL_ID: str = "gemini-2.5-flash-lite"
+    CHEAPER_MODEL_ID: str = "gemini-3.1-flash-lite-preview"
     CHEAPER_TEMPERATURE: float = 0.7
     CHEAPER_MAX_TOKENS: int = 14096
     
     # FASTER: Quickest tier for small structured tasks (intent classifier, BB planner, grading)
     FASTER_PROVIDER: str = "gemini"
-    FASTER_MODEL_ID: str = "gemini-2.5-flash-lite"
+    FASTER_MODEL_ID: str = "gemini-3.1-flash-lite-preview"
     FASTER_TEMPERATURE: float = 0.3
     FASTER_MAX_TOKENS: int = 20000
     
