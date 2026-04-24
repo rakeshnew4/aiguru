@@ -1,5 +1,100 @@
 from typing import List, Optional
 
+# ── Topic-Type Teaching Hints ─────────────────────────────────────────────────
+# Injected into the DYNAMIC user content (not system prompt) so Gemini implicit
+# cache is never invalidated. Each hint is ≤6 lines of targeted guidance.
+
+_TOPIC_TYPE_TEACHING_HINTS: dict[str, str] = {
+    "math_formula": (
+        "SUBJECT GUIDANCE (Math — Formula/Algebra):\n"
+        "• Lead with the formula in a concept frame. Show what each variable means.\n"
+        "• Dedicate 2 concept frames to worked substitution (step-by-step numbers).\n"
+        "• Prefer diagram_type: graph_function, fraction_bar, number_line, or pythagoras.\n"
+        "• Quiz: quiz_typed asking student to apply the formula to a new set of values."
+    ),
+    "math_geometry": (
+        "SUBJECT GUIDANCE (Math — Geometry):\n"
+        "• Use diagram_type triangle, polygon, circle_geometry, angle, or coordinate_plane.\n"
+        "• Show labelled measurements in the diagram data (a_val, b_val, show_angles, etc.).\n"
+        "• Concept frames: state property → prove/derive → example with numbers.\n"
+        "• Quiz: quiz_mcq with numerically distinct distractor values."
+    ),
+    "math_graph": (
+        "SUBJECT GUIDANCE (Math — Graphs/Functions):\n"
+        "• Always include a graph_function or coordinate_plane diagram frame.\n"
+        "• Concept frames: equation form → what the graph looks like → key points (intercepts, vertex).\n"
+        "• Include a bar_chart or line_graph if comparing data sets.\n"
+        "• Quiz: quiz_typed asking student to identify the graph type or a key coordinate."
+    ),
+    "science_biology": (
+        "SUBJECT GUIDANCE (Science — Biology):\n"
+        "• Use cycle for life cycles/processes (mitosis, water cycle, photosynthesis).\n"
+        "• Use labeled_diagram for cell, organ, or body-system structures.\n"
+        "• Use PATH 2 svg_elements for anatomy cross-sections (heart, leaf, kidney).\n"
+        "• Concept frames: function → structure → real-body example.\n"
+        "• Quiz: quiz_order (correct biological sequence) or quiz_mcq."
+    ),
+    "science_chemistry": (
+        "SUBJECT GUIDANCE (Science — Chemistry):\n"
+        "• Use diagram_type atom for atomic structure / electron shells.\n"
+        "• Use comparison for reactants vs products or acid vs base.\n"
+        "• Use PATH 2 svg_elements for lab apparatus (test tube, flask, burner).\n"
+        "• Concept frames: particles/structure → reaction rule → balanced equation.\n"
+        "• Quiz: quiz_typed with quiz_keywords = key chemical terms."
+    ),
+    "science_physics": (
+        "SUBJECT GUIDANCE (Science — Physics):\n"
+        "• Use waveform_signal for waves/sound/light; coordinate_plane for motion graphs.\n"
+        "• Use PATH 2 svg_elements for force diagrams, ray optics, circuit layouts.\n"
+        "• Concept frames: state law/formula → physical meaning → real-world application.\n"
+        "• Include units in every formula (e.g. m/s², Newton, Joule).\n"
+        "• Quiz: quiz_mcq with plausible numerical distractors."
+    ),
+    "definition": (
+        "SUBJECT GUIDANCE (Definition/Vocabulary):\n"
+        "• Frame 1: crisp 1-sentence definition in bold. Frame 2: concrete real-world analogy.\n"
+        "• Keep image_show_confidencescore ≤ 0.50 — use diagram only if concept has visible structure.\n"
+        "• Include a memory frame (mnemonic, acronym, or 'think of it as...').\n"
+        "• Quiz: quiz_typed asking student to define in their own words."
+    ),
+    "comparison": (
+        "SUBJECT GUIDANCE (Comparison/Contrast):\n"
+        "• Use comparison diagram_type as the centrepiece (left_points vs right_points).\n"
+        "• Structure: what is A → what is B → key differences table → when to use which.\n"
+        "• Use **bold** for terms being compared in text fields.\n"
+        "• Quiz: quiz_mcq testing which scenario belongs to which concept."
+    ),
+    "history_civics": (
+        "SUBJECT GUIDANCE (History / Civics / Social Studies):\n"
+        "• Use labeled_diagram for timelines (center = era, parts = key events in order).\n"
+        "• NEVER use cycle, waveform, or heavy SVG — history has no process diagrams.\n"
+        "• Keep image_show_confidencescore ≤ 0.40. Prioritise concept + memory frames.\n"
+        "• Memory frame: key date + person + outcome in one catchy sentence.\n"
+        "• Quiz: quiz_mcq with plausible historical distractors."
+    ),
+    "programming": (
+        "SUBJECT GUIDANCE (Computer Science / Programming):\n"
+        "• Use flow diagram for algorithms, control flow, or function call sequences.\n"
+        "• Concept frames: syntax rule → example code snippet (use ``` in text) → output.\n"
+        "• Use comparison for two data structures or two approaches (e.g. array vs list).\n"
+        "• Quiz: quiz_typed asking student to write or complete a small code expression."
+    ),
+    "geography_environment": (
+        "SUBJECT GUIDANCE (Geography / Environment):\n"
+        "• Use cycle for water cycle, carbon cycle, rock cycle, nutrient cycles.\n"
+        "• Use labeled_diagram for map features (parts of a river, climate zones).\n"
+        "• Use PATH 2 svg_elements only for simple cross-section diagrams (mountain, valley).\n"
+        "• Concept frames: location/name → characteristic → human impact or real example.\n"
+        "• Quiz: quiz_mcq with plausible geographic distractors."
+    ),
+    "other": (
+        "SUBJECT GUIDANCE (General):\n"
+        "• Mix concept + memory + one diagram frame appropriate to the topic.\n"
+        "• Choose PATH 1 diagram if a standard type fits; PATH 2 svg_elements for custom structures.\n"
+        "• End with quiz_mcq and summary."
+    ),
+}
+
 # ── Language Instructions ─────────────────────────────────────────────────────
 
 language_instructions = {
@@ -68,7 +163,7 @@ BB_PLANNER_PROMPT = (
     'Recent conversation (last 3 turns):\n{recent_history}\n'
     "Student class: {level}\n\n"
     "Output (one JSON object, NOTHING else):\n"
-    '{{"topic_type":"<math_formula|science_process|definition|comparison|history|programming|other>",'
+    '{{"topic_type":"<math_formula|math_geometry|math_graph|science_biology|science_chemistry|science_physics|definition|comparison|history_civics|programming|geography_environment|other>",'
     '"scope":"<simple|medium|complex>",'
     '"key_concepts":["term1","term2"],'
     '"steps_count":<4|5|6>,'
@@ -80,6 +175,19 @@ BB_PLANNER_PROMPT = (
     "- simple (4 steps): single self-contained concept\n"
     "- medium (5 steps): standard topic with 1-2 sub-concepts\n"
     "- complex (6 steps): multi-concept, sequential process, or continuation of prior lesson\n"
+    "- topic_type: pick the MOST SPECIFIC type:\n"
+    "    math_formula → algebra, equations, arithmetic operations, calculus formulas\n"
+    "    math_geometry → shapes, angles, triangles, circles, area, perimeter, volume\n"
+    "    math_graph → coordinate plane, functions, plotting, graphs, scatter plots\n"
+    "    science_biology → cell, body systems, photosynthesis, genetics, ecology, evolution\n"
+    "    science_chemistry → atoms, periodic table, reactions, bonding, solutions, acids/bases\n"
+    "    science_physics → motion, forces, waves, electricity, optics, thermodynamics\n"
+    "    definition → what is X, define X, meaning of X (any subject)\n"
+    "    comparison → X vs Y, difference between A and B (any subject)\n"
+    "    history_civics → historical events, timelines, governance, constitution, civics\n"
+    "    programming → code, algorithms, data structures, debugging, logic\n"
+    "    geography_environment → maps, landforms, climate, ecosystems, rivers, countries\n"
+    "    other → language arts, economics, general topics not covered above\n"
     "- image_search_terms: 2-3 SPECIFIC Wikimedia Commons search phrases for this exact topic\n"
     '  GOOD: "mitosis phases cell division", "Newton second law force mass diagram"\n'
     '  BAD: "biology", "science concept", "diagram"\n'
@@ -137,7 +245,7 @@ blackboard_prompt = (
     "    labeled_diagram → Central concept with surrounding labeled parts\n"
     "    anatomy / cell  → alias for labeled_diagram\n"
     '  OUTPUT: "diagram_type": "<type>", "data": {<keys>}, "svg_elements": []\n'
-    "  DATA SCHEMAS:\n"
+    "  DATA SCHEMAS Examples:\n"
     '    atom:            {"nucleus_label":"He","orbits":[{"electrons":2,"color":"secondary","label":"K shell"}]}\n'
     '    solar_system:    {"sun_label":"Sun","planets":[{"label":"Earth","color":"blue","duration":20}]}\n'
     '    waveform_signal: {"title":"Sound Wave","wave_type":"sine","amplitude":50,"color":"secondary"}\n'
@@ -160,7 +268,7 @@ blackboard_prompt = (
     '    comparison:      {"left":"Mitosis","right":"Meiosis","left_points":["2 cells","diploid"],"right_points":["4 cells","haploid"]}\n'
     '    labeled_diagram: {"center":"Cell","center_shape":"circle","parts":["Nucleus","Membrane","Cytoplasm","Ribosome"]}\n'
     "\n"
-    "  ══ PATH 2: CUSTOM DRAWING (LLM plans every shape) ══\n"
+    "  ══ PATH 2: CUSTOM DRAWING Examples(LLM plans every shape) ══\n"
     "  USE THIS for: heart, lungs, kidney, neuron, digestive system, lab apparatus,\n"
     "    circuit diagram, volcano, ecosystem, food chain, plant structure, skeletal system,\n"
     "    blood flow, muscle contraction, Newton laws illustration, Archimedes, ANY structure\n"
@@ -183,7 +291,7 @@ blackboard_prompt = (
     '    {"shape":"text","x":200,"y":150,"value":"Label","color":"label","size":13,"anchor":"middle","bold":true,"animation_stage":1}\n'
     "  COLORS: \"highlight\"(red), \"secondary\"(blue), \"label\"(yellow), \"dim\"(muted green),\n"
     "    \"primary\"(white), \"orange\", \"green\", \"pink\", \"purple\", \"teal\", \"gold\", \"red\", \"blue\"\n"
-    "  EXAMPLE — Heart pumping blood:\n"
+    "  EXAMPLE — Heart pumping blood Examples:\n"
     '    svg_elements: [\n'
     '      {"shape":"ellipse","cx":200,"cy":158,"rx":72,"ry":82,"color":"highlight","fill_color":"highlight","animation_stage":0},\n'
     '      {"shape":"arc","cx":170,"cy":118,"r":38,"start_deg":180,"end_deg":360,"color":"highlight","fill_color":"highlight","animation_stage":0},\n'
@@ -216,12 +324,11 @@ blackboard_prompt = (
     "- NEVER include quiz_correct_index for quiz_typed, quiz_voice, or quiz_order (leave as -1).\n"
     "- Non-quiz frames: quiz_options=[], quiz_correct_index=-1, quiz_model_answer=\"\", quiz_keywords=[], fill_blanks=[], quiz_correct_order=[], svg_elements=[].\n"
     '- Non-diagram frames: set diagram_type="" and data={}.\n'
-    "- image_show_confidencescore for any quiz frame: always 0.0 (no image on quiz frames).\n\n"
     "IMAGE GUIDANCE:\n"
     "- image_description: A Wikimedia Commons search phrase for a REAL well-known educational diagram.\n"
     '  GOOD: "Bohr atomic model", "photosynthesis light reactions", "mitosis phases diagram", "Ohm law circuit"\n'
     '  BAD (too vague): "math concept", "physics diagram", "system diagram"\n'
-    "  Use null if no clearly named diagram exists.\n"
+    "  Use the step title as a fallback search phrase if no better diagram name exists. NEVER output null or omit this field.\n"
     "- image_show_confidencescore:\n"
     "  0.85 to 0.95 -> Concrete visual structure (cell, DNA, circuit, Bohr model, refraction)\n"
     "  0.60 to 0.80 -> Named principle with a well-known diagram (Newton laws, Ohm law, water cycle)\n"
@@ -874,6 +981,9 @@ def build_blackboard_mode_user_content(
     question_type  = (plan or {}).get("question_type", "").strip()
     prior_knowledge = (plan or {}).get("prior_knowledge", "").strip()
 
+    # ── Topic-type specific teaching hint ────────────────────────────────────
+    _topic_hint = _TOPIC_TYPE_TEACHING_HINTS.get(topic_type) or _TOPIC_TYPE_TEACHING_HINTS["other"]
+
     parts = ["\n---LESSON BRIEF (follow these instructions exactly)---\n"]
     parts.append(f"Student's EXACT question: {question}\n")
     if question_focus:
@@ -930,6 +1040,7 @@ def build_blackboard_mode_user_content(
             )
         parts.append("\n".join(img_parts) + "\n")
 
+    parts.append(f"\n{_topic_hint}\n")
     parts.append("\n---END LESSON BRIEF---\n")
     parts.append(lang_instr)
     parts.append(

@@ -113,6 +113,7 @@ class HomeActivity : BaseActivity() {
     private var drawerChatLimit: Int  = 0
     private var drawerBbLimit: Int    = 0
     private var drawerVoiceLimit: Int = 0
+    private var hasShownQuotaWarning  = false
 
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -201,6 +202,7 @@ class HomeActivity : BaseActivity() {
 
         setupDrawer()
         setupQuickActions()
+        populateTopicChips()
 
         // BB intro + smart cards: run after layout is settled
         loadSmartHomeContent()
@@ -237,55 +239,71 @@ class HomeActivity : BaseActivity() {
 
         val db = FirebaseFirestore.getInstance()
 
-        // Step 1: fetch live user counters from users_table
+        // Single read: users_table has all quota counters AND plan limits written by the server.
+        // plan_daily_chat_limit / plan_daily_bb_limit are set on registration and plan activation,
+        // so they're always authoritative — no need to fetch plans/ collection for the main quota.
         db.collection("users_table").document(uid).get()
             .addOnSuccessListener { userDoc ->
                 if (!userDoc.exists()) return@addOnSuccessListener
 
-                val chatToday = userDoc.getLong("chat_questions_today")?.toInt() ?: 0
-                val bbToday   = userDoc.getLong("bb_sessions_today")?.toInt() ?: 0
+                val chatToday           = userDoc.getLong("chat_questions_today")?.toInt() ?: 0
+                val bbToday             = userDoc.getLong("bb_sessions_today")?.toInt() ?: 0
                 val aiTtsCharsUsedToday = userDoc.getLong("ai_tts_chars_used_today")?.toInt() ?: 0
-                val updatedAt = userDoc.getLong("questions_updated_at") ?: 0L
-                val aiTtsUpdatedAt = userDoc.getLong("ai_tts_updated_at") ?: 0L
-                val planId    = (userDoc.getString("planId") ?: "").ifBlank { "free" }
+                val updatedAt           = userDoc.getLong("questions_updated_at") ?: 0L
+                val aiTtsUpdatedAt      = userDoc.getLong("ai_tts_updated_at") ?: 0L
 
-                // Only count today's usage if the counters are from the current UTC day
-                val isSameDay = updatedAt > 0L && !PlanEnforcer.isNewQuotaDay(updatedAt)
+                val isSameDay    = updatedAt > 0L && !PlanEnforcer.isNewQuotaDay(updatedAt)
                 val aiTtsSameDay = aiTtsUpdatedAt > 0L && !PlanEnforcer.isNewQuotaDay(aiTtsUpdatedAt)
-                val chatUsed  = if (isSameDay) chatToday else 0
-                val bbUsed    = if (isSameDay) bbToday else 0
+                val chatUsed     = if (isSameDay) chatToday else 0
+                val bbUsed       = if (isSameDay) bbToday else 0
                 val aiTtsCharsUsed = if (aiTtsSameDay) aiTtsCharsUsedToday else 0
 
-                // Step 2: fetch plan limits directly from plans/ collection
+                // Limits come from user doc (server writes them); default to free-plan values.
+                // 0 stored means unlimited (written as 0 for unlimited plans by server).
+                val chatLimit = userDoc.getLong("plan_daily_chat_limit")?.toInt() ?: 12
+                val bbLimit   = userDoc.getLong("plan_daily_bb_limit")?.toInt() ?: 2
+
+                drawerChatLimit = chatLimit
+                drawerBbLimit   = bbLimit
+
+                // 0 limit = unlimited → show as -1 so UI renders "Unlimited"
+                val chatLeft = if (chatLimit <= 0) -1 else (chatLimit - chatUsed).coerceAtLeast(0)
+                val bbLeft   = if (bbLimit   <= 0) -1 else (bbLimit   - bbUsed).coerceAtLeast(0)
+
+                // Fetch TTS chars from plans/ (not stored on user doc) — non-critical
+                val planId = (userDoc.getString("planId") ?: "").ifBlank { "free" }
                 db.collection("plans").document(planId).get()
                     .addOnSuccessListener { planDoc ->
                         @Suppress("UNCHECKED_CAST")
                         val limitsMap = planDoc.get("limits") as? Map<String, Any>
-                        val chatLimit = (limitsMap?.get("daily_chat_questions") as? Long)?.toInt() ?: 0
-                        val bbLimit   = (limitsMap?.get("daily_bb_sessions") as? Long)?.toInt() ?: 0
                         val aiTtsQuotaChars = (limitsMap?.get("ai_tts_quota_chars") as? Long)?.toInt() ?: 0
-
-                        // Store limits so progress bars can show correct percentages
-                        drawerChatLimit  = chatLimit
-                        drawerBbLimit    = bbLimit
                         drawerVoiceLimit = aiTtsQuotaChars
-
-                        val chatLeft = if (chatLimit <= 0) 0 else (chatLimit - chatUsed).coerceAtLeast(0)
-                        val bbLeft   = if (bbLimit   <= 0) 0 else (bbLimit   - bbUsed).coerceAtLeast(0)
-                        val aiTtsCharsLeft = if (aiTtsQuotaChars <= 0) 0 else (aiTtsQuotaChars - aiTtsCharsUsed).coerceAtLeast(0)
-
-                        runOnUiThread { updateQuotaStripUI(chatLeft, bbLeft, aiTtsCharsLeft) }
+                        val aiTtsLeft = if (aiTtsQuotaChars <= 0) 0
+                            else (aiTtsQuotaChars - aiTtsCharsUsed).coerceAtLeast(0)
+                        runOnUiThread {
+                            updateQuotaStripUI(chatLeft, bbLeft, aiTtsLeft)
+                            showQuotaToastIfNeeded(chatLeft, bbLeft)
+                        }
                     }
                     .addOnFailureListener {
-                        AdminConfigRepository.resolveEffectiveLimitsAsync(planId, null) { limits ->
-                            drawerChatLimit  = limits.dailyChatQuestions
-                            drawerBbLimit    = limits.dailyBlackboardSessions
-                            val chatLimit2 = if (limits.dailyChatQuestions  <= 0) 0 else (limits.dailyChatQuestions  - chatUsed).coerceAtLeast(0)
-                            val bbLimit2   = if (limits.dailyBlackboardSessions <= 0) 0 else (limits.dailyBlackboardSessions - bbUsed).coerceAtLeast(0)
-                            runOnUiThread { updateQuotaStripUI(chatLimit2, bbLimit2, 0) }
+                        runOnUiThread {
+                            updateQuotaStripUI(chatLeft, bbLeft, 0)
+                            showQuotaToastIfNeeded(chatLeft, bbLeft)
                         }
                     }
             }
+    }
+
+    private fun showQuotaToastIfNeeded(chatLeft: Int, bbLeft: Int) {
+        if (hasShownQuotaWarning) return
+        val msg = when {
+            chatLeft == 0 -> "You've used all your questions for today. Upgrade to ask more."
+            chatLeft in 1..2 -> "Only $chatLeft question${if (chatLeft == 1) "" else "s"} left today."
+            bbLeft == 0   -> "No blackboard sessions left today. Upgrade for more."
+            else          -> return
+        }
+        hasShownQuotaWarning = true
+        Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
     }
 
     /**
@@ -641,6 +659,21 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
 
         StudentStatsManager.fetchUsageSummary(uid) { totalMessages, totalBbSessions, streakDays ->
             runOnUiThread {
+                // Show streak badge in hero header
+                val streakBadge = findViewById<TextView?>(R.id.streakBadgeText)
+                val headerSubtitle = findViewById<TextView?>(R.id.homeHeaderSubtitle)
+                if (streakDays > 0) {
+                    streakBadge?.visibility = View.VISIBLE
+                    streakBadge?.text = "🔥 ${streakDays}d"
+                    if (streakDays >= 3) {
+                        headerSubtitle?.text = "🏆 Great streak! Keep going today"
+                    } else {
+                        headerSubtitle?.text = "Your visual lesson is waiting today"
+                    }
+                } else {
+                    headerSubtitle?.text = "Start your streak today"
+                }
+
                 // Show persistent nudge card until the user's first BB session
                 val nudgeCard = findViewById<com.google.android.material.card.MaterialCardView?>(R.id.bbNudgeCard)
                 if (nudgeCard != null) {
@@ -803,8 +836,69 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
             ?.setOnClickListener { FeedbackManager.showNow(this) }
     }
 
+    /** Populate quick-launch topic chips and inner BB card topic chips. */
+    private fun populateTopicChips() {
+        val curatedTopics = listOf(
+            Pair("🌿 Photosynthesis", "Photosynthesis"),
+            Pair("⚛️ Atom Structure", "Atom"),
+            Pair("⚡ Newton's Laws", "Newton's Laws"),
+            Pair("💧 Water Cycle", "Water Cycle"),
+            Pair("🧬 DNA & Genes", "DNA"),
+            Pair("🔋 Electric Circuits", "Electric Circuits"),
+            Pair("📐 Pythagoras", "Pythagoras"),
+            Pair("🌍 Solar System", "Solar System")
+        )
+
+        val container = findViewById<LinearLayout?>(R.id.topicChipsContainer) ?: return
+        val bbInnerContainer = findViewById<LinearLayout?>(R.id.bbInnerTopicsContainer)
+
+        // Populate main topic chips row
+        for ((label, topic) in curatedTopics) {
+            val chip = MaterialButton(this).apply {
+                text = label
+                textSize = 12f
+                setTextColor(Color.parseColor("#1A1A2E"))
+                setBackgroundColor(Color.parseColor("#E8F0FE"))
+                cornerRadius = 20
+                setPaddingRelative(12, 6, 12, 6)
+                setOnClickListener {
+                    showBbTopicDialog(topicHint = topic)
+                }
+            }
+            container.addView(chip)
+            val params = chip.layoutParams as LinearLayout.LayoutParams
+            params.marginEnd = 8
+            chip.layoutParams = params
+        }
+
+        // Populate inner BB card chips (first 3 topics)
+        if (bbInnerContainer != null) {
+            for (i in 0..2) {
+                if (i < curatedTopics.size) {
+                    val (label, topic) = curatedTopics[i]
+                    val cleanLabel = label.substringAfter(" ") // Remove emoji
+                    val chip = MaterialButton(this).apply {
+                        text = cleanLabel
+                        textSize = 11f
+                        setTextColor(Color.parseColor("#FFFFFF"))
+                        setBackgroundColor(Color.parseColor("#00000000")) // transparent
+                        cornerRadius = 16
+                        setPaddingRelative(8, 3, 8, 3)
+                        setOnClickListener {
+                            showBbTopicDialog(topicHint = topic)
+                        }
+                    }
+                    bbInnerContainer.addView(chip)
+                    val params = chip.layoutParams as LinearLayout.LayoutParams
+                    params.marginEnd = 6
+                    chip.layoutParams = params
+                }
+            }
+        }
+    }
+
     /** Shows a polished bottom sheet to collect topic + duration, then launches BB mode. */
-    private fun showBbTopicDialog() {
+    private fun showBbTopicDialog(topicHint: String = "") {
         // Guests must sign in before using Blackboard mode
         if (SessionManager.isGuestMode(this)) {
             androidx.appcompat.app.AlertDialog.Builder(this)
@@ -893,6 +987,7 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
         })
         val topicInput = EditText(this).apply {
             hint = "e.g. Explain Photosynthesis, Newton's 3rd law…"
+            text = if (topicHint.isNotEmpty()) android.text.SpannableStringBuilder(topicHint) else android.text.SpannableStringBuilder("")
             textSize = 15f
             setTextColor(Color.parseColor("#F0EDD0"))
             setHintTextColor(Color.parseColor("#44667788"))

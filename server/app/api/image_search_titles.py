@@ -449,11 +449,27 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
                 deduped.append(item)
         all_candidates = deduped
 
+        # Save original LLM search phrases before we overwrite with URLs.
+        # When no Wikimedia URL is found we fall back to the phrase so Android
+        # always has something (phrase → it can search itself; URL → show directly).
+        original_descs: Dict[int, str] = {
+            i: (step.get("image_description") or "").strip()
+            for i, step in enumerate(data["steps"])
+            if isinstance(step, dict)
+        }
+        # Also ensure every high-confidence step without a description gets the step title.
+        for i, step in enumerate(data["steps"]):
+            if not isinstance(step, dict):
+                continue
+            score = step.get("image_show_confidencescore") or 0
+            if score >= 0.35 and not original_descs.get(i):
+                fallback = (step.get("title") or "").strip()
+                if fallback:
+                    step["image_description"] = fallback
+                    original_descs[i] = fallback
+
         if not all_candidates:
-            logger.info("No Wikimedia candidates found — clearing image descriptions")
-            for step in data["steps"]:
-                if isinstance(step, dict) and step.get("image_description"):
-                    step.pop("image_description", None)
+            logger.info("No Wikimedia candidates found — keeping original search phrases")
             return json.dumps(data)
 
         picks: Dict[int, str] = await loop.run_in_executor(
@@ -470,9 +486,13 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
                 # Store the direct image URL — Android loads it without re-querying Wikimedia
                 step["image_description"] = picks[i]
                 logger.info("Step %d → image URL: %s", i, picks[i][:80])
-            elif step.get("image_description"):
-                step.pop("image_description", None)
-                logger.info("Step %d: no image match, description cleared", i)
+            else:
+                # No Wikimedia match — restore the original LLM phrase so Android always
+                # has image_description present (never null/missing in the final JSON).
+                orig = original_descs.get(i, "")
+                if orig:
+                    step["image_description"] = orig
+                    logger.info("Step %d: no image match, keeping phrase: %s", i, orig[:60])
 
         # ── Guarantee step 2 (index 1) has a visual (diagram or image) ──────────
         if len(data["steps"]) > 1:
