@@ -26,3 +26,9 @@ strands-agents-tools
 
 # ── Google Cloud TTS (OAuth2 Service Account) ─────────────────────────────
 google-cloud-texttospeech>=2.14.0
+
+# ── YouTube Extractor (BB mode video enrichment) ──────────────────────────
+youtube-transcript-api==0.6.2
+sentence-transformers==3.0.1
+elasticsearch[async]==8.13.0
+google-api-python-client==2.139.0
