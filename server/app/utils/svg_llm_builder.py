@@ -194,7 +194,7 @@ Draw this educational diagram as SVG:
   Topic/title  : {topic}
   Context      : {speech}
   Data hints   : {data_json}
-
+{visual_layout_line}
 Draw "{topic}" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
 Animate each part appearing sequentially.  Output ONLY the <svg> element.\
 """
@@ -256,6 +256,7 @@ def build_llm_svg(
     data: dict,
     topic: str = "",
     speech: str = "",
+    visual_description: str = "",
     max_retries: int = MAX_RETRIES,
 ) -> str:
     """
@@ -263,11 +264,12 @@ def build_llm_svg(
 
     Parameters
     ----------
-    diagram_type : str   e.g. "labeled_diagram", "anatomy", "flow"
-    data         : dict  enriched diagram data from the lesson plan
-    topic        : str   step title — tells the LLM what to draw
-    speech       : str   frame speech text — gives anatomical context
-    max_retries  : int   how many LLM attempts before giving up
+    diagram_type        : str   e.g. "labeled_diagram", "anatomy", "flow"
+    data                : dict  enriched diagram data from the lesson plan
+    topic               : str   step title — tells the LLM what to draw
+    speech              : str   frame speech text — gives anatomical context
+    visual_description  : str   LLM-authored layout plan (positions, arrows, labels)
+    max_retries         : int   how many LLM attempts before giving up
 
     Returns
     -------
@@ -277,11 +279,21 @@ def build_llm_svg(
     from app.services.llm_service import _call_litellm_proxy  # noqa: PLC0415
     from app.core.config import settings  # noqa: PLC0415
 
+    vis_desc = (visual_description or "").strip()
+    visual_layout_line = (
+        f"  Visual layout: {vis_desc[:400]}\n"
+        "  Follow this layout exactly — positions, arrows, and labels as described above.\n"
+        if vis_desc else ""
+    )
+    if vis_desc:
+        logger.debug("build_llm_svg: using visual_description (%d chars) for topic '%s'", len(vis_desc), topic)
+
     user_prompt = _USER_PROMPT_TEMPLATE.format(
         diagram_type=diagram_type,
         topic=(topic or diagram_type)[:120],
         speech=(speech or "")[:300],
         data_json=json.dumps(data, ensure_ascii=False)[:400] if data else "none",
+        visual_layout_line=visual_layout_line,
     )
 
     # Use the "cheaper" tier (gemini-2.5-flash) for SVG — flash-lite struggles

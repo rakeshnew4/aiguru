@@ -204,7 +204,7 @@ blackboard_prompt = (
     " Think like the most engaging teacher ever -- make every student say"
     ' "WOW, I actually get this now!"\n\n'
     "Return ONLY valid JSON (no code fences, no extra text):\n"
-    '{"steps": [{"title": "2-5 word heading", "image_show_confidencescore": 0.8, "image_description": "specific wikimedia search phrase", "lang": "<USE THE REQUESTED LANGUAGE TAG e.g. hi-IN or en-US>", "frames": [{"frame_type": "concept", "text": "board content max 3 lines", "highlight": ["key term"], "speech": "teacher says 1-2 sentences IN THE LANG LANGUAGE", "tts_engine": "gemini", "voice_role": "teacher", "duration_ms": 2500, "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1, "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": [], "diagram_type": "", "data": {}, "svg_elements": []}]}]}\n\n'
+    '{"steps": [{"title": "2-5 word heading", "image_show_confidencescore": 0.8, "image_description": "specific wikimedia search phrase", "lang": "<USE THE REQUESTED LANGUAGE TAG e.g. hi-IN or en-US>", "frames": [{"frame_type": "concept", "text": "board content max 3 lines", "highlight": ["key term"], "speech": "teacher says 1-2 sentences IN THE LANG LANGUAGE", "tts_engine": "gemini", "voice_role": "teacher", "duration_ms": 2500, "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1, "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": [], "diagram_type": "", "data": {}, "svg_elements": [], "visual_description": ""}]}]}\n\n'
     "CRITICAL OUTPUT STRUCTURE RULES:\n"
     "- steps[] is a flat array of step objects. Each step has a flat frames[] array.\n"
     "- frames[] items are DIRECT frame objects — NEVER nest a frames[] array inside a frame.\n"
@@ -309,6 +309,15 @@ blackboard_prompt = (
     '      {"shape":"text","x":335,"y":290,"value":"From lungs","color":"secondary","size":10,"animation_stage":3}\n'
     '    ]\n'
     "  text field: 1-line caption. speech: explain what diagram shows step by step.\n"
+    "  DIAGRAM VISUAL RULE — fill visual_description for EVERY diagram frame:\n"
+    "  2-3 sentences describing the exact visual layout: shapes, their positions on canvas,\n"
+    "  labels, arrows, and angle markers. The renderer uses this to draw precisely.\n"
+    "  GOOD: 'Right triangle fills lower-left quadrant. Rectangle (block) on hypotenuse.\n"
+    "    Arrow from block pointing down-left labeled mg. Arrow perpendicular to surface\n"
+    "    labeled N. Angle θ marked at base-left corner with arc.'\n"
+    "  PHYSICS/FORCE diagrams: MUST describe every force vector direction + label.\n"
+    "  MATH GEOMETRY: describe angle values, side lengths, construction markers.\n"
+    "  Non-diagram frames: visual_description must be empty string \"\".\n\n"
     "quiz_mcq   -> Multiple choice. MUST provide exactly 4 quiz_options and quiz_correct_index (0-3).\n"
     "quiz_typed -> Open-ended typed answer. MUST provide quiz_model_answer and quiz_keywords (3-6 key terms).\n"
     "quiz_voice -> Open-ended spoken answer. Same fields as quiz_typed.\n"
@@ -323,7 +332,7 @@ blackboard_prompt = (
     "- quiz_order: quiz_options = 3-5 SHUFFLED step texts. quiz_correct_order = 0-based correct position indices.\n"
     "- NEVER include quiz_correct_index for quiz_typed, quiz_voice, or quiz_order (leave as -1).\n"
     "- Non-quiz frames: quiz_options=[], quiz_correct_index=-1, quiz_model_answer=\"\", quiz_keywords=[], fill_blanks=[], quiz_correct_order=[], svg_elements=[].\n"
-    '- Non-diagram frames: set diagram_type="" and data={}.\n'
+    '- Non-diagram frames: set diagram_type="", data={}, visual_description="".\n'
     "IMAGE GUIDANCE:\n"
     "- image_description: A Wikimedia Commons search phrase for a REAL well-known educational diagram.\n"
     '  GOOD: "Bohr atomic model", "photosynthesis light reactions", "mitosis phases diagram", "Ohm law circuit"\n'

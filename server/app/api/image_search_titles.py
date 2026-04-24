@@ -33,6 +33,22 @@ _GENERIC_IMAGE_WORDS = {
     "chart", "graph", "file", "svg", "png", "jpg", "jpeg", "gif",
 }
 
+# When visual_description mentions these physics/force terms AND the LLM chose a
+# basic geometry type, skip template renderers and go straight to LLM SVG builder
+# so force vectors, apparatus, and angle markers are drawn precisely.
+_FORCE_DIAGRAM_KEYWORDS = {
+    "force", "arrow", "vector", "spring", "lens", "circuit",
+    "pressure", "tension", "friction", "torque", "field",
+    "acceleration", "inclined", "pendulum", "gravity", "mass",
+    "velocity", "momentum", "charge", "current", "voltage",
+}
+_BASIC_GEOMETRY_TYPES = {"triangle", "polygon", "angle", "rectangle", "square"}
+
+
+def _has_force_description(visual_desc: str) -> bool:
+    lower = visual_desc.lower()
+    return any(kw in lower for kw in _FORCE_DIAGRAM_KEYWORDS)
+
 
 def _best_title_match(description: str, titles: List[str]) -> Optional[str]:
     """
@@ -198,7 +214,22 @@ def _pick_titles_sync(steps: list, all_candidates: List[Dict[str, str]]) -> Dict
         desc = (step.get("image_description") or "").strip()
         if not desc:
             continue
-        needs_image.append({"idx": i, "title": (step.get("title") or "")[:60], "desc": desc})
+        # Pull visual_description from the first diagram frame of this step
+        frames = step.get("frames", [])
+        vis_desc = next(
+            (
+                (f.get("visual_description") or "").strip()
+                for f in frames
+                if isinstance(f, dict) and f.get("frame_type") == "diagram"
+            ),
+            "",
+        )
+        needs_image.append({
+            "idx": i,
+            "title": (step.get("title") or "")[:60],
+            "desc": desc,
+            "vis": vis_desc[:200],
+        })
 
     if not needs_image:
         return {}
@@ -206,12 +237,15 @@ def _pick_titles_sync(steps: list, all_candidates: List[Dict[str, str]]) -> Dict
     clean_titles = list(title_to_url.keys())[:30]
 
     steps_text = "\n".join(
-        f'[{s["idx"]}] Step "{s["title"]}" — image needed for: "{s["desc"]}"'
+        f'[{s["idx"]}] Step "{s["title"]}" — topic: "{s["desc"]}"'
+        + (f'\n        Visual layout: "{s["vis"]}"' if s["vis"] else "")
         for s in needs_image
     )
     picker_prompt = (
         "You are selecting the best matching Wikimedia Commons image for each blackboard lesson step.\n"
         "Pick ONE title per step from the candidates list. If no candidate is a good match, use null.\n"
+        "When a Visual layout is provided, prefer images that match the described visual structure\n"
+        "(force arrows, cross-sections, textbook diagrams) over generic photos of the same topic.\n"
         "Output ONLY valid JSON mapping step index (string key) to the EXACT title string or null.\n\n"
         f"Steps needing images:\n{steps_text}\n\n"
         "Available Wikimedia titles:\n"
@@ -349,6 +383,7 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
                 html = ""
                 d_type = (frame.get("diagram_type") or "").strip()
                 d_data = frame.get("data") or {}
+                visual_desc = (frame.get("visual_description") or "").strip()
 
                 # ── Auto-classify only when LLM set NEITHER diagram_type NOR svg_elements ──
                 # If LLM already planned svg_elements, trust that — don't override it.
@@ -365,7 +400,21 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
                             d_type, decision.confidence, step_title,
                         )
 
-                if d_type:
+                # ── Force/physics override: skip templates when visual_description ─
+                # describes force vectors, arrows, or apparatus but LLM chose a basic
+                # geometry type — go straight to LLM SVG builder for accurate drawing.
+                force_override = (
+                    visual_desc
+                    and d_type.lower() in _BASIC_GEOMETRY_TYPES
+                    and _has_force_description(visual_desc)
+                )
+                if force_override:
+                    logger.info(
+                        "Force override: bypassing templates for type='%s', step='%s' (visual_desc contains physics terms)",
+                        d_type, step.get("title", ""),
+                    )
+
+                if d_type and not force_override:
                     step_title  = step.get("title", "")
                     frame_speech = frame.get("speech", "")
 
@@ -391,10 +440,11 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
                     # Heart chambers, eye cross-section, circuit schematics, etc.
                     if not html:
                         html = build_llm_svg(
-                            diagram_type = d_type,
-                            data         = d_data,
-                            topic        = step_title,
-                            speech       = frame_speech,
+                            diagram_type=d_type,
+                            data=d_data,
+                            topic=step_title,
+                            speech=frame_speech,
+                            visual_description=visual_desc,
                         )
 
                     # ── Fallback: Python SMIL builder (geometric, no LLM) ────
@@ -407,6 +457,23 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
                                     "Built SMIL svg_html (type=%s) for step '%s' [fallback]",
                                     d_type, step_title,
                                 )
+
+                # ── Force override path: LLM SVG with visual_description ──────
+                if not html and force_override:
+                    step_title = step.get("title", "")
+                    frame_speech = frame.get("speech", "")
+                    html = build_llm_svg(
+                        diagram_type=d_type,
+                        data=d_data,
+                        topic=step_title,
+                        speech=frame_speech,
+                        visual_description=visual_desc,
+                    )
+                    if html:
+                        logger.info(
+                            "Built LLM SVG (force override, type=%s) for step '%s'",
+                            d_type, step_title,
+                        )
 
                 if not html:
                     # Path 2: legacy raw svg_elements fallback
@@ -427,6 +494,7 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
                 frame.pop("svg_elements", None)
                 frame.pop("diagram_type", None)
                 frame.pop("data", None)
+                frame.pop("visual_description", None)
 
         # ── Phase 4: Image title selection from wikimedia results ─────────────
         # all_candidates: list of {"title": ..., "url": ...} dicts

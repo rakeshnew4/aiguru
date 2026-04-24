@@ -111,8 +111,8 @@
 
         <TextView
             android:id="@+id/profileButton"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
             android:gravity="center"
             android:text="👨‍🎤"
             android:textSize="15sp"
@@ -213,7 +213,7 @@
             app:cardCornerRadius="20dp"
             app:cardElevation="6dp"
             app:cardBackgroundColor="#3D1A6E"
-            app:rippleColor="#33FFFFFF">
+            app:rippleColor="#33FFFFFFF">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -256,7 +256,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Animated visual lesson + quiz"
+                            android:text="Advanced Visual lessons -AI Live Tutor"
                             android:textSize="11sp"
                             android:textColor="#FFFFFFBB"
                             android:layout_marginTop="1dp" />
