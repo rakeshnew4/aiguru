@@ -133,11 +133,18 @@ def extract_json_safe(text: str) -> Dict:
     raise ValueError(f"No valid JSON found in text. Preview: {text[:200]}")
 
 
+# Images wider than this (pixels) are likely maps/scans — skip them.
+_MAX_IMAGE_WIDTH = 5000
+# Request thumbnails at this width from Wikimedia (instead of full source).
+_THUMB_WIDTH = 800
+
+
 async def search_wikimedia_images(query: str, limit: int = 10) -> List[Dict[str, str]]:
     """
     Async search for Wikimedia Commons images.
-    Returns list of {"title": ..., "url": ...} dicts so callers can resolve
-    a picked title directly to its URL without a second network round-trip.
+    Returns list of {"title": ..., "url": ..., "orig_width": int} dicts.
+    url is a thumbnail at _THUMB_WIDTH px (faster to load than the original).
+    Images with original width > _MAX_IMAGE_WIDTH are skipped (maps, scans, etc.).
     """
     api_url = "https://commons.wikimedia.org/w/api.php"
     params = {
@@ -147,7 +154,8 @@ async def search_wikimedia_images(query: str, limit: int = 10) -> List[Dict[str,
         "gsrlimit": limit,
         "gsrnamespace": 6,  # File namespace
         "prop": "imageinfo",
-        "iiprop": "url|dimensions|mime",
+        "iiprop": "url|dimensions|mime|size",
+        "iiurlwidth": str(_THUMB_WIDTH),  # Ask Wikimedia for a pre-scaled thumbnail URL
         "format": "json",
     }
 
@@ -162,17 +170,34 @@ async def search_wikimedia_images(query: str, limit: int = 10) -> List[Dict[str,
             for page in data["query"]["pages"].values():
                 if "imageinfo" in page:
                     info = page["imageinfo"][0]
-                    img_url = info.get("url", "")
-                    img_url_lower = img_url.lower()
+                    orig_url = info.get("url", "")
+                    orig_url_lower = orig_url.lower()
                     mime = info.get("mime", "").lower()
                     is_image = (
-                        img_url_lower.endswith((".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"))
+                        orig_url_lower.endswith((".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"))
                         or mime.startswith(("image/",))
                     )
-                    if is_image and img_url:
-                        results.append({"title": page["title"], "url": img_url})
+                    if not (is_image and orig_url):
+                        continue
 
-        logger.info(f"Found {len(results)} images for query: {query[:50]}")
+                    orig_width = info.get("width", 0) or 0
+                    # Skip extreme-dimension source files (maps, historical scans, blueprints)
+                    if orig_width > _MAX_IMAGE_WIDTH:
+                        logger.debug(
+                            "Skipping oversized image (%dpx wide): %s", orig_width, page["title"]
+                        )
+                        continue
+
+                    # Prefer the Wikimedia-generated thumbnail URL; fall back to original
+                    thumb_url = info.get("thumburl") or orig_url
+
+                    results.append({
+                        "title": page["title"],
+                        "url": thumb_url,
+                        "orig_width": orig_width,
+                    })
+
+        logger.info("Found %d images for query: %s", len(results), query[:50])
         return results
 
     except httpx.HTTPError as e:
@@ -540,6 +565,13 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
             logger.info("No Wikimedia candidates found — keeping original search phrases")
             return json.dumps(data)
 
+        # Build URL→orig_width lookup so we can apply size-based score cap later
+        url_to_width: Dict[str, int] = {
+            item["url"]: item.get("orig_width", 0)
+            for item in all_candidates
+            if isinstance(item, dict) and item.get("url")
+        }
+
         picks: Dict[int, str] = await loop.run_in_executor(
             None, lambda: _pick_titles_sync(data["steps"], all_candidates)
         )
@@ -551,9 +583,18 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
             if score < 0.35:
                 continue
             if i in picks:
+                picked_url = picks[i]
                 # Store the direct image URL — Android loads it without re-querying Wikimedia
-                step["image_description"] = picks[i]
-                logger.info("Step %d → image URL: %s", i, picks[i][:80])
+                step["image_description"] = picked_url
+                logger.info("Step %d → image URL: %s", i, picked_url[:80])
+                # Cap score to 0.5 (tap-to-view) when original image is large (>3000px wide).
+                # Large images load slowly and look oversized on mobile.
+                orig_w = url_to_width.get(picked_url, 0)
+                if orig_w > 3000 and score > 0.5:
+                    step["image_show_confidencescore"] = 0.5
+                    logger.info(
+                        "Step %d: capped score to 0.5 (image orig_width=%dpx > 3000)", i, orig_w
+                    )
             else:
                 # No Wikimedia match — restore the original LLM phrase so Android always
                 # has image_description present (never null/missing in the final JSON).

@@ -1261,8 +1261,9 @@ class BlackboardActivity : AppCompatActivity() {
             val diagramWebView = android.webkit.WebView(this).apply {
                 settings.javaScriptEnabled = true
                 settings.domStorageEnabled = true
-                settings.loadWithOverviewMode = true
-                settings.useWideViewPort = true
+                // Do NOT set loadWithOverviewMode or useWideViewPort — they override
+                // initial-scale=1 in our viewport meta tag and zoom out the diagram,
+                // making it appear tiny. Our HTML is built specifically for this WebView.
                 settings.allowFileAccess = true
                 settings.allowContentAccess = true
                 // Allow mixed content (needed for inline data URIs inside HTML)
@@ -1277,7 +1278,7 @@ class BlackboardActivity : AppCompatActivity() {
                 setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
-                    (280 * dp).toInt()
+                    (320 * dp).toInt()
                 ).apply { topMargin = (8 * dp).toInt() }
             }
             board.addView(diagramWebView)

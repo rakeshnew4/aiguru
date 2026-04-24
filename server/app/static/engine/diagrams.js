@@ -2336,28 +2336,31 @@ const Diagrams = (() => {
     var c = Math.sqrt(a * a + b * b);
     var title = data.title || 'Pythagoras\' Theorem';
 
-    // Triangle vertices: right angle at C (300,220), B at (300-b*scale, 220), A at (300-b*scale, 220-a*scale)
-    var scale = Math.min(150 / a, 150 / b, 1);
+    // Scale so the LARGER leg fills ~120px of canvas.
+    // Bug fix: old code had Math.min(150/a, 150/b, 1) which caps scale at 1,
+    // producing a 3x4 pixel triangle for small values like a=3, b=4.
+    var scale = Math.min(120 / Math.max(a, 1), 120 / Math.max(b, 1));
     a = a * scale; b = b * scale; c = c * scale;
 
-    var C4 = [250, 240], B4 = [250 - b, 240], A4 = [250 - b, 240 - a];
+    // Right-angle at B4 (bottom-left). Position shifted up so squares fit below.
+    var C4 = [290, 205], B4 = [290 - b, 205], A4 = [290 - b, 205 - a];
 
     append(svg, Shapes.text(200, 16, title,
       { color: 'label', size: 12, weight: 'bold' }));
 
     // Triangle sides (animate in sequence)
     var sides = [
-      { P: B4, Q: C4, lbl: 'b=' + Math.round(b), color: 'secondary' },
-      { P: A4, Q: B4, lbl: 'a=' + Math.round(a), color: 'highlight' },
-      { P: A4, Q: C4, lbl: 'c=' + Math.round(c), color: 'orange'   },
+      { P: B4, Q: C4, lbl: 'b=' + (+data.b || 80), color: 'secondary' },
+      { P: A4, Q: B4, lbl: 'a=' + (+data.a || 60), color: 'highlight' },
+      { P: A4, Q: C4, lbl: 'c=' + (+data.c || Math.round(Math.sqrt((+data.a||60)**2+(+data.b||80)**2))), color: 'orange' },
     ];
     sides.forEach(function(s, i) {
       var sl = Shapes.line(s.P[0], s.P[1], s.Q[0], s.Q[1],
         { color: s.color, sw: 2.5, opacity: 0 });
-      var mx = (s.P[0] + s.Q[0]) / 2 + (i === 2 ? 16 : i === 1 ? -20 : 0);
-      var my = (s.P[1] + s.Q[1]) / 2 + (i === 0 ? 14 : -8);
+      var mx = (s.P[0] + s.Q[0]) / 2 + (i === 2 ? 18 : i === 1 ? -22 : 0);
+      var my = (s.P[1] + s.Q[1]) / 2 + (i === 0 ? 14 : -10);
       var ll = Shapes.text(mx, my, s.lbl,
-        { color: s.color, size: 11, weight: 'bold', opacity: 0 });
+        { color: s.color, size: 12, weight: 'bold', opacity: 0 });
       append(svg, sl, ll);
       engine.addPhase([sl, ll], i * 600, -1);
     });
@@ -2376,40 +2379,42 @@ const Diagrams = (() => {
       engine.addPhase([d, t2], 1800 + i * 200, -1);
     });
 
-    // Right angle marker
+    // Right angle marker at B4
     var sq3 = Shapes.rect(B4[0], B4[1] - 12, 12, 12,
       { color: 'stroke', sw: 1.2, opacity: 0 });
     append(svg, sq3);
     engine.addPhase([sq3], 600, -1);
 
-    // Squares on each side (optional but stunning)
+    // Squares on each side
     if (data.show_squares !== false) {
-      // Square on b (bottom, below the triangle)
-      var sqB = Shapes.rect(B4[0], B4[1], b, b * 0.5,
+      // Square on b (horizontal leg) — drawn below triangle
+      var sqBh = Math.round(b * 0.5);
+      var sqB = Shapes.rect(B4[0], B4[1], b, sqBh,
         { color: 'secondary', fill: 'secondary', sw: 1.5, opacity: 0 });
       sqB.setAttribute('fill-opacity', '0.2');
-      var sqBl = Shapes.text(B4[0] + b/2, B4[1] + b * 0.25, 'b²',
+      var sqBl = Shapes.text(B4[0] + b / 2, B4[1] + sqBh / 2 + 6, 'b²',
         { color: 'secondary', size: 12, weight: 'bold', opacity: 0 });
       append(svg, sqB, sqBl);
       engine.addPhase([sqB, sqBl], 2400, -1);
 
-      // Square on a (left of triangle)
-      var sqA = Shapes.rect(A4[0] - a * 0.5, A4[1], a * 0.5, a,
+      // Square on a (vertical leg) — drawn to the left of triangle
+      var sqAw = Math.round(a * 0.5);
+      var sqA = Shapes.rect(A4[0] - sqAw, A4[1], sqAw, a,
         { color: 'highlight', fill: 'highlight', sw: 1.5, opacity: 0 });
       sqA.setAttribute('fill-opacity', '0.2');
-      var sqAl = Shapes.text(A4[0] - a * 0.25, A4[1] + a/2, 'a²',
+      var sqAl = Shapes.text(A4[0] - sqAw / 2, A4[1] + a / 2, 'a²',
         { color: 'highlight', size: 12, weight: 'bold', opacity: 0 });
       append(svg, sqA, sqAl);
       engine.addPhase([sqA, sqAl], 2800, -1);
     }
 
-    // Formula
-    var fmla2 = Shapes.text(200, 280,
+    // Formula at bottom
+    var fmla2 = Shapes.text(200, 285,
       'a² + b² = c²',
       { color: 'gold', size: 15, weight: 'bold', opacity: 0 });
     append(svg, fmla2);
     engine.addPhase([fmla2], 3200, -1);
-    engine.addMotion(Motion.pulse(fmla2, 200, 280, 0.92, 1.08, 1200));
+    engine.addMotion(Motion.pulse(fmla2, 200, 285, 0.92, 1.08, 1200));
   }
 
   // ── geometryAngles (supplementary / complementary / vertically opposite) ──────
