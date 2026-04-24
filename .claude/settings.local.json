@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python test_visual_desc_changes.py)",
+      "Bash(set PYTHONIOENCODING=utf-8)",
+      "Bash(python -X utf8 validate_diagrams.py)"
+    ]
+  }
+}

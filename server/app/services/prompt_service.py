@@ -210,7 +210,12 @@ blackboard_prompt = (
     "- frames[] items are DIRECT frame objects — NEVER nest a frames[] array inside a frame.\n"
     "- Every frame object MUST be at steps[i].frames[j] — one and only one level of nesting.\n"
     "- WRONG: {steps:[{frames:[{frame_type:'concept', frames:[ACTUAL_FRAME]}]}]}\n"
-    "- RIGHT:  {steps:[{title:'...', frames:[{frame_type:'concept', text:'...', speech:'...'}]}]}\n\n"
+    "- RIGHT:  {steps:[{title:'...', frames:[{frame_type:'concept', text:'...', speech:'...'}]}]}\n"
+    "- STEP-LEVEL FIELDS (title, image_show_confidencescore, image_description, lang) MUST be on\n"
+    "  the STEP object. NEVER inside a frame. Frame objects do NOT have a title field.\n"
+    "- WRONG: {steps:[{frames:[{frame_type:'diagram', title:'Newton Law'}]}]}\n"
+    "- RIGHT:  {steps:[{title:'Newton Law', image_show_confidencescore:0.75, image_description:'Newton third law force diagram', lang:'en-US', frames:[{frame_type:'diagram'}]}]}\n"
+    "- Every step MUST include all four: title, image_show_confidencescore, image_description, lang.\n\n"
     "FRAME TYPES -- mix ALL of these for maximum engagement:\n"
     "concept    -> Core teaching: formula, definition, step, key fact. Use **bold**. Most common type.\n"
     "memory     -> Mnemonic, rhyme, acronym, or fun trick. Make it catchy and unforgettable!\n"
@@ -242,7 +247,8 @@ blackboard_prompt = (
     "    flow            → Flowchart / process steps (linear)\n"
     "    cycle           → Cyclical process (water cycle, nitrogen cycle, etc.)\n"
     "    comparison      → Side-by-side comparison (A vs B)\n"
-    "    labeled_diagram → Central concept with surrounding labeled parts\n"
+    "    labeled_diagram → ONLY for named parts of a structure: cell organelles, body parts,\n"
+    "      device components. NEVER for physics forces, Newton laws, or process steps.\n"
     "    anatomy / cell  → alias for labeled_diagram\n"
     '  OUTPUT: "diagram_type": "<type>", "data": {<keys>}, "svg_elements": []\n'
     "  DATA SCHEMAS Examples:\n"
@@ -308,15 +314,30 @@ blackboard_prompt = (
     '      {"shape":"text","x":65,"y":290,"value":"From body","color":"orange","size":10,"animation_stage":3},\n'
     '      {"shape":"text","x":335,"y":290,"value":"From lungs","color":"secondary","size":10,"animation_stage":3}\n'
     '    ]\n'
+    "  EXAMPLE — Newton's 3rd Law (action-reaction force pair, use PATH 2 for ALL physics force diagrams):\n"
+    '    svg_elements: [\n'
+    '      {"shape":"rect","x":155,"y":115,"w":90,"h":55,"color":"secondary","fill_color":"secondary","animation_stage":0},\n'
+    '      {"shape":"text","x":200,"y":148,"value":"Object","color":"primary","size":11,"anchor":"middle","bold":false,"animation_stage":0},\n'
+    '      {"shape":"arrow","x1":155,"y1":142,"x2":55,"y2":142,"color":"highlight","animation_stage":1},\n'
+    '      {"shape":"arrow","x1":245,"y1":142,"x2":345,"y2":142,"color":"green","animation_stage":1},\n'
+    '      {"shape":"text","x":105,"y":130,"value":"Action F₁","color":"highlight","size":10,"anchor":"middle","bold":false,"animation_stage":2},\n'
+    '      {"shape":"text","x":295,"y":130,"value":"Reaction F₂","color":"green","size":10,"anchor":"middle","bold":false,"animation_stage":2},\n'
+    '      {"shape":"text","x":200,"y":205,"value":"F₁ = −F₂  (equal & opposite)","color":"label","size":12,"anchor":"middle","bold":true,"animation_stage":3}\n'
+    '    ]\n'
+    "  PHYSICS/FORCE DIAGRAM RULE: For Newton's laws, free-body diagrams, inclined planes,\n"
+    "    springs, lenses, circuits — ALWAYS use PATH 2 svg_elements with arrow shapes.\n"
+    "    NEVER use labeled_diagram or solar_system for force/physics concepts.\n\n"
     "  text field: 1-line caption. speech: explain what diagram shows step by step.\n"
-    "  DIAGRAM VISUAL RULE — fill visual_description for EVERY diagram frame:\n"
-    "  2-3 sentences describing the exact visual layout: shapes, their positions on canvas,\n"
-    "  labels, arrows, and angle markers. The renderer uses this to draw precisely.\n"
-    "  GOOD: 'Right triangle fills lower-left quadrant. Rectangle (block) on hypotenuse.\n"
-    "    Arrow from block pointing down-left labeled mg. Arrow perpendicular to surface\n"
-    "    labeled N. Angle θ marked at base-left corner with arc.'\n"
-    "  PHYSICS/FORCE diagrams: MUST describe every force vector direction + label.\n"
-    "  MATH GEOMETRY: describe angle values, side lengths, construction markers.\n"
+    "  DIAGRAM VISUAL RULE — fill visual_description (MANDATORY, NEVER leave empty) for diagram frames:\n"
+    "  2-3 sentences describing the EXACT visual layout: shapes present, their positions,\n"
+    "  labels, arrows, angle markers. This is used by the renderer — be precise, never vague.\n"
+    "  GOOD: 'Right triangle fills lower-left. Rectangle (block) on hypotenuse. Arrow from\n"
+    "    block pointing down-left labeled mg. Arrow perpendicular to surface labeled N.\n"
+    "    Angle θ at base-left corner with arc.'\n"
+    "  BAD (too vague): 'Shows Newton law diagram.' or 'Physics illustration.'\n"
+    "  PHYSICS/FORCE: describe every force vector direction, label, and object position.\n"
+    "  MATH GEOMETRY: describe angle values, side lengths, construction lines.\n"
+    "  diagram frames: visual_description MUST be non-empty. Empty = rendering failure.\n"
     "  Non-diagram frames: visual_description must be empty string \"\".\n\n"
     "quiz_mcq   -> Multiple choice. MUST provide exactly 4 quiz_options and quiz_correct_index (0-3).\n"
     "quiz_typed -> Open-ended typed answer. MUST provide quiz_model_answer and quiz_keywords (3-6 key terms).\n"

@@ -22,7 +22,8 @@ import re
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from app.utils.svg_builder import build_from_diagram_type, build_animated_svg, _clamp
+from app.utils.svg_builder import build_from_diagram_type, build_animated_svg
+from app.utils.svg_colors import _clamp
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Test cases — (name, diagram_type, data, min_shapes, specific_checks_fn)
