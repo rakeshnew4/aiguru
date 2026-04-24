@@ -213,7 +213,7 @@
             app:cardCornerRadius="20dp"
             app:cardElevation="6dp"
             app:cardBackgroundColor="#3D1A6E"
-            app:rippleColor="#33FFFFFFF">
+            app:rippleColor="#33FFFFFF">
 
             <LinearLayout
                 android:layout_width="match_parent"
