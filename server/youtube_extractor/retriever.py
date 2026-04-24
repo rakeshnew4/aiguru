@@ -1,8 +1,8 @@
-import logging
+from app.core.logger import get_logger
 from .indexer import get_es, embed_texts
 from .config import ES_INDEX, SCORE_THRESHOLD
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 async def find_best_segment(query: str, video_ids: list[str] | None = None) -> dict | None:
@@ -36,11 +36,15 @@ async def find_best_segment(query: str, video_ids: list[str] | None = None) -> d
         hit = hits[0]
         score: float = hit.get("_score") or 0.0
         if score < SCORE_THRESHOLD:
-            logger.debug(
+            logger.info(
                 "[yt_extractor] Best segment score %.3f below threshold %.3f for '%s'",
                 score, SCORE_THRESHOLD, query[:60],
             )
             return None
+        logger.info(
+            "[yt_extractor] Segment matched score=%.3f for '%s'",
+            score, query[:60],
+        )
         src = hit["_source"]
         return {
             "video_id": src["video_id"],

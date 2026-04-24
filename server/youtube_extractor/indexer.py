@@ -1,4 +1,4 @@
-import logging
+from app.core.logger import get_logger
 from elasticsearch import AsyncElasticsearch
 from .config import (
     ES_HOST, ES_INDEX, EMBED_MODEL_NAME, EMBED_DIMS,
@@ -6,7 +6,7 @@ from .config import (
     CHUNK_WINDOW_SEC, CHUNK_OVERLAP_SEC,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 _es: AsyncElasticsearch | None = None
 
@@ -16,6 +16,13 @@ def get_es() -> AsyncElasticsearch:
     if _es is None:
         _es = AsyncElasticsearch([ES_HOST])
     return _es
+
+
+async def close_es() -> None:
+    global _es
+    if _es is not None:
+        await _es.close()
+        _es = None
 
 
 _vertex_model = None
@@ -44,7 +51,7 @@ def _embed_batch_sync(texts: list[str]) -> list[list[float]]:
 
 
 async def embed_texts(texts: list[str]) -> list[list[float]]:
-    """Embed texts using Vertex AI text-embedding-004 (768-dim) via service account."""
+    """Embed texts using the configured Vertex AI embedding model."""
     import asyncio
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, _embed_batch_sync, texts)
@@ -136,12 +143,17 @@ async def index_video(video_id: str, title: str, transcript: list[dict]) -> bool
         if not chunks:
             return False
 
-        texts = [c["text"] for c in chunks]
+        valid_chunks = [c for c in chunks if c["text"].strip()]
+        if not valid_chunks:
+            logger.info("[yt_extractor] Skipping video %s: all transcript chunks empty", video_id)
+            return False
+
+        texts = [c["text"] for c in valid_chunks]
         embeddings = await embed_texts(texts)
 
         es = get_es()
         operations: list[dict] = []
-        for chunk, emb in zip(chunks, embeddings):
+        for chunk, emb in zip(valid_chunks, embeddings):
             doc_id = f"{video_id}_{chunk['start_seconds']}"
             operations.append({"index": {"_index": ES_INDEX, "_id": doc_id}})
             operations.append({
@@ -153,7 +165,7 @@ async def index_video(video_id: str, title: str, transcript: list[dict]) -> bool
                 "embedding": emb,
             })
         await es.bulk(operations=operations)
-        logger.info("[yt_extractor] Indexed %d chunks for video %s", len(chunks), video_id)
+        logger.info("[yt_extractor] Indexed %d chunks for video %s", len(valid_chunks), video_id)
         return True
     except Exception as exc:
         logger.warning("[yt_extractor] index_video failed for %s: %s", video_id, exc)

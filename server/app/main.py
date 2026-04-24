@@ -51,7 +51,6 @@ app = FastAPI(
     version="2.0.0",
 )
 
-
 # ── CORS ──────────────────────────────────────────────────────────────────────
 _allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
 _allowed_origins: list[str] = (

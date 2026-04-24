@@ -28,6 +28,7 @@ strands-agents-tools
 google-cloud-texttospeech>=2.14.0
 
 # ── YouTube Extractor (BB mode video enrichment) ──────────────────────────
-youtube-transcript-api==0.6.2
+youtube-transcript-api>=1.2.4,<2
 elasticsearch[async]==8.13.0
 google-api-python-client==2.139.0
+google-cloud-aiplatform>=1.114.0,<2

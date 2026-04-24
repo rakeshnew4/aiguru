@@ -1,7 +1,8 @@
 import asyncio
-import logging
+from app.core.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
+_LANGUAGES = ["en", "en-US", "en-GB"]
 
 
 async def fetch_transcript(video_id: str) -> list[dict]:
@@ -24,7 +25,29 @@ def _fetch_sync(video_id: str) -> list[dict]:
     from youtube_transcript_api import YouTubeTranscriptApi
     try:
         api = YouTubeTranscriptApi()
-        raw = api.fetch(video_id, languages=["en", "en-US", "en-GB"])
-        return [{"text": s.text, "start": s.start, "duration": s.duration} for s in raw]
-    except Exception:
+
+        if hasattr(api, "fetch"):
+            raw = api.fetch(video_id, languages=_LANGUAGES)
+            if hasattr(raw, "to_raw_data"):
+                raw = raw.to_raw_data()
+        else:
+            raw = YouTubeTranscriptApi.get_transcript(video_id, languages=_LANGUAGES)
+
+        normalized: list[dict] = []
+        for item in raw:
+            if isinstance(item, dict):
+                normalized.append({
+                    "text": item.get("text", ""),
+                    "start": item.get("start", 0.0),
+                    "duration": item.get("duration", 0.0),
+                })
+            else:
+                normalized.append({
+                    "text": getattr(item, "text", ""),
+                    "start": getattr(item, "start", 0.0),
+                    "duration": getattr(item, "duration", 0.0),
+                })
+        return normalized
+    except Exception as exc:
+        logger.info("[yt_extractor] Transcript fetch failed for %s: %s", video_id, exc)
         return []

@@ -24,13 +24,20 @@ from app.core.config import settings
 from app.core.logger import get_logger
 from app.core.auth import require_auth, AuthUser
 from app.api.image_search_titles import search_wikimedia_images, get_titles
+_YT_IMPORT_ERROR = ""
 try:
     from youtube_extractor import enrich_steps_with_videos as _yt_enrich
     _YT_ENABLED = True
-except ImportError:
+except ImportError as exc:
     _YT_ENABLED = False
+    _YT_IMPORT_ERROR = str(exc)
 
 logger = get_logger(__name__)
+if _YT_ENABLED:
+    logger.info("YouTube enrichment enabled")
+else:
+    logger.warning("YouTube enrichment disabled: %s", _YT_IMPORT_ERROR or "import failed")
+
 router = APIRouter(prefix="", tags=["chat"])
 
 _BB_INTENT_SYSTEM_PROMPT = (
@@ -878,10 +885,10 @@ def _attach_video_clips(text_content: str, yt_clips: list) -> str:
                     }
                     attached += 1
                     break  # one clip per step
-        if attached:
-            logger.info("Attached YouTube clips to %d/%d BB steps", attached, len(steps))
+        logger.info("Attached YouTube clips to %d/%d BB steps", attached, len(steps))
         return json.dumps(data, ensure_ascii=False)
-    except Exception:
+    except Exception as exc:
+        logger.warning("YouTube clip attachment parse failed: %s", exc)
         return text_content
 
 
@@ -961,6 +968,10 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                 yt_task = asyncio.ensure_future(
                     _yt_enrich(req.question, plan)
                 ) if _YT_ENABLED else None
+                if yt_task is not None:
+                    logger.info("BB YouTube enrichment task started | steps=%d", len(plan.get("steps", [])))
+                else:
+                    logger.info("BB YouTube enrichment skipped | enabled=%s", _YT_ENABLED)
 
                 # B3) Build context-enriched BB prompt
                 prompt = build_bb_main_prompt(
@@ -1204,13 +1215,22 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                 # Attach YouTube clips gathered concurrently during LLM call
                 if yt_task is not None:
                     try:
+                        yt_wait_timeout = max(3.0, float(getattr(settings, "YT_ENRICHMENT_TIMEOUT", 2.5)))
                         if yt_task.done():
                             yt_clips = yt_task.result()
+                            logger.info("BB YouTube enrichment task already done")
                         else:
-                            yt_clips = await asyncio.wait_for(yt_task, timeout=0.5)
+                            yt_clips = await asyncio.wait_for(yt_task, timeout=yt_wait_timeout)
+                            logger.info("BB YouTube enrichment awaited | timeout=%.2fs", yt_wait_timeout)
                         text_content = _attach_video_clips(text_content, yt_clips)
-                    except Exception:
-                        pass  # clips are best-effort; never block the response
+                        logger.info(
+                            "BB YouTube clips ready | attached_candidates=%d",
+                            sum(1 for c in (yt_clips or []) if c),
+                        )
+                    except asyncio.TimeoutError:
+                        logger.info("BB YouTube enrichment still running; response sent without waiting")
+                    except Exception as exc:
+                        logger.warning("BB YouTube enrichment attach failed: %s", exc)
             elif req.mode == "normal":
                 text_content = _sanitize_normal_response(text_content)
 
