@@ -78,7 +78,8 @@ Use these facts to avoid unnecessary exploration:
 - Standalone diagram generation in `server/app/services/diagram_service.py` is narrower than the Blackboard visual pipeline.
 - `generate_response()` currently routes through the LiteLLM proxy path.
 - `context_service.get_context()` is still a stub.
-- BB main LLM uses **sparse output** (only non-default fields) and **intent-only PATH 2** (`diagram_type="custom"`, `data={"intent":"..."}`, `svg_elements=[]`). The engine renders — never the main LLM.
+- `blackboard_prompt` is ultra-compact (~400 tokens). `_ACCURACY_NOTES` was removed — key rules are folded into the main prompt. Do not expand it back.
+- BB main LLM uses **sparse output** (only non-default fields) and **intent-only PATH 2** (`diagram_type="custom"`, `data={"intent":"..."}`). The engine renders — never the main LLM.
 - `_normalize_frame()` in `image_search_titles.py` restores all default fields after sparse parse.
 - `svg_llm_builder` uses Phase 1 animation only, max_tokens=4096; rejects output with `<script>`.
 - **LiteLLM proxy**: ensure thinking is disabled and model alias `gemini-2.5-flash-lite` routes to the lite model (not full flash). Check localhost:8006 admin UI if BB costs spike.

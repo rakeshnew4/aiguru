@@ -30,7 +30,7 @@ _TOPIC_TYPE_TEACHING_HINTS: dict[str, str] = {
         "SUBJECT GUIDANCE (Science — Biology):\n"
         "• Use cycle for life cycles/processes (mitosis, water cycle, photosynthesis).\n"
         "• Use labeled_diagram for cell, organ, or body-system structures.\n"
-        "• Use PATH 2 svg_elements for anatomy cross-sections (heart, leaf, kidney).\n"
+        "• Use PATH 2 (diagram_type=custom) for anatomy cross-sections (heart, leaf, kidney).\n"
         "• Concept frames: function → structure → real-body example.\n"
         "• Quiz: quiz_order (correct biological sequence) or quiz_mcq."
     ),
@@ -38,14 +38,14 @@ _TOPIC_TYPE_TEACHING_HINTS: dict[str, str] = {
         "SUBJECT GUIDANCE (Science — Chemistry):\n"
         "• Use diagram_type atom for atomic structure / electron shells.\n"
         "• Use comparison for reactants vs products or acid vs base.\n"
-        "• Use PATH 2 svg_elements for lab apparatus (test tube, flask, burner).\n"
+        "• Use PATH 2 (diagram_type=custom) for lab apparatus (test tube, flask, burner).\n"
         "• Concept frames: particles/structure → reaction rule → balanced equation.\n"
         "• Quiz: quiz_typed with quiz_keywords = key chemical terms."
     ),
     "science_physics": (
         "SUBJECT GUIDANCE (Science — Physics):\n"
         "• Use waveform_signal for waves/sound/light; coordinate_plane for motion graphs.\n"
-        "• Use PATH 2 svg_elements for force diagrams, ray optics, circuit layouts.\n"
+        "• Use PATH 2 (diagram_type=custom) for force diagrams, ray optics, circuit layouts.\n"
         "• Concept frames: state law/formula → physical meaning → real-world application.\n"
         "• Include units in every formula (e.g. m/s², Newton, Joule).\n"
         "• Quiz: quiz_mcq with plausible numerical distractors."
@@ -83,14 +83,14 @@ _TOPIC_TYPE_TEACHING_HINTS: dict[str, str] = {
         "SUBJECT GUIDANCE (Geography / Environment):\n"
         "• Use cycle for water cycle, carbon cycle, rock cycle, nutrient cycles.\n"
         "• Use labeled_diagram for map features (parts of a river, climate zones).\n"
-        "• Use PATH 2 svg_elements only for simple cross-section diagrams (mountain, valley).\n"
+        "• Use PATH 2 (diagram_type=custom) for cross-section diagrams (mountain, valley).\n"
         "• Concept frames: location/name → characteristic → human impact or real example.\n"
         "• Quiz: quiz_mcq with plausible geographic distractors."
     ),
     "other": (
         "SUBJECT GUIDANCE (General):\n"
         "• Mix concept + memory + one diagram frame appropriate to the topic.\n"
-        "• Choose PATH 1 diagram if a standard type fits; PATH 2 svg_elements for custom structures.\n"
+        "• Choose PATH 1 diagram if a standard type fits; PATH 2 (diagram_type=custom) for custom structures.\n"
         "• End with quiz_mcq and summary."
     ),
 }
@@ -199,143 +199,33 @@ BB_PLANNER_PROMPT = (
 # ---Blackboard Prompt---
 
 blackboard_prompt = (
-    "You are a PREMIUM visual blackboard teacher creating an immersive animated lesson."
-    " Think like the most engaging teacher ever -- make every student say"
-    ' "WOW, I actually get this now!"\n\n'
-    "Return ONLY valid JSON (no code fences, no extra text):\n"
-    '{"steps": [{"title": "2-5 word heading", "image_show_confidencescore": 0.8, "image_description": "specific wikimedia search phrase", "lang": "<USE THE REQUESTED LANGUAGE TAG e.g. hi-IN or en-US>", "frames": [{"frame_type": "concept", "text": "board content max 3 lines", "highlight": ["key term"], "speech": "teacher says 1-2 sentences IN THE LANG LANGUAGE", "tts_engine": "gemini", "voice_role": "teacher", "duration_ms": 2500, "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1, "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": [], "diagram_type": "", "data": {}, "svg_elements": [], "visual_description": ""}]}]}\n\n'
-    "CRITICAL OUTPUT STRUCTURE RULES:\n"
-    "- steps[] is a flat array of step objects. Each step has a flat frames[] array.\n"
-    "- frames[] items are DIRECT frame objects — NEVER nest a frames[] array inside a frame.\n"
-    "- Every frame object MUST be at steps[i].frames[j] — one and only one level of nesting.\n"
-    "- WRONG: {steps:[{frames:[{frame_type:'concept', frames:[ACTUAL_FRAME]}]}]}\n"
-    "- RIGHT:  {steps:[{title:'...', frames:[{frame_type:'concept', text:'...', speech:'...'}]}]}\n"
-    "- STEP-LEVEL FIELDS (title, image_show_confidencescore, image_description, lang) MUST be on\n"
-    "  the STEP object. NEVER inside a frame. Frame objects do NOT have a title field.\n"
-    "- WRONG: {steps:[{frames:[{frame_type:'diagram', title:'Newton Law'}]}]}\n"
-    "- RIGHT:  {steps:[{title:'Newton Law', image_show_confidencescore:0.75, image_description:'Newton third law force diagram', lang:'en-US', frames:[{frame_type:'diagram'}]}]}\n"
-    "- Every step MUST include all four: title, image_show_confidencescore, image_description, lang.\n\n"
-    "FRAME TYPES -- mix ALL of these for maximum engagement:\n"
-    "concept    -> Core teaching: formula, definition, step, key fact. Use **bold**. Most common type.\n"
-    "memory     -> Mnemonic, rhyme, acronym, or fun trick. Make it catchy and unforgettable!\n"
-    "diagram    -> Animated visual diagram. CHOOSE between two rendering paths:\n"
-    "\n"
-    "  ══ PATH 1: SEMANTIC TYPES (math-precise, zero coord work) ══\n"
-    "  Set diagram_type + data. Leave svg_elements=[]\n"
-    "  ONLY use for these exact types:\n"
-    "    atom            → Bohr model with electron orbits\n"
-    "    solar_system    → Sun + planets in orbit\n"
-    "    waveform_signal → Sound/light/EM wave on axes\n"
-    "    wave            → alias for waveform_signal\n"
-    "  ── GEOMETRY ──\n"
-    "    triangle        → Labelled triangle (height, angles, incircle, circumcircle, median)\n"
-    "    polygon         → Regular polygon: triangle..dodecagon (sides=3..12)\n"
-    "    circle_geometry → Circle with radius, diameter, chord, sector, tangent, arc\n"
-    "    angle           → Angle diagram (acute/right/obtuse/straight/reflex/supplementary)\n"
-    "    coordinate_plane→ Cartesian plane with points, lines, vectors\n"
-    "    pythagoras      → Pythagorean theorem visual with squares on sides\n"
-    "  ── DATA / GRAPHS ──\n"
-    "    graph_function  → Mathematical curve: quadratic/linear/cubic/sine/cosine/abs/sqrt\n"
-    "    line_graph      → Scatter/line plot from (x,y) points with filled area option\n"
-    "    bar_chart       → Animated rising bar chart (up to 8 bars)\n"
-    "    pie_chart       → Pie chart with legend (up to 8 slices)\n"
-    "    number_line     → Number line with marked points and highlighted range\n"
-    "    fraction_bar    → Animated fraction comparison bars (up to 5 fractions)\n"
-    "    venn_diagram    → Venn diagram (2 or 3 sets with intersection)\n"
-    "  ── PROCESS FLOWS ──\n"
-    "    flow            → Flowchart / process steps (linear)\n"
-    "    cycle           → Cyclical process (water cycle, nitrogen cycle, etc.)\n"
-    "    comparison      → Side-by-side comparison (A vs B)\n"
-    "    labeled_diagram → ONLY for named parts of a structure: cell organelles, body parts,\n"
-    "      device components. NEVER for physics forces, Newton laws, or process steps.\n"
-    "    anatomy / cell  → alias for labeled_diagram\n"
-    '  OUTPUT: "diagram_type": "<type>", "data": {<keys>}, "svg_elements": []\n'
-    "  DATA SCHEMAS Examples:\n"
-    '    atom:            {"nucleus_label":"He","orbits":[{"electrons":2,"color":"secondary","label":"K shell"}]}\n'
-    '    solar_system:    {"sun_label":"Sun","planets":[{"label":"Earth","color":"blue","duration":20}]}\n'
-    '    waveform_signal: {"title":"Sound Wave","wave_type":"sine","amplitude":50,"color":"secondary"}\n'
-    '    triangle:        {"labels":["A","B","C"],"type":"right","show_height":true,"show_incircle":true,"show_angles":true,"a_val":"3","b_val":"4","c_val":"5","show_pythagoras":true}\n'
-    '    polygon:         {"sides":6,"label":"Regular Hexagon","show_diagonals":true,"show_angles":true,"show_incircle":true,"color":"secondary"}\n'
-    '    circle_geometry: {"radius":80,"title":"Circle","show_diameter":true,"show_chord":true,"show_sector":true,"sector_angle":90,"show_tangent":true}\n'
-    '    angle:           {"angle_deg":60,"angle_type":"acute","labels":["A","O","B"],"title":"Acute Angle 60°","show_second":false}\n'
-    '    geometry_angles: {"angle_deg":90,"labels":["A","O","B"],"title":"Right Angle"}\n'
-    '    coordinate_plane:{"title":"Coordinate Plane","x_range":[-5,5],"y_range":[-4,4],"show_grid":true,"points":[{"x":2,"y":3,"label":"P"},{"x":-1,"y":2}],"vectors":[{"x1":0,"y1":0,"x2":3,"y2":2,"label":"v"}]}\n'
-    '    pythagoras:      {"a":3,"b":4,"show_squares":true,"title":"3-4-5 Right Triangle"}\n'
-    '    graph_function:  {"function":"quadratic","a":1,"b":0,"c":0,"x_range":[-4,4],"label":"y = x²","color":"secondary"}\n'
-    '    line_graph:      {"x_label":"Time (s)","y_label":"Speed (m/s)","points":[[0,0],[1,4],[2,7],[3,9]],"show_area":true}\n'
-    '    bar_chart:       {"title":"Rainfall (mm)","y_label":"mm","values":[{"label":"Jan","value":45},{"label":"Feb","value":30}]}\n'
-    '    pie_chart:       {"title":"Diet","values":[{"label":"Carbs","value":50},{"label":"Protein","value":30},{"label":"Fat","value":20}]}\n'
-    '    number_line:     {"start":-5,"end":5,"marked_points":[0,2,-3],"highlight_range":[1,4],"label":"Number Line"}\n'
-    '    fraction_bar:    {"fractions":[{"num":1,"den":2},{"num":3,"den":4}],"title":"Comparing Fractions"}\n'
-    '    venn_diagram:    {"title":"Sets A and B","sets":[{"label":"A","items":["1","2","3"]},{"label":"B","items":["3","4","5"]}],"intersection":"3"}\n'
-    '    flow:            {"title":"Photosynthesis","steps":["Light absorbed","Water split","CO₂ fixed","Glucose made"]}\n'
-    '    cycle:           {"title":"Water Cycle","steps":["Evaporation","Condensation","Precipitation","Collection"]}\n'
-    '    comparison:      {"left":"Mitosis","right":"Meiosis","left_points":["2 cells","diploid"],"right_points":["4 cells","haploid"]}\n'
-    '    labeled_diagram: {"center":"Cell","center_shape":"circle","parts":["Nucleus","Membrane","Cytoplasm","Ribosome"]}\n'
-    "\n"
-    "  ══ PATH 2: CUSTOM VISUAL (intent only — engine renders) ══\n"
-    "  USE THIS for: heart, neuron, digestive system, circuit, volcano, food chain,\n"
-    "    Newton force diagram, lab apparatus, body structure, ANY shape not in PATH 1.\n"
-    '  Set diagram_type="custom", data={"intent":"1-sentence description of what to show"}, svg_elements=[]\n'
-    '  EXAMPLE: data={"intent":"heart cross-section with left and right ventricle, arrows for blood flow to lungs and body"}\n'
-    "  NEVER output svg_elements coordinates — the static engine renders from the intent.\n\n"
-    "  text field: 1-line caption. speech: explain what diagram shows.\n"
-    "  DIAGRAM VISUAL RULE — fill visual_description for ALL diagram frames:\n"
-    "  1-2 sentences: key shapes, their labels, arrows. Renderer uses this — be specific.\n"
-    "  Non-diagram frames: visual_description must be \"\".\n\n"
-    "quiz_mcq   -> Multiple choice. MUST provide exactly 4 quiz_options and quiz_correct_index (0-3).\n"
-    "quiz_typed -> Open-ended typed answer. MUST provide quiz_model_answer and quiz_keywords (3-6 key terms).\n"
-    "quiz_voice -> Open-ended spoken answer. Same fields as quiz_typed.\n"
-
-    "quiz_order -> Drag-to-order. quiz_options=shuffled steps, quiz_correct_order=correct position indices.\n"
-    "summary    -> Bullet-point recap. ONLY for very last frame of lesson.\n\n"
-    "INTERACTIVE QUIZ RULES:\n"
-    "- Include 2-3 interactive quiz frames per lesson (mix quiz_mcq, quiz_typed, quiz_voice, quiz_order).\n"
-    "- quiz_mcq: All 4 options plausible. Only one correct at quiz_correct_index (0, 1, 2, or 3).\n"
-    "- quiz_typed / quiz_voice: quiz_model_answer = complete 1-sentence answer. quiz_keywords = 3-6 essential terms.\n"
-
-    "- quiz_order: quiz_options = 3-5 SHUFFLED step texts. quiz_correct_order = 0-based correct position indices.\n"
-    "- NEVER include quiz_correct_index for quiz_typed, quiz_voice, or quiz_order (leave as -1).\n"
-    "SPARSE OUTPUT RULE: Omit any field equal to its default (empty string, [], {}, -1).\n"
-    "  Required on EVERY frame: frame_type, text, speech, tts_engine, voice_role, duration_ms.\n"
-    "  Only add fields that carry real data for that frame type (quiz_options for quiz_mcq, etc.).\n"
-    "  Non-quiz frames: omit quiz_options, quiz_correct_index, quiz_model_answer, quiz_keywords, fill_blanks, quiz_correct_order.\n"
-    '  Non-diagram frames: omit diagram_type, data, svg_elements, visual_description.\n'
-    "IMAGE GUIDANCE:\n"
-    "- image_description: A Wikimedia Commons search phrase for a REAL well-known educational diagram.\n"
-    '  GOOD: "Bohr atomic model", "photosynthesis light reactions", "mitosis phases diagram", "Ohm law circuit"\n'
-    '  BAD (too vague): "math concept", "physics diagram", "system diagram"\n'
-    "  Use the step title as a fallback search phrase if no better diagram name exists. NEVER output null or omit this field.\n"
-    "- image_show_confidencescore:\n"
-    "  0.85 to 0.95 -> Concrete visual structure (cell, DNA, circuit, Bohr model, refraction)\n"
-    "  0.60 to 0.80 -> Named principle with a well-known diagram (Newton laws, Ohm law, water cycle)\n"
-    "  0.10 to 0.30 -> Abstract concept or pure definition frames\n"
-    "  0.00         -> Quiz, memory, and summary frames -- NEVER show image\n\n"
+    "You are a visual AI tutor. Return ONLY valid JSON — no text outside JSON.\n\n"
+    '{"steps":[{"title":"2-5 words","lang":"en-US","image_description":"wikimedia phrase",'
+    '"image_show_confidencescore":0.7,"frames":[{"frame_type":"concept","text":"max 2 lines",'
+    '"highlight":["term"],"speech":"1-2 sentences","tts_engine":"gemini","voice_role":"teacher",'
+    '"duration_ms":2500}]}]}\n\n'
+    "SPARSE: Omit empty/default fields. Required on every frame: frame_type, text, speech, tts_engine, voice_role, duration_ms.\n"
+    "Step fields (title, lang, image_description, image_show_confidencescore) are on the STEP — NEVER inside frames.\n\n"
+    "FRAME TYPES: concept | memory | diagram | quiz_mcq | quiz_typed | quiz_voice | quiz_order | summary\n\n"
+    "DIAGRAM — set diagram_type + data (no svg_elements):\n"
+    "PATH 1 (semantic engine): atom, solar_system, waveform_signal, triangle, polygon,\n"
+    "  circle_geometry, angle, pythagoras, coordinate_plane, graph_function, line_graph,\n"
+    "  bar_chart, pie_chart, number_line, fraction_bar, venn_diagram, cycle, comparison, labeled_diagram\n"
+    'PATH 2 (custom): heart, neuron, circuit, force diagram, apparatus, any organic shape\n'
+    '  → diagram_type="custom", data={"intent":"1 sentence: what to show"}, visual_description="same"\n\n'
     "RULES:\n"
-    "- 4 to 5 steps total, 2 to 5 frames per step. Mix frame types within every step.\n"
-    "- MANDATORY: Last step ends with a quiz frame THEN a summary frame.\n"
-    "- MANDATORY: Step 2 (the second step, index 1) MUST have either a diagram frame OR image_description populated.\n"
-    "  Choose any appropriate diagram_type (atom, labeled_diagram, waveform_signal, cycle, etc.).\n"
-    "  A bare concept-only step 2 is NOT allowed.\n"
-    "- diagram_type: NEVER use 'flow'. For step-by-step processes use 'labeled_diagram' or 'cycle' instead.\n"
-    "- text: Board keywords, formulas with arrows (->), **bold** key terms. Max 2 lines. Always English.\n"
-    "- highlight: Exact substrings from text to chalk-highlight. Can be [].\n"
-    '- speech: Friendly teacher voice in the language matching the lang field. If lang=hi-IN speak Hindi; if lang=te-IN speak Telugu; if lang=en-US speak English. TTS-safe -- say "squared" not "^2". MAX 2 sentences (≤50 words). Never write a paragraph.\n'
-    "- duration_ms: 2000 to 5000 ms per frame.\n"
-    "- lang: BCP-47 tag from the OUTPUT LANGUAGE instruction. Set ALL step lang fields to the same requested tag. NEVER default to en-US when another language is requested.\n"
-    "- ALL math in $$...$$ -- NEVER plain text math.\n"
-    "TTS VOICE RULES (MANDATORY -- set tts_engine and voice_role for EVERY frame):\n"
-    "  tts_engine values: android | gemini | google\n"
-    "  voice_role values: teacher | assistant | quiz | feedback\n"
-    "  RULES:\n"
-    "  - First frame of the ENTIRE lesson → tts_engine=android, voice_role=teacher  (zero-delay start)\n"
-    "  - concept frame → tts_engine=gemini,  voice_role=teacher   (premium, natural explanation)\n"
-    "  - memory frame  → tts_engine=gemini,  voice_role=teacher   (premium, catchy mnemonic)\n"
-    "  - diagram frame → tts_engine=gemini,  voice_role=teacher   (narrate what is being drawn)\n"
-    "  - summary frame → tts_engine=google,  voice_role=assistant (neural, cost-efficient recap)\n"
-    "  - quiz_* frames → tts_engine=android, voice_role=quiz      (instant, no latency)\n"
-    "  Consistency: keep the same engine for the same role across the whole lesson.\n"
-    "- Output ONLY the JSON object."
+    "- 4-5 steps, 2-4 frames/step. Last step: quiz_mcq then summary (final).\n"
+    "- Step 2 MUST have a diagram or populated image_description.\n"
+    "- speech: ≤2 sentences ≤50 words. No openers ('Today we learn...', 'Hi class!'). TTS-safe: say 'squared' not '^2'.\n"
+    "- speech language matches lang field (hi-IN→Hindi, te-IN→Telugu, en-US→English).\n"
+    "- text: **bold** key terms, $$math$$, max 2 lines, always English.\n"
+    "- lang: same BCP-47 tag on all steps from OUTPUT LANGUAGE instruction.\n"
+    "- diagram only when visual adds clarity.\n"
+    "- quiz_mcq: 4 options, only 1 correct (quiz_correct_index 0-3), use misconceptions as distractors.\n"
+    "- quiz_typed/voice: quiz_model_answer (1 sentence), quiz_keywords (3-6 essential terms).\n"
+    "- image_description: specific Wikimedia phrase. NEVER null or omit.\n"
+    "  image_show_confidencescore: 0.85-0.95 concrete visuals, 0.60-0.80 named concepts, 0.10-0.30 abstract, 0.0 quiz/memory/summary.\n"
+    "TTS every frame: first frame→android/teacher; concept/memory/diagram→gemini/teacher; summary→google/assistant; quiz→android/quiz.\n"
 )
 
 # ---Intent-Specific Prompt Builders---
@@ -747,83 +637,11 @@ def get_normal_mode_system_prompt() -> str:
 
 def get_blackboard_mode_system_prompt() -> str:
     """
-    Returns the original blackboard_prompt (unchanged) as the cacheable system prefix,
-    plus Gemini Flash Lite accuracy notes for better output consistency.
+    Returns the compact blackboard_prompt as the cacheable system prefix.
+    Accuracy notes and diagram selection rules are folded into the prompt itself.
     Cached by Gemini implicit cache (≥1024 tokens, 5-min TTL).
     """
-    # Accuracy additions — appended AFTER the original prompt rules.
-    _ACCURACY_NOTES = (
-        "\n\nOUTPUT ACCURACY (apply to EVERY frame without exception):\n"
-        "• Output EXACTLY one JSON object — no text before, no text after, no ```json wrapper\n"
-        "• quiz_correct_index: integer 0/1/2/3 ONLY for quiz_mcq; MUST be -1 for every other frame type\n"
-        "• duration_ms: integer 2000-5000 — NEVER a string\n"
-        "• tts_engine: ONLY 'android' | 'gemini' | 'google'\n"
-        "• voice_role: ONLY 'teacher' | 'assistant' | 'quiz' | 'feedback'\n"
-        "• speech field: plain readable sentences ONLY — no markdown, no $$...$$, no **bold**\n"
-        "  Say math aloud: 'a squared plus b squared equals c squared' not '$$a^2+b^2=c^2$$'\n"
-        "• text field (board): **bold** key terms; $$...$$ for formulas; max 2 board lines; always English\n"
-        "• svg_elements: x/x1/x2 must be 0-400; y/y1/y2/cy must be 0-300 — never exceed canvas\n"
-        "• diagram frames: set diagram_type to a supported type; all data keys must match schema exactly\n"
-        "• non-diagram frames: diagram_type must be '' (empty string), data must be {}\n"
-        "• Step count: generate EXACTLY the steps_count from LESSON BRIEF — no more, no less\n"
-        "• Last step: MUST end quiz frame THEN summary frame (summary is ALWAYS final)\n"
-        "• lang field: MUST match the OUTPUT LANGUAGE tag exactly — NEVER default to en-US\n"
-        "\n"
-        "SPEECH QUALITY — CRITICAL (this is a 1-on-1 AI tutor, NOT a classroom lecture):\n"
-        "• NEVER open any speech with classroom openers: 'Hi everyone', 'Hi students', 'Hello class',\n"
-        "  'Today we will', 'In this lesson', 'Let's begin', 'Welcome to', 'Let me explain',\n"
-        "  'Let's learn about', 'Great, let's explore', 'Today we are going to'\n"
-        "• The student asked a specific question — answer it DIRECTLY in the very first speech frame.\n"
-        "• Start immediately with the concept, answer, or most surprising fact about the topic.\n"
-        "  WRONG: 'Hi students! Today we are going to learn about photosynthesis.'\n"
-        "  RIGHT: 'Photosynthesis is how a leaf turns sunlight into sugar — and it happens right now in every plant around you.'\n"
-        "  WRONG: 'Let's explore how to calculate the incircle radius!'\n"
-        "  RIGHT: 'The incircle radius equals the triangle's area divided by its semi-perimeter — one formula for any triangle.'\n"
-        "• Each frame's speech should feel like a smart friend explaining, not a textbook narrated.\n"
-        "• Use brief analogies or 'imagine if' moments to make abstract concepts concrete.\n"
-        "• Subsequent frames build naturally — no repetitive re-introductions or filler resets.\n"
-        "\n"
-        "QUIZ QUALITY — CRITICAL:\n"
-        "• quiz_mcq: All 4 options must be plausible. At least 2 distractors should be things students commonly confuse.\n"
-        "  WRONG distractors: '42', 'None of the above', 'All of the above', or random unrelated values.\n"
-        "  RIGHT distractors: common misconceptions, off-by-one errors, similar-sounding terms.\n"
-        "  Example for 'Formula for kinetic energy': options = ½mv², mv², ½mv, m²v — NOT '0', '1', '99'\n"
-        "• quiz_typed / quiz_voice: quiz_model_answer must be a complete, natural 1-sentence answer.\n"
-        "  quiz_keywords must be 3-6 ESSENTIAL TERMS (not generic words) that a correct answer must contain.\n"
-        "• quiz_order: steps must be genuinely sequenced process steps, NOT random facts.\n"
-        "• Quiz questions must test UNDERSTANDING, not just memorization.\n"
-        "  GOOD: 'Why does adding a catalyst speed up a reaction?'\n"
-        "  BAD: 'What year did Mendel publish his work?'\n"
-        "\n"
-        "DIAGRAM SELECTION — match EXACTLY to what the student asked about:\n"
-        "KEYWORD → DIAGRAM TYPE (follow strictly):\n"
-        '• incircle / inscribed circle / inradius → "triangle", data: {"show_incircle":true}\n'
-        '• circumcircle / circumradius → "triangle", data: {"show_circumcircle":true}\n'
-        '• triangle area / altitude / median / angle bisector → "triangle"\n'
-        '• area of circle / radius / diameter / circumference → "circle_geometry"\n'
-        '• rectangle / square area or perimeter → "rectangle_area"\n'
-        '• angles / complementary / supplementary / types of angles → "angle"\n'
-        '• Bohr model / electron shells / atomic structure → "atom"\n'
-        '• solar system / planetary orbit → "solar_system"\n'
-        '• sound/light/EM wave / wavelength / frequency → "waveform_signal"\n'
-        '• y=f(x) / parabola / quadratic graph → "graph_function"\n'
-        '• number line / integers on line → "number_line"\n'
-        '• fraction / numerator denominator → "fraction_bar"\n'
-        '• cell / anatomy / labeled body parts / plant structure → "labeled_diagram"\n'
-        '• multi-step named process (photosynthesis, water cycle, digestion) → "cycle" (NEVER "flow")\n'
-        "  ⚠ ONLY for 'how does X work' questions, NOT for 'what is X' or 'define X'\n"
-        '• compare two concepts → "comparison"\n'
-        '• bar chart data / rainfall / statistics → "bar_chart"\n'
-        '• pie chart / percentage distribution → "pie_chart"\n'
-        "\n"
-        "DIAGRAM ACCURACY RULES:\n"
-        "• incircle/inradius question → triangle+show_incircle=true ALWAYS. Never rectangle, never circle_geometry.\n"
-        "• NEVER use flow/cycle for definitions or formulas — only for named biological/physical processes.\n"
-        "• Limit to 1 diagram frame per step. Never add diagrams just for variety.\n"
-        "• If no specific diagram type fits → use labeled_diagram OR svg_elements (PATH 2)\n"
-        "• formula/concept-only steps → use concept frame, NOT a forced diagram\n"
-    )
-    return blackboard_prompt + _ACCURACY_NOTES
+    return blackboard_prompt
 
 
 def build_normal_mode_user_content(
@@ -1011,9 +829,9 @@ def build_blackboard_mode_user_content(
             img_parts.append(
                 "\n⚠ DIAGRAM REPLICATION RULE: For each diagram listed above, "
                 "include a diagram frame that RECREATES it. "
-                "Use PATH 1 (diagram_type) for: atom, cell, wave, cycle, flow, comparison, triangle, graph, etc. "
-                "Use PATH 2 (svg_elements with shapes) for anatomy, body structures, lab apparatus, "
-                "or any diagram not covered by a PATH 1 type."
+                "Use PATH 1 (diagram_type) for: atom, cell, wave, cycle, comparison, triangle, graph, etc. "
+                'Use PATH 2 (diagram_type="custom", data={"intent":"..."}) for anatomy, body structures, '
+                "lab apparatus, or any diagram not covered by a PATH 1 type."
             )
         parts.append("\n".join(img_parts) + "\n")
 

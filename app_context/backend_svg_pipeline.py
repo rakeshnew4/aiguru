@@ -56,7 +56,7 @@ KEY_REALITIES = [
     "The router and JS engine support some types that the standalone Python renderer registry does not; Blackboard can often render them, while /diagram/generate may coerce or fall back.",
     "Blackboard rendering prefers richer engines before falling back to basic SMIL output.",
     "image_search_titles.py no longer just picks titles; it enriches frames, validates quiz answers, renders diagrams, and stores direct Wikimedia image URLs back into image_description.",
-    "BB main LLM NEVER generates svg_elements coordinates — that is the static engine's job. PATH 2 diagrams use diagram_type='custom' with data={'intent':'...'} and svg_elements=[].",
+    "BB main LLM NEVER generates svg_elements coordinates — that is the static engine's job. PATH 2 diagrams use diagram_type='custom' with data={'intent':'...'} and visual_description set to the same sentence.",
     "image_search_titles.py handles diagram_type='custom' by routing directly to build_llm_svg with data['intent'] as visual_description.",
     "_normalize_frame() in image_search_titles.py fills in all default fields for frames produced by the sparse BB output format (sparse = omit empty/default fields to reduce output tokens).",
     "svg_llm_builder._SYSTEM_PROMPT uses Phase 1 (draw-on reveal) only — no Phase 2 looping animations. max_tokens=4096. Output containing <script> is rejected and retried.",
