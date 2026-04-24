@@ -151,4 +151,6 @@ server/prompt.txt
 
 git pull --rebase origin main
 server/google_tts_serviceaccount.json
+google_service_youtube.json
+server/.env.bak.*
 **/*.pyc

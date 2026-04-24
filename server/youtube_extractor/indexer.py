@@ -1,21 +1,14 @@
-import asyncio
 import logging
-from elasticsearch import AsyncElasticsearch, NotFoundError
-from .config import ES_HOST, ES_INDEX, EMBED_MODEL_NAME, CHUNK_WINDOW_SEC, CHUNK_OVERLAP_SEC
+from elasticsearch import AsyncElasticsearch
+from .config import (
+    ES_HOST, ES_INDEX, EMBED_MODEL_NAME, EMBED_DIMS,
+    VERTEX_SA_JSON, VERTEX_PROJECT, VERTEX_LOCATION,
+    CHUNK_WINDOW_SEC, CHUNK_OVERLAP_SEC,
+)
 
 logger = logging.getLogger(__name__)
 
-_model = None
 _es: AsyncElasticsearch | None = None
-
-
-def _load_model_sync():
-    global _model
-    if _model is None:
-        from sentence_transformers import SentenceTransformer
-        _model = SentenceTransformer(EMBED_MODEL_NAME)
-        logger.info("[yt_extractor] Sentence-transformers model '%s' loaded", EMBED_MODEL_NAME)
-    return _model
 
 
 def get_es() -> AsyncElasticsearch:
@@ -23,6 +16,38 @@ def get_es() -> AsyncElasticsearch:
     if _es is None:
         _es = AsyncElasticsearch([ES_HOST])
     return _es
+
+
+_vertex_model = None
+
+
+def _get_vertex_model():
+    """Lazy-init Vertex AI TextEmbeddingModel with service account credentials."""
+    global _vertex_model
+    if _vertex_model is None:
+        import vertexai
+        from vertexai.language_models import TextEmbeddingModel
+        from google.oauth2 import service_account
+
+        creds = service_account.Credentials.from_service_account_file(
+            VERTEX_SA_JSON,
+            scopes=["https://www.googleapis.com/auth/cloud-platform"],
+        )
+        vertexai.init(project=VERTEX_PROJECT, location=VERTEX_LOCATION, credentials=creds)
+        _vertex_model = TextEmbeddingModel.from_pretrained(EMBED_MODEL_NAME)
+    return _vertex_model
+
+
+def _embed_batch_sync(texts: list[str]) -> list[list[float]]:
+    model = _get_vertex_model()
+    return [e.values for e in model.get_embeddings(texts)]
+
+
+async def embed_texts(texts: list[str]) -> list[list[float]]:
+    """Embed texts using Vertex AI text-embedding-004 (768-dim) via service account."""
+    import asyncio
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, _embed_batch_sync, texts)
 
 
 def chunk_transcript(transcript: list[dict]) -> list[dict]:
@@ -50,13 +75,12 @@ def chunk_transcript(transcript: list[dict]) -> list[dict]:
                 "start_seconds": int(window_start),
                 "end_seconds": int(window_end),
             })
-        # Advance by (window - overlap) seconds
         advance_to = window_start + (CHUNK_WINDOW_SEC - CHUNK_OVERLAP_SEC)
         i_next = i + 1
         while i_next < len(transcript) and transcript[i_next]["start"] < advance_to:
             i_next += 1
         if i_next == i:
-            i_next = i + 1  # safety: always move forward
+            i_next = i + 1
         i = i_next
     return chunks
 
@@ -81,16 +105,15 @@ async def _ensure_index() -> None:
                     "end_seconds": {"type": "integer"},
                     "embedding": {
                         "type": "dense_vector",
-                        "dims": 384,
+                        "dims": EMBED_DIMS,
                         "index": True,
                         "similarity": "cosine",
                     },
                 }
             },
         )
-        logger.info("[yt_extractor] Created ES index '%s'", ES_INDEX)
+        logger.info("[yt_extractor] Created ES index '%s' (dims=%d)", ES_INDEX, EMBED_DIMS)
     except Exception as exc:
-        # Index may have been created concurrently — not fatal
         logger.debug("[yt_extractor] _ensure_index: %s", exc)
 
 
@@ -104,7 +127,7 @@ async def is_video_indexed(video_id: str) -> bool:
 
 
 async def index_video(video_id: str, title: str, transcript: list[dict]) -> bool:
-    """Chunk transcript, embed with sentence-transformers, and bulk-upsert to ES."""
+    """Chunk transcript, embed with Gemini text-embedding-004, and bulk-upsert to ES."""
     if not transcript:
         return False
     try:
@@ -113,12 +136,8 @@ async def index_video(video_id: str, title: str, transcript: list[dict]) -> bool
         if not chunks:
             return False
 
-        loop = asyncio.get_event_loop()
-        model = await loop.run_in_executor(None, _load_model_sync)
         texts = [c["text"] for c in chunks]
-        embeddings = await loop.run_in_executor(
-            None, lambda: model.encode(texts, show_progress_bar=False).tolist()
-        )
+        embeddings = await embed_texts(texts)
 
         es = get_es()
         operations: list[dict] = []
@@ -142,6 +161,5 @@ async def index_video(video_id: str, title: str, transcript: list[dict]) -> bool
 
 
 async def preload_model() -> None:
-    """Warm up the embedding model at server startup to avoid first-request latency."""
-    loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, _load_model_sync)
+    """No-op: Gemini embedding is a remote API, no local model to warm up."""
+    pass

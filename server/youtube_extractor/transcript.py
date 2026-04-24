@@ -21,12 +21,10 @@ async def fetch_transcript(video_id: str) -> list[dict]:
 
 
 def _fetch_sync(video_id: str) -> list[dict]:
-    from youtube_transcript_api import (
-        YouTubeTranscriptApi,
-        TranscriptsDisabled,
-        NoTranscriptFound,
-    )
+    from youtube_transcript_api import YouTubeTranscriptApi
     try:
-        return YouTubeTranscriptApi.get_transcript(video_id, languages=["en", "en-US", "en-GB"])
-    except (TranscriptsDisabled, NoTranscriptFound):
+        api = YouTubeTranscriptApi()
+        raw = api.fetch(video_id, languages=["en", "en-US", "en-GB"])
+        return [{"text": s.text, "start": s.start, "duration": s.duration} for s in raw]
+    except Exception:
         return []

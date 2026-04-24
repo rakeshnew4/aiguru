@@ -37,6 +37,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.webkit.WebView
 import android.webkit.WebSettings
+import android.webkit.JavascriptInterface
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.aiguruapp.student.utils.WikimediaUtils
@@ -1288,6 +1289,8 @@ class BlackboardActivity : AppCompatActivity() {
                 "file:///android_asset/", frame.svgHtml, "text/html", "UTF-8", null
             )
 
+            appendYouTubeClipCard(board, frame.youtubeClip)
+
             stepsScrollView.post { stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }
             if (!isPaused && frame.speech.isNotBlank()) {
                 contentText.postDelayed({ speakFrame(stepIdx, frameIdx) }, 400)
@@ -1354,6 +1357,8 @@ class BlackboardActivity : AppCompatActivity() {
             board.addView(answerView)
             quizRevealBtn = revealBtn
         }
+
+        appendYouTubeClipCard(board, frame.youtubeClip)
 
         val baseSsb = buildFrameText(sanitizeFrameText(frame.text), frame.highlight)
         val textLen = baseSsb.length
@@ -1444,6 +1449,138 @@ class BlackboardActivity : AppCompatActivity() {
         if (!isPaused && frame.speech.isNotBlank()) {
             handWriter.postDelayed({ speakFrame(stepIdx, frameIdx) }, 600)
         }
+    }
+
+    private fun appendYouTubeClipCard(
+        board: LinearLayout,
+        clip: BlackboardGenerator.YouTubeClip?
+    ) {
+        if (clip == null) return
+        val dp = resources.displayMetrics.density
+        val card = TextView(this).apply {
+            text = "📺 Video available • Tap to watch (${clip.startSeconds}s-${clip.endSeconds}s)"
+            textSize = 13f
+            gravity = Gravity.CENTER
+            setTextColor(Color.parseColor("#F5E3A0"))
+            setPadding(
+                (14 * dp).toInt(),
+                (9 * dp).toInt(),
+                (14 * dp).toInt(),
+                (9 * dp).toInt()
+            )
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 18 * dp
+                setColor(Color.parseColor("#1B2C3A"))
+                setStroke((1 * dp).toInt(), Color.parseColor("#4A8FB3"))
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.CENTER_HORIZONTAL
+                topMargin = (10 * dp).toInt()
+                bottomMargin = (8 * dp).toInt()
+            }
+            alpha = 0f
+            setOnClickListener { showYouTubeClipDialog(clip) }
+        }
+        board.addView(card)
+        card.animate().alpha(1f).setDuration(320).start()
+    }
+
+    private fun showYouTubeClipDialog(clip: BlackboardGenerator.YouTubeClip) {
+        val dialog = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+        val root = FrameLayout(this).apply {
+            setBackgroundColor(Color.BLACK)
+        }
+        val webView = WebView(this).apply {
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
+            settings.mediaPlaybackRequiresUserGesture = false
+            settings.loadWithOverviewMode = true
+            settings.useWideViewPort = true
+            settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            setBackgroundColor(Color.BLACK)
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+            addJavascriptInterface(object {
+                @JavascriptInterface
+                fun closePlayer() {
+                    runOnUiThread {
+                        if (dialog.isShowing) dialog.dismiss()
+                    }
+                }
+            }, "AndroidBridge")
+        }
+
+        val closeBtn = TextView(this).apply {
+            text = "✕"
+            textSize = 20f
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.parseColor("#66000000"))
+            }
+            layoutParams = FrameLayout.LayoutParams(
+                (42 * resources.displayMetrics.density).toInt(),
+                (42 * resources.displayMetrics.density).toInt(),
+                Gravity.TOP or Gravity.END
+            ).apply {
+                topMargin = (20 * resources.displayMetrics.density).toInt()
+                rightMargin = (16 * resources.displayMetrics.density).toInt()
+            }
+            setOnClickListener { dialog.dismiss() }
+        }
+
+        root.addView(webView)
+        root.addView(closeBtn)
+
+        dialog.setContentView(root)
+        dialog.setCancelable(true)
+        dialog.window?.setLayout(
+            android.view.WindowManager.LayoutParams.MATCH_PARENT,
+            android.view.WindowManager.LayoutParams.MATCH_PARENT
+        )
+
+        val start = clip.startSeconds.coerceAtLeast(0)
+        val end = clip.endSeconds.coerceAtLeast(start + 1)
+        val closeMs = ((end - start + 1).coerceAtLeast(2) * 1000)
+        val embedUrl = "https://www.youtube.com/embed/${clip.videoId}?autoplay=1&start=$start&playsinline=1&rel=0&modestbranding=1"
+        val html = """
+            <!doctype html>
+            <html>
+            <head>
+              <meta name="viewport" content="width=device-width, initial-scale=1" />
+              <style>
+                html, body { margin: 0; padding: 0; background: #000; width: 100%; height: 100%; overflow: hidden; }
+                #frame { position: fixed; inset: 0; border: 0; width: 100%; height: 100%; }
+              </style>
+            </head>
+            <body>
+              <iframe id="frame" src="$embedUrl" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+              <script>
+                setTimeout(function() {
+                  if (window.AndroidBridge && window.AndroidBridge.closePlayer) {
+                    window.AndroidBridge.closePlayer();
+                  }
+                }, $closeMs);
+              </script>
+            </body>
+            </html>
+        """.trimIndent()
+
+        webView.loadDataWithBaseURL("https://www.youtube.com", html, "text/html", "UTF-8", null)
+
+        dialog.setOnDismissListener {
+            webView.stopLoading()
+            webView.loadUrl("about:blank")
+            webView.destroy()
+        }
+        dialog.show()
     }
 
     /**

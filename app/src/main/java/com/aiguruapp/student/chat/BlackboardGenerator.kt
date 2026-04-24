@@ -64,6 +64,13 @@ object BlackboardGenerator {
         val category: String
     )
 
+    data class YouTubeClip(
+        val videoId: String,
+        val startSeconds: Int,
+        val endSeconds: Int,
+        val title: String
+    )
+
     data class BlackboardFrame(
         val text: String,
         val highlight: List<String> = emptyList(),
@@ -84,7 +91,9 @@ object BlackboardGenerator {
         val fillBlanks: List<String> = emptyList(),
         val quizCorrectOrder: List<Int> = emptyList(),
         // ── diagram frame: self-contained inline SVG ──────────────────────────
-        val svgHtml: String = ""
+        val svgHtml: String = "",
+        // ── YouTube clip (optional — attached server-side for best-match steps) ─
+        val youtubeClip: YouTubeClip? = null
     )
 
     data class BlackboardStep(
@@ -470,6 +479,13 @@ $svgNote$lastFrameNote$langInstruction"""
                 val rawEng   = frameObj.optString("tts_engine", "")
                 val rawRole  = frameObj.optString("voice_role",  "")
                 val (aEng, aRole) = smartAssignTts(fType)
+                val ytObj = frameObj.optJSONObject("youtube_clip")
+                val ytClip = if (ytObj != null) YouTubeClip(
+                    videoId      = ytObj.optString("video_id", ""),
+                    startSeconds = ytObj.optInt("start_seconds", 0),
+                    endSeconds   = ytObj.optInt("end_seconds", 0),
+                    title        = ytObj.optString("title", "")
+                ).takeIf { it.videoId.isNotBlank() } else null
                 BlackboardFrame(
                     text             = frameObj.optString("text", ""),
                     highlight        = hlArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
@@ -485,7 +501,8 @@ $svgNote$lastFrameNote$langInstruction"""
                     quizKeywords     = kwArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
                     fillBlanks       = fillArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
                     quizCorrectOrder = orderArr?.let { a -> (0 until a.length()).map { a.getInt(it) } } ?: emptyList(),
-                    svgHtml          = frameObj.optString("svg_html", "")
+                    svgHtml          = frameObj.optString("svg_html", ""),
+                    youtubeClip      = ytClip
                 )
             }
             BlackboardStep(

@@ -1,6 +1,5 @@
-import asyncio
 import logging
-from .indexer import get_es, _load_model_sync
+from .indexer import get_es, embed_texts
 from .config import ES_INDEX, SCORE_THRESHOLD
 
 logger = logging.getLogger(__name__)
@@ -13,11 +12,7 @@ async def find_best_segment(query: str, video_ids: list[str] | None = None) -> d
     no match is above SCORE_THRESHOLD or ES is unavailable.
     """
     try:
-        loop = asyncio.get_event_loop()
-        model = await loop.run_in_executor(None, _load_model_sync)
-        query_emb: list[float] = await loop.run_in_executor(
-            None, lambda: model.encode([query], show_progress_bar=False)[0].tolist()
-        )
+        query_emb: list[float] = (await embed_texts([query]))[0]
 
         knn_body: dict = {
             "field": "embedding",
