@@ -89,6 +89,12 @@ class Settings(BaseSettings):
     # Set to False only for local development/testing without tokens
     AUTH_REQUIRED: bool = True
 
+    # ── YouTube Extractor (BB mode video enrichment) ──────────────────────────
+    YOUTUBE_API_KEY: str = ""           # Google Cloud Console → YouTube Data API v3
+    ES_HOST: str = "http://localhost:9200"
+    YT_SCORE_THRESHOLD: float = 0.65    # Min cosine similarity to attach a clip
+    YT_ENRICHMENT_TIMEOUT: float = 2.5  # Seconds; clip skipped if exceeded
+
 
     class Config:
         env_file = ".env"

@@ -24,9 +24,24 @@ from app.core.config import settings
 from app.core.logger import get_logger
 from app.core.auth import require_auth, AuthUser
 from app.api.image_search_titles import search_wikimedia_images, get_titles
+try:
+    from youtube_extractor import enrich_steps_with_videos as _yt_enrich
+    _YT_ENABLED = True
+except ImportError:
+    _YT_ENABLED = False
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="", tags=["chat"])
+
+_BB_INTENT_SYSTEM_PROMPT = (
+    "You are a lesson planner. "
+    "Return ONLY a JSON object (no markdown, no fences) with these fields:\n"
+    '  "lesson_title": short engaging title,\n'
+    '  "steps": array of step titles (match the requested count),\n'
+    '  "use_svg": true if the topic needs diagrams (math/science/charts), else false,\n'
+    '  "category": one of "math","science","history","language","general"\n'
+    "Example: {\"lesson_title\":\"Photosynthesis\",\"steps\":[\"What is it?\",\"Light reactions\"],\"use_svg\":false,\"category\":\"science\"}"
+)
 
 
 class ChatRequest(BaseModel):
@@ -108,12 +123,32 @@ def _merge_context_with_image_data(base_context: Any, image_data: Optional[Dict[
     return f"{context_str}\n\n" + "\n\n".join(extra_parts)
 
 
+_GREET_PATTERNS = re.compile(
+    r"^\s*(hi|hello|hey|hii|helo|good\s*(morning|afternoon|evening|night)|"
+    r"thanks|thank\s*you|ok|okay|great|nice|cool|bye|goodbye|see\s*you|"
+    r"howdy|sup|what'?s\s*up|yo)\W*\s*$",
+    re.IGNORECASE,
+)
+
+
+def _rule_based_intent(question: str) -> dict | None:
+    """Returns intent dict for obvious cases, or None to fall through to LLM."""
+    q = question.strip()
+    if len(q) <= 60 and _GREET_PATTERNS.match(q):
+        return {"intent": "greet", "complexity": "low"}
+    return None
+
+
 def _classify_intent(question: str, has_image: bool, last_reply: str) -> dict:
     """
     Fast intent classification using the 'faster' model tier (gemini-2.0-flash).
     Returns {"intent": str, "complexity": str}.
     Falls back to {"intent": "explain", "complexity": "medium"} on any error.
     """
+    fast = _rule_based_intent(question)
+    if fast:
+        logger.info("Intent=%s complexity=%s (rule-based, no LLM call)", fast["intent"], fast["complexity"])
+        return fast
     try:
         classifier_prompt = build_intent_classifier_prompt(
             question=question,
@@ -816,6 +851,40 @@ def _status_frame(message: str, progress: int) -> str:
     return f"data: {json.dumps({'status': message, 'progress': progress})}\n\n"
 
 
+def _attach_video_clips(text_content: str, yt_clips: list) -> str:
+    """Inject youtube_clip into the first concept/diagram frame of each BB step.
+
+    yt_clips is a list aligned with plan steps (index i → clip for step i).
+    Each clip is {video_id, start_seconds, end_seconds, title} or None.
+    Returns text_content unchanged on any parse error.
+    """
+    if not yt_clips:
+        return text_content
+    try:
+        data = json.loads(text_content)
+        steps = data.get("steps", [])
+        attached = 0
+        for i, step in enumerate(steps):
+            if i >= len(yt_clips) or not yt_clips[i]:
+                continue
+            clip = yt_clips[i]
+            for frame in step.get("frames", []):
+                if frame.get("frame_type") in ("concept", "diagram"):
+                    frame["youtube_clip"] = {
+                        "video_id": clip["video_id"],
+                        "start_seconds": clip["start_seconds"],
+                        "end_seconds": clip["end_seconds"],
+                        "title": clip["title"],
+                    }
+                    attached += 1
+                    break  # one clip per step
+        if attached:
+            logger.info("Attached YouTube clips to %d/%d BB steps", attached, len(steps))
+        return json.dumps(data, ensure_ascii=False)
+    except Exception:
+        return text_content
+
+
 @router.post("/chat-stream")
 async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
 
@@ -888,6 +957,11 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     _prefetch_wikimedia(plan.get("image_search_terms", []))
                 )
 
+                # B2b) Start YouTube enrichment in parallel — also runs while LLM generates
+                yt_task = asyncio.ensure_future(
+                    _yt_enrich(req.question, plan)
+                ) if _YT_ENABLED else None
+
                 # B3) Build context-enriched BB prompt
                 prompt = build_bb_main_prompt(
                     context=str(context) if context else "",
@@ -898,6 +972,13 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     lang=lang,
                 )
                 model_tier = _get_model_tier(req.user_plan or "free")
+
+            elif req.mode == "blackboard_intent":
+                # Fast lesson-planner path — no intent classification, no wiki prefetch.
+                # Returns JSON: {lesson_title, steps[], use_svg, category}
+                model_tier = "faster"
+                prompt = req.question  # fallback only; overridden in content section below
+                logger.info("blackboard_intent | model_tier=faster | question_len=%d", len(req.question))
 
             else:
                 # ── NORMAL CHAT PIPELINE ──────────────────────────────────────
@@ -974,8 +1055,11 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     # ── Separate system prompt from user content (enables caching) ──
                     system_prompt = None
                     user_content = prompt
-                    
-                    if req.mode == "normal":
+
+                    if req.mode == "blackboard_intent":
+                        system_prompt = _BB_INTENT_SYSTEM_PROMPT
+                        user_content = req.question  # "Topic: ...\nRequested number of steps: N"
+                    elif req.mode == "normal":
                         system_prompt = get_normal_mode_system_prompt()
                         user_content = build_normal_mode_user_content(
                             context=merged_context,
@@ -1117,6 +1201,16 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     pass
             if req.mode == "blackboard":
                 text_content = _sanitize_bb_response(text_content)
+                # Attach YouTube clips gathered concurrently during LLM call
+                if yt_task is not None:
+                    try:
+                        if yt_task.done():
+                            yt_clips = yt_task.result()
+                        else:
+                            yt_clips = await asyncio.wait_for(yt_task, timeout=0.5)
+                        text_content = _attach_video_clips(text_content, yt_clips)
+                    except Exception:
+                        pass  # clips are best-effort; never block the response
             elif req.mode == "normal":
                 text_content = _sanitize_normal_response(text_content)
 
