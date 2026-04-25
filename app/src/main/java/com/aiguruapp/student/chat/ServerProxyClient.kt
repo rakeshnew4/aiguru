@@ -107,6 +107,7 @@ class ServerProxyClient(
         history: List<String> = emptyList(),
         imageData: JSONObject? = null,
         imageBase64: String? = null,
+        bbFeatures: Map<String, Boolean> = emptyMap(),
         onPageTranscript: ((String) -> Unit)? = null,
         onSuggestBlackboard: ((Boolean) -> Unit)? = null,
         onStatus: ((String, Int) -> Unit)? = null,
@@ -126,6 +127,7 @@ class ServerProxyClient(
             if (userId.isNotBlank()) put("user_id", userId)
             if (imageData != null) put("image_data", imageData)
             if (!imageBase64.isNullOrBlank()) put("image_base64", imageBase64)
+            bbFeatures.forEach { (k, v) -> put(k, v) }
         }
         Log.d(
             "ServerProxyClient",

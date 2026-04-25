@@ -5,7 +5,6 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.app.AlertDialog
 import android.app.Dialog
-import android.webkit.JavascriptInterface
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -117,6 +116,44 @@ class BlackboardActivity : AppCompatActivity() {
         const val EXTRA_IMAGE_BASE64    = "extra_image_base64"
     }
 
+    // ── Session feature config ────────────────────────────────────────────────
+    data class BBSessionConfig(
+        val quizEnabled: Boolean      = true,
+        val videosEnabled: Boolean    = true,
+        val animationsEnabled: Boolean = true,
+        val imagesEnabled: Boolean    = true
+    ) {
+        fun toServerFlags(): Map<String, Boolean> = mapOf(
+            "bb_quiz_enabled"       to quizEnabled,
+            "bb_videos_enabled"     to videosEnabled,
+            "bb_animations_enabled" to animationsEnabled,
+            "bb_images_enabled"     to imagesEnabled
+        )
+        companion object {
+            private const val PREFS = "bb_session_config"
+            fun load(ctx: android.content.Context): BBSessionConfig {
+                val p = ctx.getSharedPreferences(PREFS, MODE_PRIVATE)
+                return BBSessionConfig(
+                    quizEnabled       = p.getBoolean("quiz", true),
+                    videosEnabled     = p.getBoolean("videos", true),
+                    animationsEnabled = p.getBoolean("animations", true),
+                    imagesEnabled     = p.getBoolean("images", true)
+                )
+            }
+            fun save(ctx: android.content.Context, cfg: BBSessionConfig) {
+                ctx.getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                    .putBoolean("quiz",       cfg.quizEnabled)
+                    .putBoolean("videos",     cfg.videosEnabled)
+                    .putBoolean("animations", cfg.animationsEnabled)
+                    .putBoolean("images",     cfg.imagesEnabled)
+                    .apply()
+            }
+        }
+    }
+    private var sessionConfig = BBSessionConfig()
+    // Clips collected during frame rendering; shown as "Related Videos" at session end
+    private val collectedClips = mutableListOf<BlackboardGenerator.YouTubeClip>()
+
     // ── Views ─────────────────────────────────────────────────────────────────
     private lateinit var loadingGroup:    View
     private lateinit var loadingText:     TextView
@@ -211,6 +248,7 @@ class BlackboardActivity : AppCompatActivity() {
     // Quota chip in the top bar
     private lateinit var bbQuotaChip: android.widget.TextView
     private lateinit var saveSessionBtn: TextView
+    private lateinit var bbSettingsBtn:  TextView
     private var sessionAlreadySaved = false
     private lateinit var bbCompletionCard: View
     private lateinit var stepNamesScrollView: android.widget.HorizontalScrollView
@@ -265,6 +303,7 @@ class BlackboardActivity : AppCompatActivity() {
         handWriter      = findViewById(R.id.handWriter)
         bbQuotaChip     = findViewById(R.id.bbQuotaChip)
         saveSessionBtn  = findViewById(R.id.saveSessionBtn)
+        bbSettingsBtn   = findViewById(R.id.bbSettingsBtn)
         publishLessonBtn = findViewById(R.id.publishLessonBtn)
         bbCompletionCard = findViewById(R.id.bbCompletionCard)
         stepNamesScrollView = findViewById(R.id.stepNamesScrollView)
@@ -301,6 +340,8 @@ class BlackboardActivity : AppCompatActivity() {
             finish()
         }
         saveSessionBtn.setOnClickListener { saveCurrentSession() }
+        sessionConfig = BBSessionConfig.load(this)
+        bbSettingsBtn.setOnClickListener { showSettingsDialog() }
         publishLessonBtn.setOnClickListener { publishCurrentLesson() }
         findViewById<TextView>(R.id.completionSaveBtn).setOnClickListener {
             bbCompletionCard.visibility = View.GONE
@@ -455,14 +496,27 @@ class BlackboardActivity : AppCompatActivity() {
                                 return@runOnUiThread
                             }
                             val isReplay = intent.getBooleanExtra(EXTRA_IS_REPLAY, false)
-                            generateSteps(
-                                message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
-                                messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
-                                userId         = userId,
-                                conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
-                                recordSession  = !isReplay,
-                                imageBase64    = intent.getStringExtra(EXTRA_IMAGE_BASE64)
-                            )
+                            if (isReplay) {
+                                generateSteps(
+                                    message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
+                                    messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
+                                    userId         = userId,
+                                    conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
+                                    recordSession  = false,
+                                    imageBase64    = intent.getStringExtra(EXTRA_IMAGE_BASE64)
+                                )
+                            } else {
+                                showPreSessionDialog {
+                                    generateSteps(
+                                        message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
+                                        messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
+                                        userId         = userId,
+                                        conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
+                                        recordSession  = true,
+                                        imageBase64    = intent.getStringExtra(EXTRA_IMAGE_BASE64)
+                                    )
+                                }
+                            }
                         }
                     }
                 } else {
@@ -473,14 +527,16 @@ class BlackboardActivity : AppCompatActivity() {
                         bbCacheId.isNotBlank() -> loadFromGlobalCache(bbCacheId, userId)
                         intent.getBooleanExtra(EXTRA_IS_REPLAY, false) && savedSessionId.isNotBlank() && !userId.isNullOrBlank() ->
                             loadFromSavedSession(savedSessionId, userId)
-                        else -> generateSteps(
-                            message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
-                            messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
-                            userId         = userId,
-                            conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
-                            recordSession  = false,
-                            imageBase64    = intent.getStringExtra(EXTRA_IMAGE_BASE64)
-                        )
+                        else -> showPreSessionDialog {
+                            generateSteps(
+                                message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
+                                messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
+                                userId         = userId,
+                                conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
+                                recordSession  = false,
+                                imageBase64    = intent.getStringExtra(EXTRA_IMAGE_BASE64)
+                            )
+                        }
                     }
                 }
             }
@@ -492,14 +548,16 @@ class BlackboardActivity : AppCompatActivity() {
                     bbCacheId.isNotBlank() -> loadFromGlobalCache(bbCacheId, userId)
                     intent.getBooleanExtra(EXTRA_IS_REPLAY, false) && savedSessionId.isNotBlank() && !userId.isNullOrBlank() ->
                         loadFromSavedSession(savedSessionId, userId)
-                    else -> generateSteps(
-                        message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
-                        messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
-                        userId         = userId,
-                        conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
-                        recordSession  = false,
-                        imageBase64    = intent.getStringExtra(EXTRA_IMAGE_BASE64)
-                    )
+                    else -> showPreSessionDialog {
+                        generateSteps(
+                            message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
+                            messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
+                            userId         = userId,
+                            conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
+                            recordSession  = false,
+                            imageBase64    = intent.getStringExtra(EXTRA_IMAGE_BASE64)
+                        )
+                    }
                 }
             }
     }
@@ -583,6 +641,7 @@ class BlackboardActivity : AppCompatActivity() {
         recordSession: Boolean = false,
         imageBase64: String? = null
     ) {
+        collectedClips.clear()
         lifecycleScope.launch(Dispatchers.IO) {
             // ── Local message cache: skip LLM if this message was already explained ──
             val msgCacheKey = messageId?.takeIf { it.isNotBlank() }
@@ -632,6 +691,7 @@ class BlackboardActivity : AppCompatActivity() {
                         isLastChunk      = isOnlyChunk,
                         imageBase64      = imageBase64,
                         preferredLanguageTag = preferredLanguageTag,
+                        bbFeatures       = sessionConfig.toServerFlags(),
                         onStatus = { statusMsg, _ ->
                             runOnUiThread { loadingText.text = statusMsg }
                         },
@@ -797,6 +857,7 @@ class BlackboardActivity : AppCompatActivity() {
                 previousContext  = contextSummary,
                 isLastChunk      = isLast,
                 preferredLanguageTag = preferredLanguageTag,
+                bbFeatures       = sessionConfig.toServerFlags(),
                 onSuccess = { newSteps ->
                     lifecycleScope.launch(Dispatchers.Main) {
                         steps = steps + newSteps
@@ -1291,7 +1352,7 @@ class BlackboardActivity : AppCompatActivity() {
                 "file:///android_asset/", frame.svgHtml, "text/html", "UTF-8", null
             )
 
-            appendYouTubeClipCard(board, frame.youtubeClip)
+            frame.youtubeClip?.let { if (!collectedClips.any { c -> c.videoId == it.videoId }) collectedClips.add(it) }
             stepsScrollView.post { stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }
             if (!isPaused && frame.speech.isNotBlank()) {
                 contentText.postDelayed({ speakFrame(stepIdx, frameIdx) }, 400)
@@ -1359,7 +1420,7 @@ class BlackboardActivity : AppCompatActivity() {
             quizRevealBtn = revealBtn
         }
 
-        appendYouTubeClipCard(board, frame.youtubeClip)
+        frame.youtubeClip?.let { if (!collectedClips.any { c -> c.videoId == it.videoId }) collectedClips.add(it) }
 
         val baseSsb = buildFrameText(sanitizeFrameText(frame.text), frame.highlight)
         val textLen = baseSsb.length
@@ -1496,6 +1557,115 @@ class BlackboardActivity : AppCompatActivity() {
         }
         board.addView(card)
         card.animate().alpha(1f).setDuration(320).start()
+    }
+
+    // ── Related Videos section — shown at end of lesson ──────────────────────
+    private fun showRelatedVideosSection() {
+        if (collectedClips.isEmpty()) return
+        val dp = resources.displayMetrics.density
+
+        val section = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding((16 * dp).toInt(), (20 * dp).toInt(), (16 * dp).toInt(), (12 * dp).toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (16 * dp).toInt() }
+        }
+
+        val header = TextView(this).apply {
+            text = "📺  Related Videos"
+            textSize = 15f
+            setTextColor(Color.parseColor("#9ABBD8"))
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (10 * dp).toInt() }
+        }
+        section.addView(header)
+
+        fun Int.toMmSs() = "%d:%02d".format(this / 60, this % 60)
+
+        collectedClips.forEachIndexed { idx, clip ->
+            val timeRange = "${clip.startSeconds.toMmSs()} – ${clip.endSeconds.toMmSs()}"
+            val label = buildString {
+                if (clip.title.isNotBlank()) append(clip.title.take(46))
+                else append("Watch clip")
+                if (clip.channel.isNotBlank()) append("\n${clip.channel}")
+                append("  ·  $timeRange")
+            }
+            val card = TextView(this).apply {
+                text = label
+                textSize = 13f
+                setTextColor(Color.parseColor("#F5E3A0"))
+                setPadding((14 * dp).toInt(), (10 * dp).toInt(), (14 * dp).toInt(), (10 * dp).toInt())
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE
+                    cornerRadius = 14 * dp
+                    setColor(Color.parseColor("#1B2C3A"))
+                    setStroke((1 * dp).toInt(), Color.parseColor("#4A8FB3"))
+                }
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { if (idx > 0) topMargin = (8 * dp).toInt() }
+                alpha = 0f
+                setOnClickListener { showYouTubeClipDialog(clip) }
+            }
+            section.addView(card)
+            card.animate().alpha(1f).setStartDelay((idx * 120).toLong()).setDuration(350).start()
+        }
+
+        stepsContainer.addView(section)
+        stepsScrollView.postDelayed({ stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 300)
+    }
+
+    // ── Pre-session settings dialog ───────────────────────────────────────────
+    private fun showPreSessionDialog(onConfirm: () -> Unit) {
+        val labels = arrayOf(
+            "🎯  Interactive quizzes",
+            "🎬  Related videos at end",
+            "🎨  Animated diagrams",
+            "🖼️  Topic images"
+        )
+        val cfg = sessionConfig
+        val checked = booleanArrayOf(cfg.quizEnabled, cfg.videosEnabled, cfg.animationsEnabled, cfg.imagesEnabled)
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Lesson Settings")
+            .setMultiChoiceItems(labels, checked) { _, which, isChecked -> checked[which] = isChecked }
+            .setPositiveButton("Start Lesson") { _, _ ->
+                sessionConfig = BBSessionConfig(checked[0], checked[1], checked[2], checked[3])
+                BBSessionConfig.save(this, sessionConfig)
+                onConfirm()
+            }
+            .setNegativeButton("Cancel") { _, _ -> finish() }
+            .setCancelable(false)
+            .show()
+    }
+
+    // ── Inside-BB settings (gear button) — saves for next session ────────────
+    private fun showSettingsDialog() {
+        val labels = arrayOf(
+            "🎯  Interactive quizzes",
+            "🎬  Related videos at end",
+            "🎨  Animated diagrams",
+            "🖼️  Topic images"
+        )
+        val cfg = sessionConfig
+        val checked = booleanArrayOf(cfg.quizEnabled, cfg.videosEnabled, cfg.animationsEnabled, cfg.imagesEnabled)
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Lesson Settings")
+            .setMessage("Changes apply from your next session.")
+            .setMultiChoiceItems(labels, checked) { _, which, isChecked -> checked[which] = isChecked }
+            .setPositiveButton("Save") { _, _ ->
+                sessionConfig = BBSessionConfig(checked[0], checked[1], checked[2], checked[3])
+                BBSessionConfig.save(this, sessionConfig)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun showYouTubeClipDialog(clip: BlackboardGenerator.YouTubeClip) {
@@ -1856,6 +2026,7 @@ class BlackboardActivity : AppCompatActivity() {
 
     private fun showCompletionCard() {
         if (bbCompletionCard.visibility == View.VISIBLE) return
+        showRelatedVideosSection()
         val subtitle = bbCompletionCard.findViewById<TextView?>(R.id.bbCompletionSubtitle)
         subtitle?.text = "Great job! You covered ${steps.size} step${if (steps.size == 1) "" else "s"}."
         bbCompletionCard.alpha = 0f
@@ -2519,6 +2690,7 @@ class BlackboardActivity : AppCompatActivity() {
                         val isLastFrame = stepIdx == steps.size - 1 &&
                             frameIdx == (steps.lastOrNull()?.frames?.size ?: 1) - 1
                         if (isLastFrame && quizTotal > 0) {
+                            showRelatedVideosSection()
                             stepsScrollView.postDelayed({ showScoreCard() }, 600)
                         } else {
                             stepsScrollView.postDelayed({ advanceFrame() }, 300)

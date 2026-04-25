@@ -216,6 +216,7 @@ object BlackboardGenerator {
         isLastChunk: Boolean = false,
         imageBase64: String? = null,
         preferredLanguageTag: String? = null,
+        bbFeatures: Map<String, Boolean> = emptyMap(),
         onStatus: ((String, Int) -> Unit)? = null,
         onSuccess: (List<BlackboardStep>) -> Unit,
         onError: (String) -> Unit
@@ -272,6 +273,7 @@ $svgNote$lastFrameNote$langInstruction"""
             languageTag  = preferredLanguageTag ?: "en-US",
             history      = emptyList(),
             imageBase64  = imageBase64,
+            bbFeatures   = bbFeatures,
             onToken      = { token -> buffer.append(token) },
             onStatus     = onStatus,
             onDone       = { _, _, _ -> latch.countDown() },

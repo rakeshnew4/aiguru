@@ -72,6 +72,12 @@ class ChatRequest(BaseModel):
     user_plan: Optional[str] = "premium"  # free, premium, pro
     user_id: Optional[str] = None   # Firebase Auth UID for token tracking
 
+    # BB session feature flags (default True = enabled)
+    bb_quiz_enabled: Optional[bool] = True
+    bb_videos_enabled: Optional[bool] = True
+    bb_animations_enabled: Optional[bool] = True
+    bb_images_enabled: Optional[bool] = True
+
 
 def _normalize_images(req: ChatRequest) -> List[str]:
     if req.images:
@@ -956,15 +962,15 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                 )
                 yield _status_frame("🔍 Collecting topic details and context...", 38)
 
-                # B2) Start Wikimedia pre-fetch NOW — runs while BB LLM is running (free)
+                # B2) Start Wikimedia pre-fetch — gated on bb_images_enabled flag
                 wiki_task = asyncio.ensure_future(
                     _prefetch_wikimedia(plan.get("image_search_terms", []))
-                )
+                ) if req.bb_images_enabled is not False else None
 
-                # B2b) Start YouTube enrichment in parallel — also runs while LLM generates
+                # B2b) Start YouTube enrichment — gated on bb_videos_enabled flag
                 yt_task = asyncio.ensure_future(
                     _yt_enrich(req.question, plan)
-                ) if _YT_ENABLED else None
+                ) if (_YT_ENABLED and req.bb_videos_enabled is not False) else None
                 if yt_task is not None:
                     logger.info("BB YouTube enrichment task started | steps=%d", len(plan.get("steps", [])))
                 else:
@@ -1147,13 +1153,15 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
             if req.mode == "blackboard":
                 yield _status_frame("🖼️ Matching visuals to your lesson...", 87)
                 try:
-                    # wiki_task may already be done (pre-fetched while BB LLM ran);
-                    # if still running, send keepalives until it finishes.
-                    while not wiki_task.done():
-                        await asyncio.sleep(2)
-                        if not wiki_task.done():
-                            yield ": ping\n\n"
-                    extra_wiki = wiki_task.result()
+                    # wiki_task is None when bb_images_enabled=False
+                    if wiki_task is not None:
+                        while not wiki_task.done():
+                            await asyncio.sleep(2)
+                            if not wiki_task.done():
+                                yield ": ping\n\n"
+                        extra_wiki = wiki_task.result()
+                    else:
+                        extra_wiki = []
 
                     # get_titles does per-step Wikimedia searches + LLM image picker;
                     # run it as a task so we can interleave keepalive pings.
