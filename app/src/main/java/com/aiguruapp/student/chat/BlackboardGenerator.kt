@@ -61,7 +61,11 @@ object BlackboardGenerator {
         /** One entry per target step, e.g. "Step 1: What is Photosynthesis?" */
         val stepTitles: List<String>,
         val useSvg: Boolean,
-        val category: String
+        val category: String,
+        /** Real-world curiosity question used as the opening hook frame */
+        val hookQuestion: String = "",
+        /** Suggested next topic after this lesson ends */
+        val continuationTopic: String = ""
     )
 
     data class YouTubeClip(
@@ -177,10 +181,12 @@ object BlackboardGenerator {
             val titlesArr = obj.optJSONArray("steps") ?: JSONArray()
             val titles = (0 until titlesArr.length()).map { titlesArr.getString(it) }
             onSuccess(BlackboardIntent(
-                lessonTitle = obj.optString("lesson_title", topic),
-                stepTitles  = titles.ifEmpty { (1..totalSteps).map { "Step $it" } },
-                useSvg      = obj.optBoolean("use_svg", false),
-                category    = obj.optString("category", "general")
+                lessonTitle       = obj.optString("lesson_title", topic),
+                stepTitles        = titles.ifEmpty { (1..totalSteps).map { "Step $it" } },
+                useSvg            = obj.optBoolean("use_svg", false),
+                category          = obj.optString("category", "general"),
+                hookQuestion      = obj.optString("hook_question", ""),
+                continuationTopic = obj.optString("continuation_topic", "")
             ))
         } catch (e: Exception) {
             // Intent parse failure → supply a default outline so generation can still proceed

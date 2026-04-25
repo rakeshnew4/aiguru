@@ -170,7 +170,9 @@ BB_PLANNER_PROMPT = (
     '"image_search_terms":["wikimedia phrase 1","wikimedia phrase 2"],'
     '"question_focus":"one sentence: what EXACTLY the student wants to know or do",'
     '"question_type":"<how_to|definition|calculation|conceptual|comparison|example|problem_solving>",'
-    '"prior_knowledge":"what student already knows from the conversation (empty string if new topic)"}}\n\n'
+    '"prior_knowledge":"what student already knows from the conversation (empty string if new topic)",'
+    '"hook_question":"1 short real-world curiosity question to open the lesson (e.g. Ever noticed why ice floats?)",'
+    '"continuation_topic":"the single most natural next topic to learn after this one (3-6 words, e.g. Condensation and Cloud Formation)"}}\n\n'
     "Rules:\n"
     "- simple (4 steps): single self-contained concept\n"
     "- medium (5 steps): standard topic with 1-2 sub-concepts, or multi-concept/continuation\n"
@@ -232,10 +234,26 @@ blackboard_prompt = (
     "  bar_chart, pie_chart, number_line, fraction_bar, venn_diagram, cycle, comparison, labeled_diagram\n"
     'PATH 2 (custom): heart, neuron, circuit, force diagram, apparatus, any organic shape\n'
     '  → diagram_type="custom", data={"intent":"1 sentence: what to show"}, visual_description="same"\n\n'
+
+    "PSYCHOLOGICAL FLOW (follow this arc every lesson):\n"
+    "1. HOOK — first frame of Step 1 MUST be a real-world curiosity question or surprising fact.\n"
+    "   Good: 'Ever wonder why the sky is blue?' Bad: 'Today we will learn about light.'\n"
+    "   Keep it 1 line. It grabs attention and activates prior knowledge.\n"
+    "2. EXPLAIN + VISUALIZE — explain the concept simply, then show a diagram when it adds clarity.\n"
+    "3. PREDICT + REVEAL — once per lesson, ask 'What do you think happens when...?' (concept frame),\n"
+    "   then immediately follow with the reveal in the next frame. NO user input needed — flow continues.\n"
+    "4. APPLY — each step must have at least one frame anchoring the concept to real life.\n"
+    "   Good: 'That is why puddles disappear after rain.' Keep it to 1 line.\n"
+    "5. CURIOSITY BRIDGE — the SECOND-TO-LAST frame of each step must end with a forward-looking question\n"
+    "   that pulls the student into the next concept. 'But where does this vapor go next? 🌥️'\n"
+    "   This replaces quiz as the primary engagement mechanism in Steps 1–(N-1).\n"
+    "6. LAST STEP — ends with quiz_mcq + summary. Summary frame should answer: 'You now understand X.'\n"
+    "   and hint at what comes next in the subject.\n\n"
+
     "RULES:\n"
     "- 4-5 steps, 2-4 frames/step. Last step: quiz_mcq then summary (final).\n"
     "- Step 2 MUST have a diagram or populated image_description.\n"
-    "- speech: ≤2 sentences ≤50 words. No openers ('Today we learn...', 'Hi class!'). TTS-safe: say 'squared' not '^2'.\n"
+    "- speech: ≤2 sentences ≤50 words. Conversational, calm. No openers ('Today we learn...', 'Hi class!'). TTS-safe: say 'squared' not '^2'.\n"
     "- speech language matches lang field (hi-IN→Hindi, te-IN→Telugu, en-US→English).\n"
     "- text: **bold** key terms, $$math$$, max 2 lines, always English.\n"
     "- lang: same BCP-47 tag on all steps from OUTPUT LANGUAGE instruction.\n"
@@ -522,6 +540,7 @@ def build_bb_main_prompt(
     scope = plan.get("scope", "medium")
     key_concepts = plan.get("key_concepts") or []
     steps_count = max(4, min(6, int(plan.get("steps_count") or 5)))
+    hook_question = (plan.get("hook_question") or "").strip()
 
     concepts_str = ", ".join(str(c) for c in key_concepts) if key_concepts else ""
     # Up to 2000 chars of chapter context so the LLM stays grounded in the textbook
@@ -567,6 +586,8 @@ def build_bb_main_prompt(
     parts.append(f"Topic type: {topic_type} | Scope: {scope}\n")
     if concepts_str:
         parts.append(f"Key concepts to cover (ALL of these): {concepts_str}\n")
+    if hook_question:
+        parts.append(f"HOOK (use this exact question as the very first frame text of Step 1): \"{hook_question}\"\n")
     parts.append(f"Generate EXACTLY {steps_count} steps — no more, no less.\n")
     if _diagram_hint:
         parts.append(_diagram_hint)

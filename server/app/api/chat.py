@@ -46,8 +46,15 @@ _BB_INTENT_SYSTEM_PROMPT = (
     '  "lesson_title": short engaging title,\n'
     '  "steps": array of step titles (match the requested count),\n'
     '  "use_svg": true if the topic needs diagrams (math/science/charts), else false,\n'
-    '  "category": one of "math","science","history","language","general"\n'
-    "Example: {\"lesson_title\":\"Photosynthesis\",\"steps\":[\"What is it?\",\"Light reactions\"],\"use_svg\":false,\"category\":\"science\"}"
+    '  "category": one of "math","science","history","language","general",\n'
+    '  "hook_question": one short real-world curiosity question to open the lesson '
+    '(e.g. "Ever wondered why the sky is blue?"),\n'
+    '  "continuation_topic": the single most logical next topic to learn after this one '
+    '(3-6 words, e.g. "Condensation and Cloud Formation")\n'
+    "Example: {\"lesson_title\":\"Photosynthesis\",\"steps\":[\"What is it?\",\"Light reactions\"],"
+    "\"use_svg\":true,\"category\":\"science\","
+    "\"hook_question\":\"Ever wondered how plants make their own food?\","
+    "\"continuation_topic\":\"Respiration and Energy Release\"}"
 )
 
 

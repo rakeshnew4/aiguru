@@ -2027,6 +2027,7 @@ class BlackboardActivity : AppCompatActivity() {
     private fun showCompletionCard() {
         if (bbCompletionCard.visibility == View.VISIBLE) return
         showRelatedVideosSection()
+        showContinuationCard()
         val subtitle = bbCompletionCard.findViewById<TextView?>(R.id.bbCompletionSubtitle)
         subtitle?.text = "Great job! You covered ${steps.size} step${if (steps.size == 1) "" else "s"}."
         bbCompletionCard.alpha = 0f
@@ -2036,6 +2037,75 @@ class BlackboardActivity : AppCompatActivity() {
         val saveBtn = bbCompletionCard.findViewById<TextView?>(R.id.completionSaveBtn)
         saveBtn?.animate()?.scaleX(1.06f)?.scaleY(1.06f)?.setDuration(300)
             ?.withEndAction { saveBtn.animate().scaleX(1f).scaleY(1f).setDuration(300).start() }?.start()
+    }
+
+    private fun showContinuationCard() {
+        val nextTopic = bbIntent?.continuationTopic?.takeIf { it.isNotBlank() } ?: return
+        val dp = resources.displayMetrics.density
+
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding((16 * dp).toInt(), (14 * dp).toInt(), (16 * dp).toInt(), (14 * dp).toInt())
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 16 * dp
+                setColor(Color.parseColor("#0D1F0D"))
+                setStroke((1 * dp).toInt(), Color.parseColor("#3A7A3A"))
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = (14 * dp).toInt()
+                marginStart = (16 * dp).toInt()
+                marginEnd = (16 * dp).toInt()
+            }
+            alpha = 0f
+        }
+
+        val label = TextView(this).apply {
+            text = "What's next?"
+            textSize = 11f
+            setTextColor(Color.parseColor("#5A9A5A"))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (4 * dp).toInt() }
+        }
+
+        val topicBtn = TextView(this).apply {
+            text = "▶  $nextTopic"
+            textSize = 15f
+            setTextColor(Color.parseColor("#A0E8A0"))
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            setOnClickListener {
+                val userId   = intent.getStringExtra(EXTRA_USER_ID) ?: ""
+                val pageId   = intent.getStringExtra(EXTRA_CONVERSATION_ID) ?: ""
+                val subject  = intent.getStringExtra(EXTRA_SUBJECT) ?: "General"
+                val chapter  = intent.getStringExtra(EXTRA_CHAPTER) ?: "General"
+                val lang     = intent.getStringExtra(EXTRA_LANGUAGE_TAG) ?: "en-US"
+                val duration = intent.getStringExtra(EXTRA_DURATION) ?: ""
+                startActivity(
+                    Intent(this@BlackboardActivity, BlackboardActivity::class.java)
+                        .putExtra(EXTRA_MESSAGE, nextTopic)
+                        .putExtra(EXTRA_USER_ID, userId)
+                        .putExtra(EXTRA_CONVERSATION_ID, pageId)
+                        .putExtra(EXTRA_SUBJECT, subject)
+                        .putExtra(EXTRA_CHAPTER, chapter)
+                        .putExtra(EXTRA_LANGUAGE_TAG, lang)
+                        .putExtra(EXTRA_DURATION, duration)
+                )
+            }
+        }
+
+        card.addView(label)
+        card.addView(topicBtn)
+        stepsContainer.addView(card)
+        card.animate().alpha(1f).setStartDelay(400).setDuration(400).start()
     }
 
     private fun nextStep() = advanceFrame()
@@ -2693,7 +2763,11 @@ class BlackboardActivity : AppCompatActivity() {
                             showRelatedVideosSection()
                             stepsScrollView.postDelayed({ showScoreCard() }, 600)
                         } else {
-                            stepsScrollView.postDelayed({ advanceFrame() }, 300)
+                            // Prediction pause: frames ending with "?" get an 800ms thinking gap
+                            val isPredictionFrame = f?.text?.trimEnd()?.endsWith("?") == true
+                                    && f.frameType == "concept"
+                            val delay = if (isPredictionFrame) 1100L else 300L
+                            stepsScrollView.postDelayed({ advanceFrame() }, delay)
                         }
                     }
                 }
