@@ -1510,6 +1510,9 @@ class BlackboardActivity : AppCompatActivity() {
             settings.loadWithOverviewMode = true
             settings.useWideViewPort = true
             settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            // Override WebView UA — YouTube blocks playback for the default Android WebView UA
+            settings.userAgentString =
+                "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
             setBackgroundColor(Color.BLACK)
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -1557,7 +1560,9 @@ class BlackboardActivity : AppCompatActivity() {
 
         val start = clip.startSeconds.coerceAtLeast(0)
         val closeMs = (clip.clipDurationSeconds.coerceAtLeast(10) + 2) * 1000L
-        val embedUrl = "https://www.youtube.com/embed/${clip.videoId}?autoplay=1&start=$start&playsinline=1&rel=0&modestbranding=1"
+        // youtube-nocookie.com has fewer embed restrictions than youtube.com
+        val embedUrl = "https://www.youtube-nocookie.com/embed/${clip.videoId}" +
+                "?autoplay=1&start=$start&playsinline=1&rel=0&modestbranding=1&enablejsapi=1"
         val html = """
             <!doctype html>
             <html>
@@ -1565,23 +1570,38 @@ class BlackboardActivity : AppCompatActivity() {
               <meta name="viewport" content="width=device-width, initial-scale=1" />
               <style>
                 html, body { margin: 0; padding: 0; background: #000; width: 100%; height: 100%; overflow: hidden; }
-                #frame { position: fixed; inset: 0; border: 0; width: 100%; height: 100%; }
+                #player { position: fixed; inset: 0; border: 0; width: 100%; height: 100%; }
               </style>
             </head>
             <body>
-              <iframe id="frame" src="$embedUrl" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+              <iframe id="player"
+                src="$embedUrl"
+                allow="autoplay; encrypted-media; picture-in-picture"
+                allowfullscreen>
+              </iframe>
               <script>
+                // Auto-close after clip duration
                 setTimeout(function() {
-                  if (window.AndroidBridge && window.AndroidBridge.closePlayer) {
-                    window.AndroidBridge.closePlayer();
-                  }
+                  if (window.AndroidBridge) window.AndroidBridge.closePlayer();
                 }, $closeMs);
+
+                // Also close when YouTube player reports ended (state=0)
+                window.onYouTubeIframeAPIReady = function() {};
+                window.addEventListener('message', function(e) {
+                  try {
+                    var data = JSON.parse(e.data);
+                    if (data.event === 'infoDelivery' && data.info && data.info.playerState === 0) {
+                      if (window.AndroidBridge) window.AndroidBridge.closePlayer();
+                    }
+                  } catch(ex) {}
+                });
               </script>
             </body>
             </html>
         """.trimIndent()
 
-        webView.loadDataWithBaseURL("https://www.youtube.com", html, "text/html", "UTF-8", null)
+        // Base URL must be youtube-nocookie.com so the iframe's origin matches
+        webView.loadDataWithBaseURL("https://www.youtube-nocookie.com", html, "text/html", "UTF-8", null)
 
         dialog.setOnDismissListener {
             webView.stopLoading()

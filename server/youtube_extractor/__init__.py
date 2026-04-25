@@ -55,7 +55,8 @@ async def enrich_steps_with_videos(question: str, plan: dict) -> list[dict]:
     if not isinstance(key_concepts, list):
         key_concepts = [str(key_concepts)]
     concepts_str = " ".join(str(c) for c in key_concepts[:4])
-    base_query = f"{question} {concepts_str}".strip()[:200]
+    # "animated" biases YouTube search toward Khan Academy, TED-Ed, Kurzgesagt, etc.
+    base_query = f"{question} {concepts_str} animated".strip()[:200]
     logger.info("[yt_extractor] base_query='%s'", base_query[:120])
 
     try:
