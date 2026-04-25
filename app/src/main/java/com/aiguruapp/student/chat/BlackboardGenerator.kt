@@ -68,7 +68,10 @@ object BlackboardGenerator {
         val videoId: String,
         val startSeconds: Int,
         val endSeconds: Int,
-        val title: String
+        val title: String,
+        val startUrl: String = "https://www.youtube.com/watch?v=$videoId&t=${startSeconds}s",
+        val clipDurationSeconds: Int = (endSeconds - startSeconds).coerceAtLeast(10),
+        val channel: String = ""
     )
 
     data class BlackboardFrame(
@@ -480,12 +483,21 @@ $svgNote$lastFrameNote$langInstruction"""
                 val rawRole  = frameObj.optString("voice_role",  "")
                 val (aEng, aRole) = smartAssignTts(fType)
                 val ytObj = frameObj.optJSONObject("youtube_clip")
-                val ytClip = if (ytObj != null) YouTubeClip(
-                    videoId      = ytObj.optString("video_id", ""),
-                    startSeconds = ytObj.optInt("start_seconds", 0),
-                    endSeconds   = ytObj.optInt("end_seconds", 0),
-                    title        = ytObj.optString("title", "")
-                ).takeIf { it.videoId.isNotBlank() } else null
+                val ytClip = if (ytObj != null) {
+                    val vid   = ytObj.optString("video_id", "")
+                    val start = ytObj.optInt("start_seconds", 0)
+                    val end   = ytObj.optInt("end_seconds", 0)
+                    val defUrl = "https://www.youtube.com/watch?v=$vid&t=${start}s"
+                    YouTubeClip(
+                        videoId             = vid,
+                        startSeconds        = start,
+                        endSeconds          = end,
+                        title               = ytObj.optString("title", ""),
+                        startUrl            = ytObj.optString("start_url", defUrl).ifBlank { defUrl },
+                        clipDurationSeconds = ytObj.optInt("clip_duration_seconds", (end - start).coerceAtLeast(10)),
+                        channel             = ytObj.optString("channel", "")
+                    ).takeIf { it.videoId.isNotBlank() }
+                } else null
                 BlackboardFrame(
                     text             = frameObj.optString("text", ""),
                     highlight        = hlArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),

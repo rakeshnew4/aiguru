@@ -1292,8 +1292,6 @@ class BlackboardActivity : AppCompatActivity() {
             )
 
             appendYouTubeClipCard(board, frame.youtubeClip)
-
-            frame.youtubeClip?.let { addYouTubeClipCard(it, board) }
             stepsScrollView.post { stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }
             if (!isPaused && frame.speech.isNotBlank()) {
                 contentText.postDelayed({ speakFrame(stepIdx, frameIdx) }, 400)
@@ -1460,8 +1458,16 @@ class BlackboardActivity : AppCompatActivity() {
     ) {
         if (clip == null) return
         val dp = resources.displayMetrics.density
+        fun Int.toMmSs() = "%d:%02d".format(this / 60, this % 60)
+        val timeRange = "${clip.startSeconds.toMmSs()} – ${clip.endSeconds.toMmSs()}"
+        val cardLabel = buildString {
+            append("📺  ")
+            if (clip.title.isNotBlank()) append(clip.title.take(40))
+            else append("Watch video clip")
+            append("  •  $timeRange")
+        }
         val card = TextView(this).apply {
-            text = "📺 Video available • Tap to watch (${clip.startSeconds}s-${clip.endSeconds}s)"
+            text = cardLabel
             textSize = 13f
             gravity = Gravity.CENTER
             setTextColor(Color.parseColor("#F5E3A0"))
@@ -1550,8 +1556,7 @@ class BlackboardActivity : AppCompatActivity() {
         )
 
         val start = clip.startSeconds.coerceAtLeast(0)
-        val end = clip.endSeconds.coerceAtLeast(start + 1)
-        val closeMs = ((end - start + 1).coerceAtLeast(2) * 1000)
+        val closeMs = (clip.clipDurationSeconds.coerceAtLeast(10) + 2) * 1000L
         val embedUrl = "https://www.youtube.com/embed/${clip.videoId}?autoplay=1&start=$start&playsinline=1&rel=0&modestbranding=1"
         val html = """
             <!doctype html>

@@ -44,83 +44,81 @@ async def _process_video(video: dict) -> bool:
     return await index_video(video_id, video["title"], transcript)
 
 
-async def enrich_steps_with_videos(question: str, plan: dict) -> list[dict | None]:
+async def enrich_steps_with_videos(question: str, plan: dict) -> list[dict]:
     """Search YouTube, index transcripts, find at most 1-2 best clips for the session.
 
-    Returns a sparse list aligned with plan['steps']:
-    - At most 2 non-None entries (the best-matched steps only).
-    - Thresholds: first clip ≥ 0.65, second clip ≥ 0.72 and meaningfully different.
+    Returns a flat list of at most 2 decorated clip dicts (NOT step-aligned).
+    _attach_video_clips injects them into the first concept/diagram frames it finds.
+    Thresholds: first clip ≥ 0.65, second clip ≥ 0.72 and meaningfully different.
     """
-    step_titles: list[str] = plan.get("steps", [])
-    if not step_titles:
-        return []
-
-    results: list[dict | None] = [None] * len(step_titles)
-
-    kc = plan.get("key_concepts", "")
-    if isinstance(kc, list):
-        kc = " ".join(str(c) for c in kc)
-    base_query = f"{question} {kc}".strip()[:200]
+    key_concepts: list = plan.get("key_concepts") or []
+    if not isinstance(key_concepts, list):
+        key_concepts = [str(key_concepts)]
+    concepts_str = " ".join(str(c) for c in key_concepts[:4])
+    base_query = f"{question} {concepts_str}".strip()[:200]
     logger.info("[yt_extractor] base_query='%s'", base_query[:120])
 
     try:
         videos = await search_videos(base_query, max_results=3)
         if not videos:
             logger.info("[yt_extractor] No YouTube results for: %s", base_query[:80])
-            return results
+            return []
         logger.info("[yt_extractor] Found %d videos: %s", len(videos), [v['video_id'] for v in videos])
-        video_lookup = {video["video_id"]: video for video in videos}
+        video_lookup = {v["video_id"]: v for v in videos}
 
         await asyncio.gather(*[_process_video(v) for v in videos], return_exceptions=True)
         video_ids = [v["video_id"] for v in videos]
 
-        # Find best segment per step concurrently (uses SCORE_THRESHOLD from config)
+        # Query per concept + the full question for diversity
+        queries = [question] + [f"{question} {c}" for c in key_concepts[:3]]
         raw_clips = await asyncio.gather(
-            *[find_best_segment(title, video_ids) for title in step_titles],
+            *[find_best_segment(q, video_ids) for q in queries],
             return_exceptions=True,
         )
 
-        # Collect (step_idx, clip) candidates with score ≥ _MIN_SCORE
-        candidates: list[tuple[int, dict]] = [
-            (i, clip)
-            for i, clip in enumerate(raw_clips)
-            if isinstance(clip, dict) and clip.get("score", 0) >= _MIN_SCORE
-        ]
-        candidates.sort(key=lambda x: x[1]["score"], reverse=True)
+        # Deduplicate by video+timestamp, filter by _MIN_SCORE
+        seen: set[str] = set()
+        candidates: list[dict] = []
+        for clip in raw_clips:
+            if not isinstance(clip, dict):
+                continue
+            uid = f"{clip['video_id']}_{clip['start_seconds']}"
+            if uid in seen or clip.get("score", 0) < _MIN_SCORE:
+                continue
+            seen.add(uid)
+            candidates.append(clip)
+        candidates.sort(key=lambda c: c["score"], reverse=True)
 
         if not candidates:
             logger.info("[yt_extractor] No clips above threshold for: %s", base_query[:60])
-            return results
+            return []
 
-        # Always include the best clip
-        best_idx, best_clip = candidates[0]
-        results[best_idx] = _decorate_clip(best_clip, video_lookup)
+        result: list[dict] = []
+
+        best = candidates[0]
+        result.append(_decorate_clip(best, video_lookup))
         logger.info(
-            "[yt_extractor] Best clip: step=%d score=%.3f video=%s t=%d-%ds",
-            best_idx, best_clip["score"], best_clip["video_id"],
-            best_clip["start_seconds"], best_clip["end_seconds"],
+            "[yt_extractor] Best clip: score=%.3f video=%s t=%d-%ds",
+            best["score"], best["video_id"], best["start_seconds"], best["end_seconds"],
         )
 
-        # Optionally include a second clip if it scores high enough and is distinct
-        for idx, clip in candidates[1:]:
-            if clip.get("score", 0) < _HIGH_SCORE:
+        for clip in candidates[1:]:
+            if clip["score"] < _HIGH_SCORE:
                 break
-            same_video = clip["video_id"] == best_clip["video_id"]
-            gap = abs(clip["start_seconds"] - best_clip["start_seconds"])
+            same_video = clip["video_id"] == best["video_id"]
+            gap = abs(clip["start_seconds"] - best["start_seconds"])
             if same_video and gap < _MIN_GAP_SECONDS:
-                continue  # too close to the first clip on the same video
-            results[idx] = _decorate_clip(clip, video_lookup)
+                continue
+            result.append(_decorate_clip(clip, video_lookup))
             logger.info(
-                "[yt_extractor] Second clip: step=%d score=%.3f video=%s t=%d-%ds",
-                idx, clip["score"], clip["video_id"],
-                clip["start_seconds"], clip["end_seconds"],
+                "[yt_extractor] Second clip: score=%.3f video=%s t=%d-%ds",
+                clip["score"], clip["video_id"], clip["start_seconds"], clip["end_seconds"],
             )
-            break  # max 2 total
+            break
 
-        found = sum(1 for r in results if r)
-        logger.info("[yt_extractor] Attached %d clip(s) across %d steps", found, len(step_titles))
+        logger.info("[yt_extractor] Returning %d clip(s) for session", len(result))
+        return result
 
     except Exception as exc:
         logger.warning("[yt_extractor] enrich_steps_with_videos failed: %s", exc)
-
-    return results
+        return []

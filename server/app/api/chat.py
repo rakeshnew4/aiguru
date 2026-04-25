@@ -859,10 +859,11 @@ def _status_frame(message: str, progress: int) -> str:
 
 
 def _attach_video_clips(text_content: str, yt_clips: list) -> str:
-    """Inject youtube_clip into the first concept/diagram frame of each BB step.
+    """Inject youtube_clip into concept/diagram frames across BB steps.
 
-    yt_clips is a list aligned with plan steps (index i → clip for step i).
-    Each clip is {video_id, start_seconds, end_seconds, title} or None.
+    yt_clips is a flat list (max 2) returned by enrich_steps_with_videos.
+    Clips are injected into the first concept/diagram frame found in each step,
+    spreading across steps so clip 0 lands in an earlier step, clip 1 in a later one.
     Returns text_content unchanged on any parse error.
     """
     if not yt_clips:
@@ -870,18 +871,18 @@ def _attach_video_clips(text_content: str, yt_clips: list) -> str:
     try:
         data = json.loads(text_content)
         steps = data.get("steps", [])
+        clip_idx = 0
         attached = 0
-        for i, step in enumerate(steps):
-            if i >= len(yt_clips) or not yt_clips[i]:
-                continue
-            clip = yt_clips[i]
+        for step in steps:
+            if clip_idx >= len(yt_clips):
+                break
             for frame in step.get("frames", []):
                 if frame.get("frame_type") in ("concept", "diagram"):
-                    # Pass all decorated fields; drop internal score
-                    frame["youtube_clip"] = {k: v for k, v in clip.items() if k != "score"}
+                    frame["youtube_clip"] = {k: v for k, v in yt_clips[clip_idx].items() if k != "score"}
                     attached += 1
-                    break  # one clip per step
-        logger.info("Attached YouTube clips to %d/%d BB steps", attached, len(steps))
+                    clip_idx += 1
+                    break  # one clip per step, move to next step
+        logger.info("Attached %d/%d YouTube clip(s) to BB steps", attached, len(yt_clips))
         return json.dumps(data, ensure_ascii=False)
     except Exception as exc:
         logger.warning("YouTube clip attachment parse failed: %s", exc)

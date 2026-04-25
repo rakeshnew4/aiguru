@@ -35,39 +35,16 @@ TTS every frame: first frame→android/teacher; concept/memory/diagram→gemini/
 
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student question: Topic: How heat engine works
-Lesson title: How Heat Engines Work
-Category: science
-
-
-CONTINUATION — DO NOT repeat anything already taught.
-Student's original question: How heat engine works
-
-Steps ALREADY TAUGHT (do NOT repeat or reintroduce these):
-  1. Thermal Energy Basics — "Thermal energy is the energy created by the fast movement of tiny molecules. When particle"
-  2. Intake and Compression — "First, the engine sucks in a mix of air and fuel. Then, it squeezes that mixture into a ve"
-  3. Combustion and Power — "A tiny spark ignites the fuel. This causes a mini explosion that pushes the piston down wi"
-
-Total steps covered so far: 3 / 4
-Continue from step 4. Build on what was taught — go deeper, give examples, advance the lesson.
-
-Now continue teaching the NEXT steps listed below. Build on what was already covered — go deeper, add detail, advance the lesson. Do NOT reintroduce or re-explain concepts from the above steps.
-
-Generate EXACTLY 1 steps with APPROXIMATELY 3 frames each.
-Steps to generate in this batch:
-- Exhaust and Cycle Completion
-
-This topic benefits from SVG diagrams — use at least one diagram frame per step.
-The very last frame of the last step MUST be a summary frame recapping the entire lesson.
+Student question: explain photosynthesis
 Student level: Class 5
-Topic type: science_physics | Scope: medium
-Key concepts to cover (ALL of these): Heat input, Mechanical work output, Energy conversion, Exhaust
-Generate EXACTLY 5 steps — no more, no less.
+Topic type: science_biology | Scope: simple
+Key concepts to cover (ALL of these): chlorophyll, sunlight energy, carbon dioxide and water, glucose and oxygen
+Generate EXACTLY 4 steps — no more, no less.
 
-DIAGRAM RECOMMENDATION: This topic likely suits a "cycle" diagram (confidence 85%). If this is a standard math/science type, use diagram_type="cycle". If it needs a custom structure (anatomy, apparatus, body parts), use PATH 2 (svg_elements) instead.
+DIAGRAM RECOMMENDATION: This topic likely suits a "leaf_anatomy" diagram (confidence 97%). If this is a standard math/science type, use diagram_type="leaf_anatomy". If it needs a custom structure (anatomy, apparatus, body parts), use PATH 2 (svg_elements) instead.
 
 CHAPTER CONTEXT (use this as the primary source — ground the lesson here):
-Context for page blackboard__chunk
+Context for page test
 
 ---END LESSON BRIEF---
 
