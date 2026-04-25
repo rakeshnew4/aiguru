@@ -126,7 +126,13 @@ def create_user_if_missing(
         "tokens_this_month": 0,
         "input_tokens_this_month": 0,
         "output_tokens_this_month": 0,
+        "tokens_lifetime": 0,
         "tokens_updated_at": now,
+        # ── TTS counters ──────────────────────────────────────────────────────
+        "tts_chars_today": 0,
+        "tts_chars_this_month": 0,
+        "tts_chars_lifetime": 0,
+        "tts_updated_at": now,
         # ── Referral ─────────────────────────────────────────────────────────
         "referredBy": "",
         "bonus_questions_today": 0,
@@ -271,7 +277,7 @@ def record_tokens(
         logger.warning("record_tokens: read failed for uid=%s: %s", uid, exc)
 
     if needs_day_reset:
-        # New UTC day — replace today's counters, accumulate monthly
+        # New UTC day — replace daily counters, accumulate monthly + lifetime
         ref.set({
             "tokens_today": total_tokens,
             "input_tokens_today": input_tokens,
@@ -279,11 +285,12 @@ def record_tokens(
             "tokens_this_month": Increment(total_tokens),
             "input_tokens_this_month": Increment(input_tokens),
             "output_tokens_this_month": Increment(output_tokens),
+            "tokens_lifetime": Increment(total_tokens),
             "tokens_updated_at": now,
             "updated_at": now,
         }, merge=True)
     else:
-        # Same day — increment both daily and monthly
+        # Same day — increment daily, monthly, and lifetime
         ref.set({
             "tokens_today": Increment(total_tokens),
             "input_tokens_today": Increment(input_tokens),
@@ -291,6 +298,7 @@ def record_tokens(
             "tokens_this_month": Increment(total_tokens),
             "input_tokens_this_month": Increment(input_tokens),
             "output_tokens_this_month": Increment(output_tokens),
+            "tokens_lifetime": Increment(total_tokens),
             "tokens_updated_at": now,
             "updated_at": now,
         }, merge=True)
@@ -299,6 +307,83 @@ def record_tokens(
         "record_tokens: uid=%s in=%d out=%d total=%d day_reset=%s",
         uid, input_tokens, output_tokens, total_tokens, needs_day_reset,
     )
+
+    # Award 1 credit per 100 tokens consumed (fire-and-forget)
+    credits_earned = total_tokens // 100
+    if credits_earned > 0:
+        _award_credits_from_usage(db, uid, credits_earned, "token_usage", total_tokens)
+
+
+def record_tts_chars(uid: str, char_count: int) -> None:
+    """
+    Track TTS character usage and award 1 credit per 100 chars synthesized.
+    Mirrors the day-rollover logic of record_tokens().
+    """
+    if not uid or uid == "guest_user" or char_count <= 0:
+        return
+
+    db = _get_db()
+    if db is None:
+        return
+
+    now = _now_ms()
+    ref = db.collection("users_table").document(uid)
+
+    needs_day_reset = False
+    try:
+        doc = ref.get()
+        if doc.exists:
+            data = doc.to_dict() or {}
+            last_ms = data.get("tts_updated_at", 0)
+            if last_ms > 0:
+                last_day = datetime.fromtimestamp(last_ms / 1000, tz=timezone.utc).date()
+                today_date = datetime.now(tz=timezone.utc).date()
+                needs_day_reset = last_day < today_date
+    except Exception as exc:
+        logger.warning("record_tts_chars: read failed uid=%s: %s", uid, exc)
+
+    if needs_day_reset:
+        ref.set({
+            "tts_chars_today": char_count,
+            "tts_chars_this_month": Increment(char_count),
+            "tts_chars_lifetime": Increment(char_count),
+            "tts_updated_at": now,
+        }, merge=True)
+    else:
+        ref.set({
+            "tts_chars_today": Increment(char_count),
+            "tts_chars_this_month": Increment(char_count),
+            "tts_chars_lifetime": Increment(char_count),
+            "tts_updated_at": now,
+        }, merge=True)
+
+    credits_earned = char_count // 100
+    if credits_earned > 0:
+        _award_credits_from_usage(db, uid, credits_earned, "tts_usage", char_count)
+
+    logger.debug("record_tts_chars: uid=%s chars=%d day_reset=%s", uid, char_count, needs_day_reset)
+
+
+def _award_credits_from_usage(db, uid: str, amount: int, usage_type: str, units: int) -> None:
+    """Award credits from token/TTS consumption. Atomic Firestore write."""
+    if amount <= 0:
+        return
+    try:
+        now = _now_ms()
+        db.collection("user_credits").document(uid).set(
+            {"balance": Increment(amount), "lifetime_earned": Increment(amount), "last_updated": now},
+            merge=True,
+        )
+        db.collection("credit_transactions").document().set({
+            "uid": uid,
+            "amount": amount,
+            "type": usage_type,
+            "source_id": "",
+            "description": f"+{amount} credits ({units} {'tokens' if usage_type == 'token_usage' else 'chars'})",
+            "created_at": now,
+        })
+    except Exception as exc:
+        logger.warning("_award_credits_from_usage uid=%s type=%s: %s", uid, usage_type, exc)
 
 
 # ── Activity Logging ──────────────────────────────────────────────────────────

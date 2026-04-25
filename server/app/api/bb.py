@@ -14,8 +14,11 @@ from typing import List
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
+import asyncio
+
 from app.core.auth import require_auth, AuthUser
 from app.services.llm_service import generate_response
+from app.services import user_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/bb", tags=["blackboard"])
@@ -59,6 +62,16 @@ async def grade_answer(
     try:
         result = generate_response(prompt=prompt, tier="faster")
         response_text = result.get("text", "")
+        # Track tokens from grading call
+        tokens = result.get("tokens", {})
+        if tokens:
+            asyncio.get_event_loop().run_in_executor(
+                None, user_service.record_tokens,
+                auth.uid,
+                tokens.get("inputTokens", 0),
+                tokens.get("outputTokens", 0),
+                tokens.get("totalTokens", 0),
+            )
         match = re.search(r'\{.*\}', response_text, re.DOTALL)
         if match:
             data = json.loads(match.group())

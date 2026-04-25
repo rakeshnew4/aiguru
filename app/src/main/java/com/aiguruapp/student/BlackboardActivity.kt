@@ -67,8 +67,10 @@ import io.noties.markwon.Markwon
 import io.noties.markwon.ext.latex.JLatexMathPlugin
 import io.noties.markwon.inlineparser.MarkwonInlineParserPlugin
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.util.Locale
+import com.aiguruapp.student.daily.DailyQuestionsManager
 
 /**
  * Full-screen "blackboard" lesson.
@@ -2064,10 +2066,10 @@ class BlackboardActivity : AppCompatActivity() {
         val subject = intent.getStringExtra(EXTRA_SUBJECT) ?: "General"
         val topic = currentTopic
         val dailyQId = intent.getStringExtra("daily_question_id").orEmpty()
-        kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            com.aiguruapp.student.daily.DailyQuestionsManager.recordInterest(subject, listOf(topic))
+        GlobalScope.launch(Dispatchers.IO) {
+            DailyQuestionsManager.recordInterest(subject, listOf(topic))
             if (dailyQId.isNotBlank()) {
-                com.aiguruapp.student.daily.DailyQuestionsManager.completeQuestion(dailyQId)
+                DailyQuestionsManager.completeQuestion(dailyQId)
             }
         }
         val subtitle = bbCompletionCard.findViewById<TextView?>(R.id.bbCompletionSubtitle)

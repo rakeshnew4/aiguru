@@ -26,6 +26,7 @@ from google.cloud import texttospeech
 from app.core.auth import require_auth, AuthUser
 from app.core.config import settings
 from app.core.logger import get_logger
+from app.services import user_service
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/api/tts", tags=["tts"])
@@ -200,8 +201,14 @@ async def synthesize(
         logger.error(f"All TTS providers failed uid={auth.uid} lang={req.language_code}")
         raise HTTPException(status_code=503, detail="TTS unavailable")
 
+    # Track chars synthesized + award 1 credit per 100 chars (fire-and-forget)
+    import asyncio
+    asyncio.get_event_loop().run_in_executor(
+        None, user_service.record_tts_chars, auth.uid, len(text)
+    )
+
     return Response(content=mp3, media_type="audio/mpeg",
-                    headers={"X-TTS-Bytes": str(len(mp3))})
+                    headers={"X-TTS-Bytes": str(len(mp3)), "X-TTS-Chars": str(len(text))})
 
 
 @router.get("/health")

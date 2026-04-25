@@ -38,19 +38,26 @@ PLANS = {
         "planId": "free",
         "name": "Free",
         "price_inr": 0,
-        "duration_days": 0,  # forever
+        "duration_days": 0,  # never expires
         "limits": {
+            # ── Daily session gates ───────────────────────────────────────────
             "daily_chat_questions": 12,
             "daily_bb_sessions": 2,
+            # ── Monthly token budget (0 = unlimited) ─────────────────────────
+            # 1 credit = 100 LLM tokens.  Free ≈ 500 credits worth of tokens.
+            "monthly_token_limit": 50_000,          # ≈ 500 credits earned
+            "monthly_tts_char_limit": 10_000,       # ≈ 100 credits earned
+            # ── Feature flags ─────────────────────────────────────────────────
             "tts_enabled": True,
             "ai_tts_enabled": False,
             "blackboard_enabled": True,
             "image_upload_enabled": False,
             "quiz_enabled": True,
-            "credits_on_activation": 0,
+            # ── Credit bonuses ────────────────────────────────────────────────
+            "credits_on_activation": 50,            # one-time signup bonus
             "monthly_bonus_credits": 0,
         },
-        "description": "Basic access with daily limits",
+        "description": "Basic access — earn credits from every lesson",
         "active": True,
     },
     "basic": {
@@ -61,6 +68,8 @@ PLANS = {
         "limits": {
             "daily_chat_questions": 50,
             "daily_bb_sessions": 10,
+            "monthly_token_limit": 300_000,         # ≈ 3 000 credits earned
+            "monthly_tts_char_limit": 100_000,      # ≈ 1 000 credits earned
             "tts_enabled": True,
             "ai_tts_enabled": True,
             "blackboard_enabled": True,
@@ -69,7 +78,7 @@ PLANS = {
             "credits_on_activation": 100,
             "monthly_bonus_credits": 50,
         },
-        "description": "Enhanced limits with AI TTS and image uploads",
+        "description": "Enhanced limits with AI TTS, image uploads, and bonus credits",
         "active": True,
     },
     "pro": {
@@ -78,8 +87,10 @@ PLANS = {
         "price_inr": 249,
         "duration_days": 30,
         "limits": {
-            "daily_chat_questions": 0,       # 0 = unlimited
-            "daily_bb_sessions": 0,          # 0 = unlimited
+            "daily_chat_questions": 0,              # 0 = unlimited
+            "daily_bb_sessions": 0,
+            "monthly_token_limit": 0,               # unlimited
+            "monthly_tts_char_limit": 0,            # unlimited
             "tts_enabled": True,
             "ai_tts_enabled": True,
             "blackboard_enabled": True,
@@ -88,7 +99,7 @@ PLANS = {
             "credits_on_activation": 300,
             "monthly_bonus_credits": 150,
         },
-        "description": "Unlimited access with all features",
+        "description": "Unlimited access — all features, maximum credit earnings",
         "active": True,
     },
     "school": {
@@ -99,6 +110,8 @@ PLANS = {
         "limits": {
             "daily_chat_questions": 0,
             "daily_bb_sessions": 0,
+            "monthly_token_limit": 0,
+            "monthly_tts_char_limit": 0,
             "tts_enabled": True,
             "ai_tts_enabled": True,
             "blackboard_enabled": True,
@@ -107,7 +120,7 @@ PLANS = {
             "credits_on_activation": 200,
             "monthly_bonus_credits": 100,
         },
-        "description": "School-wide access managed by institution",
+        "description": "School-wide access — institution managed",
         "active": True,
     },
 }
@@ -209,13 +222,18 @@ def seed_question_templates(db) -> None:
 def seed_credit_config(db) -> None:
     print("Seeding credit config...")
     db.collection("app_config").document("credits").set({
+        # ── Conversion rates (server uses these) ──────────────────────────────
+        "tokens_per_credit": 100,       # 100 LLM tokens = 1 credit earned
+        "tts_chars_per_credit": 100,    # 100 TTS chars  = 1 credit earned
+        # ── Activity rewards ──────────────────────────────────────────────────
         "daily_question_reward": 5,
         "task_completion_base_reward": 10,
         "referral_reward_referrer": 25,
         "referral_reward_referred": 10,
         "streak_bonus_7day": 20,
         "streak_bonus_30day": 100,
-        "credits_per_inr": 10,  # 10 credits = ₹1 worth
+        # ── Monetary reference ────────────────────────────────────────────────
+        "credits_per_inr": 10,          # 10 credits = ₹1 face value
     }, merge=True)
     print("  ✓ app_config/credits")
 
