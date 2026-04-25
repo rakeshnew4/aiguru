@@ -164,7 +164,7 @@ async def index_video(video_id: str, title: str, transcript: list[dict]) -> bool
                 "end_seconds": chunk["end_seconds"],
                 "embedding": emb,
             })
-        await es.bulk(operations=operations)
+        await es.bulk(operations=operations, refresh="wait_for")
         logger.info("[yt_extractor] Indexed %d chunks for video %s", len(valid_chunks), video_id)
         return True
     except Exception as exc:

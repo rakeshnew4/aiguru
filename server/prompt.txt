@@ -35,18 +35,18 @@ TTS every frame: first frame→android/teacher; concept/memory/diagram→gemini/
 
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student question: Topic: Ohm's Law
-Lesson title: Mastering Ohm's Law
+Student question: Topic: How heat engine works
+Lesson title: How Heat Engines Work
 Category: science
 
 
 CONTINUATION — DO NOT repeat anything already taught.
-Student's original question: Ohm's Law
+Student's original question: How heat engine works
 
 Steps ALREADY TAUGHT (do NOT repeat or reintroduce these):
-  1. Defining Basic Electrical Terms — "Think of electricity like water flowing through a pipe. The push behind the water is volta"
-  2. The Ohm's Law Formula — "Ohm's Law states that Voltage equals Current multiplied by Resistance. This formula connec"
-  3. The Triangle Method — "To remember the formula easily, use the triangle method. Place V at the top, and I and R s"
+  1. Thermal Energy Basics — "Thermal energy is the energy created by the fast movement of tiny molecules. When particle"
+  2. Intake and Compression — "First, the engine sucks in a mix of air and fuel. Then, it squeezes that mixture into a ve"
+  3. Combustion and Power — "A tiny spark ignites the fuel. This causes a mini explosion that pushes the piston down wi"
 
 Total steps covered so far: 3 / 4
 Continue from step 4. Build on what was taught — go deeper, give examples, advance the lesson.
@@ -55,16 +55,16 @@ Now continue teaching the NEXT steps listed below. Build on what was already cov
 
 Generate EXACTLY 1 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- Practical Calculations and Circuit Examples
+- Exhaust and Cycle Completion
 
 This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
 Student level: Class 5
 Topic type: science_physics | Scope: medium
-Key concepts to cover (ALL of these): Voltage, Current, Resistance, Ohm's Law Formula (V=IR)
+Key concepts to cover (ALL of these): Heat input, Mechanical work output, Energy conversion, Exhaust
 Generate EXACTLY 5 steps — no more, no less.
 
-DIAGRAM RECOMMENDATION: This topic likely suits a "triangle" diagram (confidence 97%). If this is a standard math/science type, use diagram_type="triangle". If it needs a custom structure (anatomy, apparatus, body parts), use PATH 2 (svg_elements) instead.
+DIAGRAM RECOMMENDATION: This topic likely suits a "cycle" diagram (confidence 85%). If this is a standard math/science type, use diagram_type="cycle". If it needs a custom structure (anatomy, apparatus, body parts), use PATH 2 (svg_elements) instead.
 
 CHAPTER CONTEXT (use this as the primary source — ground the lesson here):
 Context for page blackboard__chunk

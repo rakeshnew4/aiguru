@@ -877,12 +877,8 @@ def _attach_video_clips(text_content: str, yt_clips: list) -> str:
             clip = yt_clips[i]
             for frame in step.get("frames", []):
                 if frame.get("frame_type") in ("concept", "diagram"):
-                    frame["youtube_clip"] = {
-                        "video_id": clip["video_id"],
-                        "start_seconds": clip["start_seconds"],
-                        "end_seconds": clip["end_seconds"],
-                        "title": clip["title"],
-                    }
+                    # Pass all decorated fields; drop internal score
+                    frame["youtube_clip"] = {k: v for k, v in clip.items() if k != "score"}
                     attached += 1
                     break  # one clip per step
         logger.info("Attached YouTube clips to %d/%d BB steps", attached, len(steps))

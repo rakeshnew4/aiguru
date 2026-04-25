@@ -4,6 +4,8 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.app.AlertDialog
+import android.app.Dialog
+import android.webkit.JavascriptInterface
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -1291,6 +1293,7 @@ class BlackboardActivity : AppCompatActivity() {
 
             appendYouTubeClipCard(board, frame.youtubeClip)
 
+            frame.youtubeClip?.let { addYouTubeClipCard(it, board) }
             stepsScrollView.post { stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }
             if (!isPaused && frame.speech.isNotBlank()) {
                 contentText.postDelayed({ speakFrame(stepIdx, frameIdx) }, 400)
