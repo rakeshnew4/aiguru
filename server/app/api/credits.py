@@ -1,0 +1,145 @@
+"""
+Credits API
+
+Endpoints for querying and spending user credits.
+Credits are earned by completing daily questions, plan bonuses, referrals, etc.
+
+Collections:
+  user_credits/{uid}           – { balance, lifetime_earned, last_updated }
+  credit_transactions          – append-only ledger
+"""
+
+from __future__ import annotations
+
+import time
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+
+from app.core.auth import require_auth, AuthUser
+from app.core.firebase_auth import get_firestore_db
+from app.core.logger import get_logger
+from google.cloud.firestore import Increment
+
+logger = get_logger(__name__)
+router = APIRouter(prefix="/credits", tags=["credits"])
+
+
+def _now_ms() -> int:
+    return int(time.time() * 1000)
+
+
+# ── Models ────────────────────────────────────────────────────────────────────
+
+class SpendCreditsRequest(BaseModel):
+    amount: int
+    reason: str
+    source_id: Optional[str] = ""
+
+
+# ── Endpoints ─────────────────────────────────────────────────────────────────
+
+@router.get("/balance")
+async def get_balance(auth: AuthUser = Depends(require_auth)):
+    """Return current credit balance and lifetime earned for the user."""
+    db = get_firestore_db()
+    if db is None:
+        raise HTTPException(503, "Database unavailable")
+
+    try:
+        doc = db.collection("user_credits").document(auth.uid).get()
+        if not doc.exists:
+            return {"balance": 0, "lifetime_earned": 0}
+        data = doc.to_dict() or {}
+        return {
+            "balance": data.get("balance", 0),
+            "lifetime_earned": data.get("lifetime_earned", 0),
+        }
+    except Exception as exc:
+        logger.warning("get_balance uid=%s: %s", auth.uid, exc)
+        raise HTTPException(500, "Failed to fetch balance")
+
+
+@router.get("/transactions")
+async def get_transactions(
+    limit: int = 20,
+    auth: AuthUser = Depends(require_auth),
+):
+    """Return recent credit transactions for the user, newest first."""
+    if limit > 100:
+        limit = 100
+    db = get_firestore_db()
+    if db is None:
+        raise HTTPException(503, "Database unavailable")
+
+    try:
+        docs = (
+            db.collection("credit_transactions")
+            .where("uid", "==", auth.uid)
+            .order_by("created_at", direction="DESCENDING")
+            .limit(limit)
+            .get()
+        )
+        return {
+            "transactions": [
+                {"id": d.id, **{k: v for k, v in (d.to_dict() or {}).items() if k != "uid"}}
+                for d in docs
+            ]
+        }
+    except Exception as exc:
+        logger.warning("get_transactions uid=%s: %s", auth.uid, exc)
+        raise HTTPException(500, "Failed to fetch transactions")
+
+
+@router.post("/spend")
+async def spend_credits(
+    req: SpendCreditsRequest,
+    auth: AuthUser = Depends(require_auth),
+):
+    """
+    Deduct credits from user balance. Fails if balance would go negative.
+    Used for premium features (e.g. unlocking extra BB sessions, hints).
+    """
+    if req.amount <= 0:
+        raise HTTPException(400, "amount must be positive")
+
+    db = get_firestore_db()
+    if db is None:
+        raise HTTPException(503, "Database unavailable")
+
+    uid = auth.uid
+    credits_ref = db.collection("user_credits").document(uid)
+
+    try:
+        doc = credits_ref.get()
+        current = (doc.to_dict() or {}).get("balance", 0) if doc.exists else 0
+    except Exception as exc:
+        raise HTTPException(500, f"Failed to read balance: {exc}")
+
+    if current < req.amount:
+        raise HTTPException(402, f"Insufficient credits: have {current}, need {req.amount}")
+
+    now = _now_ms()
+    try:
+        credits_ref.set(
+            {"balance": Increment(-req.amount), "last_updated": now},
+            merge=True,
+        )
+        db.collection("credit_transactions").document().set({
+            "uid": uid,
+            "amount": -req.amount,
+            "type": "spend",
+            "source_id": req.source_id or "",
+            "description": req.reason,
+            "created_at": now,
+        })
+    except Exception as exc:
+        logger.warning("spend_credits uid=%s: %s", uid, exc)
+        raise HTTPException(500, "Failed to spend credits")
+
+    return {
+        "ok": True,
+        "debited": req.amount,
+        "balance_after": current - req.amount,
+    }

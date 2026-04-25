@@ -55,6 +55,7 @@ import com.aiguruapp.student.utils.VoiceRecognitionCallback
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import androidx.lifecycle.lifecycleScope
+import com.aiguruapp.student.daily.DailyQuestionsManager
 import androidx.annotation.RequiresApi
 import androidx.core.view.WindowCompat
 import com.aiguruapp.student.firestore.FirestoreManager
@@ -416,6 +417,19 @@ class HomeActivity : BaseActivity() {
         }
     }
 
+    // Called from loadDailyChallenge() after credits are fetched, so the drawer
+    // balance stays in sync whenever the home screen refreshes.
+    internal fun updateCreditsDisplay(balance: Int) {
+        runOnUiThread {
+            val chipText = "⭐ $balance"
+            findViewById<TextView?>(R.id.creditsChipText)?.apply {
+                text = chipText
+                visibility = View.VISIBLE
+            }
+            findViewById<TextView?>(R.id.drawerCreditsBalance)?.text = balance.toString()
+        }
+    }
+
     private fun applySchoolBranding() {
         val schoolId = SessionManager.getSchoolId(this)
         val school = ConfigManager.getSchool(this, schoolId)
@@ -713,6 +727,41 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
                     runOnUiThread { renderSmartCards(cards) }
                 }
             )
+        }
+
+        // Daily challenge card + credit balance (independent of stats)
+        loadDailyChallenge()
+    }
+
+    private fun loadDailyChallenge() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val questions = DailyQuestionsManager.fetchFeed(this@HomeActivity)
+            val credits = DailyQuestionsManager.fetchCreditBalance()
+            val pending = questions.filter { it.status == "pending" }
+            updateCreditsDisplay(credits)
+            runOnUiThread {
+                // Show or hide daily challenge card
+                val card = findViewById<android.view.ViewGroup?>(R.id.dailyChallengeCard) ?: return@runOnUiThread
+                if (pending.isEmpty()) {
+                    card.visibility = View.GONE
+                    return@runOnUiThread
+                }
+                val q = pending.first()
+                card.visibility = View.VISIBLE
+                card.findViewById<TextView?>(R.id.challengeHookText)?.text = q.hook
+                card.findViewById<TextView?>(R.id.challengeQuestionText)?.text = q.question
+                val diffLabel = when (q.difficulty) { 1 -> "Easy" 2 -> "Medium" else -> "Hard" }
+                card.findViewById<TextView?>(R.id.challengeDifficultyText)?.text = "$diffLabel · ${q.subject}"
+                card.findViewById<TextView?>(R.id.challengeCreditsText)?.text = "+${q.creditsReward} ⭐"
+                card.setOnClickListener {
+                    val intent = Intent(this@HomeActivity, BlackboardActivity::class.java).apply {
+                        putExtra("topic", q.question)
+                        putExtra("subject", q.subject)
+                        putExtra("daily_question_id", q.id)
+                    }
+                    startActivity(intent)
+                }
+            }
         }
     }
 

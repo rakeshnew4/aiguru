@@ -32,6 +32,9 @@ from app.api.admin import router as admin_router
 from app.api.users import router as users_router
 from app.api.bb import router as bb_router
 from app.api.diagram import router as diagram_router
+from app.api.daily_questions import router as daily_questions_router
+from app.api.credits import router as credits_router
+from app.api.tasks import router as tasks_router
 from app.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -77,6 +80,9 @@ app.include_router(admin_router)
 app.include_router(users_router)
 app.include_router(bb_router)
 app.include_router(diagram_router)
+app.include_router(daily_questions_router)
+app.include_router(credits_router)
+app.include_router(tasks_router)
 
 # ── Static files & Admin portal ───────────────────────────────────────────────
 _static_dir = os.path.join(os.path.dirname(__file__), "static")

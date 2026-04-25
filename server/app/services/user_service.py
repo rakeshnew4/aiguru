@@ -133,6 +133,9 @@ def create_user_if_missing(
     })
     logger.info("create_user_if_missing: created users_table/%s", uid)
 
+    # Initialize credit balance doc
+    init_user_credits(db, uid)
+
     # Mirror identity fields to /users/{uid} so it exists for conversation
     # subcollections and any legacy reads.
     db.collection("users").document(uid).set(identity, merge=True)
@@ -218,9 +221,15 @@ def activate_plan(
         "questions_updated_at": now,
         "updated_at": now,
     }, merge=True)
+
+    # Award activation credits from plan definition
+    activation_credits = int(limits.get("credits_on_activation", 0))
+    if activation_credits > 0:
+        _award_activation_credits(db, uid, activation_credits, plan_id, plan_name)
+
     logger.info(
-        "activate_plan: uid=%s plan_id=%s expiry=%d limits=%s",
-        uid, plan_id, plan_expiry_date, limits,
+        "activate_plan: uid=%s plan_id=%s expiry=%d limits=%s credits=%d",
+        uid, plan_id, plan_expiry_date, limits, activation_credits,
     )
 
 
@@ -430,3 +439,40 @@ def check_and_record_quota(uid: str, request_type: str) -> tuple[bool, str]:
     except Exception as exc:
         logger.error("check_and_record_quota: unexpected error uid=%s: %s", uid, exc)
         return True, ""  # Fail open on any unexpected error
+
+
+# ── Credits helper (used by activate_plan) ────────────────────────────────────
+
+def _award_activation_credits(db, uid: str, amount: int, plan_id: str, plan_name: str) -> None:
+    """Award plan activation credits atomically."""
+    try:
+        now = _now_ms()
+        db.collection("user_credits").document(uid).set(
+            {
+                "balance": Increment(amount),
+                "lifetime_earned": Increment(amount),
+                "last_updated": now,
+            },
+            merge=True,
+        )
+        db.collection("credit_transactions").document().set({
+            "uid": uid,
+            "amount": amount,
+            "type": "plan_activation",
+            "source_id": plan_id,
+            "description": f"Plan activated: {plan_name}",
+            "created_at": now,
+        })
+        logger.info("_award_activation_credits: uid=%s amount=%d plan=%s", uid, amount, plan_id)
+    except Exception as exc:
+        logger.warning("_award_activation_credits uid=%s: %s", uid, exc)
+
+
+def init_user_credits(db, uid: str) -> None:
+    """Create user_credits/{uid} with zero balance on first registration."""
+    try:
+        ref = db.collection("user_credits").document(uid)
+        if not ref.get().exists:
+            ref.set({"balance": 0, "lifetime_earned": 0, "last_updated": _now_ms()})
+    except Exception as exc:
+        logger.warning("init_user_credits uid=%s: %s", uid, exc)

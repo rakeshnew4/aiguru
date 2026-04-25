@@ -1311,8 +1311,38 @@ class BlackboardActivity : AppCompatActivity() {
         }
         // Frame-type specific board text colour
         when (frame.frameType) {
-            "memory"  -> contentText.setTextColor(Color.parseColor("#FFD700"))  // gold
-            "summary" -> contentText.setTextColor(Color.parseColor("#A8D8A8"))  // mint
+            "memory"    -> contentText.setTextColor(Color.parseColor("#FFD700"))
+            "summary"   -> contentText.setTextColor(Color.parseColor("#A8D8A8"))
+            "hook"      -> contentText.setTextColor(Color.parseColor("#FFB347"))
+            "reinforce" -> contentText.setTextColor(Color.parseColor("#98FB98"))
+            "apply"     -> contentText.setTextColor(Color.parseColor("#87CEEB"))
+            "curiosity" -> contentText.setTextColor(Color.parseColor("#DDA0DD"))
+        }
+        // Small badge label for pedagogical frame types — no tapping needed, purely informational
+        val frameBadgeText = when (frame.frameType) {
+            "hook"      -> "💡  Hook"
+            "reinforce" -> "✓  Recap"
+            "apply"     -> "🌍  Real World"
+            "curiosity" -> "🔮  Think About It"
+            else        -> null
+        }
+        if (frameBadgeText != null) {
+            board.addView(TextView(this).apply {
+                text = frameBadgeText
+                textSize = 10f
+                letterSpacing = 0.05f
+                setTextColor(when (frame.frameType) {
+                    "hook"      -> Color.parseColor("#CC8833")
+                    "reinforce" -> Color.parseColor("#5A9A5A")
+                    "apply"     -> Color.parseColor("#4488AA")
+                    "curiosity" -> Color.parseColor("#9966BB")
+                    else        -> Color.parseColor("#888888")
+                })
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = (12 * dp).toInt() }
+            })
         }
         board.addView(contentText)
 
@@ -1668,7 +1698,7 @@ class BlackboardActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showYouTubeClipDialog(clip: BlackboardGenerator.YouTubeClip) {
+    private fun showYouTubeClipDialog(clip: BlackboardGenerator.YouTubeClip, onDismiss: (() -> Unit)? = null) {
         val dialog = android.app.Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
         val root = FrameLayout(this).apply {
             setBackgroundColor(Color.BLACK)
@@ -1777,6 +1807,7 @@ class BlackboardActivity : AppCompatActivity() {
             webView.stopLoading()
             webView.loadUrl("about:blank")
             webView.destroy()
+            onDismiss?.invoke()
         }
         dialog.show()
     }
@@ -2028,6 +2059,17 @@ class BlackboardActivity : AppCompatActivity() {
         if (bbCompletionCard.visibility == View.VISIBLE) return
         showRelatedVideosSection()
         showContinuationCard()
+        showApplicationChallenge()
+        // Record interest + complete daily question in background
+        val subject = intent.getStringExtra(EXTRA_SUBJECT) ?: "General"
+        val topic = currentTopic
+        val dailyQId = intent.getStringExtra("daily_question_id").orEmpty()
+        kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            com.aiguruapp.student.daily.DailyQuestionsManager.recordInterest(subject, listOf(topic))
+            if (dailyQId.isNotBlank()) {
+                com.aiguruapp.student.daily.DailyQuestionsManager.completeQuestion(dailyQId)
+            }
+        }
         val subtitle = bbCompletionCard.findViewById<TextView?>(R.id.bbCompletionSubtitle)
         subtitle?.text = "Great job! You covered ${steps.size} step${if (steps.size == 1) "" else "s"}."
         bbCompletionCard.alpha = 0f
@@ -2757,17 +2799,36 @@ class BlackboardActivity : AppCompatActivity() {
                         runOnUiThread { showInteractiveQuiz(f, stepIdx, frameIdx) }
                     }
                     else -> {
-                        val isLastFrame = stepIdx == steps.size - 1 &&
+                        val step = steps.getOrNull(stepIdx)
+                        val isLastFrameOverall = stepIdx == steps.size - 1 &&
                             frameIdx == (steps.lastOrNull()?.frames?.size ?: 1) - 1
-                        if (isLastFrame && quizTotal > 0) {
-                            showRelatedVideosSection()
-                            stepsScrollView.postDelayed({ showScoreCard() }, 600)
-                        } else {
-                            // Prediction pause: frames ending with "?" get an 800ms thinking gap
-                            val isPredictionFrame = f?.text?.trimEnd()?.endsWith("?") == true
-                                    && f.frameType == "concept"
-                            val delay = if (isPredictionFrame) 1100L else 300L
-                            stepsScrollView.postDelayed({ advanceFrame() }, delay)
+                        val isLastFrameOfStep = frameIdx == (step?.frames?.size ?: 1) - 1
+                        val isPredictionFrame = f?.text?.trimEnd()?.endsWith("?") == true &&
+                            f.frameType == "concept" && !isLastFrameOverall
+                        // Gather clip from any frame in this step (shown as optional card at step end)
+                        val stepClip = if (isLastFrameOfStep && !isLastFrameOverall && sessionConfig.videosEnabled)
+                            step?.frames?.mapNotNull { it.youtubeClip }?.firstOrNull()
+                        else null
+
+                        when {
+                            isLastFrameOverall && quizTotal > 0 -> {
+                                showRelatedVideosSection()
+                                stepsScrollView.postDelayed({ showScoreCard() }, 600)
+                            }
+                            isPredictionFrame -> {
+                                // Show "What do you think?" overlay → pause → "Let's find out…" → advance/video
+                                runOnUiThread {
+                                    showPredictionTransition {
+                                        if (stepClip != null) runOnUiThread { appendStepVideoCard(stepClip) }
+                                        else advanceFrame()
+                                    }
+                                }
+                            }
+                            stepClip != null -> {
+                                // Last frame of a step with a video — show compact optional card
+                                stepsScrollView.postDelayed({ runOnUiThread { appendStepVideoCard(stepClip) } }, 400)
+                            }
+                            else -> stepsScrollView.postDelayed({ advanceFrame() }, 300)
                         }
                     }
                 }
@@ -4062,6 +4123,313 @@ class BlackboardActivity : AppCompatActivity() {
     private fun makeDotDrawable(active: Boolean) = GradientDrawable().apply {
         shape = GradientDrawable.OVAL
         setColor(if (active) Color.parseColor("#D4C060") else Color.parseColor("#4A5549"))
+    }
+
+    // ── Video reward card (shown after last frame of a step) ──────────────────
+
+    /**
+     * Appends a compact, tap-to-play video card to the board at the end of a step.
+     * Does NOT autoplay — the card is a reward the student can choose to watch.
+     * Tapping opens [showYouTubeClipDialog]; after it closes the Skip button becomes
+     * "Continue learning →" to guide the student back into the flow.
+     */
+    private fun appendStepVideoCard(clip: BlackboardGenerator.YouTubeClip) {
+        val board = boardLayout ?: return
+        val dp = resources.displayMetrics.density
+        val caveat = ResourcesCompat.getFont(this, R.font.kalam)
+
+        fun Int.mmSs() = "%d:%02d".format(this / 60, this % 60)
+        val durationSec = clip.clipDurationSeconds.coerceAtLeast(10)
+        val durationStr = if (durationSec < 60) "${durationSec}s" else durationSec.mmSs()
+
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (18 * dp).toInt() }
+            alpha = 0f
+        }
+
+        // Framing text anchors the student's attention before they tap
+        val framingLabel = if (clip.title.isNotBlank())
+            "This shows ${clip.title.take(42)} in real life"
+        else "See how this works in the real world"
+        container.addView(TextView(this).apply {
+            text = framingLabel
+            textSize = 12f
+            setTextColor(Color.parseColor("#7A8FA0"))
+            typeface = caveat
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (6 * dp).toInt() }
+        })
+
+        // ── Compact card ────────────────────────────────────────────────────
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 14 * dp
+                setColor(Color.parseColor("#0C1C2C"))
+                setStroke((1 * dp).toInt(), Color.parseColor("#4A8FB3"))
+            }
+            setPadding((14 * dp).toInt(), (12 * dp).toInt(), (14 * dp).toInt(), (12 * dp).toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            isClickable = true; isFocusable = true
+        }
+        card.addView(TextView(this).apply {
+            text = "▶"
+            textSize = 20f
+            setTextColor(Color.parseColor("#F5E3A0"))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { marginEnd = (12 * dp).toInt() }
+        })
+        val infoBlock = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        infoBlock.addView(TextView(this).apply {
+            text = "See this in real life  •  $durationStr"
+            textSize = 14f
+            setTextColor(Color.parseColor("#E0ECF8"))
+            typeface = Typeface.create(caveat, Typeface.BOLD)
+        })
+        if (clip.title.isNotBlank()) {
+            infoBlock.addView(TextView(this).apply {
+                text = clip.title.take(46)
+                textSize = 11f
+                setTextColor(Color.parseColor("#5588AA"))
+                typeface = caveat
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = (2 * dp).toInt() }
+            })
+        }
+        card.addView(infoBlock)
+
+        val actionBtn = TextView(this).apply {
+            text = "Skip"
+            textSize = 11f
+            setTextColor(Color.parseColor("#445566"))
+            typeface = caveat
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        card.addView(actionBtn)
+        container.addView(card)
+        board.addView(container)
+        container.animate().alpha(1f).setDuration(500).start()
+        stepsScrollView.postDelayed({ stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 300)
+
+        // Tap card → play video; on close, change Skip → "Got it? Continue learning →"
+        card.setOnClickListener {
+            showYouTubeClipDialog(clip) {
+                actionBtn.text = "Got it? Continue learning →"
+                actionBtn.setTextColor(Color.parseColor("#A0FFD0"))
+            }
+        }
+        actionBtn.setOnClickListener {
+            container.animate().alpha(0f).setDuration(180)
+                .withEndAction { board.removeView(container); advanceFrame() }.start()
+        }
+    }
+
+    // ── Prediction transition ("What do you think happens next?") ─────────────
+
+    /**
+     * Appends a two-line thinking prompt to the board, waits 1.2 s, then calls [onDone].
+     * No user interaction required — purely visual, keeps the student engaged.
+     */
+    private fun showPredictionTransition(onDone: () -> Unit) {
+        val board = boardLayout ?: return
+        val dp = resources.displayMetrics.density
+        val caveat = ResourcesCompat.getFont(this, R.font.kalam)
+
+        val thinkTv = TextView(this).apply {
+            text = "🤔  What do you think happens next?"
+            textSize = computedFontSp - 4f
+            setTextColor(Color.parseColor("#DDA0DD"))
+            typeface = caveat
+            gravity = Gravity.CENTER
+            alpha = 0f
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (16 * dp).toInt() }
+        }
+        board.addView(thinkTv)
+        thinkTv.animate().alpha(1f).setDuration(400).start()
+        stepsScrollView.postDelayed({ stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 200)
+
+        thinkTv.postDelayed({
+            val revealTv = TextView(this).apply {
+                text = "Let's find out... →"
+                textSize = computedFontSp - 5f
+                setTextColor(Color.parseColor("#98FB98"))
+                typeface = caveat
+                gravity = Gravity.CENTER
+                alpha = 0f
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = (8 * dp).toInt() }
+            }
+            board.addView(revealTv)
+            revealTv.animate().alpha(1f).setDuration(350).start()
+            stepsScrollView.postDelayed({ stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 100)
+            revealTv.postDelayed({ onDone() }, 700)
+        }, 1200)
+    }
+
+    // ── End-of-lesson application challenge ───────────────────────────────────
+
+    /**
+     * Appends an "Apply What You Learned" card and a "Go Deeper" button to the board
+     * after lesson completion. The application card accepts a free-text answer which
+     * is sent as a BB chat question so the AI can respond.
+     */
+    private fun showApplicationChallenge() {
+        val topic = steps.firstOrNull()?.title
+            ?: intent.getStringExtra(EXTRA_MESSAGE)?.take(80)
+            ?: return
+        val dp = resources.displayMetrics.density
+        val caveat = ResourcesCompat.getFont(this, R.font.kalam)
+
+        // ── Option B: Go Deeper ──────────────────────────────────────────────
+        val deeperCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 14 * dp
+                setColor(Color.parseColor("#0D0D20"))
+                setStroke((1 * dp).toInt(), Color.parseColor("#3A3A7A"))
+            }
+            setPadding((16 * dp).toInt(), (12 * dp).toInt(), (16 * dp).toInt(), (12 * dp).toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = (12 * dp).toInt()
+                marginStart = (16 * dp).toInt(); marginEnd = (16 * dp).toInt()
+            }
+            alpha = 0f
+        }
+        deeperCard.addView(TextView(this).apply {
+            text = "▲  Try a harder concept"
+            textSize = 13f
+            setTextColor(Color.parseColor("#9090D8"))
+            typeface = Typeface.create(caveat, Typeface.BOLD)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (4 * dp).toInt() }
+        })
+        deeperCard.addView(TextView(this).apply {
+            text = "$topic — advanced level"
+            textSize = computedFontSp - 5f
+            setTextColor(Color.parseColor("#7070B8"))
+            typeface = caveat
+        })
+        deeperCard.isClickable = true; deeperCard.isFocusable = true
+        deeperCard.setOnClickListener {
+            val userId  = intent.getStringExtra(EXTRA_USER_ID) ?: ""
+            val pageId  = intent.getStringExtra(EXTRA_CONVERSATION_ID) ?: ""
+            val subject = intent.getStringExtra(EXTRA_SUBJECT) ?: "General"
+            val chapter = intent.getStringExtra(EXTRA_CHAPTER) ?: "General"
+            val lang    = intent.getStringExtra(EXTRA_LANGUAGE_TAG) ?: "en-US"
+            val dur     = intent.getStringExtra(EXTRA_DURATION) ?: ""
+            startActivity(
+                android.content.Intent(this, BlackboardActivity::class.java)
+                    .putExtra(EXTRA_MESSAGE, "Advanced: $topic — go deeper with harder examples")
+                    .putExtra(EXTRA_USER_ID, userId)
+                    .putExtra(EXTRA_CONVERSATION_ID, pageId)
+                    .putExtra(EXTRA_SUBJECT, subject)
+                    .putExtra(EXTRA_CHAPTER, chapter)
+                    .putExtra(EXTRA_LANGUAGE_TAG, lang)
+                    .putExtra(EXTRA_DURATION, dur)
+            )
+        }
+        stepsContainer.addView(deeperCard)
+        deeperCard.animate().alpha(1f).setStartDelay(300).setDuration(400).start()
+
+        // ── Option C: Application question ──────────────────────────────────
+        val appCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 14 * dp
+                setColor(Color.parseColor("#0F1A0F"))
+                setStroke((1 * dp).toInt(), Color.parseColor("#3A6A3A"))
+            }
+            setPadding((16 * dp).toInt(), (14 * dp).toInt(), (16 * dp).toInt(), (14 * dp).toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = (10 * dp).toInt()
+                marginStart = (16 * dp).toInt(); marginEnd = (16 * dp).toInt()
+                bottomMargin = (16 * dp).toInt()
+            }
+            alpha = 0f
+        }
+        appCard.addView(TextView(this).apply {
+            text = "🌍  Apply What You Learned"
+            textSize = 13f
+            setTextColor(Color.parseColor("#5A9A5A"))
+            typeface = Typeface.create(caveat, Typeface.BOLD)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (8 * dp).toInt() }
+        })
+        appCard.addView(TextView(this).apply {
+            text = "Where do you see $topic in your everyday life?"
+            textSize = computedFontSp - 4f
+            setTextColor(Color.parseColor("#A8D8A8"))
+            typeface = caveat
+            setLineSpacing(0f, 1.4f)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (12 * dp).toInt() }
+        })
+        val appInput = android.widget.EditText(this).apply {
+            hint = "Type your answer…"
+            textSize = computedFontSp - 6f
+            typeface = caveat
+            setTextColor(Color.parseColor("#F0EDD0"))
+            setHintTextColor(Color.parseColor("#444455"))
+            setBackgroundColor(Color.parseColor("#0A150A"))
+            setPadding((12 * dp).toInt(), (8 * dp).toInt(), (12 * dp).toInt(), (8 * dp).toInt())
+            minLines = 2; maxLines = 4
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (12 * dp).toInt() }
+        }
+        appCard.addView(appInput)
+        appCard.addView(TextView(this).apply {
+            text = "Submit →"
+            textSize = 14f
+            typeface = caveat
+            gravity = Gravity.CENTER
+            setTextColor(Color.parseColor("#1A1A0A"))
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE; cornerRadius = 20 * dp
+                setColor(Color.parseColor("#5A9A5A"))
+            }
+            setPadding((20 * dp).toInt(), (10 * dp).toInt(), (20 * dp).toInt(), (10 * dp).toInt())
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            setOnClickListener {
+                val answer = appInput.text.toString().trim()
+                if (answer.isNotBlank()) {
+                    appInput.isEnabled = false
+                    sendBbChat(answer)
+                }
+            }
+        })
+        stepsContainer.addView(appCard)
+        appCard.animate().alpha(1f).setStartDelay(500).setDuration(400).start()
+        stepsScrollView.postDelayed({ stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 700)
     }
 }
 
