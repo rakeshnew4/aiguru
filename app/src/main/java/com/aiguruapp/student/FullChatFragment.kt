@@ -1620,6 +1620,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                         if (client is ServerProxyClient) {
                             client.streamChat(ctxMessage, pageId, "normal", currentLang,
                                 studentLevel, historyStrings, imageDataJson, b64,
+                                emptyMap(),
                                 { transcript -> serverPageTranscript = transcript },
                                 { bb -> serverSuggestBlackboard = bb },
                                 onStatus, onToken, onDone, onError)
@@ -1633,6 +1634,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                         if (client is ServerProxyClient)
                             client.streamChat(ctxMessage, pageId, "normal", currentLang,
                                 studentLevel, historyStrings, imageDataJson, capturedPdfBase64,
+                                emptyMap(),
                                 { transcript -> serverPageTranscript = transcript },
                                 { bb -> serverSuggestBlackboard = bb },
                                 onStatus, onToken, onDone, onError)
@@ -1643,6 +1645,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                         if (client is ServerProxyClient)
                             client.streamChat(ctxMessage, pageId, "normal", currentLang,
                                 studentLevel, historyStrings, null, null,
+                                emptyMap(),
                                 { transcript -> serverPageTranscript = transcript },
                                 { bb -> serverSuggestBlackboard = bb },
                                 onStatus, onToken, onDone, onError)
