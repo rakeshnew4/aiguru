@@ -1,20 +1,161 @@
 import asyncio
+import numpy as np
 from app.core.logger import get_logger
 from .searcher import search_videos
 from .transcript import fetch_transcript
 from .indexer import index_video, is_video_indexed
 from .retriever import find_best_segment
-
+from .indexer import embed_texts
 logger = get_logger(__name__)
 
-# Minimum score to ever show a clip; second clip needs a higher bar
 _MIN_SCORE = 0.85
 _HIGH_SCORE = 0.92
-_MIN_GAP_SECONDS = 60  # same-video clips must be ≥60s apart to be considered "different"
+_MIN_GAP_SECONDS = 60
 _YT_WATCH_BASE_URL = "https://www.youtube.com/watch?v="
 
+# 🔥 In-memory embedding cache (replace with Redis if needed)
+_embedding_cache = {}
 
-def _decorate_clip(clip: dict, video_lookup: dict[str, dict]) -> dict:
+
+# ================================
+# 🧠 Embedding + Similarity
+# ================================
+
+def cosine_sim(a, b):
+    return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+
+
+async def get_embedding_cached(text: str):
+    key = hash(text)
+    if key in _embedding_cache:
+        return _embedding_cache[key]
+
+    emb = await embed_text(text)
+    _embedding_cache[key] = emb
+    return emb
+
+
+def build_video_text(video: dict):
+    title = video.get("title", "")
+    desc = (video.get("description") or "")[:500]
+    return f"{title}. {desc}"
+
+
+# ================================
+# 🎯 Video Filtering + Scoring
+# ================================
+
+def is_good_video(video):
+    title = video.get("title", "").lower()
+
+    bad_keywords = ["lecture", "full course", "revision", "live class"]
+    if any(k in title for k in bad_keywords):
+        return False
+
+    return True
+
+
+def boost_score(video, sim_score):
+    score = sim_score
+    title = video.get("title", "").lower()
+    channel = (video.get("channel") or "").lower()
+    duration = video.get("duration_seconds", 0)
+
+    if "animation" in title:
+        score += 0.05
+
+    if "explained" in title:
+        score += 0.03
+
+    if "visual" in title:
+        score += 0.02
+
+    if channel in ["kurzgesagt", "amoeba sisters", "fuseschool"]:
+        score += 0.08
+
+    if 60 < duration < 400:
+        score += 0.04
+
+    return score
+
+
+async def rerank_videos_multiquery(videos, query_core):
+    """
+    Multi-query semantic reranking using embeddings.
+    Uses your existing embed_texts (batch optimized).
+    """
+
+    if not videos:
+        return videos
+
+    # 🔥 Multi-query expansion
+    queries = [
+        query_core,
+        f"{query_core} animation",
+        f"{query_core} simple explanation",
+        f"{query_core} visual explanation"
+    ]
+
+    # Prepare video texts
+    video_texts = [
+        f"{v.get('title','')}. {(v.get('description') or '')[:400]}"
+        for v in videos
+    ]
+
+    # 🔥 Batch embed ALL (queries + videos in ONE call)
+    embeddings = await embed_texts(queries + video_texts)
+
+    query_embs = embeddings[:len(queries)]
+    video_embs = embeddings[len(queries):]
+
+    def cosine(a, b):
+        return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
+
+    scored = []
+
+    for v, v_emb in zip(videos, video_embs):
+        # 🔥 Multi-query similarity (average)
+        sims = [cosine(q_emb, v_emb) for q_emb in query_embs]
+        sim_score = sum(sims) / len(sims)
+
+        # 🔥 Boosting (very important)
+        title = v.get("title", "").lower()
+        channel = (v.get("channel") or "").lower()
+        duration = v.get("duration_seconds", 0)
+
+        score = sim_score
+
+        if "animation" in title:
+            score += 0.05
+        if "explained" in title:
+            score += 0.03
+        if "visual" in title:
+            score += 0.02
+
+        if channel in ["kurzgesagt", "amoeba sisters", "fuseschool"]:
+            score += 0.08
+
+        if 60 < duration < 400:
+            score += 0.04
+
+        scored.append((v, score))
+
+    scored.sort(key=lambda x: x[1], reverse=True)
+
+    return [v for v, _ in scored]
+
+# ================================
+# 🎥 Clip Helpers
+# ================================
+
+def normalize_clip(clip: dict):
+    start = int(clip.get("start_seconds", 0))
+    clip["start_seconds"] = start
+    clip["end_seconds"] = start + 30  # force 30s clip
+    return clip
+
+
+def _decorate_clip(clip: dict, video_lookup: dict):
     video_meta = video_lookup.get(clip["video_id"], {})
     start_seconds = int(clip.get("start_seconds", 0))
     end_seconds = int(clip.get("end_seconds", 0))
@@ -23,9 +164,8 @@ def _decorate_clip(clip: dict, video_lookup: dict[str, dict]) -> dict:
     enriched["watch_url"] = video_meta.get("watch_url") or f"{_YT_WATCH_BASE_URL}{clip['video_id']}"
     enriched["start_url"] = f"{enriched['watch_url']}&t={start_seconds}s"
     enriched["clip_duration_seconds"] = max(0, end_seconds - start_seconds)
+    enriched["confidence"] = clip.get("score", 0)
 
-    if video_meta.get("duration_seconds") is not None:
-        enriched["video_duration_seconds"] = int(video_meta.get("duration_seconds") or 0)
     if video_meta.get("channel"):
         enriched["channel"] = video_meta["channel"]
 
@@ -33,102 +173,139 @@ def _decorate_clip(clip: dict, video_lookup: dict[str, dict]) -> dict:
 
 
 async def _process_video(video: dict) -> bool:
-    """Fetch transcript and index a video; skip when already in ES."""
     video_id = video["video_id"]
+
     if await is_video_indexed(video_id):
-        logger.debug("[yt_extractor] %s already indexed — cache hit", video_id)
+        logger.debug("[yt] cache hit %s", video_id)
         return True
+
     transcript = await fetch_transcript(video_id)
     if not transcript:
         return False
+
     return await index_video(video_id, video["title"], transcript)
 
+
+# ================================
+# 🚀 MAIN FUNCTION
+# ================================
 
 async def enrich_steps_with_videos(
     question: str,
     plan: dict,
     video_search_query: str = "",
-    preferred_channels: list[str] | None = None,
+    preferred_channels=None,
     session_theme: str = "",
-) -> list[dict]:
-    """Search YouTube once for the whole lesson and find 1-2 best reference clips."""
-    preferred_channels = [str(c).strip() for c in (preferred_channels or []) if str(c).strip()][:4]
-    if not preferred_channels:
-        preferred_channels = ["Physics Wallah", "Khan Academy India", "Magnet Brains"]
-
-    theme = (session_theme or plan.get("question_focus") or question).strip()
-    query_core = (video_search_query or theme or question).strip()
-    channel_hint = " ".join(preferred_channels[:3]).strip()
-    location_hint = "" if "india" in query_core.lower() else "India"
-    base_query = " ".join(part for part in [query_core, channel_hint, location_hint] if part).strip()[:220]
-    logger.info(
-        "[yt_extractor] base_query='%s' | theme='%s' | channels=%s",
-        base_query[:120], theme[:80], preferred_channels[:3]
-    )
-
+):
     try:
-        videos = await search_videos(base_query, max_results=4)
+        # =====================
+        # 🧠 Query building
+        # =====================
+        theme = (session_theme or plan.get("question_focus") or question).strip()
+        query_core = (video_search_query or theme or question).strip()
+
+        intent = "animation visual simple explanation for kids"
+
+        base_query = f"{query_core} {intent}".strip()[:220]
+
+        logger.info("[yt] search query: %s", base_query)
+
+        # =====================
+        # 🔍 Search
+        # =====================
+        videos = await search_videos(base_query, max_results=10)
         if not videos:
-            logger.info("[yt_extractor] No YouTube results for: %s", base_query[:80])
             return []
-        logger.info("[yt_extractor] Found %d videos: %s", len(videos), [v['video_id'] for v in videos])
+
+        # =====================
+        # 🔥 Filter BAD videos FIRST
+        # =====================
+        videos = [v for v in videos if is_good_video(v)]
+
+        # =====================
+        # 🔥 MULTI-QUERY RERANK (MAIN UPGRADE)
+        # =====================
+        videos = await rerank_videos_multiquery(videos, query_core)
+
+        # Take top 4 best videos
+        videos = videos[:4]
+
         video_lookup = {v["video_id"]: v for v in videos}
 
-        await asyncio.gather(*[_process_video(v) for v in videos], return_exceptions=True)
-        video_ids = [v["video_id"] for v in videos]
-
-        # Query the transcript index with one lesson-level theme instead of step-specific fragments.
-        queries = [query_core]
-        if theme and theme.lower() != query_core.lower():
-            queries.append(theme)
-        raw_clips = await asyncio.gather(
-            *[find_best_segment(q, video_ids) for q in queries],
-            return_exceptions=True,
+        # =====================
+        # ⚡ Index transcripts (parallel)
+        # =====================
+        await asyncio.gather(
+            *[_process_video(v) for v in videos],
+            return_exceptions=True
         )
 
-        # Deduplicate by video+timestamp, filter by _MIN_SCORE
-        seen: set[str] = set()
-        candidates: list[dict] = []
+        video_ids = [v["video_id"] for v in videos]
+
+        # =====================
+        # 🔥 Multi-query segment retrieval
+        # =====================
+        queries = [
+            query_core,
+            f"{query_core} explanation",
+            f"{query_core} animation"
+        ]
+
+        raw_clips = await asyncio.gather(
+            *[find_best_segment(q, video_ids) for q in queries],
+            return_exceptions=True
+        )
+
+        # =====================
+        # 🧠 Deduplicate + filter
+        # =====================
+        seen = set()
+        candidates = []
+
         for clip in raw_clips:
             if not isinstance(clip, dict):
                 continue
-            uid = f"{clip['video_id']}_{clip['start_seconds']}"
-            if uid in seen or clip.get("score", 0) < _MIN_SCORE:
+
+            if clip.get("score", 0) < _MIN_SCORE:
                 continue
+
+            uid = f"{clip['video_id']}_{clip['start_seconds']}"
+            if uid in seen:
+                continue
+
             seen.add(uid)
+
+            clip = normalize_clip(clip)
             candidates.append(clip)
+
         candidates.sort(key=lambda c: c["score"], reverse=True)
 
         if not candidates:
-            logger.info("[yt_extractor] No clips above threshold for: %s", base_query[:60])
             return []
 
-        result: list[dict] = []
+        # =====================
+        # 🎯 Pick best clips
+        # =====================
+        result = []
 
         best = candidates[0]
         result.append(_decorate_clip(best, video_lookup))
-        logger.info(
-            "[yt_extractor] Best clip: score=%.3f video=%s t=%d-%ds",
-            best["score"], best["video_id"], best["start_seconds"], best["end_seconds"],
-        )
 
         for clip in candidates[1:]:
             if clip["score"] < _HIGH_SCORE:
                 break
-            same_video = clip["video_id"] == best["video_id"]
+
             gap = abs(clip["start_seconds"] - best["start_seconds"])
-            if same_video and gap < _MIN_GAP_SECONDS:
+
+            if clip["video_id"] == best["video_id"] and gap < _MIN_GAP_SECONDS:
                 continue
+
             result.append(_decorate_clip(clip, video_lookup))
-            logger.info(
-                "[yt_extractor] Second clip: score=%.3f video=%s t=%d-%ds",
-                clip["score"], clip["video_id"], clip["start_seconds"], clip["end_seconds"],
-            )
             break
 
-        logger.info("[yt_extractor] Returning %d clip(s) for session", len(result))
+        logger.info("[yt] returning %d clips", len(result))
         return result
 
-    except Exception as exc:
-        logger.warning("[yt_extractor] enrich_steps_with_videos failed: %s", exc)
+    except Exception as e:
+        logger.warning("[yt] failed: %s", e)
         return []

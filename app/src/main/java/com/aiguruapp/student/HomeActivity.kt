@@ -318,60 +318,13 @@ class HomeActivity : BaseActivity() {
     private fun updateQuotaStripUI(chatLeft: Int, bbLeft: Int, aiTtsCharsLeft: Int) {
 
         // ── Main screen: top quota strip (chat + BB chips) ────────────────
-        val quotaStrip = findViewById<LinearLayout?>(R.id.homeQuotaStrip)
-        if (quotaStrip != null && (drawerChatLimit > 0 || drawerBbLimit > 0)) {
-            quotaStrip.visibility = View.VISIBLE
-
-            val chatChipText = when {
-                chatLeft < 0  -> "Unlimited questions"
-                chatLeft == 0 -> "No questions left today"
-                chatLeft == 1 -> "1 question left today"
-                else          -> "$chatLeft questions left today"
-            }
-            val chatChipColor = if (chatLeft in 0..2) "#BF360C" else "#1565C0"
-            findViewById<TextView?>(R.id.homeQuotaChatText)?.apply {
-                text = chatChipText
-                setTextColor(Color.parseColor(chatChipColor))
-            }
-
-            val bbChipText = when {
-                bbLeft < 0  -> "Unlimited lessons"
-                bbLeft == 0 -> "No lessons left today"
-                bbLeft == 1 -> "1 lesson left today"
-                else        -> "$bbLeft lessons left today"
-            }
-            val bbChipColor = if (bbLeft in 0..0) "#BF360C" else "#7B1FA2"
-            findViewById<TextView?>(R.id.homeQuotaBbText)?.apply {
-                text = bbChipText
-                setTextColor(Color.parseColor(bbChipColor))
-            }
-        }
+        findViewById<LinearLayout?>(R.id.homeQuotaStrip)?.visibility = View.GONE
 
         // ── Main screen: Ask AI card subtitle ────────────────────────────
-        if (drawerChatLimit > 0 && chatLeft >= 0) {
-            val subtitle = when {
-                chatLeft == 0 -> "Limit reached today"
-                else          -> "$chatLeft questions left"
-            }
-            findViewById<TextView?>(R.id.chatQuotaSubtitle)?.text = subtitle
-        }
+        findViewById<TextView?>(R.id.chatQuotaSubtitle)?.visibility = View.GONE
 
         // ── Main screen: BB card quota pill ──────────────────────────────
-        val bbPill = findViewById<TextView?>(R.id.bbQuotaPill)
-        if (bbPill != null) {
-            if (drawerBbLimit <= 0) {
-                bbPill.visibility = View.GONE
-            } else {
-                bbPill.visibility = View.VISIBLE
-                bbPill.text = when (bbLeft) {
-                    0    -> "No sessions left today"
-                    1    -> "1 session left today"
-                    else -> "$bbLeft sessions left today"
-                }
-                bbPill.setTextColor(ContextCompat.getColor(this,
-                    if (bbLeft == 0) R.color.quotaExhausted else R.color.quotaAvailable))
-            }
-        }
+        findViewById<TextView?>(R.id.bbQuotaPill)?.visibility = View.GONE
 
         // ── Navigation drawer: chat progress bar ─────────────────────────
         val chatText = if (chatLeft < 0) "Unlimited" else "$chatLeft left"
@@ -1664,8 +1617,13 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
     @RequiresApi(Build.VERSION_CODES.Q)
     private fun buildOfferCard(offer: FirestoreOffer): android.view.View {
         val ctx = this
-        val bgColor = runCatching { android.graphics.Color.parseColor(offer.backgroundColor) }
+        val rawBgColor = runCatching { android.graphics.Color.parseColor(offer.backgroundColor) }
             .getOrDefault(android.graphics.Color.parseColor("#1E2640"))
+        val bgColor = android.graphics.Color.rgb(
+            ((android.graphics.Color.red(rawBgColor) * 0.45f) + 18f).toInt().coerceIn(0, 255),
+            ((android.graphics.Color.green(rawBgColor) * 0.45f) + 24f).toInt().coerceIn(0, 255),
+            ((android.graphics.Color.blue(rawBgColor) * 0.45f) + 42f).toInt().coerceIn(0, 255)
+        )
 
         // Lighten the bg color slightly for the stroke
         val cardStrokeColor = android.graphics.Color.argb(
@@ -1675,18 +1633,18 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
             (android.graphics.Color.blue(bgColor) + 70).coerceAtMost(255)
         )
 
-        // Card with glowing stroke
+        // Card with a quieter stroke so the section stays secondary to the main learning CTA.
         val card = com.google.android.material.card.MaterialCardView(ctx).apply {
             layoutParams = android.widget.LinearLayout.LayoutParams(
                 (300 * resources.displayMetrics.density).toInt(),
                 (72 * resources.displayMetrics.density).toInt()
             ).also { it.marginEnd = (10 * resources.displayMetrics.density).toInt() }
             radius = 16 * resources.displayMetrics.density
-            cardElevation = 6 * resources.displayMetrics.density
+            cardElevation = 2 * resources.displayMetrics.density
             setCardBackgroundColor(bgColor)
             setStrokeColor(cardStrokeColor)
             strokeWidth = (1 * resources.displayMetrics.density).toInt()
-            alpha = 0.82f   // slightly faded so blackboard CTA stays dominant
+            alpha = 0.72f
         }
 
         // Root frame for stacking (inner row + badge)

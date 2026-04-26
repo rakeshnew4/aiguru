@@ -343,11 +343,11 @@
 
         <!-- Dismiss handle + label row -->
         <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="0dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingBottom="0dp">
+            android:paddingBottom="6dp">
 
             <TextView
                 android:layout_width="0dp"
@@ -359,8 +359,8 @@
 
             <TextView
                 android:id="@+id/bbAskToggle"
-                android:layout_width="0dp"
-                android:layout_height="0dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
                 android:gravity="center"
                 android:text="✕"
                 android:textSize="14sp"

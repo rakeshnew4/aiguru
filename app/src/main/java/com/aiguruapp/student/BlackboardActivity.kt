@@ -680,7 +680,7 @@ class BlackboardActivity : AppCompatActivity() {
                             loadingGroup.visibility = View.GONE
                             contentGroup.visibility = View.VISIBLE
                             saveSessionBtn.visibility = View.VISIBLE
-                            findViewById<android.widget.LinearLayout>(R.id.bbAskBar)?.visibility = View.VISIBLE
+                            showAskFabOnly()
                             if (isTeacherMode) publishLessonBtn.visibility = View.VISIBLE
                             buildDots()
                             setupBoard()
@@ -750,7 +750,7 @@ class BlackboardActivity : AppCompatActivity() {
                                 loadingGroup.visibility = View.GONE
                                 contentGroup.visibility = View.VISIBLE
                                 saveSessionBtn.visibility = View.VISIBLE
-                                findViewById<android.widget.LinearLayout>(R.id.bbAskBar)?.visibility = View.VISIBLE
+                                showAskFabOnly()
                                 if (isTeacherMode) publishLessonBtn.visibility = View.VISIBLE
                                 buildDots()
                                 setupBoard()
@@ -803,7 +803,7 @@ class BlackboardActivity : AppCompatActivity() {
                                 loadingGroup.visibility = View.GONE
                                 contentGroup.visibility = View.VISIBLE
                                 saveSessionBtn.visibility = View.VISIBLE
-                                findViewById<android.widget.LinearLayout>(R.id.bbAskBar)?.visibility = View.VISIBLE
+                                showAskFabOnly()
                                 if (isTeacherMode) publishLessonBtn.visibility = View.VISIBLE
                                 buildDots()
                                 setupBoard()
@@ -1024,7 +1024,7 @@ class BlackboardActivity : AppCompatActivity() {
                         loadingGroup.visibility = View.GONE
                         contentGroup.visibility = View.VISIBLE
                         // Show inline ask bar now that content is ready
-                        findViewById<android.widget.LinearLayout>(R.id.bbAskBar)?.visibility = View.VISIBLE
+                        showAskFabOnly()
                         // Teachers don't need save/publish after loading a cached lesson
                         saveSessionBtn.visibility = View.GONE
                         publishLessonBtn.visibility = View.GONE
@@ -1068,7 +1068,7 @@ class BlackboardActivity : AppCompatActivity() {
                         loadingGroup.visibility = View.GONE
                         contentGroup.visibility = View.VISIBLE
                         // Show inline ask bar — user can still ask follow-up questions
-                        findViewById<android.widget.LinearLayout>(R.id.bbAskBar)?.visibility = View.VISIBLE
+                        showAskFabOnly()
                         // Session is already saved; hide the save button, no publish needed
                         saveSessionBtn.visibility = View.GONE
                         publishLessonBtn.visibility = View.GONE
@@ -1194,21 +1194,7 @@ class BlackboardActivity : AppCompatActivity() {
         }
         stepsContainer.addView(boardLayout)
 
-        // GestureDetector on ScrollView so single-taps open the ask sheet
-        // while scroll gestures still work normally.
-        val gestureDetector = android.view.GestureDetector(
-            this,
-            object : android.view.GestureDetector.SimpleOnGestureListener() {
-                override fun onSingleTapUp(e: android.view.MotionEvent): Boolean {
-                    showAskBottomSheet()
-                    return true
-                }
-            }
-        )
-        stepsScrollView.setOnTouchListener { _, event ->
-            gestureDetector.onTouchEvent(event)
-            false
-        }
+        stepsScrollView.setOnTouchListener(null)
     }
 
     // ── Frame playback ────────────────────────────────────────────────────────
@@ -2081,8 +2067,6 @@ class BlackboardActivity : AppCompatActivity() {
         if (bbCompletionCard.visibility == View.VISIBLE) return
         showFollowupQuestionsCard()
         showRelatedVideosSection()
-        showContinuationCard()
-        showApplicationChallenge()
         // Record interest + complete daily question in background
         val subject = intent.getStringExtra(EXTRA_SUBJECT) ?: "General"
         val topic = currentTopic
@@ -2867,6 +2851,15 @@ class BlackboardActivity : AppCompatActivity() {
                 .start()
             bbChatFab.visibility = View.VISIBLE
         }
+    }
+
+    private fun showAskFabOnly() {
+        val askBar = findViewById<android.widget.LinearLayout>(R.id.bbAskBar) ?: return
+        askBar.clearAnimation()
+        askBar.translationY = 0f
+        askBar.visibility = View.GONE
+        bbAskBarExpanded = false
+        bbChatFab.visibility = View.VISIBLE
     }
 
     private var subtitlePulse: android.animation.ObjectAnimator? = null
