@@ -13,6 +13,49 @@ from app.core.logger import get_logger
 
 logger = get_logger(__name__)
 
+# ── Per-user LiteLLM key cache (uid → key) ────────────────────────────────────
+_user_key_cache: Dict[str, str] = {}
+
+
+def get_or_create_litellm_key(uid: str) -> Optional[str]:
+    """Return the user's LiteLLM proxy key, creating and storing it if missing."""
+    if uid in _user_key_cache:
+        return _user_key_cache[uid]
+
+    try:
+        from app.core.firebase_auth import get_firestore_db
+        db = get_firestore_db()
+        if db is None:
+            return None
+
+        doc = db.collection("users_table").document(uid).get()
+        key = (doc.to_dict() or {}).get("litellm_key") if doc.exists else None
+
+        if not key:
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.post(
+                    f"{settings.LITELLM_PROXY_URL}/key/generate",
+                    headers={"Authorization": f"Bearer {settings.LITELLM_MASTER_KEY}"},
+                    json={"user_id": uid, "duration": "365d"},
+                )
+                resp.raise_for_status()
+                key = resp.json().get("key")
+
+            if not key:
+                logger.warning("get_or_create_litellm_key: empty key returned for uid=%s", uid)
+                return None
+
+            db.collection("users_table").document(uid).set({"litellm_key": key}, merge=True)
+            logger.info("get_or_create_litellm_key: created and stored key for uid=%s", uid)
+
+        _user_key_cache[uid] = key
+        return key
+
+    except Exception as exc:
+        logger.warning("get_or_create_litellm_key uid=%s: %s", uid, exc)
+        return None
+
+
 # ── Client Initialization (once at module load) ───────────────────────────────
 
 def _init_gemini():
@@ -407,11 +450,9 @@ def _call_litellm_proxy(
     model_config,
     images: Optional[List[str]] = None,
     system_prompt: Optional[str] = None,
+    uid: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Call Gemini via LiteLLM SDK with thinking enabled."""
-    import litellm
-
-    # Build messages list
+    """Call Gemini via LiteLLM proxy using the user's per-user key."""
     messages = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
@@ -427,43 +468,64 @@ def _call_litellm_proxy(
 
     messages.append({"role": "user", "content": content})
 
-    model = f"gemini/{model_config.model_id}"
-    logger.debug(f"LiteLLM SDK request: model={model}, has_system={'yes' if system_prompt else 'no'}, prompt_len={len(prompt)}, images={len(images) if images else 0}")
+    auth_key = settings.LITELLM_MASTER_KEY
+    if uid and uid != "guest_user":
+        user_key = get_or_create_litellm_key(uid)
+        if user_key:
+            auth_key = user_key
+
+    model = model_config.model_id
+    logger.debug(f"LiteLLM proxy request: model={model}, uid={uid}, has_system={'yes' if system_prompt else 'no'}, images={len(images) if images else 0}")
 
     try:
-        response = litellm.completion(
-            model=model,
-            messages=messages,
-            temperature=model_config.temperature,
-            max_tokens=model_config.max_tokens,
-            api_key=settings.GEMINI_API_KEY,
-            extra_body={
-                "thinking_config": {
-                    "include_thoughts": True,
-                    "thinking_level": "LOW",
-                }
-            },
-        )
+        with httpx.Client(timeout=300.0) as client:
+            resp = client.post(
+                f"{settings.LITELLM_PROXY_URL}/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {auth_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "messages": messages,
+                    "temperature": model_config.temperature,
+                    "max_tokens": model_config.max_tokens,
+                    "thinking_config": {
+                        "include_thoughts": True,
+                        "thinking_level": "LOW",
+                    },
+                },
+            )
 
-        text = response.choices[0].message.content
+        if resp.status_code != 200:
+            logger.error(f"LiteLLM proxy returned {resp.status_code}: {resp.text[:500]}")
+            raise RuntimeError(f"LiteLLM proxy error {resp.status_code}: {resp.text[:300]}")
+
+        data = resp.json()
+        if not data.get("choices") or not data["choices"][0].get("message"):
+            raise RuntimeError("LiteLLM response missing choices[0].message")
+
+        text = data["choices"][0]["message"]["content"]
         if not text:
             logger.warning("LiteLLM returned empty text content")
 
-        usage = response.usage or {}
+        usage = data.get("usage", {})
         result = {
             "text": text,
             "tokens": {
-                "inputTokens": getattr(usage, "prompt_tokens", 0),
-                "outputTokens": getattr(usage, "completion_tokens", 0),
-                "totalTokens": getattr(usage, "total_tokens", 0),
-                "cachedTokens": getattr(getattr(usage, "prompt_tokens_details", None), "cached_tokens", 0),
+                "inputTokens": usage.get("prompt_tokens", 0),
+                "outputTokens": usage.get("completion_tokens", 0),
+                "totalTokens": usage.get("total_tokens", 0),
+                "cachedTokens": usage.get("prompt_tokens_details", {}).get("cached_tokens", 0),
             },
             "provider": "litellm",
             "model": model,
         }
-        logger.info(f"LiteLLM success: model={model} | tokens={result['tokens']['totalTokens']} | cached={result['tokens']['cachedTokens']}")
+        logger.info(f"LiteLLM success: model={model} | uid={uid} | tokens={result['tokens']['totalTokens']}")
         return result
 
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"LiteLLM returned invalid JSON: {str(e)[:100]}")
     except Exception as e:
         logger.error(f"LiteLLM call failed for model={model}: {type(e).__name__}: {e}")
         raise
@@ -474,6 +536,7 @@ def generate_response(
     images: Optional[List[str]] = None,
     tier: Literal["power", "cheaper", "faster"] = "cheaper",
     system_prompt: Optional[str] = None,
+    uid: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Generate LLM response using LiteLLM proxy.
@@ -507,7 +570,7 @@ def generate_response(
         model_config._tier_name = tier
         
         logger.info(f"Calling LiteLLM proxy with tier={tier}")
-        result = _call_litellm_proxy(prompt, model_config, images, system_prompt=system_prompt)
+        result = _call_litellm_proxy(prompt, model_config, images, system_prompt=system_prompt, uid=uid)
         
         if result and result.get("text"):
             logger.info(f"LiteLLM success | tier={tier} | tokens={result.get('tokens', {})}")
