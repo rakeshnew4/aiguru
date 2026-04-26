@@ -236,7 +236,94 @@ object FirestoreManager {
             .get()
             .addOnSuccessListener { snap ->
                 val plans = snap.documents
-                    .mapNotNull { doc -> doc.toObject(FirestorePlan::class.java)?.copy(id = doc.id) }
+                    .map { doc ->
+                        val limits = doc.get("limits") as? Map<*, *> ?: emptyMap<String, Any>()
+                        val credits = (limits["credits_on_activation"] as? Number)?.toInt() ?: 0
+                        val bonusCredits = (limits["monthly_bonus_credits"] as? Number)?.toInt() ?: 0
+                        val monthlyTokens = (limits["monthly_token_limit"] as? Number)?.toInt() ?: 0
+                        val monthlyTtsChars = (limits["monthly_tts_char_limit"] as? Number)?.toInt() ?: 0
+                        val aiTtsEnabled = limits["ai_tts_enabled"] as? Boolean ?: false
+                        val imageEnabled = limits["image_upload_enabled"] as? Boolean ?: false
+                        val blackboardEnabled = limits["blackboard_enabled"] as? Boolean ?: true
+
+                        val durationDays = doc.getLong("duration_days")?.toInt()
+                            ?: doc.getLong("validity_days")?.toInt()
+                            ?: 30
+                        val duration = when (durationDays) {
+                            0 -> "No expiry"
+                            30 -> "Monthly recharge"
+                            365 -> "Annual access"
+                            else -> "$durationDays days"
+                        }
+
+                        val features = buildList {
+                            if (credits > 0) {
+                                add(
+                                    if (bonusCredits > 0) {
+                                        "$credits base credits + $bonusCredits bonus"
+                                    } else {
+                                        "$credits credits included"
+                                    }
+                                )
+                            }
+                            if (monthlyTokens > 0) {
+                                add("About ${monthlyTokens / 1000}K tokens of usage")
+                            } else if (credits > 0) {
+                                add("Usage billed from your credit balance")
+                            }
+                            if (blackboardEnabled) add("Blackboard lessons and quizzes")
+                            if (aiTtsEnabled) {
+                                add(
+                                    if (monthlyTtsChars > 0) {
+                                        "AI voice up to ${monthlyTtsChars / 1000}K chars"
+                                    } else {
+                                        "AI voice enabled"
+                                    }
+                                )
+                            }
+                            if (imageEnabled) add("Image-based explanations")
+                            if (isEmpty()) {
+                                add(doc.getString("description") ?: "Flexible AI learning access")
+                            }
+                        }.take(5)
+
+                        val accentColor = doc.getString("accent_color")
+                            ?: doc.getString("accentColor")
+                            ?: when (doc.id.lowercase()) {
+                                "free" -> "#475569"
+                                "basic" -> "#0F766E"
+                                "pro" -> "#1D4ED8"
+                                "school" -> "#7C3AED"
+                                else -> "#1565C0"
+                            }
+
+                        FirestorePlan(
+                            id = doc.id,
+                            name = doc.getString("name") ?: doc.id.replaceFirstChar { it.uppercase() },
+                            badge = doc.getString("badge")
+                                ?: if ((doc.getString("planId") ?: doc.id).equals("basic", true)) "Popular" else "",
+                            priceInr = doc.getLong("price_inr")?.toInt()
+                                ?: doc.getLong("priceInr")?.toInt()
+                                ?: 0,
+                            duration = duration,
+                            validityDays = durationDays,
+                            features = features,
+                            displayOrder = doc.getLong("display_order")?.toInt()
+                                ?: doc.getLong("displayOrder")?.toInt()
+                                ?: when (doc.id.lowercase()) {
+                                    "free" -> 0
+                                    "basic" -> 1
+                                    "pro" -> 2
+                                    "school" -> 3
+                                    else -> 99
+                                },
+                            isActive = doc.getBoolean("active")
+                                ?: doc.getBoolean("is_active")
+                                ?: doc.getBoolean("isActive")
+                                ?: true,
+                            accentColor = accentColor,
+                        )
+                    }
                     .filter { it.isActive }
                     .sortedBy { it.displayOrder }
                 onSuccess(plans)

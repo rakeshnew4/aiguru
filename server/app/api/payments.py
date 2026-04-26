@@ -235,19 +235,39 @@ async def verify_payment(
         "updatedAt": now,
     })
 
-    # 5. Firestore: activate plan in users_table (server-managed collection)
-    plan_start_date = now
-    plan_expiry_date = (
-        now + req.validity_days * 86_400_000   # ms
-        if getattr(req, "validity_days", 0) > 0 else 0
-    )
-    user_service.activate_plan(
-        uid=req.user_id,
-        plan_id=req.plan_id,
-        plan_name=plan_name,
-        plan_start_date=plan_start_date,
-        plan_expiry_date=plan_expiry_date,
-    )
+    # 5. Either grant credits (top-up) OR activate plan (subscription) based on plan_id prefix.
+    if req.plan_id.startswith("topup_"):
+        # Credit top-up: look up the pack from credit_topups/{plan_id} and grant credits.
+        # No plan activation, no expiry date — credits sit in user_credits/{uid}.balance.
+        try:
+            pack_snap = db.collection("credit_topups").document(req.plan_id).get()
+            if pack_snap.exists:
+                pack = pack_snap.to_dict() or {}
+                grant = int(pack.get("credits", 0)) + int(pack.get("bonus_credits", 0))
+                if grant > 0:
+                    user_service.grant_topup_credits(
+                        uid=req.user_id,
+                        amount=grant,
+                        pack_id=req.plan_id,
+                        pack_name=pack.get("name", req.plan_id),
+                    )
+            else:
+                logger.warning("verify_payment: topup pack %s not found", req.plan_id)
+        except Exception as exc:
+            logger.error("verify_payment: topup grant failed: %s", exc)
+    else:
+        plan_start_date = now
+        plan_expiry_date = (
+            now + req.validity_days * 86_400_000   # ms
+            if getattr(req, "validity_days", 0) > 0 else 0
+        )
+        user_service.activate_plan(
+            uid=req.user_id,
+            plan_id=req.plan_id,
+            plan_name=plan_name,
+            plan_start_date=plan_start_date,
+            plan_expiry_date=plan_expiry_date,
+        )
 
     # 6. Firestore: mark intent completed
     db.collection("payment_intents").document(

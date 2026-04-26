@@ -12,7 +12,12 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.view.Gravity
 import com.aiguruapp.student.config.AdminConfigRepository
+import com.aiguruapp.student.daily.DailyQuestionsManager
+import com.aiguruapp.student.daily.TopupPack
 import com.aiguruapp.student.firestore.FirestoreManager
 import com.aiguruapp.student.models.FirestorePlan
 import com.aiguruapp.student.models.School
@@ -73,6 +78,8 @@ class SubscriptionActivity : BaseActivity(), PaymentResultWithDataListener {
 
         applySchoolBranding()
         loadPlansAndRender()
+        // Top-up packs: shown above the plan list so users can recharge credits anytime.
+        loadAndRenderTopupPacks()
     }
 
     private fun resolvePaymentBaseUrl(): String = AdminConfigRepository.effectiveServerUrl()
@@ -568,5 +575,177 @@ class SubscriptionActivity : BaseActivity(), PaymentResultWithDataListener {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         })
         finish()
+    }
+
+    // ── Top-up credits section ────────────────────────────────────────────────
+
+    /**
+     * Fetches credit top-up packs from /credits/topup-packs and renders them as
+     * compact horizontal cards above the plan list. Each pack reuses the existing
+     * Razorpay flow with planId="topup_<id>" — server detects the prefix and grants
+     * credits instead of activating a plan.
+     */
+    private fun loadAndRenderTopupPacks() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val packs = DailyQuestionsManager.fetchTopupPacks()
+            withContext(Dispatchers.Main) {
+                if (packs.isNotEmpty()) renderTopupSection(packs)
+            }
+        }
+    }
+
+    private fun renderTopupSection(packs: List<TopupPack>) {
+        val parent = findViewById<LinearLayout>(R.id.plansContainer).parent as? LinearLayout ?: return
+        val plansContainer = findViewById<LinearLayout>(R.id.plansContainer)
+        val plansIndex = parent.indexOfChild(plansContainer)
+        if (plansIndex < 0) return
+        // Avoid double-insertion on re-render
+        if (parent.findViewWithTag<View?>("topup_section") != null) return
+
+        val dp = resources.displayMetrics.density
+        val section = LinearLayout(this).apply {
+            tag = "topup_section"
+            orientation = LinearLayout.VERTICAL
+            setPadding((16 * dp).toInt(), (12 * dp).toInt(), (16 * dp).toInt(), (12 * dp).toInt())
+        }
+
+        // Header label
+        section.addView(TextView(this).apply {
+            text = "Recharge credits"
+            textSize = 13f
+            setTextColor(Color.parseColor("#1A2332"))
+            setTypeface(typeface, Typeface.BOLD)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (4 * dp).toInt() }
+        })
+        section.addView(TextView(this).apply {
+            text = "Added on top of your current plan when your balance runs low."
+            textSize = 12f
+            setTextColor(Color.parseColor("#9AA0B0"))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (10 * dp).toInt() }
+        })
+
+        // Horizontal scroll of pack cards
+        val scroll = android.widget.HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            clipToPadding = false
+        }
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        scroll.addView(row)
+
+        packs.forEach { pack ->
+            row.addView(buildTopupCard(pack))
+        }
+        section.addView(scroll)
+
+        parent.addView(section, plansIndex)
+    }
+
+    private fun buildTopupCard(pack: TopupPack): View {
+        val dp = resources.displayMetrics.density
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.START
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = 16 * dp
+                if (pack.popular) {
+                    setColor(Color.parseColor("#FFFFFF"))
+                    setStroke((2 * dp).toInt(), Color.parseColor("#2563EB"))
+                } else {
+                    setColor(Color.parseColor("#FFFFFF"))
+                    setStroke((1 * dp).toInt(), Color.parseColor("#D7DFEA"))
+                }
+            }
+            setPadding((16 * dp).toInt(), (16 * dp).toInt(), (16 * dp).toInt(), (14 * dp).toInt())
+            layoutParams = LinearLayout.LayoutParams((150 * dp).toInt(), LinearLayout.LayoutParams.WRAP_CONTENT)
+                .apply { marginEnd = (10 * dp).toInt() }
+            isClickable = true
+            isFocusable = true
+        }
+
+        if (pack.popular) {
+            card.addView(TextView(this).apply {
+                text = "Most chosen"
+                textSize = 10f
+                setTextColor(Color.parseColor("#2563EB"))
+                setTypeface(typeface, Typeface.BOLD)
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { bottomMargin = (4 * dp).toInt() }
+            })
+        }
+
+        card.addView(TextView(this).apply {
+            text = "⭐ ${pack.totalCredits}"
+            textSize = 22f
+            setTextColor(Color.parseColor("#B45309"))
+            setTypeface(typeface, Typeface.BOLD)
+        })
+        if (pack.bonusCredits > 0) {
+            card.addView(TextView(this).apply {
+                text = "+${pack.bonusCredits} bonus"
+                textSize = 10f
+                setTextColor(Color.parseColor("#047857"))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply { topMargin = (2 * dp).toInt() }
+            })
+        }
+        card.addView(TextView(this).apply {
+            text = pack.description
+            textSize = 11f
+            setTextColor(Color.parseColor("#64748B"))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (6 * dp).toInt() }
+        })
+        card.addView(TextView(this).apply {
+            text = "₹${pack.priceInr}"
+            textSize = 16f
+            setTextColor(Color.parseColor("#111827"))
+            setTypeface(typeface, Typeface.BOLD)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = (8 * dp).toInt() }
+        })
+
+        val buyBtn = MaterialButton(this).apply {
+            text = "Buy"
+            textSize = 12f
+            setTextColor(Color.WHITE)
+            backgroundTintList = ColorStateList.valueOf(
+                Color.parseColor(if (pack.popular) "#2563EB" else "#334155")
+            )
+            cornerRadius = (12 * dp).toInt()
+            insetTop = 0; insetBottom = 0
+            minHeight = (32 * dp).toInt()
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, (36 * dp).toInt()
+            ).apply { topMargin = (10 * dp).toInt() }
+        }
+        card.addView(buyBtn)
+
+        val purchase = View.OnClickListener {
+            // Wrap topup as SchoolPlan so the existing Razorpay flow handles it.
+            // Server inspects plan_id prefix "topup_" and grants credits instead of activating a plan.
+            val asPlan = SchoolPlan(
+                id = pack.id,
+                name = pack.name,
+                badge = if (pack.popular) "POPULAR" else "",
+                priceINR = pack.priceInr,
+                duration = "one-time",
+                features = listOf("${pack.totalCredits} credits added to your balance")
+            )
+            selectedValidityDays = 0   // top-ups never expire
+            startPlanSelection(asPlan, buyBtn)
+        }
+        card.setOnClickListener(purchase)
+        buyBtn.setOnClickListener(purchase)
+
+        return card
     }
 }

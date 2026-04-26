@@ -219,14 +219,21 @@ blackboard_prompt = (
     '"speech":"1-2 sentences",'
     '"tts_engine":"gemini",'
     '"voice_role":"teacher",'
-    '"duration_ms":2500'
+    '"duration_ms":2500,'
     '"diagram_type":"",'
     '"diagram_data":{},'
     '"visual_description":""'
-    '}]}]}'
+    '}],'
+    '"followup_questions":[{"question":"...","speech":"...","tts_engine":"android","voice_role":"teacher"}],'
+    '"session_theme":"...","video_search_query":"...","preferred_channels":["Physics Wallah","Khan Academy India"]'
+    '}]}'
     '\n\n'
     "SPARSE: Omit empty/default fields. Required on every frame: frame_type, text, speech, tts_engine, voice_role, duration_ms.\n"
-    "Step fields (title, lang, image_description, image_show_confidencescore) are on the STEP — NEVER inside frames.\n\n"
+    "Step fields (title, lang, image_description, image_show_confidencescore) are on the STEP — NEVER inside frames.\n"
+    "FOLLOWUP_QUESTIONS: ONLY on the LAST step. Exactly 3 thought-provoking questions related to the topic. "
+    "Each: short question (≤14 words) + speech (TTS-friendly, ≤20 words, conversational, native to lang).\n\n"
+    "VIDEO SEARCH FIELDS: root-level only. session_theme = 3-8 words. video_search_query = one broad end-of-lesson query. "
+    "preferred_channels = 2-4 India-friendly educational channels or creators relevant to this topic.\n\n"
     "FRAME TYPES: concept | memory | diagram | quiz_mcq | quiz_typed | quiz_voice | quiz_order | summary\n\n"
     "DIAGRAM — set diagram_type + data (no svg_elements):\n"
     "PATH 1 (semantic engine): atom, solar_system, waveform_signal, triangle, polygon,\n"
@@ -235,23 +242,14 @@ blackboard_prompt = (
     'PATH 2 (custom): heart, neuron, circuit, force diagram, apparatus, any organic shape\n'
     '  → diagram_type="custom", data={"intent":"1 sentence: what to show"}, visual_description="same"\n\n'
 
-    "PSYCHOLOGICAL FLOW (follow this arc every lesson):\n"
-    "1. HOOK — first frame of Step 1 MUST be a real-world curiosity question or surprising fact.\n"
-    "   Good: 'Ever wonder why the sky is blue?' Bad: 'Today we will learn about light.'\n"
-    "   Keep it 1 line. It grabs attention and activates prior knowledge.\n"
-    "2. EXPLAIN + VISUALIZE — explain the concept simply, then show a diagram when it adds clarity.\n"
-    "3. PREDICT + REVEAL — once per lesson, ask 'What do you think happens when...?' (concept frame),\n"
-    "   then immediately follow with the reveal in the next frame. NO user input needed — flow continues.\n"
-    "4. APPLY — each step must have at least one frame anchoring the concept to real life.\n"
-    "   Good: 'That is why puddles disappear after rain.' Keep it to 1 line.\n"
-    "5. CURIOSITY BRIDGE — the SECOND-TO-LAST frame of each step must end with a forward-looking question\n"
-    "   that pulls the student into the next concept. 'But where does this vapor go next? 🌥️'\n"
-    "   This replaces quiz as the primary engagement mechanism in Steps 1–(N-1).\n"
-    "6. LAST STEP — ends with quiz_mcq + summary. Summary frame should answer: 'You now understand X.'\n"
-    "   and hint at what comes next in the subject.\n\n"
+    "FLOW: Step 1 frame 1 = HOOK (real-world curiosity Q, 1 line). Each step has ≥1 APPLY frame anchoring to real life. "
+    "Second-to-last frame of each step = CURIOSITY BRIDGE forward question. Last step ends with quiz_mcq → summary AND "
+    "includes 'followup_questions' (exactly 3 thought-provoking extensions).\n"
+    "TIMING duration_ms: concept/memory/diagram 1500-2500; HOOK/APPLY/CURIOSITY 2000-2500; summary 2500-3000; quiz 2000.\n\n"
 
     "RULES:\n"
-    "- 4-5 steps, 2-4 frames/step. Last step: quiz_mcq then summary (final).\n"
+    "- 4-5 steps, 2-4 frames/step. Last step: quiz_mcq then summary (final). DO NOT include youtube_clip on any frame — videos surfaced separately at end.\n"
+    "- Use ONE lesson-level video_search_query for the whole session, never per-step video searches.\n"
     "- Step 2 MUST have a diagram or populated image_description.\n"
     "- speech: ≤2 sentences ≤50 words. Conversational, calm. No openers ('Today we learn...', 'Hi class!'). TTS-safe: say 'squared' not '^2'.\n"
     "- speech language matches lang field (hi-IN→Hindi, te-IN→Telugu, en-US→English).\n"

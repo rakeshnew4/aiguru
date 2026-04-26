@@ -108,7 +108,16 @@ object BlackboardGenerator {
         val frames: List<BlackboardFrame>,
         val languageTag: String = "en-US",
         val image_description: String = "",
-        val imageConfidenceScore: Float = 0f   // 0.0 = skip, 0.4–0.69 = tap-only, ≥0.7 = inline
+        val imageConfidenceScore: Float = 0f,  // 0.0 = skip, 0.4–0.69 = tap-only, ≥0.7 = inline
+        val followupQuestions: List<FollowupQuestion> = emptyList()  // Only on last step
+    )
+
+    /** Inline tap-to-ask questions surfaced after the lesson completes. */
+    data class FollowupQuestion(
+        val question: String,
+        val speech: String = "",        // For Android TTS to read aloud
+        val ttsEngine: String = "android",
+        val voiceRole: String = "teacher"
     )
 
     /**
@@ -370,10 +379,26 @@ $svgNote$lastFrameNote$langInstruction"""
                             val fillArr  = frameObj.optJSONArray("fill_blanks")
                             val orderArr = frameObj.optJSONArray("quiz_correct_order")
                             val fType    = frameObj.optString("frame_type", "concept")
+                            val ytObj    = frameObj.optJSONObject("youtube_clip")
                             // Parse engine/role; fall back to smart assignment for old/cached frames
                             val rawEngine = frameObj.optString("tts_engine", "")
                             val rawRole   = frameObj.optString("voice_role",  "")
                             val (assignedEngine, assignedRole) = smartAssignTts(fType)
+                            val ytClip = if (ytObj != null) {
+                                val vid   = ytObj.optString("video_id", "")
+                                val start = ytObj.optInt("start_seconds", 0)
+                                val end   = ytObj.optInt("end_seconds", 0)
+                                val defUrl = "https://www.youtube.com/watch?v=$vid&t=${start}s"
+                                YouTubeClip(
+                                    videoId             = vid,
+                                    startSeconds        = start,
+                                    endSeconds          = end,
+                                    title               = ytObj.optString("title", ""),
+                                    startUrl            = ytObj.optString("start_url", defUrl).ifBlank { defUrl },
+                                    clipDurationSeconds = ytObj.optInt("clip_duration_seconds", (end - start).coerceAtLeast(10)),
+                                    channel             = ytObj.optString("channel", "")
+                                ).takeIf { it.videoId.isNotBlank() }
+                            } else null
                             BlackboardFrame(
                                 text              = frameObj.getString("text"),
                                 highlight         = if (hlArr != null) (0 until hlArr.length()).map { hlArr.getString(it) } else emptyList(),
@@ -389,15 +414,30 @@ $svgNote$lastFrameNote$langInstruction"""
                                 quizKeywords      = if (kwArr != null) (0 until kwArr.length()).map { kwArr.getString(it) } else emptyList(),
                                 fillBlanks        = if (fillArr != null) (0 until fillArr.length()).map { fillArr.getString(it) } else emptyList(),
                                 quizCorrectOrder  = if (orderArr != null) (0 until orderArr.length()).map { orderArr.getInt(it) } else emptyList(),
-                                svgHtml           = frameObj.optString("svg_html", "")
+                                svgHtml           = frameObj.optString("svg_html", ""),
+                                youtubeClip       = ytClip
                             )
                         }
+                        val fqArr = stepObj.optJSONArray("followup_questions")
+                        val followups = if (fqArr != null) {
+                            (0 until fqArr.length()).mapNotNull { i ->
+                                val o = fqArr.optJSONObject(i) ?: return@mapNotNull null
+                                val q = o.optString("question", "").trim()
+                                if (q.isBlank()) null else FollowupQuestion(
+                                    question = q,
+                                    speech = o.optString("speech", q),
+                                    ttsEngine = o.optString("tts_engine", "android"),
+                                    voiceRole = o.optString("voice_role", "teacher")
+                                )
+                            }
+                        } else emptyList()
                         BlackboardStep(
                             title                = stepObj.optString("title", ""),
                             frames               = frames,
                             languageTag          = langTag,
                             image_description    = stepObj.optString("image_description", ""),
-                            imageConfidenceScore = stepObj.optDouble("image_show_confidencescore", 0.0).toFloat()
+                            imageConfidenceScore = stepObj.optDouble("image_show_confidencescore", 0.0).toFloat(),
+                            followupQuestions    = followups
                         )
                     }
                     steps.ifEmpty { null }
@@ -525,12 +565,28 @@ $svgNote$lastFrameNote$langInstruction"""
                     youtubeClip      = ytClip
                 )
             }
+            // Parse follow-up questions (only present on last step typically)
+            val fqArr = stepObj.optJSONArray("followup_questions")
+            val followups = if (fqArr != null) {
+                (0 until fqArr.length()).mapNotNull { i ->
+                    val o = fqArr.optJSONObject(i) ?: return@mapNotNull null
+                    val q = o.optString("question", "").trim()
+                    if (q.isBlank()) null else FollowupQuestion(
+                        question = q,
+                        speech = o.optString("speech", q),
+                        ttsEngine = o.optString("tts_engine", "android"),
+                        voiceRole = o.optString("voice_role", "teacher")
+                    )
+                }
+            } else emptyList()
+
             BlackboardStep(
                 title                = stepObj.optString("title", ""),
                 frames               = frames,
                 languageTag          = langTag,
                 image_description    = stepObj.optString("image_description", ""),
-                imageConfidenceScore = stepObj.optDouble("image_show_confidencescore", 0.0).toFloat()
+                imageConfidenceScore = stepObj.optDouble("image_show_confidencescore", 0.0).toFloat(),
+                followupQuestions    = followups
             )
         }
     }
@@ -562,23 +618,45 @@ $svgNote$lastFrameNote$langInstruction"""
         steps.forEach { step ->
             val framesJson = JSONArray()
             step.frames.forEach { frame ->
-                framesJson.put(
+                val frameJson = JSONObject()
+                    .put("text", frame.text)
+                    .put("highlight", JSONArray(frame.highlight))
+                    .put("speech", frame.speech)
+                    .put("duration_ms", frame.durationMs)
+                    .put("frame_type", frame.frameType)
+                    .put("tts_engine", frame.ttsEngine)
+                    .put("voice_role", frame.voiceRole)
+                    .put("quiz_answer", frame.quizAnswer)
+                    .put("quiz_options", JSONArray(frame.quizOptions))
+                    .put("quiz_correct_index", frame.quizCorrectIndex)
+                    .put("quiz_model_answer", frame.quizModelAnswer)
+                    .put("quiz_keywords", JSONArray(frame.quizKeywords))
+                    .put("fill_blanks", JSONArray(frame.fillBlanks))
+                    .put("quiz_correct_order", JSONArray(frame.quizCorrectOrder))
+                    .put("svg_html", frame.svgHtml)
+                frame.youtubeClip?.let { clip ->
+                    frameJson.put(
+                        "youtube_clip",
+                        JSONObject()
+                            .put("video_id", clip.videoId)
+                            .put("start_seconds", clip.startSeconds)
+                            .put("end_seconds", clip.endSeconds)
+                            .put("title", clip.title)
+                            .put("start_url", clip.startUrl)
+                            .put("clip_duration_seconds", clip.clipDurationSeconds)
+                            .put("channel", clip.channel)
+                    )
+                }
+                framesJson.put(frameJson)
+            }
+            val followupsJson = JSONArray()
+            step.followupQuestions.forEach { q ->
+                followupsJson.put(
                     JSONObject()
-                        .put("text", frame.text)
-                        .put("highlight", JSONArray(frame.highlight))
-                        .put("speech", frame.speech)
-                        .put("duration_ms", frame.durationMs)
-                        .put("frame_type", frame.frameType)
-                        .put("tts_engine", frame.ttsEngine)
-                        .put("voice_role", frame.voiceRole)
-                        .put("quiz_answer", frame.quizAnswer)
-                        .put("quiz_options", JSONArray(frame.quizOptions))
-                        .put("quiz_correct_index", frame.quizCorrectIndex)
-                        .put("quiz_model_answer", frame.quizModelAnswer)
-                        .put("quiz_keywords", JSONArray(frame.quizKeywords))
-                        .put("fill_blanks", JSONArray(frame.fillBlanks))
-                        .put("quiz_correct_order", JSONArray(frame.quizCorrectOrder))
-                        .put("svg_html", frame.svgHtml)
+                        .put("question", q.question)
+                        .put("speech", q.speech)
+                        .put("tts_engine", q.ttsEngine)
+                        .put("voice_role", q.voiceRole)
                 )
             }
             arr.put(
@@ -588,6 +666,7 @@ $svgNote$lastFrameNote$langInstruction"""
                     .put("lang", step.languageTag)
                     .put("image_description", step.image_description)
                     .put("image_show_confidencescore", step.imageConfidenceScore.toDouble())
+                    .put("followup_questions", followupsJson)
             )
         }
         return arr.toString()
@@ -616,9 +695,25 @@ $svgNote$lastFrameNote$langInstruction"""
                     val fillArr  = f.optJSONArray("fill_blanks")
                     val orderArr = f.optJSONArray("quiz_correct_order")
                     val fType    = f.optString("frame_type", "concept")
+                    val ytObj    = f.optJSONObject("youtube_clip")
                     val rawEngine = f.optString("tts_engine", "")
                     val rawRole   = f.optString("voice_role",  "")
                     val (aEngine, aRole) = smartAssignTts(fType)
+                    val ytClip = if (ytObj != null) {
+                        val vid   = ytObj.optString("video_id", "")
+                        val start = ytObj.optInt("start_seconds", 0)
+                        val end   = ytObj.optInt("end_seconds", 0)
+                        val defUrl = "https://www.youtube.com/watch?v=$vid&t=${start}s"
+                        YouTubeClip(
+                            videoId             = vid,
+                            startSeconds        = start,
+                            endSeconds          = end,
+                            title               = ytObj.optString("title", ""),
+                            startUrl            = ytObj.optString("start_url", defUrl).ifBlank { defUrl },
+                            clipDurationSeconds = ytObj.optInt("clip_duration_seconds", (end - start).coerceAtLeast(10)),
+                            channel             = ytObj.optString("channel", "")
+                        ).takeIf { it.videoId.isNotBlank() }
+                    } else null
                     BlackboardFrame(
                         text             = f.getString("text"),
                         highlight        = hlArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
@@ -634,15 +729,29 @@ $svgNote$lastFrameNote$langInstruction"""
                         quizKeywords     = kwArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
                         fillBlanks       = fillArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
                         quizCorrectOrder = orderArr?.let { a -> (0 until a.length()).map { a.getInt(it) } } ?: emptyList(),
-                        svgHtml          = f.optString("svg_html", "")
+                        svgHtml          = f.optString("svg_html", ""),
+                        youtubeClip      = ytClip
                     )
                 }
+                val followups = stepObj.optJSONArray("followup_questions")?.let { arrQ ->
+                    (0 until arrQ.length()).mapNotNull { idx ->
+                        val qObj = arrQ.optJSONObject(idx) ?: return@mapNotNull null
+                        val question = qObj.optString("question", "").trim()
+                        if (question.isBlank()) null else FollowupQuestion(
+                            question = question,
+                            speech = qObj.optString("speech", question),
+                            ttsEngine = qObj.optString("tts_engine", "android"),
+                            voiceRole = qObj.optString("voice_role", "teacher")
+                        )
+                    }
+                } ?: emptyList()
                 BlackboardStep(
                     title                = stepObj.optString("title", ""),
                     frames               = frames,
                     languageTag          = langTag,
                     image_description    = stepObj.optString("image_description", ""),
-                    imageConfidenceScore = stepObj.optDouble("image_show_confidencescore", 0.0).toFloat()
+                    imageConfidenceScore = stepObj.optDouble("image_show_confidencescore", 0.0).toFloat(),
+                    followupQuestions    = followups
                 )
             }
         } catch (_: Exception) {
@@ -679,52 +788,7 @@ $svgNote$lastFrameNote$langInstruction"""
             val stepsJson = doc.getString("steps") ?: ""
             if (stepsJson.isEmpty()) { errorMsg = "No steps data in cache"; latch.countDown(); return@addOnSuccessListener }
             try {
-                val arr = JSONArray(stepsJson)
-                val langFallback = preferredLanguageTag ?: "en-US"
-                result = (0 until arr.length()).map { i ->
-                    val stepObj = arr.getJSONObject(i)
-                    val langTag = normalizeLanguageTag(
-                        raw      = stepObj.optString("lang", stepObj.optString("language", "")),
-                        fallback = langFallback
-                    )
-                    val framesArr = stepObj.getJSONArray("frames")
-                    val frames = (0 until framesArr.length()).map { j ->
-                        val f = framesArr.getJSONObject(j)
-                        val hlArr    = f.optJSONArray("highlight")
-                        val optsArr  = f.optJSONArray("quiz_options")
-                        val kwArr    = f.optJSONArray("quiz_keywords")
-                        val fillArr  = f.optJSONArray("fill_blanks")
-                        val orderArr = f.optJSONArray("quiz_correct_order")
-                        val fType    = f.optString("frame_type", "concept")
-                        val rawEngine = f.optString("tts_engine", "")
-                        val rawRole   = f.optString("voice_role",  "")
-                        val (aEngine, aRole) = smartAssignTts(fType)
-                        BlackboardFrame(
-                            text             = f.getString("text"),
-                            highlight        = hlArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
-                            speech           = f.optString("speech", ""),
-                            durationMs       = f.optLong("duration_ms", 2000),
-                            frameType        = fType,
-                            ttsEngine        = rawEngine.ifBlank { aEngine },
-                            voiceRole        = rawRole.ifBlank { aRole },
-                            quizAnswer       = f.optString("quiz_answer", ""),
-                            quizOptions      = optsArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
-                            quizCorrectIndex = f.optInt("quiz_correct_index", -1),
-                            quizModelAnswer  = f.optString("quiz_model_answer", ""),
-                            quizKeywords     = kwArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
-                            fillBlanks       = fillArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
-                            quizCorrectOrder = orderArr?.let { a -> (0 until a.length()).map { a.getInt(it) } } ?: emptyList(),
-                            svgHtml          = f.optString("svg_html", "")
-                        )
-                    }
-                    BlackboardStep(
-                        title                = stepObj.optString("title", ""),
-                        frames               = frames,
-                        languageTag          = langTag,
-                        image_description    = stepObj.optString("image_description", ""),
-                        imageConfidenceScore = stepObj.optDouble("image_show_confidencescore", 0.0).toFloat()
-                    )
-                }
+                result = deserializeSteps(stepsJson, preferredLanguageTag ?: "en-US")
             } catch (e: Exception) {
                 errorMsg = "Parse error: ${e.message}"
             }
@@ -770,54 +834,10 @@ $svgNote$lastFrameNote$langInstruction"""
                     return@addOnSuccessListener
                 }
                 try {
-                    val arr = JSONArray(stepsJson)
                     val langFallback = preferredLanguageTag
                         ?: doc.getString("language_tag")
                         ?: "en-US"
-                    result = (0 until arr.length()).map { i ->
-                        val stepObj = arr.getJSONObject(i)
-                        val langTag = normalizeLanguageTag(
-                            raw      = stepObj.optString("lang", stepObj.optString("language", "")),
-                            fallback = langFallback
-                        )
-                        val framesArr = stepObj.getJSONArray("frames")
-                        val frames = (0 until framesArr.length()).map { j ->
-                            val frameObj  = framesArr.getJSONObject(j)
-                            val hlArr     = frameObj.optJSONArray("highlight")
-                            val optsArr   = frameObj.optJSONArray("quiz_options")
-                            val kwArr     = frameObj.optJSONArray("quiz_keywords")
-                            val fillArr   = frameObj.optJSONArray("fill_blanks")
-                            val orderArr  = frameObj.optJSONArray("quiz_correct_order")
-                            val fType     = frameObj.optString("frame_type", "concept")
-                            val rawEngine = frameObj.optString("tts_engine", "")
-                            val rawRole   = frameObj.optString("voice_role", "")
-                            val (aEngine, aRole) = smartAssignTts(fType)
-                            BlackboardFrame(
-                                text             = frameObj.getString("text"),
-                                highlight        = hlArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
-                                speech           = frameObj.optString("speech", ""),
-                                durationMs       = frameObj.optLong("duration_ms", 2000),
-                                frameType        = fType,
-                                ttsEngine        = rawEngine.ifBlank { aEngine },
-                                voiceRole        = rawRole.ifBlank { aRole },
-                                quizAnswer       = frameObj.optString("quiz_answer", ""),
-                                quizOptions      = optsArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
-                                quizCorrectIndex = frameObj.optInt("quiz_correct_index", -1),
-                                quizModelAnswer  = frameObj.optString("quiz_model_answer", ""),
-                                quizKeywords     = kwArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
-                                fillBlanks       = fillArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
-                                quizCorrectOrder = orderArr?.let { a -> (0 until a.length()).map { a.getInt(it) } } ?: emptyList(),
-                                svgHtml          = frameObj.optString("svg_html", "")
-                            )
-                        }
-                        BlackboardStep(
-                            title                = stepObj.optString("title", ""),
-                            frames               = frames,
-                            languageTag          = langTag,
-                            image_description    = stepObj.optString("image_description", ""),
-                            imageConfidenceScore = stepObj.optDouble("image_show_confidencescore", 0.0).toFloat()
-                        )
-                    }
+                    result = deserializeSteps(stepsJson, langFallback)
                 } catch (e: Exception) {
                     errorMsg = "Parse error: ${e.message}"
                 }

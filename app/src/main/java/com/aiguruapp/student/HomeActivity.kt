@@ -138,7 +138,8 @@ class HomeActivity : BaseActivity() {
         userId = SessionManager.getFirestoreUserId(this)
         setupRecyclerView()
         loadSubjects()
-        loadOffersFromFirestore()
+        // Offers are gated by usage stats: see loadSmartHomeContent() — first-time
+        // users see a clean home until they complete at least one chat or BB session.
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -156,7 +157,8 @@ class HomeActivity : BaseActivity() {
         swipeRefresh.setOnRefreshListener {
             loadSubjects()
             loadQuotaStrip()
-            loadOffersFromFirestore()
+            // Offers re-fetched via loadSmartHomeContent → loadOffersFromFirestore (gated by usage)
+            loadSmartHomeContent()
             swipeRefresh.isRefreshing = false
         }
 
@@ -425,6 +427,14 @@ class HomeActivity : BaseActivity() {
             findViewById<TextView?>(R.id.creditsChipText)?.apply {
                 text = chipText
                 visibility = View.VISIBLE
+                setOnClickListener {
+                    // Tap → open subscription / top-up screen so user can recharge credits
+                    startActivity(
+                        Intent(this@HomeActivity, SubscriptionActivity::class.java)
+                            .putExtra("schoolId", SessionManager.getSchoolId(this@HomeActivity))
+                            .putExtra("show_topups", true)
+                    )
+                }
             }
             findViewById<TextView?>(R.id.drawerCreditsBalance)?.text = balance.toString()
         }
@@ -727,6 +737,19 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
                     runOnUiThread { renderSmartCards(cards) }
                 }
             )
+
+            // Offers / "Something Interesting" — only show after the user has
+            // actually used the app (≥1 BB session OR ≥1 chat message). This
+            // keeps the first-time home screen clean and focused.
+            val isFirstTimeUser = totalBbSessions == 0L && totalMessages == 0L
+            if (!isFirstTimeUser && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                runOnUiThread { loadOffersFromFirestore() }
+            } else {
+                runOnUiThread {
+                    findViewById<View?>(R.id.offersSectionHeader)?.visibility = View.GONE
+                    findViewById<View?>(R.id.offersBannerScroll)?.visibility = View.GONE
+                }
+            }
         }
 
         // Daily challenge card + credit balance (independent of stats)
@@ -747,6 +770,7 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
                     return@runOnUiThread
                 }
                 val q = pending.first()
+                val wasHidden = card.visibility != View.VISIBLE
                 card.visibility = View.VISIBLE
                 card.findViewById<TextView?>(R.id.challengeHookText)?.text = q.hook
                 card.findViewById<TextView?>(R.id.challengeQuestionText)?.text = q.question
@@ -755,11 +779,23 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
                 card.findViewById<TextView?>(R.id.challengeCreditsText)?.text = "+${q.creditsReward} ⭐"
                 card.setOnClickListener {
                     val intent = Intent(this@HomeActivity, BlackboardActivity::class.java).apply {
-                        putExtra("topic", q.question)
-                        putExtra("subject", q.subject)
+                        putExtra(BlackboardActivity.EXTRA_MESSAGE, q.question)
+                        putExtra(BlackboardActivity.EXTRA_SUBJECT, q.subject)
                         putExtra("daily_question_id", q.id)
                     }
                     startActivity(intent)
+                }
+                // Entrance + subtle pulse on the credits badge to draw attention
+                if (wasHidden) {
+                    card.alpha = 0f
+                    card.translationY = 24f
+                    card.animate().alpha(1f).translationY(0f).setDuration(420).start()
+                }
+                card.findViewById<TextView?>(R.id.challengeCreditsText)?.let { badge ->
+                    badge.animate().scaleX(1.12f).scaleY(1.12f).setDuration(380)
+                        .withEndAction {
+                            badge.animate().scaleX(1f).scaleY(1f).setDuration(380).start()
+                        }.start()
                 }
             }
         }

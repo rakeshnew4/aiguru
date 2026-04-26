@@ -43,21 +43,21 @@ PLANS = {
             # ── Daily session gates ───────────────────────────────────────────
             "daily_chat_questions": 12,
             "daily_bb_sessions": 2,
-            # ── Monthly token budget (0 = unlimited) ─────────────────────────
-            # 1 credit = 100 LLM tokens.  Free ≈ 500 credits worth of tokens.
-            "monthly_token_limit": 50_000,          # ≈ 500 credits earned
-            "monthly_tts_char_limit": 10_000,       # ≈ 100 credits earned
+            # ── Monthly token / TTS ceilings (0 = unlimited) ─────────────────
+            "monthly_token_limit": 50_000,
+            "monthly_tts_char_limit": 10_000,
             # ── Feature flags ─────────────────────────────────────────────────
             "tts_enabled": True,
             "ai_tts_enabled": False,
             "blackboard_enabled": True,
             "image_upload_enabled": False,
             "quiz_enabled": True,
-            # ── Credit bonuses ────────────────────────────────────────────────
-            "credits_on_activation": 50,            # one-time signup bonus
+            # ── Credits (Free gives 600 ≈ 60 000 tokens of usage budget) ─────
+            # Each LLM call deducts floor(tokens/100); each TTS call deducts floor(chars/100)
+            "credits_on_activation": 600,
             "monthly_bonus_credits": 0,
         },
-        "description": "Basic access — earn credits from every lesson",
+        "description": "Free tier — 600 credits/month (≈60K tokens). Earn more by completing daily questions.",
         "active": True,
     },
     "basic": {
@@ -68,17 +68,17 @@ PLANS = {
         "limits": {
             "daily_chat_questions": 50,
             "daily_bb_sessions": 10,
-            "monthly_token_limit": 300_000,         # ≈ 3 000 credits earned
-            "monthly_tts_char_limit": 100_000,      # ≈ 1 000 credits earned
+            "monthly_token_limit": 300_000,
+            "monthly_tts_char_limit": 100_000,
             "tts_enabled": True,
             "ai_tts_enabled": True,
             "blackboard_enabled": True,
             "image_upload_enabled": True,
             "quiz_enabled": True,
-            "credits_on_activation": 100,
-            "monthly_bonus_credits": 50,
+            "credits_on_activation": 3_000,        # ~300K tokens of usage
+            "monthly_bonus_credits": 500,
         },
-        "description": "Enhanced limits with AI TTS, image uploads, and bonus credits",
+        "description": "Basic — 3 000 credits/month (≈300K tokens) + AI TTS + image uploads.",
         "active": True,
     },
     "pro": {
@@ -87,19 +87,19 @@ PLANS = {
         "price_inr": 249,
         "duration_days": 30,
         "limits": {
-            "daily_chat_questions": 0,              # 0 = unlimited
+            "daily_chat_questions": 0,              # 0 = unlimited (gate disabled)
             "daily_bb_sessions": 0,
-            "monthly_token_limit": 0,               # unlimited
-            "monthly_tts_char_limit": 0,            # unlimited
+            "monthly_token_limit": 0,
+            "monthly_tts_char_limit": 0,
             "tts_enabled": True,
             "ai_tts_enabled": True,
             "blackboard_enabled": True,
             "image_upload_enabled": True,
             "quiz_enabled": True,
-            "credits_on_activation": 300,
-            "monthly_bonus_credits": 150,
+            "credits_on_activation": 10_000,       # ~1M tokens of usage
+            "monthly_bonus_credits": 2_000,
         },
-        "description": "Unlimited access — all features, maximum credit earnings",
+        "description": "Pro — 10 000 credits/month (≈1M tokens). Unlimited gates.",
         "active": True,
     },
     "school": {
@@ -117,10 +117,10 @@ PLANS = {
             "blackboard_enabled": True,
             "image_upload_enabled": True,
             "quiz_enabled": True,
-            "credits_on_activation": 200,
-            "monthly_bonus_credits": 100,
+            "credits_on_activation": 5_000,
+            "monthly_bonus_credits": 1_000,
         },
-        "description": "School-wide access — institution managed",
+        "description": "School — 5 000 credits/month + 1 000 bonus. Institution managed.",
         "active": True,
     },
 }
@@ -219,6 +219,46 @@ def seed_question_templates(db) -> None:
     print(f"  {len(QUESTION_TEMPLATES)} templates seeded.")
 
 
+CREDIT_TOPUPS = {
+    "topup_500": {
+        "name": "500 Credits",
+        "credits": 500,
+        "bonus_credits": 0,
+        "price_inr": 49,
+        "description": "Quick top-up — about 50K tokens",
+        "active": True,
+        "popular": False,
+    },
+    "topup_1500": {
+        "name": "1 500 Credits",
+        "credits": 1_500,
+        "bonus_credits": 200,
+        "price_inr": 129,
+        "description": "Best value — 200 bonus credits",
+        "active": True,
+        "popular": True,
+    },
+    "topup_5000": {
+        "name": "5 000 Credits",
+        "credits": 5_000,
+        "bonus_credits": 1_000,
+        "price_inr": 399,
+        "description": "Power user — 1 000 bonus credits",
+        "active": True,
+        "popular": False,
+    },
+}
+
+
+def seed_credit_topups(db) -> None:
+    print("Seeding credit top-up packs...")
+    for pack_id, pack in CREDIT_TOPUPS.items():
+        db.collection("credit_topups").document(pack_id).set(pack, merge=True)
+        total = pack["credits"] + pack["bonus_credits"]
+        print(f"  ✓ credit_topups/{pack_id}: {total} credits @ ₹{pack['price_inr']}")
+    print(f"  {len(CREDIT_TOPUPS)} top-up packs seeded.")
+
+
 def seed_credit_config(db) -> None:
     print("Seeding credit config...")
     db.collection("app_config").document("credits").set({
@@ -248,6 +288,8 @@ def main():
     seed_question_templates(db)
     print()
     seed_credit_config(db)
+    print()
+    seed_credit_topups(db)
     print("\nSeed complete.")
 
 

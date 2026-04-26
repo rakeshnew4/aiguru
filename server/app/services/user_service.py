@@ -308,10 +308,10 @@ def record_tokens(
         uid, input_tokens, output_tokens, total_tokens, needs_day_reset,
     )
 
-    # Award 1 credit per 100 tokens consumed (fire-and-forget)
-    credits_earned = total_tokens // 100
-    if credits_earned > 0:
-        _award_credits_from_usage(db, uid, credits_earned, "token_usage", total_tokens)
+    # Charge 1 credit per 100 tokens consumed (fire-and-forget)
+    credits_charged = total_tokens // 100
+    if credits_charged > 0:
+        _charge_credits_from_usage(db, uid, credits_charged, "token_usage", total_tokens)
 
 
 def record_tts_chars(uid: str, char_count: int) -> None:
@@ -357,33 +357,39 @@ def record_tts_chars(uid: str, char_count: int) -> None:
             "tts_updated_at": now,
         }, merge=True)
 
-    credits_earned = char_count // 100
-    if credits_earned > 0:
-        _award_credits_from_usage(db, uid, credits_earned, "tts_usage", char_count)
+    credits_charged = char_count // 100
+    if credits_charged > 0:
+        _charge_credits_from_usage(db, uid, credits_charged, "tts_usage", char_count)
 
     logger.debug("record_tts_chars: uid=%s chars=%d day_reset=%s", uid, char_count, needs_day_reset)
 
 
-def _award_credits_from_usage(db, uid: str, amount: int, usage_type: str, units: int) -> None:
-    """Award credits from token/TTS consumption. Atomic Firestore write."""
+def _charge_credits_from_usage(db, uid: str, amount: int, usage_type: str, units: int) -> None:
+    """
+    Deduct credits from the user's balance to pay for AI usage.
+    Atomic. Balance can go negative — Android UI is responsible for warnings/upsell.
+    Credits are the per-token / per-char cost of LLM and TTS calls.
+    """
     if amount <= 0:
         return
     try:
         now = _now_ms()
+        # Deduct from balance (negative Increment) but DO NOT decrement lifetime_earned.
         db.collection("user_credits").document(uid).set(
-            {"balance": Increment(amount), "lifetime_earned": Increment(amount), "last_updated": now},
+            {"balance": Increment(-amount), "last_updated": now},
             merge=True,
         )
+        unit_label = "tokens" if usage_type == "token_usage" else "chars"
         db.collection("credit_transactions").document().set({
             "uid": uid,
-            "amount": amount,
+            "amount": -amount,
             "type": usage_type,
             "source_id": "",
-            "description": f"+{amount} credits ({units} {'tokens' if usage_type == 'token_usage' else 'chars'})",
+            "description": f"-{amount} credits ({units} {unit_label})",
             "created_at": now,
         })
     except Exception as exc:
-        logger.warning("_award_credits_from_usage uid=%s type=%s: %s", uid, usage_type, exc)
+        logger.warning("_charge_credits_from_usage uid=%s type=%s: %s", uid, usage_type, exc)
 
 
 # ── Activity Logging ──────────────────────────────────────────────────────────
@@ -551,6 +557,40 @@ def _award_activation_credits(db, uid: str, amount: int, plan_id: str, plan_name
         logger.info("_award_activation_credits: uid=%s amount=%d plan=%s", uid, amount, plan_id)
     except Exception as exc:
         logger.warning("_award_activation_credits uid=%s: %s", uid, exc)
+
+
+def grant_topup_credits(uid: str, amount: int, pack_id: str, pack_name: str) -> None:
+    """
+    Grant credits to a user from a paid top-up pack.
+    Atomic: increments user_credits balance + lifetime_earned, and logs the transaction.
+    Called from payments.py::verify_payment when plan_id starts with "topup_".
+    """
+    if not uid or amount <= 0:
+        return
+    db = _get_db()
+    if db is None:
+        return
+    try:
+        now = _now_ms()
+        db.collection("user_credits").document(uid).set(
+            {
+                "balance": Increment(amount),
+                "lifetime_earned": Increment(amount),
+                "last_updated": now,
+            },
+            merge=True,
+        )
+        db.collection("credit_transactions").document().set({
+            "uid": uid,
+            "amount": amount,
+            "type": "topup_purchase",
+            "source_id": pack_id,
+            "description": f"Top-up: {pack_name}",
+            "created_at": now,
+        })
+        logger.info("grant_topup_credits: uid=%s amount=%d pack=%s", uid, amount, pack_id)
+    except Exception as exc:
+        logger.warning("grant_topup_credits uid=%s pack=%s: %s", uid, pack_id, exc)
 
 
 def init_user_credits(db, uid: str) -> None:

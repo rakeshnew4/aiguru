@@ -91,7 +91,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Choose Your Plan"
+            android:text="Plans and Credits"
             android:textSize="20sp"
             android:textStyle="bold"
             android:textColor="#1A2332" />
@@ -100,7 +100,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Unlock AI-powered learning features"
+            android:text="Pick a base plan, then recharge credits only when you need extra usage."
             android:textSize="13sp"
             android:textColor="#64748B" />
     </LinearLayout>

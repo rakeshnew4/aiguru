@@ -24,7 +24,23 @@ data class DailyQuestion(
 )
 
 /**
- * Thin HTTP client for /daily-questions/* endpoints.
+ * Credit top-up pack — purchased via the Razorpay flow with planId="topup_<id>"
+ * to grant additional credits on top of the user's plan allowance.
+ */
+data class TopupPack(
+    val id: String,            // e.g. "topup_500"
+    val name: String,          // "500 Credits"
+    val credits: Int,
+    val bonusCredits: Int,
+    val priceInr: Int,
+    val description: String,
+    val popular: Boolean,
+) {
+    val totalCredits: Int get() = credits + bonusCredits
+}
+
+/**
+ * Thin HTTP client for /daily-questions/ endpoints.
  * All network calls are blocking — run on a background thread or in a coroutine's IO dispatcher.
  */
 object DailyQuestionsManager {
@@ -109,6 +125,40 @@ object DailyQuestionsManager {
             resp.isSuccessful
         } catch (e: Exception) {
             false
+        }
+    }
+
+    // ── Top-up packs ──────────────────────────────────────────────────────────
+
+    fun fetchTopupPacks(): List<TopupPack> {
+        val token = TokenManager.buildAuthHeader() ?: return emptyList()
+        val url = "${AdminConfigRepository.effectiveServerUrl()}/credits/topup-packs"
+
+        val request = Request.Builder()
+            .url(url)
+            .get()
+            .header("Authorization", token)
+            .build()
+
+        return try {
+            val resp = HttpClientManager.standardClient.newCall(request).execute()
+            val body = resp.body?.string() ?: return emptyList()
+            if (!resp.isSuccessful) return emptyList()
+            val arr = JSONObject(body).optJSONArray("packs") ?: return emptyList()
+            (0 until arr.length()).mapNotNull { i ->
+                val o = arr.optJSONObject(i) ?: return@mapNotNull null
+                TopupPack(
+                    id = o.optString("id"),
+                    name = o.optString("name"),
+                    credits = o.optInt("credits"),
+                    bonusCredits = o.optInt("bonus_credits"),
+                    priceInr = o.optInt("price_inr"),
+                    description = o.optString("description"),
+                    popular = o.optBoolean("popular", false),
+                )
+            }
+        } catch (e: Exception) {
+            emptyList()
         }
     }
 

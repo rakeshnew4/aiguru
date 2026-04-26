@@ -8,8 +8,8 @@ from .retriever import find_best_segment
 logger = get_logger(__name__)
 
 # Minimum score to ever show a clip; second clip needs a higher bar
-_MIN_SCORE = 0.65
-_HIGH_SCORE = 0.72
+_MIN_SCORE = 0.85
+_HIGH_SCORE = 0.92
 _MIN_GAP_SECONDS = 60  # same-video clips must be ≥60s apart to be considered "different"
 _YT_WATCH_BASE_URL = "https://www.youtube.com/watch?v="
 
@@ -44,23 +44,30 @@ async def _process_video(video: dict) -> bool:
     return await index_video(video_id, video["title"], transcript)
 
 
-async def enrich_steps_with_videos(question: str, plan: dict) -> list[dict]:
-    """Search YouTube, index transcripts, find at most 1-2 best clips for the session.
+async def enrich_steps_with_videos(
+    question: str,
+    plan: dict,
+    video_search_query: str = "",
+    preferred_channels: list[str] | None = None,
+    session_theme: str = "",
+) -> list[dict]:
+    """Search YouTube once for the whole lesson and find 1-2 best reference clips."""
+    preferred_channels = [str(c).strip() for c in (preferred_channels or []) if str(c).strip()][:4]
+    if not preferred_channels:
+        preferred_channels = ["Physics Wallah", "Khan Academy India", "Magnet Brains"]
 
-    Returns a flat list of at most 2 decorated clip dicts (NOT step-aligned).
-    _attach_video_clips injects them into the first concept/diagram frames it finds.
-    Thresholds: first clip ≥ 0.65, second clip ≥ 0.72 and meaningfully different.
-    """
-    key_concepts: list = plan.get("key_concepts") or []
-    if not isinstance(key_concepts, list):
-        key_concepts = [str(key_concepts)]
-    concepts_str = " ".join(str(c) for c in key_concepts[:4])
-    # "animated" biases YouTube search toward Khan Academy, TED-Ed, Kurzgesagt, etc.
-    base_query = f"{question} {concepts_str} animated".strip()[:200]
-    logger.info("[yt_extractor] base_query='%s'", base_query[:120])
+    theme = (session_theme or plan.get("question_focus") or question).strip()
+    query_core = (video_search_query or theme or question).strip()
+    channel_hint = " ".join(preferred_channels[:3]).strip()
+    location_hint = "" if "india" in query_core.lower() else "India"
+    base_query = " ".join(part for part in [query_core, channel_hint, location_hint] if part).strip()[:220]
+    logger.info(
+        "[yt_extractor] base_query='%s' | theme='%s' | channels=%s",
+        base_query[:120], theme[:80], preferred_channels[:3]
+    )
 
     try:
-        videos = await search_videos(base_query, max_results=3)
+        videos = await search_videos(base_query, max_results=4)
         if not videos:
             logger.info("[yt_extractor] No YouTube results for: %s", base_query[:80])
             return []
@@ -70,8 +77,10 @@ async def enrich_steps_with_videos(question: str, plan: dict) -> list[dict]:
         await asyncio.gather(*[_process_video(v) for v in videos], return_exceptions=True)
         video_ids = [v["video_id"] for v in videos]
 
-        # Query per concept + the full question for diversity
-        queries = [question] + [f"{question} {c}" for c in key_concepts[:3]]
+        # Query the transcript index with one lesson-level theme instead of step-specific fragments.
+        queries = [query_core]
+        if theme and theme.lower() != query_core.lower():
+            queries.append(theme)
         raw_clips = await asyncio.gather(
             *[find_best_segment(q, video_ids) for q in queries],
             return_exceptions=True,

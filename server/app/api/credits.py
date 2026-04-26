@@ -40,6 +40,29 @@ class SpendCreditsRequest(BaseModel):
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
+@router.get("/topup-packs")
+async def get_topup_packs(auth: AuthUser = Depends(require_auth)):
+    """
+    Return active credit top-up packs for purchase.
+    These are bought via the existing /payments/razorpay flow with plan_id="topup_<packId>".
+    """
+    db = get_firestore_db()
+    if db is None:
+        raise HTTPException(503, "Database unavailable")
+    try:
+        docs = (
+            db.collection("credit_topups")
+            .where("active", "==", True)
+            .order_by("price_inr")
+            .get()
+        )
+        packs = [{"id": d.id, **(d.to_dict() or {})} for d in docs]
+        return {"packs": packs}
+    except Exception as exc:
+        logger.warning("get_topup_packs: %s", exc)
+        raise HTTPException(500, "Failed to fetch top-up packs")
+
+
 @router.get("/balance")
 async def get_balance(auth: AuthUser = Depends(require_auth)):
     """Return current credit balance and lifetime earned for the user."""

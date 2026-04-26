@@ -872,34 +872,66 @@ def _status_frame(message: str, progress: int) -> str:
 
 
 def _attach_video_clips(text_content: str, yt_clips: list) -> str:
-    """Inject youtube_clip into concept/diagram frames across BB steps.
-
-    yt_clips is a flat list (max 2) returned by enrich_steps_with_videos.
-    Clips are injected into the first concept/diagram frame found in each step,
-    spreading across steps so clip 0 lands in an earlier step, clip 1 in a later one.
-    Returns text_content unchanged on any parse error.
-    """
+    """Attach session-level YouTube clips only to frames in the final BB step."""
     if not yt_clips:
         return text_content
     try:
         data = json.loads(text_content)
         steps = data.get("steps", [])
-        clip_idx = 0
+        if not steps:
+            return text_content
+        last_step = steps[-1]
+        frames = last_step.get("frames", [])
+        candidate_indices = [
+            idx for idx, frame in enumerate(frames)
+            if frame.get("frame_type") in ("summary", "concept", "diagram", "memory", "quiz_mcq")
+        ]
+        if not candidate_indices:
+            return text_content
+
+        target_indices = candidate_indices[-len(yt_clips):]
         attached = 0
-        for step in steps:
-            if clip_idx >= len(yt_clips):
-                break
-            for frame in step.get("frames", []):
-                if frame.get("frame_type") in ("concept", "diagram"):
-                    frame["youtube_clip"] = {k: v for k, v in yt_clips[clip_idx].items() if k != "score"}
-                    attached += 1
-                    clip_idx += 1
-                    break  # one clip per step, move to next step
-        logger.info("Attached %d/%d YouTube clip(s) to BB steps", attached, len(yt_clips))
+        for clip, frame_idx in zip(yt_clips, target_indices):
+            frames[frame_idx]["youtube_clip"] = {k: v for k, v in clip.items() if k != "score"}
+            attached += 1
+
+        data["related_videos"] = [{k: v for k, v in clip.items() if k != "score"} for clip in yt_clips]
+        logger.info("Attached %d/%d YouTube clip(s) to final BB step", attached, len(yt_clips))
         return json.dumps(data, ensure_ascii=False)
     except Exception as exc:
         logger.warning("YouTube clip attachment parse failed: %s", exc)
         return text_content
+
+
+def _extract_video_search_request(text_content: str, question: str, plan: dict) -> tuple[str, list[str], str]:
+    """Derive one session-level YouTube search query from the BB JSON."""
+    session_theme = ""
+    video_search_query = ""
+    preferred_channels: list[str] = []
+
+    try:
+        data = json.loads(text_content)
+        session_theme = str(data.get("session_theme") or "").strip()
+        video_search_query = str(data.get("video_search_query") or "").strip()
+        raw_channels = data.get("preferred_channels") or []
+        if isinstance(raw_channels, list):
+            preferred_channels = [
+                str(item).strip() for item in raw_channels
+                if str(item).strip()
+            ][:4]
+    except Exception as exc:
+        logger.info("BB video search metadata unavailable in JSON: %s", exc)
+
+    if not session_theme:
+        session_theme = str(plan.get("question_focus") or question).strip()
+    if not video_search_query:
+        key_concepts = plan.get("key_concepts") or []
+        concepts = " ".join(str(c).strip() for c in key_concepts[:3] if str(c).strip())
+        video_search_query = " ".join(part for part in [session_theme or question, concepts] if part).strip()
+    if not preferred_channels:
+        preferred_channels = ["Physics Wallah", "Khan Academy India", "Magnet Brains"]
+
+    return video_search_query[:220], preferred_channels, session_theme[:120]
 
 
 @router.post("/chat-stream")
@@ -974,14 +1006,9 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     _prefetch_wikimedia(plan.get("image_search_terms", []))
                 ) if req.bb_images_enabled is not False else None
 
-                # B2b) Start YouTube enrichment — gated on bb_videos_enabled flag
-                yt_task = asyncio.ensure_future(
-                    _yt_enrich(req.question, plan)
-                ) if (_YT_ENABLED and req.bb_videos_enabled is not False) else None
-                if yt_task is not None:
-                    logger.info("BB YouTube enrichment task started | steps=%d", len(plan.get("steps", [])))
-                else:
-                    logger.info("BB YouTube enrichment skipped | enabled=%s", _YT_ENABLED)
+                # B2b) YouTube enrichment is derived from the final BB JSON so the
+                # search uses one lesson-level theme instead of step-level fragments.
+                yt_task = None
 
                 # B3) Build context-enriched BB prompt
                 prompt = build_bb_main_prompt(
@@ -1224,23 +1251,31 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     pass
             if req.mode == "blackboard":
                 text_content = _sanitize_bb_response(text_content)
-                # Attach YouTube clips gathered concurrently during LLM call
-                if yt_task is not None:
+                if _YT_ENABLED and req.bb_videos_enabled is not False:
                     try:
+                        video_query, preferred_channels, session_theme = _extract_video_search_request(
+                            text_content, req.question, plan
+                        )
                         yt_wait_timeout = max(3.0, float(getattr(settings, "YT_ENRICHMENT_TIMEOUT", 2.5)))
-                        if yt_task.done():
-                            yt_clips = yt_task.result()
-                            logger.info("BB YouTube enrichment task already done")
-                        else:
-                            yt_clips = await asyncio.wait_for(yt_task, timeout=yt_wait_timeout)
-                            logger.info("BB YouTube enrichment awaited | timeout=%.2fs", yt_wait_timeout)
+                        yt_clips = await asyncio.wait_for(
+                            _yt_enrich(
+                                req.question,
+                                plan,
+                                video_search_query=video_query,
+                                preferred_channels=preferred_channels,
+                                session_theme=session_theme,
+                            ),
+                            timeout=yt_wait_timeout,
+                        )
                         text_content = _attach_video_clips(text_content, yt_clips)
                         logger.info(
-                            "BB YouTube clips ready | attached_candidates=%d",
+                            "BB YouTube clips ready | query=%r channels=%s attached=%d",
+                            video_query[:80],
+                            preferred_channels[:3],
                             sum(1 for c in (yt_clips or []) if c),
                         )
                     except asyncio.TimeoutError:
-                        logger.info("BB YouTube enrichment still running; response sent without waiting")
+                        logger.info("BB YouTube enrichment timed out for lesson-level query")
                     except Exception as exc:
                         logger.warning("BB YouTube enrichment attach failed: %s", exc)
             elif req.mode == "normal":
