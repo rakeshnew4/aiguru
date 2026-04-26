@@ -31,19 +31,19 @@ class Settings(BaseSettings):
     # ── Model Tier Configuration ──────────────────────────────────────────────
     # POWER: Most capable models for premium users
     POWER_PROVIDER: str = "gemini"
-    POWER_MODEL_ID: str = "gemini-3.1-flash-lite-preview"
+    POWER_MODEL_ID: str = "gemini-2.5-flash-lite"
     POWER_TEMPERATURE: float = 0.7
     POWER_MAX_TOKENS: int = 18192
-    
+
     # CHEAPER: Balanced cost/performance for standard users
-    CHEAPER_PROVIDER: str = "gemini"  # bedrock, gemini, groq
-    CHEAPER_MODEL_ID: str = "gemini-3.1-flash-lite-preview"
+    CHEAPER_PROVIDER: str = "gemini"
+    CHEAPER_MODEL_ID: str = "gemini-2.5-flash-lite"
     CHEAPER_TEMPERATURE: float = 0.7
     CHEAPER_MAX_TOKENS: int = 14096
-    
+
     # FASTER: Quickest tier for small structured tasks (intent classifier, BB planner, grading)
     FASTER_PROVIDER: str = "gemini"
-    FASTER_MODEL_ID: str = "gemini-3.1-flash-lite-preview"
+    FASTER_MODEL_ID: str = "gemini-2.5-flash-lite"
     FASTER_TEMPERATURE: float = 0.3
     FASTER_MAX_TOKENS: int = 20000
     
