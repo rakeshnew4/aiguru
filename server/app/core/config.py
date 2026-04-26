@@ -30,8 +30,8 @@ class Settings(BaseSettings):
     
     # ── Model Tier Configuration ──────────────────────────────────────────────
     # POWER: Most capable models for premium users
-    POWER_PROVIDER: str = "bedrock"  # bedrock, gemini, groq
-    POWER_MODEL_ID: str = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+    POWER_PROVIDER: str = "gemini"
+    POWER_MODEL_ID: str = "gemini-3.1-flash-lite-preview"
     POWER_TEMPERATURE: float = 0.7
     POWER_MAX_TOKENS: int = 18192
     
