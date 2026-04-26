@@ -1,6 +1,5 @@
 import base64
 import json
-import http.client
 from typing import List, Literal, Optional, Dict, Any
 
 import httpx
@@ -409,28 +408,14 @@ def _call_litellm_proxy(
     images: Optional[List[str]] = None,
     system_prompt: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Call LLM through the LiteLLM proxy using OpenAI-compatible vision format.
-
-    When system_prompt is provided it is sent as role="system" (the first message).
-    LiteLLM translates this to:
-      - Gemini: systemInstruction  → qualifies for implicit caching (≥1024 tokens)
-      - Anthropic: system block   → add cache_control in the call for explicit caching
-      - OpenAI / Groq: standard system message
-    """
-    from urllib.parse import urlparse
-    proxy_url = settings.LITELLM_PROXY_URL  # e.g. http://localhost:8005
-    parsed = urlparse(proxy_url)
-    host = parsed.hostname
-    port = parsed.port or 80
+    """Call Gemini via LiteLLM SDK with thinking enabled."""
+    import litellm
 
     # Build messages list
     messages = []
-
-    # System message (static, cache-eligible) — sent first so it forms the cached prefix
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
 
-    # User message: multimodal when images are present
     if images:
         content: Any = (
             [{"type": "image_url", "image_url": {"url": img}} for img in images]
@@ -442,60 +427,45 @@ def _call_litellm_proxy(
 
     messages.append({"role": "user", "content": content})
 
-    # All tiers use gemini-3.1-flash-lite-preview through LiteLLM during testing
-    body = json.dumps({
-        "model": "gemini-3.1-flash-lite-preview",
-        "messages": messages,
-        "temperature": model_config.temperature,
-        "max_tokens": model_config.max_tokens,
-    }).encode()
-
-    logger.debug(f"LiteLLM proxy request: model=gemini-3.1-flash-lite-preview, has_system={'yes' if system_prompt else 'no'}, prompt_len={len(prompt)}, images={len(images) if images else 0}")
+    model = f"gemini/{model_config.model_id}"
+    logger.debug(f"LiteLLM SDK request: model={model}, has_system={'yes' if system_prompt else 'no'}, prompt_len={len(prompt)}, images={len(images) if images else 0}")
 
     try:
-        conn = http.client.HTTPConnection(host, port, timeout=300)
-        headers = {
-            "Authorization": f"Bearer {settings.LITELLM_MASTER_KEY}",
-            "Content-Type": "application/json",
-        }
-        conn.request("POST", "/v1/chat/completions", body=body, headers=headers)
-        resp = conn.getresponse()
-        raw = resp.read().decode()
-        conn.close()
+        response = litellm.completion(
+            model=model,
+            messages=messages,
+            temperature=model_config.temperature,
+            max_tokens=model_config.max_tokens,
+            api_key=settings.GEMINI_API_KEY,
+            extra_body={
+                "thinking_config": {
+                    "include_thoughts": True,
+                    "thinking_level": "LOW",
+                }
+            },
+        )
 
-        if resp.status != 200:
-            logger.error(f"LiteLLM proxy returned {resp.status}: {raw[:500]}")
-            raise RuntimeError(f"LiteLLM proxy error {resp.status}: {raw[:300]}")
-
-        data = json.loads(raw)
-        if not data.get("choices") or not data["choices"][0].get("message"):
-            logger.error(f"LiteLLM responded with invalid structure: {data}")
-            raise RuntimeError("LiteLLM response missing choices[0].message")
-        
-        text = data["choices"][0]["message"]["content"]
+        text = response.choices[0].message.content
         if not text:
             logger.warning("LiteLLM returned empty text content")
-        
-        usage = data.get("usage", {})
+
+        usage = response.usage or {}
         result = {
             "text": text,
             "tokens": {
-                "inputTokens": usage.get("prompt_tokens", 0),
-                "outputTokens": usage.get("completion_tokens", 0),
-                "totalTokens": usage.get("total_tokens", 0),
-                "cachedTokens": usage.get("prompt_tokens_details", {}).get("cached_tokens", 0),
+                "inputTokens": getattr(usage, "prompt_tokens", 0),
+                "outputTokens": getattr(usage, "completion_tokens", 0),
+                "totalTokens": getattr(usage, "total_tokens", 0),
+                "cachedTokens": getattr(getattr(usage, "prompt_tokens_details", None), "cached_tokens", 0),
             },
             "provider": "litellm",
-            "model": data.get("model", "gemini-3.1-flash-lite-preview"),
+            "model": model,
         }
-        logger.info(f"LiteLLM success: model={result['model']} | tokens={result['tokens']['totalTokens']} | cached={result['tokens']['cachedTokens']}")
+        logger.info(f"LiteLLM success: model={model} | tokens={result['tokens']['totalTokens']} | cached={result['tokens']['cachedTokens']}")
         return result
-        
-    except json.JSONDecodeError as e:
-        logger.error(f"LiteLLM response is not valid JSON: {e}")
-        raise RuntimeError(f"LiteLLM returned invalid JSON: {str(e)[:100]}")
+
     except Exception as e:
-        logger.error(f"LiteLLM proxy call failed: {type(e).__name__}: {e}")
+        logger.error(f"LiteLLM call failed for model={model}: {type(e).__name__}: {e}")
         raise
 
 
