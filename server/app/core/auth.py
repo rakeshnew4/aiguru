@@ -126,3 +126,23 @@ async def require_auth(
         uid=decoded["uid"],
         email=decoded.get("email", ""),
     )
+
+
+async def require_teacher(auth: AuthUser = Depends(require_auth)) -> AuthUser:
+    """
+    FastAPI dependency that enforces the caller is a teacher or admin.
+    Reads the 'role' field from users_table/{uid} in Firestore.
+    Raises HTTP 403 if the user is not a teacher/admin.
+    """
+    from app.db.firestore import get_firestore_db
+    db = get_firestore_db()
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    try:
+        doc = db.collection("users_table").document(auth.uid).get()
+        role = (doc.get("role") or "student") if doc.exists else "student"
+    except Exception:
+        role = "student"
+    if role not in ("teacher", "admin"):
+        raise HTTPException(status_code=403, detail="Teacher access required")
+    return auth

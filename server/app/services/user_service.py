@@ -593,11 +593,27 @@ def grant_topup_credits(uid: str, amount: int, pack_id: str, pack_name: str) -> 
         logger.warning("grant_topup_credits uid=%s pack=%s: %s", uid, pack_id, exc)
 
 
+_STARTER_CREDITS = 50   # welcome bonus for every new user
+
+
 def init_user_credits(db, uid: str) -> None:
-    """Create user_credits/{uid} with zero balance on first registration."""
+    """Create user_credits/{uid} with starter balance on first registration."""
     try:
         ref = db.collection("user_credits").document(uid)
         if not ref.get().exists:
-            ref.set({"balance": 0, "lifetime_earned": 0, "last_updated": _now_ms()})
+            ref.set({
+                "balance": _STARTER_CREDITS,
+                "lifetime_earned": _STARTER_CREDITS,
+                "last_updated": _now_ms(),
+            })
+            # Log the welcome grant as a transaction
+            db.collection("credit_transactions").add({
+                "uid": uid,
+                "amount": _STARTER_CREDITS,
+                "type": "welcome_grant",
+                "source_id": "registration",
+                "description": f"Welcome bonus ({_STARTER_CREDITS} credits)",
+                "created_at": _now_ms(),
+            })
     except Exception as exc:
         logger.warning("init_user_credits uid=%s: %s", uid, exc)

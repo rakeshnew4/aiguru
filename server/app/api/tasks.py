@@ -18,7 +18,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.core.auth import require_auth, AuthUser
+from app.core.auth import require_auth, require_teacher, AuthUser
 from app.core.firebase_auth import get_firestore_db
 from app.core.logger import get_logger
 
@@ -54,11 +54,11 @@ class SubmitTaskRequest(BaseModel):
 @router.post("/assign")
 async def assign_task(
     req: CreateTaskRequest,
-    auth: AuthUser = Depends(require_auth),
+    auth: AuthUser = Depends(require_teacher),
 ):
     """
     Teacher creates a task assigned to students in their school.
-    The caller must have schoolId matching req.school_id (or be admin).
+    Caller must have role=teacher or role=admin in users_table.
     """
     db = get_firestore_db()
     if db is None:
@@ -234,10 +234,11 @@ async def submit_task(
 @router.get("/teacher")
 async def get_teacher_tasks(
     school_id: str,
-    auth: AuthUser = Depends(require_auth),
+    auth: AuthUser = Depends(require_teacher),
 ):
     """
     Return tasks created by this teacher with submission counts.
+    Caller must have role=teacher or role=admin in users_table.
     """
     db = get_firestore_db()
     if db is None:

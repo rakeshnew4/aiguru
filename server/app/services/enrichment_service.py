@@ -327,38 +327,40 @@ def validate_quiz_mcq(
 
 # ── Batch helper — returns coroutines for all enrichments in a lesson ───────
 
+_MAX_DIAGRAM_ENRICHMENTS = 2   # cap LLM enrichment calls per session to save tokens
+
+
 def build_enrichment_tasks(
     steps: list,
     loop,
 ) -> tuple[list, list, list]:
     """
-    Walk parsed BB steps and build a list of awaitable enrichment futures.
+    Walk parsed BB steps and build diagram-enrichment futures only.
+
+    Quiz MCQ validation is intentionally skipped — the main BB LLM already
+    sets quiz_correct_index correctly and the extra LLM round-trip per quiz
+    frame added 2-4 unnecessary calls per session.
+
+    Diagram enrichment is capped at _MAX_DIAGRAM_ENRICHMENTS per session to
+    bound LLM call count regardless of lesson length.
 
     Returns:
-      (futures_list, diagram_frame_refs, quiz_frame_refs)
-
-    diagram_frame_refs: list of (step, frame) for diagram frames (in same order)
-    quiz_frame_refs:    list of (step, frame) for quiz_mcq frames (in same order)
-    futures_list: list of futures in order: [*diagram_futures, *quiz_futures]
-
-    Each future resolves to:
-      - diagram: enriched data dict
-      - quiz:    verified int index
+      (futures_list, diagram_frame_refs, [])   ← quiz_refs always empty now
     """
-    import asyncio
-
     diagram_refs: list[tuple[dict, dict]] = []
-    quiz_refs:    list[tuple[dict, dict]] = []
     diagram_futs: list = []
-    quiz_futs:    list = []
 
     for step in steps:
         if not isinstance(step, dict):
             continue
+        if len(diagram_futs) >= _MAX_DIAGRAM_ENRICHMENTS:
+            break
         step_title = step.get("title", "")
         for frame in step.get("frames", []):
             if not isinstance(frame, dict):
                 continue
+            if len(diagram_futs) >= _MAX_DIAGRAM_ENRICHMENTS:
+                break
 
             ft = frame.get("frame_type", "")
             d_type = (frame.get("diagram_type") or "").strip()
@@ -378,22 +380,4 @@ def build_enrichment_tasks(
                 )
                 diagram_futs.append(fut)
 
-            elif ft == "quiz_mcq":
-                opts = frame.get("quiz_options") or []
-                if len(opts) >= 2:
-                    quiz_refs.append((step, frame))
-                    fut = loop.run_in_executor(
-                        None,
-                        partial(
-                            validate_quiz_mcq,
-                            step_title,
-                            frame.get("speech", frame.get("text", "")),
-                            list(opts),
-                            int(frame.get("quiz_correct_index") or 0),
-                        ),
-                    )
-                    quiz_futs.append(fut)
-
-    all_futs = diagram_futs + quiz_futs
-    all_refs = diagram_refs + quiz_refs  # for logging only
-    return all_futs, diagram_refs, quiz_refs
+    return diagram_futs, diagram_refs, []

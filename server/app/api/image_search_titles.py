@@ -238,9 +238,42 @@ async def search_wikimedia_images(query: str, limit: int = 10) -> List[Dict[str,
         return []
 
 
+def _pick_by_word_overlap(steps: list, all_candidates: List[Dict[str, str]]) -> Dict[int, str]:
+    """
+    Fast no-LLM image picker using word-overlap scoring.
+    Returns {step_index: direct_image_url}.
+    """
+    title_to_url: Dict[str, str] = {}
+    for item in all_candidates:
+        if isinstance(item, dict):
+            t = item.get("title", "").replace("File:", "").strip()
+            u = item.get("url", "")
+            if t and u:
+                title_to_url[t] = u
+    if not title_to_url:
+        return {}
+    raw_titles = list(title_to_url.keys())
+    result: Dict[int, str] = {}
+    for i, step in enumerate(steps):
+        if not isinstance(step, dict):
+            continue
+        score = step.get("image_show_confidencescore") or 0
+        if score < 0.35:
+            continue
+        desc = (step.get("image_description") or "").strip()
+        if not desc:
+            continue
+        best = _best_title_match(desc, raw_titles)
+        if best:
+            url = title_to_url.get(best.replace("File:", "").strip(), "")
+            if url:
+                result[i] = url
+    return result
+
+
 def _pick_titles_sync(steps: list, all_candidates: List[Dict[str, str]]) -> Dict[int, str]:
     """
-    Sync LLM-based image title picker.
+    LLM-based image title picker (kept for reference — not called in production).
     all_candidates: list of {"title": ..., "url": ...} dicts.
     Returns {step_index: direct_image_url}.
     """
@@ -626,10 +659,12 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
             for item in all_candidates
             if isinstance(item, dict) and item.get("url")
         }
-
         picks: Dict[int, str] = await loop.run_in_executor(
             None, lambda: _pick_titles_sync(data["steps"], all_candidates)
         )
+        # Use word-overlap matching instead of an extra LLM call — saves ~1 call/session.
+        # _pick_titles_sync (LLM path) is kept for offline reference but not called here.
+        # picks = _pick_by_word_overlap(data["steps"], all_candidates)
 
         for i, step in enumerate(data["steps"]):
             if not isinstance(step, dict):

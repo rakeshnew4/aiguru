@@ -263,8 +263,12 @@ class HomeActivity : BaseActivity() {
 
                 // Limits come from user doc (server writes them); default to free-plan values.
                 // 0 stored means unlimited (written as 0 for unlimited plans by server).
-                val chatLimit = userDoc.getLong("plan_daily_chat_limit")?.toInt() ?: 12
-                val bbLimit   = userDoc.getLong("plan_daily_bb_limit")?.toInt() ?: 2
+                // If the plan has expired client-side, immediately fall back to free limits
+                // so the UI is correct before the server gets a chance to revert them.
+                val planExpiryMs = userDoc.getLong("planExpiryDate") ?: 0L
+                val planExpired  = planExpiryMs > 0L && System.currentTimeMillis() > planExpiryMs
+                val chatLimit = if (planExpired) 12 else userDoc.getLong("plan_daily_chat_limit")?.toInt() ?: 12
+                val bbLimit   = if (planExpired)  2 else userDoc.getLong("plan_daily_bb_limit")?.toInt() ?: 2
 
                 drawerChatLimit = chatLimit
                 drawerBbLimit   = bbLimit

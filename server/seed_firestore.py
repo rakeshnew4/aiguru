@@ -304,6 +304,7 @@ PLANS = [
             "daily_chat_questions": 12,
             "daily_bb_sessions": 2,
             "max_quiz_questions": 10,
+            "credits_on_activation": 0,
         },
     },
     {
@@ -343,6 +344,7 @@ PLANS = [
             "daily_chat_questions": 50,
             "daily_bb_sessions": 10,
             "max_quiz_questions": 20,
+            "credits_on_activation": 100,
         },
     },
     {
@@ -383,6 +385,7 @@ PLANS = [
             "daily_chat_questions": 0,
             "daily_bb_sessions": 0,
             "max_quiz_questions": 30,
+            "credits_on_activation": 500,
         },
     },
     {
@@ -421,6 +424,44 @@ PLANS = [
             "daily_bb_sessions": 0,
             "max_quiz_questions": 50,
         },
+    },
+]
+
+# ── credit_topups/ ───────────────────────────────────────────────────────────
+# Fetched by /credits/topup-packs endpoint and displayed in SubscriptionActivity.
+CREDIT_TOPUPS = [
+    {
+        "id": "topup_100",
+        "name": "Starter Pack",
+        "credits": 100,
+        "bonus_credits": 0,
+        "price_inr": 29,
+        "price_display": "₹29",
+        "description": "100 AI credits",
+        "is_active": True,
+        "display_order": 0,
+    },
+    {
+        "id": "topup_500",
+        "name": "Value Pack",
+        "credits": 500,
+        "bonus_credits": 50,
+        "price_inr": 99,
+        "price_display": "₹99",
+        "description": "500 + 50 bonus AI credits",
+        "is_active": True,
+        "display_order": 1,
+    },
+    {
+        "id": "topup_1200",
+        "name": "Power Pack",
+        "credits": 1200,
+        "bonus_credits": 200,
+        "price_inr": 199,
+        "price_display": "₹199",
+        "description": "1200 + 200 bonus AI credits",
+        "is_active": True,
+        "display_order": 2,
     },
 ]
 
@@ -593,6 +634,9 @@ if __name__ == "__main__":
 
     print("\n── plans/ ────────────────────────────────────────────")
     seed_collection("plans", PLANS)
+
+    print("\n── credit_topups/ ────────────────────────────────────")
+    seed_collection("credit_topups", CREDIT_TOPUPS)
 
     print("\n── offers/ ───────────────────────────────────────────")
     seed_collection("app_offers", OFFERS)

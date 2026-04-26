@@ -1010,15 +1010,7 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                 # search uses one lesson-level theme instead of step-level fragments.
                 yt_task = None
 
-                # B3) Build context-enriched BB prompt
-                prompt = build_bb_main_prompt(
-                    context=str(context) if context else "",
-                    question=req.question,
-                    level=req.student_level or 5,
-                    history=req.history or [],
-                    plan=plan,
-                    lang=lang,
-                )
+                # B3) model tier — prompt is built in the system/user split below
                 model_tier = _get_model_tier(req.user_plan or "free")
 
             elif req.mode == "blackboard_intent":
