@@ -166,7 +166,7 @@ BB_PLANNER_PROMPT = (
     '{{"topic_type":"<math_formula|math_geometry|math_graph|science_biology|science_chemistry|science_physics|definition|comparison|history_civics|programming|geography_environment|other>",'
     '"scope":"<simple|medium|complex>",'
     '"key_concepts":["term1","term2"],'
-    '"steps_count":<3|4|5>,'
+    '"steps_count":<5>,'
     '"image_search_terms":["wikimedia phrase 1","wikimedia phrase 2"],'
     '"question_focus":"one sentence: what EXACTLY the student wants to know or do",'
     '"question_type":"<how_to|definition|calculation|conceptual|comparison|example|problem_solving>",'
@@ -211,7 +211,7 @@ blackboard_prompt = (
     '"steps":[{'
     '"title":"2-5 words",'
     '"lang":"en-US",'
-    '"image_description":"short wikimedia phrase",'
+    '"image_description":"educational Wikimedia phrase describing topic visually (e.g. mitosis cell division diagram, Newton second law force mass)",'
     '"image_show_confidencescore":0.7,'
     '"frames":[{'
     '"frame_type":"concept",'
@@ -232,8 +232,9 @@ blackboard_prompt = (
     "Step fields (title, lang, image_description, image_show_confidencescore) are on the STEP — NEVER inside frames.\n"
     "FOLLOWUP_QUESTIONS: ONLY on the LAST step. Exactly 3 thought-provoking questions related to the topic. "
     "Each: short question (≤14 words) + speech (TTS-friendly, ≤20 words, conversational, native to lang).\n\n"
-    "VIDEO SEARCH FIELDS: root-level only. session_theme = 3-8 words. video_search_query = one broad end-of-lesson query. "
-    "preferred_channels = 2-4 India-friendly educational channels or creators relevant to this topic.\n\n"
+    "VIDEO SEARCH FIELDS: root-level only. session_theme = 3-8 words describing the topic (e.g. 'Photosynthesis light reactions'). "
+    "video_search_query = specific educational YouTube query for the exact topic (e.g. 'photosynthesis explained for class 10 CBSE'). "
+    "preferred_channels = 2-4 India-friendly educational channels relevant to the subject.\n\n"
     "FRAME TYPES: concept | memory | diagram | quiz_mcq | quiz_typed | quiz_voice | quiz_order | summary\n\n"
     "DIAGRAM — set diagram_type + data (no svg_elements):\n"
     "PATH 1 (semantic engine): atom, solar_system, waveform_signal, triangle, polygon,\n"
@@ -258,7 +259,9 @@ blackboard_prompt = (
     "- diagram only when visual adds clarity.\n"
     "- quiz_mcq: 4 options, only 1 correct (quiz_correct_index 0-3), use misconceptions as distractors.\n"
     "- quiz_typed/voice: quiz_model_answer (1 sentence), quiz_keywords (3-6 essential terms).\n"
-    "- image_description: specific Wikimedia phrase. NEVER null or omit.\n"
+    "- image_description: educational Wikimedia Commons search phrase — MUST include the subject/topic name so results are safe and relevant.\n"
+    "  GOOD: 'mitosis cell division diagram', 'Newton second law force diagram', 'water cycle evaporation condensation'.\n"
+    "  BAD: 'diagram', 'cycle', 'force', 'structure' (too vague — risks irrelevant or unsafe images). NEVER null or omit.\n"
     "  image_show_confidencescore: 0.85-0.95 concrete visuals, 0.60-0.80 named concepts, 0.10-0.30 abstract, 0.0 quiz/memory/summary.\n"
     "TTS every frame: first frame→android/teacher; concept/memory/diagram→gemini/teacher; summary→google/assistant; quiz→android/quiz.\n"
 )

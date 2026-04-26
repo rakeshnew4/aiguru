@@ -266,6 +266,10 @@ class BlackboardActivity : AppCompatActivity() {
     private var bbIntent: BlackboardGenerator.BlackboardIntent? = null
     private var isGeneratingNextChunk = false
     private var currentTopic        = ""
+    /** Number of chunk runs allowed for this session (1 per 2-min block). */
+    private var totalChunks    = 1
+    /** How many chunk runs have completed so far. */
+    private var chunksCompleted = 0
 
     // ── Interactive quiz score tracking ────────────────────────────────────────
     private var quizTotal       = 0
@@ -425,6 +429,7 @@ class BlackboardActivity : AppCompatActivity() {
         bbDuration = BlackboardGenerator.BbDuration.fromLabel(durationLabel) ?: BlackboardGenerator.BbDuration.MIN_2
         totalStepsTarget    = bbDuration.totalSteps
         framesPerStepTarget = bbDuration.framesPerStep
+        totalChunks         = (totalStepsTarget + BlackboardGenerator.CHUNK_SIZE - 1) / BlackboardGenerator.CHUNK_SIZE
         currentTopic = intent.getStringExtra(EXTRA_MESSAGE) ?: ""
 
         val userId = intent.getStringExtra(EXTRA_USER_ID)
@@ -746,6 +751,7 @@ class BlackboardActivity : AppCompatActivity() {
                                         .apply()
                                 }
                                 computedFontSp = computeFontSize(steps)
+                                chunksCompleted = 1
         progressSeekBar.max = (totalStepsTarget * framesPerStepTarget).coerceAtLeast(generated.sumOf { it.frames.size })
                                 loadingGroup.visibility = View.GONE
                                 contentGroup.visibility = View.VISIBLE
@@ -841,14 +847,13 @@ class BlackboardActivity : AppCompatActivity() {
     private fun triggerNextChunk() {
         val intent_ = bbIntent ?: return
         if (isGeneratingNextChunk) return
-        if (steps.size >= totalStepsTarget) return
+        if (chunksCompleted >= totalChunks) return
 
         isGeneratingNextChunk = true
 
         val alreadyGenerated   = steps.size
-        val remaining          = totalStepsTarget - alreadyGenerated
         val nextTitles         = intent_.stepTitles.drop(alreadyGenerated).take(BlackboardGenerator.CHUNK_SIZE)
-        val isLast             = (alreadyGenerated + nextTitles.size) >= totalStepsTarget
+        val isLast             = (chunksCompleted + 1) >= totalChunks
 
         // Build a comprehensive context block listing everything already covered
         val contextSummary = buildString {
@@ -883,6 +888,7 @@ class BlackboardActivity : AppCompatActivity() {
                 onSuccess = { newSteps ->
                     lifecycleScope.launch(Dispatchers.Main) {
                         steps = steps + newSteps
+                        chunksCompleted++
                         progressSeekBar.max = steps.sumOf { it.frames.size }
                         buildDots()
                         updateCounterAndDots()
@@ -1212,8 +1218,8 @@ class BlackboardActivity : AppCompatActivity() {
         updateStepNameStrip(stepIdx)
         trackTaskBbProgress(stepIdx)
 
-        // Trigger next chunk when 2 steps from the end
-        if (!isGeneratingNextChunk && steps.size < totalStepsTarget && stepIdx >= steps.size - 2) {
+        // Trigger next chunk when 2 steps from the end — only if more runs are allowed
+        if (!isGeneratingNextChunk && chunksCompleted < totalChunks && stepIdx >= steps.size - 2) {
             triggerNextChunk()
         }
 

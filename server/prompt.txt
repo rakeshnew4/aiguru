@@ -26,7 +26,7 @@ FLOW: Step 1 frame 1 = HOOK (real-world curiosity Q, 1 line). Each step has ≥1
 TIMING duration_ms: concept/memory/diagram 1500-2500; HOOK/APPLY/CURIOSITY 2000-2500; summary 2500-3000; quiz 2000.
 
 RULES:
-- 4-5 steps, 2-4 frames/step. Last step: quiz_mcq then summary (final). DO NOT include youtube_clip on any frame — videos surfaced separately at end.
+- 3-5 steps, 2-4 frames/step. Last step: quiz_mcq then summary (final). DO NOT include youtube_clip on any frame — videos surfaced separately at end.
 - Use ONE lesson-level video_search_query for the whole session, never per-step video searches.
 - Step 2 MUST have a diagram or populated image_description.
 - speech: ≤2 sentences ≤50 words. Conversational, calm. No openers ('Today we learn...', 'Hi class!'). TTS-safe: say 'squared' not '^2'.
@@ -42,37 +42,36 @@ TTS every frame: first frame→android/teacher; concept/memory/diagram→gemini/
 
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student question: Topic: Photosynthesis
-Lesson title: Unlocking Photosynthesis: How Plants Eat Light
+Student question: Topic: Newton's Laws of Motion
+Lesson title: Newton's Laws of Motion
 Category: science
 
 
 CONTINUATION — DO NOT repeat anything already taught.
-Student's original question: Photosynthesis
+Student's original question: Newton's Laws of Motion
 
 Steps ALREADY TAUGHT (do NOT repeat or reintroduce these):
-  1. Ingredients for Photosynthesis — "Plants don't eat like we do. They create their own food using sunlight, water, and carbon "
-  2. Inside the Chloroplast — "Inside plant cells are tiny green structures called chloroplasts. They contain chlorophyll"
-  3. Light-Dependent Reactions — "In this first stage, sunlight hits the chlorophyll and splits water molecules into oxygen "
+  1. Inertia: Staying Put — "Newton's first law states that an object at rest will stay at rest unless acted upon by an"
+  2. F=ma: The Relationship — "Newton's second law is defined by the formula force equals mass times acceleration. This m"
+  3. Action and Reaction — "Newton's third law states that for every action, there is an equal and opposite reaction. "
+  4. Real-World Applications — "When a car stops suddenly, your body wants to keep moving forward due to inertia. Seatbelt"
 
-Total steps covered so far: 3 / 4
-Continue from step 4. Build on what was taught — go deeper, give examples, advance the lesson.
+Total steps covered so far: 4 / 5
+Continue from step 5. Build on what was taught — go deeper, give examples, advance the lesson.
 
 Now continue teaching the NEXT steps listed below. Build on what was already covered — go deeper, add detail, advance the lesson. Do NOT reintroduce or re-explain concepts from the above steps.
 
 Generate EXACTLY 1 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- The Calvin Cycle: Making Sugar
+- Calculating Forces in Practice
 
 This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
 Student level: Class 5
-Topic type: science_biology | Scope: medium
-Key concepts to cover (ALL of these): Chlorophyll, Chloroplasts, Energy transformation
-HOOK (use this exact question as the very first frame text of Step 1): "If plants don't have mouths to eat, how do they actually 'catch' the sunlight they need to make food?"
+Topic type: science_physics | Scope: medium
+Key concepts to cover (ALL of these): Newton's Second Law, Force, Mass, Acceleration
+HOOK (use this exact question as the very first frame text of Step 1): "Why is it much harder to push a full shopping cart than an empty one?"
 Generate EXACTLY 5 steps — no more, no less.
-
-DIAGRAM RECOMMENDATION: This topic likely suits a "leaf_anatomy" diagram (confidence 98%). If this is a standard math/science type, use diagram_type="leaf_anatomy". If it needs a custom structure (anatomy, apparatus, body parts), use PATH 2 (svg_elements) instead.
 
 CHAPTER CONTEXT (use this as the primary source — ground the lesson here):
 Context for page blackboard__chunk
