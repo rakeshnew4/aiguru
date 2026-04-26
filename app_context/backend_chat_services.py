@@ -151,10 +151,10 @@ def chat_stream(req, auth):
 BLACKBOARD_POST_PROCESSOR_PSEUDOCODE = """
 async def get_titles(bb_json, extra_candidates=None):
     data = parse_blackboard_json(bb_json)
-    launch diagram-data enrichment + quiz-answer validation tasks
+    launch diagram-data enrichment tasks (quiz-answer validation removed — main LLM is reliable)
     launch per-step Wikimedia searches for eligible image descriptions
     await everything together
-    write enrichment results back into step frames
+    write diagram enrichment results back into step frames
 
     for each diagram frame:
         d_type = frame.diagram_type

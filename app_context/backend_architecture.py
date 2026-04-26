@@ -50,7 +50,9 @@ MODEL_AND_PROVIDER_FLOW = {
     },
     "current_llm_behavior": (
         "server/app/services/llm_service.py::generate_response() currently expects "
-        "USE_LITELLM_PROXY=True and sends all tiers through _call_litellm_proxy()."
+        "USE_LITELLM_PROXY=True and sends all tiers through _call_litellm_proxy(). "
+        "Request body includes thinking={type:enabled, budget_tokens:32} and "
+        "extra_body={cache_control:{type:ephemeral}} for Gemini explicit caching."
     ),
     "provider_clients_present": [
         "Gemini client code exists",

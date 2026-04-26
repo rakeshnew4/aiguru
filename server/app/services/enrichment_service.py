@@ -1,21 +1,16 @@
 """
-enrichment_service.py — Post-generation accuracy passes using small LLM calls.
+enrichment_service.py — Post-generation diagram data enrichment using small LLM calls.
 
-Two passes (run in parallel for all frames inside get_titles()):
+One pass (run in parallel for all diagram frames inside get_titles()):
 
-  1. Diagram data enricher
+  Diagram data enricher
      Given diagram_type + step teaching content → optimal, complete data dict.
      The main LLM (power/cheaper) often emits incomplete or generic data.
      A tiny focused call on the faster model fills every key perfectly.
 
-  2. Quiz answer validator
-     For every quiz_mcq frame, verifies the correct_index is factually right.
-     Wrong quiz answers destroy student trust — this pass catches them.
-
-Both use tier="faster" (Gemini Flash Lite, temperature 0.3).
-Both are fail-safe: return the original values on ANY error.
-Both run as sync functions, intended to be wrapped in run_in_executor()
-so they can be gathered in parallel with async Wikimedia searches.
+Uses tier="faster" (Gemini Flash Lite, temperature 0.3).
+Fail-safe: returns original values on ANY error.
+Runs as sync function, intended to be wrapped in run_in_executor().
 """
 
 from __future__ import annotations
@@ -177,12 +172,6 @@ _ENRICH_SYSTEM = (
     "Output ONLY a valid JSON object — no text, no markdown, no explanation."
 )
 
-_QUIZ_SYSTEM = (
-    "You are an educational quiz fact-checker. "
-    "Output ONLY a valid JSON object — no text, no markdown."
-)
-
-
 # ── Diagram data enricher ──────────────────────────────────────────────────
 
 def enrich_diagram_data(
@@ -254,78 +243,7 @@ def enrich_diagram_data(
         return existing_data
 
 
-# ── Quiz answer validator ──────────────────────────────────────────────────
-
-def validate_quiz_mcq(
-    step_title: str,
-    question_text: str,
-    options: list,
-    current_index: int,
-) -> int:
-    """
-    Verify (and correct if wrong) the quiz_correct_index for a quiz_mcq frame.
-
-    Uses tier="faster" (Gemini Flash Lite, temp=0.1 for deterministic output).
-    Returns verified (or corrected) index on success, original index on failure.
-
-    Intentionally sync — wrap in run_in_executor() for async use.
-    """
-    from app.services.llm_service import generate_response
-    from app.utils.json_utils import extract_json_safe
-
-    if not options or len(options) < 2:
-        return current_index
-    if not (0 <= current_index < len(options)):
-        current_index = 0
-
-    options_str = "\n".join(f"  {i}: {opt}" for i, opt in enumerate(options))
-    question_clean = (question_text or step_title or "")[:200].strip()
-
-    prompt = (
-        f"Fact-check this educational quiz question.\n"
-        f"Topic: \"{step_title[:60]}\"\n"
-        f"Question: \"{question_clean}\"\n"
-        f"Options:\n{options_str}\n\n"
-        f"Current answer index: {current_index} → \"{options[current_index]}\"\n\n"
-        f"Which option index (0-{len(options)-1}) is FACTUALLY CORRECT?\n"
-        f"Reply ONLY with JSON: {{\"correct_index\": N}}"
-    )
-
-    try:
-        raw = generate_response(
-            prompt,
-            images=[],
-            tier="faster",
-            system_prompt=_QUIZ_SYSTEM,
-        )
-        text = (raw.get("text") or "").strip()
-        if not text or raw.get("provider") == "error":
-            return current_index
-
-        parsed = extract_json_safe(text)
-        verified = int(parsed.get("correct_index", current_index))
-        if not (0 <= verified < len(options)):
-            return current_index
-
-        if verified != current_index:
-            logger.info(
-                "quiz_validator: CORRECTED index %d→%d for '%s' | was='%s' now='%s'",
-                current_index, verified,
-                step_title[:40],
-                options[current_index],
-                options[verified],
-            )
-        return verified
-
-    except Exception as exc:
-        logger.warning(
-            "quiz_validator failed (step='%s'): %s — keeping index %d",
-            step_title[:40], exc, current_index,
-        )
-        return current_index
-
-
-# ── Batch helper — returns coroutines for all enrichments in a lesson ───────
+# ── Batch helper — returns diagram enrichment futures for a lesson ──────────
 
 _MAX_DIAGRAM_ENRICHMENTS = 2   # cap LLM enrichment calls per session to save tokens
 
@@ -333,19 +251,14 @@ _MAX_DIAGRAM_ENRICHMENTS = 2   # cap LLM enrichment calls per session to save to
 def build_enrichment_tasks(
     steps: list,
     loop,
-) -> tuple[list, list, list]:
+) -> tuple[list, list]:
     """
-    Walk parsed BB steps and build diagram-enrichment futures only.
+    Walk parsed BB steps and build diagram-enrichment futures.
 
-    Quiz MCQ validation is intentionally skipped — the main BB LLM already
-    sets quiz_correct_index correctly and the extra LLM round-trip per quiz
-    frame added 2-4 unnecessary calls per session.
-
-    Diagram enrichment is capped at _MAX_DIAGRAM_ENRICHMENTS per session to
-    bound LLM call count regardless of lesson length.
+    Capped at _MAX_DIAGRAM_ENRICHMENTS per session.
 
     Returns:
-      (futures_list, diagram_frame_refs, [])   ← quiz_refs always empty now
+      (futures_list, diagram_frame_refs)
     """
     diagram_refs: list[tuple[dict, dict]] = []
     diagram_futs: list = []
@@ -380,4 +293,4 @@ def build_enrichment_tasks(
                 )
                 diagram_futs.append(fut)
 
-    return diagram_futs, diagram_refs, []
+    return diagram_futs, diagram_refs

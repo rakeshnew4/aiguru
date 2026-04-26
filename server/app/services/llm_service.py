@@ -448,6 +448,10 @@ def _call_litellm_proxy(
         "messages": messages,
         "temperature": model_config.temperature,
         "max_tokens": model_config.max_tokens,
+        "thinking": {"type": "enabled", "budget_tokens": 32},
+        "extra_body": {
+            "cache_control": {"type": "ephemeral"},
+        },
     }).encode()
 
     logger.debug(f"LiteLLM proxy request: model=gemini-3.1-flash-lite-preview, has_system={'yes' if system_prompt else 'no'}, prompt_len={len(prompt)}, images={len(images) if images else 0}")

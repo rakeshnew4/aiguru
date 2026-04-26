@@ -215,7 +215,7 @@ object BbInteractivePopup {
 
         root.addView(feedbackTv)
         root.addView(continueBtn)
-        root.addView(skipButton(activity, dp, caveat) { onResult(QuizResult(false, 0, "Skipped")) })
+        root.addView(skipButton(activity, dp, caveat) { dialog.dismiss(); onResult(QuizResult(false, 0, "Skipped")) })
 
         val dialog = buildDialog(activity, root)
         // Store dialog ref on each option button for the click handler
@@ -295,7 +295,7 @@ object BbInteractivePopup {
 
         val actionBtn = actionButton(activity, "Check Answer", dp, caveat)
         root.addView(actionBtn)
-        root.addView(skipButton(activity, dp, caveat) { onResult(QuizResult(false, 0, "Skipped")) })
+        root.addView(skipButton(activity, dp, caveat) { dialog.dismiss(); onResult(QuizResult(false, 0, "Skipped")) })
 
         var gradeResult: QuizResult? = null
         var timer: CountDownTimer? = null
@@ -410,7 +410,7 @@ object BbInteractivePopup {
 
         val continueBtn = actionButton(activity, "Continue →", dp, caveat).apply { visibility = View.GONE }
         root.addView(continueBtn)
-        root.addView(skipButton(activity, dp, caveat) { onResult(QuizResult(false, 0, "Skipped")) })
+        root.addView(skipButton(activity, dp, caveat) { dialog.dismiss(); onResult(QuizResult(false, 0, "Skipped")) })
 
         var gradeResult: QuizResult? = null
         var recognizer: SpeechRecognizer? = null
@@ -573,7 +573,7 @@ object BbInteractivePopup {
 
         val actionBtn = actionButton(activity, "Check Answer", dp, caveat)
         root.addView(actionBtn)
-        root.addView(skipButton(activity, dp, caveat) { onResult(QuizResult(false, 0, "Skipped")) })
+        root.addView(skipButton(activity, dp, caveat) { dialog.dismiss(); onResult(QuizResult(false, 0, "Skipped")) })
 
         var checked = false
         var timer: CountDownTimer? = null
@@ -729,7 +729,7 @@ object BbInteractivePopup {
         root.addView(feedbackTv)
         val continueBtn = actionButton(activity, "Continue →", dp, caveat).apply { visibility = View.GONE }
         root.addView(continueBtn)
-        root.addView(skipButton(activity, dp, caveat) { onResult(QuizResult(false, 0, "Skipped")) })
+        root.addView(skipButton(activity, dp, caveat) { dialog.dismiss(); onResult(QuizResult(false, 0, "Skipped")) })
 
         val dialog = buildDialog(activity, ScrollView(activity).apply { addView(root) })
 

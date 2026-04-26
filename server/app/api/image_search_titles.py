@@ -400,11 +400,11 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
         loop = asyncio.get_event_loop()
 
         # ── Phase 1: Launch enrichment tasks + wikimedia searches in parallel ──
-        # Enrichment: diagram data enrichment + quiz answer validation (faster model).
+        # Enrichment: diagram data enrichment (faster model).
         # Wikimedia: per-step image searches.
         # ALL run concurrently → near-zero extra wall-clock time.
 
-        enr_futs, diagram_refs, quiz_refs = build_enrichment_tasks(data["steps"], loop)
+        enr_futs, diagram_refs = build_enrichment_tasks(data["steps"], loop)
 
         # Collect wikimedia descriptions
         descriptions = []
@@ -445,13 +445,6 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
             r = enr_results[i]
             if isinstance(r, dict) and r:
                 frame["data"] = r
-
-        # Quiz answers: update quiz_correct_index
-        quiz_offset = len(diagram_refs)
-        for i, (step, frame) in enumerate(quiz_refs):
-            r = enr_results[quiz_offset + i]
-            if isinstance(r, int) and 0 <= r < len(frame.get("quiz_options", [])):
-                frame["quiz_correct_index"] = r
 
         # ── Phase 3: Build SVG diagrams (using enriched data) ─────────────────
         for step in data["steps"]:
