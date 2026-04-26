@@ -88,3 +88,184 @@
 
 **Asked:** Keep-alive ping.
 **Changed:** No code changes.
+
+---
+
+**Date:** 2026-04-26
+**Asked:** Push code to GitHub (aiguru repo).
+**Changed:**
+- All modified files committed and pushed: `CLAUDE.md`, `app/src/main/java/com/aiguruapp/student/bb/BbInteractivePopup.kt`, `app_context/backend_architecture.py`, `app_context/backend_chat_services.py`, `server/app/api/image_search_titles.py`, `server/app/services/enrichment_service.py`, `server/app/services/llm_service.py`, `server/bb_presanitize.json`, `server/response.json`
+- `meta/` folder added (tracker.md, rules.md, server_index.md, android_index.md)
+- Pushed to origin/main (commit 821bfa6)
+
+---
+
+**Date:** 2026-04-26
+**Asked:** Why didn't you follow CLAUDE.md? (session start rules not followed — no cron check, no tracker read, no topic comparison)
+**Changed:**
+- `meta/tracker.md` — added missing entries (this one + above)
+- Keep-alive cron created (job e6e9bdbf, */4 * * * *)
+
+---
+
+**Asked:** Keep-alive ping.
+**Changed:** No code changes.
+
+---
+
+**Asked:** Keep-alive ping.
+**Changed:** No code changes.
+
+---
+
+**Asked:** Keep-alive ping.
+**Changed:** No code changes.
+
+---
+
+**Date:** 2026-04-26
+**Asked:** How does the credit system work — calculation and UI display?
+**Changed:** No code changes — read-only investigation.
+**Files read:**
+- `server/app/api/credits.py` — all lines (short file ~170 lines): balance, spend, transactions, topup-packs endpoints
+- `server/app/services/user_service.py` — lines 142, 231–238, 311–392, 537–619: credit charge/award/init logic
+- `server/app/api/daily_questions.py` — lines 38, 187, 243–299, 365–402: daily question credit award (5 credits/question)
+- `app/src/main/java/com/aiguruapp/student/HomeActivity.kt` — lines 307–396, 712–755: credit display (chip + drawer)
+- `app/src/main/java/com/aiguruapp/student/daily/DailyQuestionsManager.kt` — lines 22–223: fetchCreditBalance() hits GET /credits/balance
+**Key facts:**
+- Welcome bonus: 50 credits on signup
+- Daily question: 5 credits each
+- Auto-charge: 1 credit per 100 tokens, 1 credit per 100 TTS chars
+- UI: ⭐ balance chip in HomeActivity + nav drawer; fetched via DailyQuestionsManager.fetchCreditBalance()
+- Warning: "chatLeft credits" in HomeActivity is daily plan quota, NOT the credit balance — two separate concepts
+
+---
+
+**Asked:** Keep-alive ping.
+**Changed:** No code changes.
+
+---
+
+**Asked:** Keep-alive ping.
+**Changed:** No code changes.
+
+---
+
+**Date:** 2026-04-26
+**Asked:** Fix LiteLLM 400 error — "Unknown name cache_control: Cannot find field" from Vertex AI.
+**Changed:**
+- `server/app/services/llm_service.py` lines 446–455 → removed `thinking` and `extra_body.cache_control` from request body (Vertex AI rejects both; they were Anthropic-specific)
+- Pushed commit a631a67
+
+---
+
+**Asked:** Keep-alive ping.
+**Changed:** No code changes.
+Note: llm_service.py was modified externally by user/linter — full file now visible in context. Key update: file starts with client initializations (_init_gemini, _init_groq, _init_bedrock at lines 19-72), image processing utilities at lines 76-139. Meta index needs update.
+
+---
+
+**Date:** 2026-04-26
+**Asked:** Switch LiteLLM call to use SDK (litellm.completion) with Gemini thinking_config instead of raw HTTP proxy.
+**Changed:**
+- `server/app/services/llm_service.py` — `_call_litellm_proxy()` rewritten: raw http.client → litellm.completion() SDK; model format now `gemini/<model_id>`; added `extra_body.thinking_config` (include_thoughts=True, thinking_level=LOW); removed unused `import http.client`
+- Pushed commit dd197ae
+**Key facts:**
+- LiteLLM SDK model string for Gemini: `gemini/<model_id>` (e.g. `gemini/gemini-3.1-flash-lite-preview`)
+- thinking_config goes in extra_body (NOT in top-level body like Anthropic's thinking field)
+- api_key=settings.GEMINI_API_KEY passed directly to litellm.completion()
+
+---
+
+**Asked:** Keep-alive ping.
+**Changed:** No code changes.
+
+---
+
+**Asked:** Keep-alive ping.
+**Changed:** No code changes.
+
+---
+
+**Date:** 2026-04-26
+**Asked:** Per-user LiteLLM key — store in Firestore users_table/{uid}.litellm_key, cache in memory, use when calling proxy. Auto-create if missing.
+**Changed:**
+- `server/app/services/llm_service.py`:
+  - Added `_user_key_cache: Dict[str, str]` (module-level, uid→key)
+  - Added `get_or_create_litellm_key(uid)`: checks cache → Firestore users_table/{uid}.litellm_key → POST /key/generate on proxy → stores in Firestore
+  - Rewrote `_call_litellm_proxy`: litellm SDK → httpx.Client to proxy with per-user Bearer key; thinking_config in body
+  - `generate_response()`: added `uid` param, passes to _call_litellm_proxy
+- `server/app/api/chat.py`:
+  - `_classify_intent`, `_bb_plan` signatures: added `uid` param
+  - All 4 `generate_response` call sites: pass `uid=_uid`
+  - `_bb_plan` and `_classify_intent` call sites: pass `uid=_uid`
+- Pushed commit 6a35358
+**Key facts:**
+- Firestore field: `users_table/{uid}.litellm_key`
+- Fallback to master key for guest_user or if key creation fails
+- Cache lives for server lifetime (no TTL) — restart clears it
+
+---
+
+**Asked:** Keep-alive ping.
+**Changed:** No code changes.
+
+---
+
+**Date:** 2026-04-26
+**Asked:** Fix 400 error — thinking_level not supported by gemini-2.5-flash on Vertex AI.
+**Changed:**
+- `server/app/services/llm_service.py` — removed `thinking_config` block from httpx proxy request body
+- Pushed commit 5482e06
+
+---
+
+**Asked:** Keep-alive ping.
+**Changed:** No code changes.
+
+---
+
+**Date:** 2026-04-26
+**Asked:** Fix 400 error — model routing to Claude/Bedrock instead of Gemini. Use gemini-3.1-flash-lite-preview for all tiers always.
+**Changed:**
+- `server/app/core/config.py` — POWER_PROVIDER: bedrock→gemini, POWER_MODEL_ID: anthropic.claude-3-5-sonnet → gemini-3.1-flash-lite-preview
+- All 3 tiers (power/cheaper/faster) now use gemini-3.1-flash-lite-preview
+- Pushed commit 6f69662
+
+---
+
+**Asked:** Keep-alive ping.
+**Changed:** No code changes.
+
+---
+
+**Date:** 2026-04-26
+**Asked:** Server stuck after YouTube extraction — LLM not responding.
+**Root cause:** `gemini-3.1-flash-lite-preview` has thinking enabled by default (117+ reasoning tokens even for "Say hi"). For BB lessons, this consumed all max_tokens on reasoning, returning `content: null` and causing extreme slowness.
+**Changed:**
+- `server/app/core/config.py` — all 3 tiers switched from `gemini-3.1-flash-lite-preview` → `gemini-2.5-flash-lite`
+- `gemini-2.5-flash-lite` confirmed: no reasoning tokens, direct text, fast
+- Pushed commit 4c6abc3
+**Key facts:**
+- gemini-3.1-flash-lite-preview: thinking ON by default → avoid
+- gemini-2.5-flash-lite: no thinking → use this
+- Available proxy models: gemini-2.5-flash-lite, gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-flash-lite-preview, nvidia/nemotron-nano-12b-v2-vl:free
+
+---
+
+**Asked:** Keep-alive ping.
+**Changed:** No code changes.
+
+---
+
+**Asked:** Keep-alive ping.
+**Changed:** No code changes.
+
+---
+
+**Date:** 2026-04-26
+**Asked:** Still calling Claude model — why? Fix to use gemini-2.5-flash-lite only.
+**Root cause:** `.env` overrides config.py defaults. `POWER_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0` was hardcoded in `.env`.
+**Changed:**
+- `server/.env` — POWER_PROVIDER→gemini, POWER_MODEL_ID→gemini-2.5-flash-lite, CHEAPER_MODEL_ID→gemini-2.5-flash-lite, FASTER_MODEL_ID→gemini-2.5-flash-lite
+- Server restart required for .env changes to take effect

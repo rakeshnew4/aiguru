@@ -19,6 +19,9 @@ Goal: minimum token spend per task. Details in `meta/rules.md`.
 - Append to `meta/tracker.md`: date | asked | files:lines changed
 - This applies to ALL tasks — code changes, questions, clarifications, tiny fixes. Every single one.
 - Update `meta/server_index.md` or `meta/android_index.md` with any new/changed line numbers
+Whatever You read in the repo, even  mistakenly also, just need to update the meta data, so that in future , it can be useful for future questions. you can enter like i have read sample.py , there are 3 functions named .... and 1 function lin numbers 4-60, this function does to read the data and do process and retruns this format, it calls other two functions lie etc etc, and then collects something and returns, like that you need to enter, whenever you read something. 
+there is no Exception, everything you have to read and update, you can create new files for meta data md files if the file size becomes too big if more thatn some 500 lines, name it accordingly on your comfort to read
+
 
 ## Hard Rules
 - Never read a file top-to-bottom. Search first, then read only the matching slice.

@@ -51,6 +51,12 @@
 
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
+| `_init_gemini()` | 19–29 | Initializes Gemini client from GEMINI_API_KEY |
+| `_init_groq()` | 31–41 | Initializes Groq client |
+| `_init_bedrock()` | 43–68 | Initializes Bedrock client (access keys or bearer token) |
+| `_genai_client`, `_groq_client`, `_bedrock_client` | 70–72 | Module-level client singletons |
+| `_images_to_gemini_parts()` | 76–139 | Converts base64/URL images to Gemini Part objects |
+| `_images_to_bedrock_content()` | 142–? | Converts images to Bedrock converse() content blocks |
 | `_call_litellm_proxy()` | ~406–500 | Active LLM call path; sends to LiteLLM proxy on localhost |
 | request body construction | ~446–454 | Builds JSON body with model, messages, temp, max_tokens, thinking, extra_body |
 | thinking config | ~451 | `{"type": "enabled", "budget_tokens": 32}` |
