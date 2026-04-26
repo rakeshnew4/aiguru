@@ -490,10 +490,6 @@ def _call_litellm_proxy(
                     "messages": messages,
                     "temperature": model_config.temperature,
                     "max_tokens": model_config.max_tokens,
-                    "thinking_config": {
-                        "include_thoughts": True,
-                        "thinking_level": "LOW",
-                    },
                 },
             )
 
