@@ -215,9 +215,11 @@ object BbInteractivePopup {
 
         root.addView(feedbackTv)
         root.addView(continueBtn)
-        root.addView(skipButton(activity, dp, caveat) { dialog.dismiss(); onResult(QuizResult(false, 0, "Skipped")) })
+        var skipDialog: Dialog? = null
+        root.addView(skipButton(activity, dp, caveat) { skipDialog?.dismiss(); onResult(QuizResult(false, 0, "Skipped")) })
 
         val dialog = buildDialog(activity, root)
+        skipDialog = dialog
         // Store dialog ref on each option button for the click handler
         val container = root
         for (i in 0 until container.childCount) {
@@ -295,11 +297,13 @@ object BbInteractivePopup {
 
         val actionBtn = actionButton(activity, "Check Answer", dp, caveat)
         root.addView(actionBtn)
-        root.addView(skipButton(activity, dp, caveat) { dialog.dismiss(); onResult(QuizResult(false, 0, "Skipped")) })
+        var skipDialog1: Dialog? = null
+        root.addView(skipButton(activity, dp, caveat) { skipDialog1?.dismiss(); onResult(QuizResult(false, 0, "Skipped")) })
 
         var gradeResult: QuizResult? = null
         var timer: CountDownTimer? = null
         val dialog = buildDialog(activity, ScrollView(activity).apply { addView(root) })
+        skipDialog1 = dialog
 
         actionBtn.setOnClickListener {
             val answer = editText.text.toString().trim()
@@ -410,13 +414,15 @@ object BbInteractivePopup {
 
         val continueBtn = actionButton(activity, "Continue →", dp, caveat).apply { visibility = View.GONE }
         root.addView(continueBtn)
-        root.addView(skipButton(activity, dp, caveat) { dialog.dismiss(); onResult(QuizResult(false, 0, "Skipped")) })
+        var skipDialog2: Dialog? = null
+        root.addView(skipButton(activity, dp, caveat) { skipDialog2?.dismiss(); onResult(QuizResult(false, 0, "Skipped")) })
 
         var gradeResult: QuizResult? = null
         var recognizer: SpeechRecognizer? = null
         var voiceTimer: CountDownTimer? = null
 
         val dialog = buildDialog(activity, ScrollView(activity).apply { addView(root) })
+        skipDialog2 = dialog
         dialog.setOnDismissListener {
             recognizer?.destroy()
             voiceTimer?.cancel()
@@ -573,11 +579,13 @@ object BbInteractivePopup {
 
         val actionBtn = actionButton(activity, "Check Answer", dp, caveat)
         root.addView(actionBtn)
-        root.addView(skipButton(activity, dp, caveat) { dialog.dismiss(); onResult(QuizResult(false, 0, "Skipped")) })
+        var skipDialog3: Dialog? = null
+        root.addView(skipButton(activity, dp, caveat) { skipDialog3?.dismiss(); onResult(QuizResult(false, 0, "Skipped")) })
 
         var checked = false
         var timer: CountDownTimer? = null
         val dialog = buildDialog(activity, ScrollView(activity).apply { addView(root) })
+        skipDialog3 = dialog
 
         actionBtn.setOnClickListener {
             if (checked) { dialog.dismiss(); return@setOnClickListener }
@@ -729,9 +737,11 @@ object BbInteractivePopup {
         root.addView(feedbackTv)
         val continueBtn = actionButton(activity, "Continue →", dp, caveat).apply { visibility = View.GONE }
         root.addView(continueBtn)
-        root.addView(skipButton(activity, dp, caveat) { dialog.dismiss(); onResult(QuizResult(false, 0, "Skipped")) })
+        var skipDialog4: Dialog? = null
+        root.addView(skipButton(activity, dp, caveat) { skipDialog4?.dismiss(); onResult(QuizResult(false, 0, "Skipped")) })
 
         val dialog = buildDialog(activity, ScrollView(activity).apply { addView(root) })
+        skipDialog4 = dialog
 
         // Show continue button once all steps are tapped
         feedbackTv.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
