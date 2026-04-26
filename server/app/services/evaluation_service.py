@@ -130,7 +130,7 @@ async def evaluate_short_answer(
         try:
             result = await loop.run_in_executor(
                 None,
-                partial(generate_response, prompt, [], "cheaper", system_prompt=EVAL_SYSTEM_PROMPT),
+                partial(generate_response, prompt, [], "cheaper", system_prompt=EVAL_SYSTEM_PROMPT, call_name="quiz_evaluation"),
             )
             raw: str = result["text"]
             cleaned = re.sub(r"```(?:json)?", "", raw).strip().rstrip("`").strip()

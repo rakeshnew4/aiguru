@@ -341,7 +341,7 @@ def _pick_titles_sync(steps: list, all_candidates: List[Dict[str, str]]) -> Dict
         + '\n\nOutput example: {"0": "Photosynthesis diagram.svg", "3": null, "5": "Newton laws.png"}'
     )
     try:
-        raw = generate_response(picker_prompt, [], tier="faster")
+        raw = generate_response(picker_prompt, [], tier="faster", call_name="image_picker")
         text = (raw.get("text") or "").strip()
         parsed = extract_json_safe(text)
         result: Dict[int, str] = {}

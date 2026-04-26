@@ -206,7 +206,7 @@ def _generate_questions_sync(uid: str, db) -> list[dict]:
         existing_topics = []
 
     prompt = _build_generation_prompt(interests, existing_topics)
-    result = generate_response(prompt, tier="faster")
+    result = generate_response(prompt, tier="faster", call_name="daily_question_gen")
 
     if result.get("provider") == "error":
         return _fallback_questions()

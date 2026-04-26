@@ -207,6 +207,7 @@ def build_llm_svg(
                 model_config=model_config,
                 images=[],
                 system_prompt=_SYSTEM_PROMPT,
+                call_name="bb_svg_builder",
             )
             raw = result.get("text", "")
             if not raw:

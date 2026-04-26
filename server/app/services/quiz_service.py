@@ -198,7 +198,7 @@ async def generate_quiz(
             loop = asyncio.get_event_loop()
             result = await loop.run_in_executor(
                 None,
-                partial(generate_response, prompt, [], "cheaper", system_prompt=QUIZ_SYSTEM_PROMPT),
+                partial(generate_response, prompt, [], "cheaper", system_prompt=QUIZ_SYSTEM_PROMPT, call_name="quiz_generate"),
             )
             raw_text: str = result["text"]
             parsed = _extract_json(raw_text)

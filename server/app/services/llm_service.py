@@ -445,12 +445,35 @@ def _call_bedrock(
 
 
 # ── Main LLM Interface ────────────────────────────────────────────────────────
+_LLM_LOG_DIR = "llm_logs"
+
+
+def _log_llm_call(call_name: str, prompt: str, system_prompt: Optional[str], response_text: Optional[str]) -> None:
+    try:
+        import os
+        os.makedirs(_LLM_LOG_DIR, exist_ok=True)
+        path = os.path.join(_LLM_LOG_DIR, f"{call_name}.txt")
+        with open(path, "w", encoding="utf-8") as f:
+            if system_prompt:
+                f.write("=== SYSTEM ===\n")
+                f.write(system_prompt)
+                f.write("\n\n")
+            f.write("=== PROMPT ===\n")
+            f.write(prompt)
+        with open(path, "a", encoding="utf-8") as f:
+            f.write("\n\n=== RESPONSE ===\n")
+            f.write(response_text or "[empty]")
+    except Exception as e:
+        logger.warning("_log_llm_call failed for %s: %s", call_name, e)
+
+
 def _call_litellm_proxy(
     prompt: str,
     model_config,
     images: Optional[List[str]] = None,
     system_prompt: Optional[str] = None,
     uid: Optional[str] = None,
+    call_name: str = "llm_call",
 ) -> Dict[str, Any]:
     """Call Gemini via LiteLLM proxy using the user's per-user key."""
     messages = []
@@ -505,6 +528,8 @@ def _call_litellm_proxy(
         if not text:
             logger.warning("LiteLLM returned empty text content")
 
+        _log_llm_call(call_name, prompt, system_prompt, text)
+
         usage = data.get("usage", {})
         result = {
             "text": text,
@@ -533,6 +558,7 @@ def generate_response(
     tier: Literal["power", "cheaper", "faster"] = "cheaper",
     system_prompt: Optional[str] = None,
     uid: Optional[str] = None,
+    call_name: str = "llm_call",
 ) -> Dict[str, Any]:
     """
     Generate LLM response using LiteLLM proxy.
@@ -566,7 +592,7 @@ def generate_response(
         model_config._tier_name = tier
         
         logger.info(f"Calling LiteLLM proxy with tier={tier}")
-        result = _call_litellm_proxy(prompt, model_config, images, system_prompt=system_prompt, uid=uid)
+        result = _call_litellm_proxy(prompt, model_config, images, system_prompt=system_prompt, uid=uid, call_name=call_name)
         
         if result and result.get("text"):
             logger.info(f"LiteLLM success | tier={tier} | tokens={result.get('tokens', {})}")

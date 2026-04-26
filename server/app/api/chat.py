@@ -175,7 +175,7 @@ def _classify_intent(question: str, has_image: bool, last_reply: str, uid: Optio
             has_image=has_image,
             last_reply=last_reply,
         )
-        raw = generate_response(classifier_prompt, [], tier="faster", uid=uid)
+        raw = generate_response(classifier_prompt, [], tier="faster", uid=uid, call_name="intent_classifier")
         text = (raw.get("text") or "").strip()
         parsed = extract_json_safe(text)
         intent = parsed.get("intent", "explain")
@@ -213,7 +213,7 @@ async def _bb_plan(question: str, context: str, history: list, level: int, uid: 
         planner_prompt = build_bb_planner_prompt(question, context, history, level)
         loop = asyncio.get_event_loop()
         raw = await loop.run_in_executor(
-            None, lambda: generate_response(planner_prompt, [], tier="faster", uid=uid)
+            None, lambda: generate_response(planner_prompt, [], tier="faster", uid=uid, call_name="bb_planner")
         )
         text = (raw.get("text") or "").strip()
         plan = extract_json_safe(text)
@@ -1142,6 +1142,7 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                             tier=model_tier,
                             system_prompt=system_prompt,
                             uid=_uid,
+                            call_name="bb_main" if req.mode == "blackboard" else "chat_main",
                         ),
                     )
                     while not _llm_future.done():
@@ -1172,7 +1173,7 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     logger.info("Retrying without images...")
                     try:
                         result = await loop.run_in_executor(
-                            None, lambda: generate_response(user_content, [], tier=model_tier, system_prompt=system_prompt, uid=_uid)
+                            None, lambda: generate_response(user_content, [], tier=model_tier, system_prompt=system_prompt, uid=_uid, call_name="bb_main_retry" if req.mode == "blackboard" else "chat_main_retry")
                         )
                         if not result or not isinstance(result, dict):
                             logger.error(f"Invalid LLM response on image-less retry: {type(result)}")

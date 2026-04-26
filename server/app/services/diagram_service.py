@@ -383,7 +383,7 @@ def _call_llm(question: str) -> dict:
     """
     full_prompt = f"{_SYSTEM_PROMPT}\n\nStudent question: {question[:500]}"
     try:
-        result = generate_response(prompt=full_prompt, tier="faster")
+        result = generate_response(prompt=full_prompt, tier="faster", call_name="diagram_generate")
         raw    = result.get("text", "")
         # Extract first JSON object in response
         match  = re.search(r'\{.*\}', raw, re.DOTALL)

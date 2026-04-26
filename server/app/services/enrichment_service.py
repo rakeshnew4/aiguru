@@ -218,6 +218,7 @@ def enrich_diagram_data(
             images=[],
             tier="faster",
             system_prompt=_ENRICH_SYSTEM,
+            call_name="bb_enrichment",
         )
         text = (raw.get("text") or "").strip()
         if not text or raw.get("provider") == "error":
