@@ -713,7 +713,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     /**
      * Shows a simple duration picker dialog, then launches [BlackboardActivity]
      * with the chosen duration and the message content.
-     * Default selection is MIN_2 (4 steps — compact lesson).
+     * Default selection is MIN_2 (5 steps — compact lesson).
      */
     private fun showBbDurationPickerAndLaunch(msg: com.aiguruapp.student.models.Message) {
         val labels = com.aiguruapp.student.chat.BlackboardGenerator.BbDuration.labels

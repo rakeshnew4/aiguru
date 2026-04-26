@@ -166,7 +166,7 @@ BB_PLANNER_PROMPT = (
     '{{"topic_type":"<math_formula|math_geometry|math_graph|science_biology|science_chemistry|science_physics|definition|comparison|history_civics|programming|geography_environment|other>",'
     '"scope":"<simple|medium|complex>",'
     '"key_concepts":["term1","term2"],'
-    '"steps_count":<4|5>,'
+    '"steps_count":<3|4|5>,'
     '"image_search_terms":["wikimedia phrase 1","wikimedia phrase 2"],'
     '"question_focus":"one sentence: what EXACTLY the student wants to know or do",'
     '"question_type":"<how_to|definition|calculation|conceptual|comparison|example|problem_solving>",'
@@ -174,8 +174,8 @@ BB_PLANNER_PROMPT = (
     '"hook_question":"1 short real-world curiosity question to open the lesson (e.g. Ever noticed why ice floats?)",'
     '"continuation_topic":"the single most natural next topic to learn after this one (3-6 words, e.g. Condensation and Cloud Formation)"}}\n\n'
     "Rules:\n"
-    "- simple (4 steps): single self-contained concept\n"
-    "- medium (5 steps): standard topic with 1-2 sub-concepts, or multi-concept/continuation\n"
+    "- simple (3 steps): single self-contained concept or quick definition\n"
+    "- medium (4-5 steps): standard topic with 1-2 sub-concepts, or multi-concept/continuation\n"
     "- topic_type: pick the MOST SPECIFIC type:\n"
     "    math_formula → algebra, equations, arithmetic operations, calculus formulas\n"
     "    math_geometry → shapes, angles, triangles, circles, area, perimeter, volume\n"
@@ -248,7 +248,7 @@ blackboard_prompt = (
     "TIMING duration_ms: concept/memory/diagram 1500-2500; HOOK/APPLY/CURIOSITY 2000-2500; summary 2500-3000; quiz 2000.\n\n"
 
     "RULES:\n"
-    "- 4-5 steps, 2-4 frames/step. Last step: quiz_mcq then summary (final). DO NOT include youtube_clip on any frame — videos surfaced separately at end.\n"
+    "- 3-5 steps, 2-4 frames/step. Last step: quiz_mcq then summary (final). DO NOT include youtube_clip on any frame — videos surfaced separately at end.\n"
     "- Use ONE lesson-level video_search_query for the whole session, never per-step video searches.\n"
     "- Step 2 MUST have a diagram or populated image_description.\n"
     "- speech: ≤2 sentences ≤50 words. Conversational, calm. No openers ('Today we learn...', 'Hi class!'). TTS-safe: say 'squared' not '^2'.\n"
@@ -537,7 +537,7 @@ def build_bb_main_prompt(
     topic_type = plan.get("topic_type", "other")
     scope = plan.get("scope", "medium")
     key_concepts = plan.get("key_concepts") or []
-    steps_count = max(4, min(6, int(plan.get("steps_count") or 5)))
+    steps_count = max(3, min(5, int(plan.get("steps_count") or 5)))
     hook_question = (plan.get("hook_question") or "").strip()
 
     concepts_str = ", ".join(str(c) for c in key_concepts) if key_concepts else ""
@@ -737,10 +737,10 @@ def build_blackboard_mode_user_content(
     topic_type = (plan or {}).get("topic_type", "other")
     scope = (plan or {}).get("scope", "medium")
     key_concepts = (plan or {}).get("key_concepts") or []
-    steps_count = max(4, min(6, int((plan or {}).get("steps_count") or 5)))
+    steps_count = max(3, min(5, int((plan or {}).get("steps_count") or 5)))
     concepts_str = ", ".join(str(c) for c in key_concepts) if key_concepts else ""
     ctx_snippet = (context or "")[:2000].strip()
-    history_entries = (history or [])[-6:]
+    history_entries = (history or [])[-3:]
 
     def _fmt(h: str) -> str:
         if h.startswith("user:"):

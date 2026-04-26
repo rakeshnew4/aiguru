@@ -34,12 +34,11 @@ object BlackboardGenerator {
         val totalSteps: Int,
         val framesPerStep: Int
     ) {
-        SEC_30("30 sec",  2,  2),
-        MIN_1 ("1 min",   3,  3),
-        MIN_2 ("2 min",   4,  3),  // default — compact 4-slide lesson
-        MIN_3 ("3 min",   8,  4),
-        MIN_5 ("5 min",  16,  5),
-        MIN_10("10 min", 32,  5);
+        MIN_2 ("2 min",   5,  3),  // default — compact 5-step lesson
+        MIN_4 ("4 min",  10,  4),
+        MIN_6 ("6 min",  15,  4),
+        MIN_8 ("8 min",  20,  4),
+        MIN_10("10 min", 25,  5);
 
         companion object {
             fun fromLabel(label: String): BbDuration =

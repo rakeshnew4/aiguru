@@ -219,7 +219,7 @@ async def _bb_plan(question: str, context: str, history: list, level: int) -> di
         plan = extract_json_safe(text)
         if not isinstance(plan, dict):
             return defaults
-        plan["steps_count"] = max(4, min(6, int(plan.get("steps_count") or 5)))
+        plan["steps_count"] = max(3, min(5, int(plan.get("steps_count") or 5)))
         if not isinstance(plan.get("key_concepts"), list):
             plan["key_concepts"] = []
         if not isinstance(plan.get("image_search_terms"), list):

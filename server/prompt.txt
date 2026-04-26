@@ -42,32 +42,41 @@ TTS every frame: first frame→android/teacher; concept/memory/diagram→gemini/
 
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student question: Topic: Kya temperature bhi leaf color change mein role play karta hai?
+Student question: Topic: Photosynthesis
+Lesson title: Unlocking Photosynthesis: How Plants Eat Light
+Category: science
 
-[Speech context from previous lesson: Summer mein leaves green isliye dikhti hain kyunki unmein chlorophyll hota hai. Yeh sun ki light ko capture karke plant ke liye food banata hai. Photosynthesis process mein chlorophyll itna zyada hota hai ki baaki colors chhupe rehte hain. Yeh ek factory ki tarah kaam karta hai. Jab autumn aata hai, din chhote ho jate hain aur sunlight kam milti hai. Toh kya aapko lagta hai leaf ka green color hamesha rahega? Autumn mein jab sunlight kam hoti hai, tree chlorophyll banana band kar deta hai. Purana chlorophyll break down hokar gayab hone lagta hai. Sochiye, jab green curtain hat jata hai, toh peeche kya bachta hai? Green pigment fade hone se leaf ka asli rang reveal hota hai. Green color ke hatne se leaf mein pehle se maujood dusre pigments dikhne lagte hain. Kya aap jante hain woh kaunse colors hote hain? Leaf mein carotenoids hote hain jo yellow aur orange color dete hain. Kuch trees mein anthocyanins bante hain jo bright red color dete hain. Yeh pigments leaf mein pehle se hote hain, par summer mein green chlorophyll inko daba deta hai. Ab ye chamakne ka time hai! Colors toh aa gaye, par leaf gir kyu jati hai? Kya koi specific connection hota hai jo ise tree se alag kar deta hai? ]
-Lesson title: Kya temperature bhi leaf color change mein role play karta h
-Category: general
 
-This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
+CONTINUATION — DO NOT repeat anything already taught.
+Student's original question: Photosynthesis
 
-Generate EXACTLY 0 steps with APPROXIMATELY 4 frames each.
+Steps ALREADY TAUGHT (do NOT repeat or reintroduce these):
+  1. Ingredients for Photosynthesis — "Plants don't eat like we do. They create their own food using sunlight, water, and carbon "
+  2. Inside the Chloroplast — "Inside plant cells are tiny green structures called chloroplasts. They contain chlorophyll"
+  3. Light-Dependent Reactions — "In this first stage, sunlight hits the chlorophyll and splits water molecules into oxygen "
+
+Total steps covered so far: 3 / 4
+Continue from step 4. Build on what was taught — go deeper, give examples, advance the lesson.
+
+Now continue teaching the NEXT steps listed below. Build on what was already covered — go deeper, add detail, advance the lesson. Do NOT reintroduce or re-explain concepts from the above steps.
+
+Generate EXACTLY 1 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
+- The Calvin Cycle: Making Sugar
 
-
+This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-
-IMPORTANT: Teach in Hinglish — mix Hindi and English naturally, the way Indian students actually study. Use Hindi for explanations and reasoning; keep English for technical terms, formulas, and subject-specific vocabulary.
 Student level: Class 5
 Topic type: science_biology | Scope: medium
-Key concepts to cover (ALL of these): chlorophyll breakdown, temperature and sunlight connection, accessory pigments (carotenoids/anthocyanins), autumn color transition
-HOOK (use this exact question as the very first frame text of Step 1): "Have you ever wondered why leaves turn bright red, orange, or yellow only when it starts getting colder outside?"
+Key concepts to cover (ALL of these): Chlorophyll, Chloroplasts, Energy transformation
+HOOK (use this exact question as the very first frame text of Step 1): "If plants don't have mouths to eat, how do they actually 'catch' the sunlight they need to make food?"
 Generate EXACTLY 5 steps — no more, no less.
+
+DIAGRAM RECOMMENDATION: This topic likely suits a "leaf_anatomy" diagram (confidence 98%). If this is a standard math/science type, use diagram_type="leaf_anatomy". If it needs a custom structure (anatomy, apparatus, body parts), use PATH 2 (svg_elements) instead.
 
 CHAPTER CONTEXT (use this as the primary source — ground the lesson here):
 Context for page blackboard__chunk
 
 ---END LESSON BRIEF---
 
-
-IMPORTANT: Teach in Hinglish — mix Hindi and English naturally, the way Indian students actually study. Use Hindi for explanations and reasoning; keep English for technical terms, formulas, and subject-specific vocabulary.
-OUTPUT LANGUAGE: Set ALL step "lang" fields to "hi-IN". Write ALL "speech" fields in the language for tag "hi-IN" (hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.). Board "text" field stays in English (formulas/keywords only).
+OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" fields in the language for tag "en-US" (hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.). Board "text" field stays in English (formulas/keywords only).
