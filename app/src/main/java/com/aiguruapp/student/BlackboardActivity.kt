@@ -428,6 +428,11 @@ class BlackboardActivity : AppCompatActivity() {
         currentTopic = intent.getStringExtra(EXTRA_MESSAGE) ?: ""
 
         val userId = intent.getStringExtra(EXTRA_USER_ID)
+            ?.takeIf { it.isNotBlank() }
+            ?: SessionManager.getFirestoreUserId(this).takeIf { it.isNotBlank() && it != "guest_user" }
+        if (!userId.isNullOrBlank()) {
+            intent.putExtra(EXTRA_USER_ID, userId)
+        }
         AdminConfigRepository.fetchIfStale { _ ->
             // Wire the server URL for AI TTS as soon as config is loaded
             aiTtsEngine.selfHostedUrl = AdminConfigRepository.ttsSelfHostedUrl()
@@ -435,10 +440,25 @@ class BlackboardActivity : AppCompatActivity() {
 
         // Read user fields directly from Firestore — force SERVER source so the quota counter
         // is never served from the local disk cache (which may be stale from previous sessions).
-        com.google.firebase.firestore.FirebaseFirestore.getInstance()
-            .collection("users_table").document(userId ?: "")
-            .get(com.google.firebase.firestore.Source.SERVER)
-            .addOnSuccessListener { doc ->
+        val userDocTask = userId?.let { resolvedUserId ->
+            com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("users_table").document(resolvedUserId)
+                .get(com.google.firebase.firestore.Source.SERVER)
+        }
+        if (userDocTask == null) {
+            showPreSessionDialog {
+                generateSteps(
+                    message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
+                    messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
+                    userId         = null,
+                    conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
+                    recordSession  = false,
+                    imageBase64    = intent.getStringExtra(EXTRA_IMAGE_BASE64)
+                )
+            }
+            return
+        }
+        userDocTask.addOnSuccessListener { doc ->
                 if (doc.exists()) {
                     val planId         = doc.getString("planId") ?: "free"
                     val chatToday      = doc.getLong("chat_questions_today")?.toInt() ?: 0

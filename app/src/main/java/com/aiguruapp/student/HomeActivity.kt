@@ -778,9 +778,13 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
                 card.findViewById<TextView?>(R.id.challengeDifficultyText)?.text = "$diffLabel · ${q.subject}"
                 card.findViewById<TextView?>(R.id.challengeCreditsText)?.text = "+${q.creditsReward} ⭐"
                 card.setOnClickListener {
+                    val uid = SessionManager.getFirestoreUserId(this@HomeActivity)
                     val intent = Intent(this@HomeActivity, BlackboardActivity::class.java).apply {
                         putExtra(BlackboardActivity.EXTRA_MESSAGE, q.question)
                         putExtra(BlackboardActivity.EXTRA_SUBJECT, q.subject)
+                        if (uid.isNotBlank() && uid != "guest_user") {
+                            putExtra(BlackboardActivity.EXTRA_USER_ID, uid)
+                        }
                         putExtra("daily_question_id", q.id)
                     }
                     startActivity(intent)
