@@ -3,13 +3,13 @@ import numpy as np
 from app.core.logger import get_logger
 from .searcher import search_videos
 from .transcript import fetch_transcript
-from .indexer import index_video, is_video_indexed
+from .indexer import index_video, is_video_indexed, _ensure_index
 from .retriever import find_best_segment
 from .indexer import embed_texts
 logger = get_logger(__name__)
 
-_MIN_SCORE = 0.85
-_HIGH_SCORE = 0.92
+_MIN_SCORE = 0.65
+_HIGH_SCORE = 0.80
 _MIN_GAP_SECONDS = 60
 _YT_WATCH_BASE_URL = "https://www.youtube.com/watch?v="
 
@@ -250,7 +250,7 @@ async def enrich_steps_with_videos(
             f"{query_core} explanation",
             f"{query_core} animation"
         ]
-
+        await _ensure_index() 
         raw_clips = await asyncio.gather(
             *[find_best_segment(q, video_ids) for q in queries],
             return_exceptions=True

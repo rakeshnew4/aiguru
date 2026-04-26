@@ -659,12 +659,9 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
             for item in all_candidates
             if isinstance(item, dict) and item.get("url")
         }
-        picks: Dict[int, str] = await loop.run_in_executor(
-            None, lambda: _pick_titles_sync(data["steps"], all_candidates)
-        )
-        # Use word-overlap matching instead of an extra LLM call — saves ~1 call/session.
-        # _pick_titles_sync (LLM path) is kept for offline reference but not called here.
-        # picks = _pick_by_word_overlap(data["steps"], all_candidates)
+        # Word-overlap matching — no LLM call, saves ~1 call/session.
+        # _pick_titles_sync (LLM path) kept for reference but not called here.
+        picks = _pick_by_word_overlap(data["steps"], all_candidates)
 
         for i, step in enumerate(data["steps"]):
             if not isinstance(step, dict):

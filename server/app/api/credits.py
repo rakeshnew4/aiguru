@@ -53,10 +53,12 @@ async def get_topup_packs(auth: AuthUser = Depends(require_auth)):
         docs = (
             db.collection("credit_topups")
             .where("active", "==", True)
-            .order_by("price_inr")
             .get()
         )
-        packs = [{"id": d.id, **(d.to_dict() or {})} for d in docs]
+        packs = sorted(
+            [{"id": d.id, **(d.to_dict() or {})} for d in docs],
+            key=lambda p: p.get("price_inr", 0),
+        )
         return {"packs": packs}
     except Exception as exc:
         logger.warning("get_topup_packs: %s", exc)

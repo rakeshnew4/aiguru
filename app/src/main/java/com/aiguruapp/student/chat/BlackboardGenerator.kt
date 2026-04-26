@@ -304,7 +304,6 @@ $svgNote$lastFrameNote$langInstruction"""
             if (start < 0 || end <= start) { onError("Invalid response format"); return }
             val arr = JSONObject(response.substring(start, end + 1)).getJSONArray("steps")
             val result = parseStepsArray(arr, preferredLanguageTag)
-                .filter { step -> step.frames.none { it.frameType.startsWith("quiz") } }
             if (result.isEmpty()) { onError("No steps were generated"); return }
             onSuccess(result)
         } catch (e: Exception) {

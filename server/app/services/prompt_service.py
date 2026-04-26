@@ -29,7 +29,7 @@ _TOPIC_TYPE_TEACHING_HINTS: dict[str, str] = {
     "science_biology": (
         "SUBJECT GUIDANCE (Science — Biology):\n"
         "• Use cycle for life cycles/processes (mitosis, water cycle, photosynthesis).\n"
-        "• Use labeled_diagram for cell, organ, or body-system structures.\n"
+       
         "• Use PATH 2 (diagram_type=custom) for anatomy cross-sections (heart, leaf, kidney).\n"
         "• Concept frames: function → structure → real-body example.\n"
         "• Quiz: quiz_order (correct biological sequence) or quiz_mcq."
@@ -66,7 +66,7 @@ _TOPIC_TYPE_TEACHING_HINTS: dict[str, str] = {
     ),
     "history_civics": (
         "SUBJECT GUIDANCE (History / Civics / Social Studies):\n"
-        "• Use labeled_diagram for timelines (center = era, parts = key events in order).\n"
+        
         "• NEVER use cycle, waveform, or heavy SVG — history has no process diagrams.\n"
         "• Keep image_show_confidencescore ≤ 0.40. Prioritise concept + memory frames.\n"
         "• Memory frame: key date + person + outcome in one catchy sentence.\n"
@@ -82,7 +82,7 @@ _TOPIC_TYPE_TEACHING_HINTS: dict[str, str] = {
     "geography_environment": (
         "SUBJECT GUIDANCE (Geography / Environment):\n"
         "• Use cycle for water cycle, carbon cycle, rock cycle, nutrient cycles.\n"
-        "• Use labeled_diagram for map features (parts of a river, climate zones).\n"
+       
         "• Use PATH 2 (diagram_type=custom) for cross-section diagrams (mountain, valley).\n"
         "• Concept frames: location/name → characteristic → human impact or real example.\n"
         "• Quiz: quiz_mcq with plausible geographic distractors."
@@ -235,11 +235,11 @@ blackboard_prompt = (
     "VIDEO SEARCH FIELDS: root-level only. session_theme = 3-8 words describing the topic (e.g. 'Photosynthesis light reactions'). "
     "video_search_query = specific educational YouTube query for the exact topic (e.g. 'photosynthesis explained for class 10 CBSE'). "
     "preferred_channels = 2-4 India-friendly educational channels relevant to the subject.\n\n"
-    "FRAME TYPES: concept | memory | diagram | quiz_mcq | quiz_typed | quiz_voice | quiz_order | summary\n\n"
+    "FRAME TYPES: concept | memory | diagram | quiz_mcq  summary\n\n"
     "DIAGRAM — set diagram_type + data (no svg_elements):\n"
     "PATH 1 (semantic engine): atom, solar_system, waveform_signal, triangle, polygon,\n"
     "  circle_geometry, angle, pythagoras, coordinate_plane, graph_function, line_graph,\n"
-    "  bar_chart, pie_chart, number_line, fraction_bar, venn_diagram, cycle, comparison, labeled_diagram\n"
+    "  bar_chart, pie_chart, number_line, fraction_bar, venn_diagram, cycle, comparison\n"
     'PATH 2 (custom): heart, neuron, circuit, force diagram, apparatus, any organic shape\n'
     '  → diagram_type="custom", data={"intent":"1 sentence: what to show"}, visual_description="same"\n\n'
 
@@ -568,7 +568,7 @@ def build_bb_main_prompt(
         _q_lower = question.lower().strip()
         _is_definition_q = bool(_re.match(r"^(what is|what are|define|meaning of|what does)\b", _q_lower))
         # Only hint when confident AND the type is a PATH 1 semantic type (not anatomy/custom)
-        _PATH2_TYPES = {"labeled_diagram", "anatomy", "cell"}
+        _PATH2_TYPES = { "anatomy", "cell"}
         if (decision.needed and decision.diagram_type
                 and decision.confidence >= 0.40
                 and decision.diagram_type not in _PATH2_TYPES):
@@ -870,7 +870,7 @@ def build_blackboard_mode_user_content(
             img_parts.append(
                 "\n⚠ DIAGRAM REPLICATION RULE: For each diagram listed above, "
                 "include a diagram frame that RECREATES it. "
-                "Use PATH 1 (diagram_type) for: atom, cell, wave, cycle, comparison, triangle, graph, etc. "
+                "Use PATH 1 (diagram_type) for: atom, cell, wave, comparison, triangle, graph, etc. "
                 'Use PATH 2 (diagram_type="custom", data={"intent":"..."}) for anatomy, body structures, '
                 "lab apparatus, or any diagram not covered by a PATH 1 type."
             )

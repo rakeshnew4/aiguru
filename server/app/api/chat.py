@@ -978,6 +978,7 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
             has_image = bool(normalized_images)
             loop = asyncio.get_event_loop()
             lang = req.language_tag or req.language or "en-US"
+            prompt = ""  # initialized here; overridden per-mode below
 
             # ── First status: let the user know we received their request ──────
             if req.mode == "blackboard":
@@ -1006,9 +1007,17 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     _prefetch_wikimedia(plan.get("image_search_terms", []))
                 ) if req.bb_images_enabled is not False else None
 
-                # B2b) YouTube enrichment is derived from the final BB JSON so the
-                # search uses one lesson-level theme instead of step-level fragments.
-                yt_task = None
+                # B2b) Start YouTube search NOW using plan data so it runs in parallel
+                # with the main BB LLM call (~15s window) instead of blocking after it.
+                yt_task = asyncio.ensure_future(
+                    _yt_enrich(
+                        question=req.question,
+                        plan=plan,
+                        video_search_query="",
+                        preferred_channels=[],
+                        session_theme=plan.get("question_focus", "") or req.question,
+                    )
+                ) if _YT_ENABLED and req.bb_videos_enabled is not False else None
 
                 # B3) model tier — prompt is built in the system/user split below
                 model_tier = _get_model_tier(req.user_plan or "free")
@@ -1243,33 +1252,20 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     pass
             if req.mode == "blackboard":
                 text_content = _sanitize_bb_response(text_content)
-                if _YT_ENABLED and req.bb_videos_enabled is not False:
+                if yt_task is not None:
                     try:
-                        video_query, preferred_channels, session_theme = _extract_video_search_request(
-                            text_content, req.question, plan
-                        )
-                        yt_wait_timeout = max(3.0, float(getattr(settings, "YT_ENRICHMENT_TIMEOUT", 2.5)))
+                        # yt_task started at B2 alongside Wikimedia — it's had the full
+                        # LLM call time (~15s) to run; just collect the result now.
                         yt_clips = await asyncio.wait_for(
-                            _yt_enrich(
-                                req.question,
-                                plan,
-                                video_search_query=video_query,
-                                preferred_channels=preferred_channels,
-                                session_theme=session_theme,
-                            ),
-                            timeout=yt_wait_timeout,
+                            asyncio.shield(yt_task),
+                            timeout=max(2.0, float(getattr(settings, "YT_ENRICHMENT_TIMEOUT", 5.0))),
                         )
                         text_content = _attach_video_clips(text_content, yt_clips)
-                        logger.info(
-                            "BB YouTube clips ready | query=%r channels=%s attached=%d",
-                            video_query[:80],
-                            preferred_channels[:3],
-                            sum(1 for c in (yt_clips or []) if c),
-                        )
+                        logger.info("BB YouTube clips attached: %d", sum(1 for c in (yt_clips or []) if c))
                     except asyncio.TimeoutError:
-                        logger.info("BB YouTube enrichment timed out for lesson-level query")
+                        logger.info("BB YouTube enrichment timed out (still running in background)")
                     except Exception as exc:
-                        logger.warning("BB YouTube enrichment attach failed: %s", exc)
+                        logger.warning("BB YouTube enrichment failed: %s", exc)
             elif req.mode == "normal":
                 text_content = _sanitize_normal_response(text_content)
 
