@@ -300,8 +300,8 @@ class HomeActivity : BaseActivity() {
     private fun showQuotaToastIfNeeded(chatLeft: Int, bbLeft: Int) {
         if (hasShownQuotaWarning) return
         val msg = when {
-            chatLeft == 0 -> "You've used all your questions for today. Upgrade to ask more."
-            chatLeft in 1..2 -> "Only $chatLeft question${if (chatLeft == 1) "" else "s"} left today."
+            chatLeft == 0 -> "You've used all your credits for today. Upgrade to get more."
+            chatLeft in 1..2 -> "Only $chatLeft credit${if (chatLeft == 1) "" else "s"} left today."
             bbLeft == 0   -> "No blackboard sessions left today. Upgrade for more."
             else          -> return
         }
@@ -327,7 +327,7 @@ class HomeActivity : BaseActivity() {
         findViewById<TextView?>(R.id.bbQuotaPill)?.visibility = View.GONE
 
         // ── Navigation drawer: chat progress bar ─────────────────────────
-        val chatText = if (chatLeft < 0) "Unlimited" else "$chatLeft left"
+        val chatText = if (chatLeft < 0) "Unlimited" else "$chatLeft credits"
         val chatColor = if (chatLeft in 0..3) "#BF360C" else "#1565C0"
         findViewById<TextView?>(R.id.drawerChatLeft)?.apply {
             text = chatText
@@ -729,7 +729,7 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
                 card.findViewById<TextView?>(R.id.challengeQuestionText)?.text = q.question
                 val diffLabel = when (q.difficulty) { 1 -> "Easy" 2 -> "Medium" else -> "Hard" }
                 card.findViewById<TextView?>(R.id.challengeDifficultyText)?.text = "$diffLabel · ${q.subject}"
-                card.findViewById<TextView?>(R.id.challengeCreditsText)?.text = "+${q.creditsReward} ⭐"
+                card.findViewById<TextView?>(R.id.challengeCreditsText)?.text = "+${q.creditsReward} pts"
                 card.setOnClickListener {
                     val uid = SessionManager.getFirestoreUserId(this@HomeActivity)
                     val intent = Intent(this@HomeActivity, BlackboardActivity::class.java).apply {

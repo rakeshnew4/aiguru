@@ -446,7 +446,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="12 questions left"
+                android:text="12 credits"
                 android:textSize="11sp"
                 android:textStyle="bold"
                 android:textColor="@color/colorTextPrimary"
@@ -962,7 +962,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="💬 Chat questions"
+                        android:text="💬 Credits"
                         android:textSize="13sp"
                         android:textColor="@color/colorTextPrimary" />
 
@@ -1101,7 +1101,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="⭐ Credits"
+                    android:text="⭐ Token balance"
                     android:textSize="13sp"
                     android:textColor="@color/colorTextPrimary" />
 
