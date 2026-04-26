@@ -16,6 +16,15 @@ timeout: 300
 
 model_list: []
 
+# ─── LiteLLM SDK Settings ─────────────────────────────────────────────
+litellm_settings:
+  store_prompts_in_spend_logs: true   # store full request/response in spend_logs table
+  cache: true                          # enable caching layer (uses Redis if configured)
+  cache_params:
+    type: redis
+    host: localhost
+    port: 6379
+
 # ─── General Settings ────────────────────────────────────────────────
 
 general_settings:
@@ -25,3 +34,4 @@ general_settings:
   enable_authentication: true
   authentication_strategy: "api_key"
   request_timeout: 600
+  store_model_in_db: true

@@ -481,7 +481,12 @@ def _call_litellm_proxy(
     """Call Gemini via LiteLLM proxy using the user's per-user key."""
     messages = []
     if system_prompt:
-        messages.append({"role": "system", "content": system_prompt})
+        # cache_control marks this prefix for Gemini implicit context caching (Vertex AI)
+        messages.append({
+            "role": "system",
+            "content": system_prompt,
+            "cache_control": {"type": "ephemeral"},
+        })
 
     if images:
         content: Any = (
@@ -516,6 +521,7 @@ def _call_litellm_proxy(
                     "messages": messages,
                     "temperature": model_config.temperature,
                     "max_tokens": model_config.max_tokens,
+                    "cache": {"no-cache": False},   # allow LiteLLM cache layer to serve hits
                     "metadata": {
                         "call_name": call_name,
                         "uid": uid or "guest",
