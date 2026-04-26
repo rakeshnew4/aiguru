@@ -57,7 +57,6 @@ import kotlinx.coroutines.launch
 import androidx.lifecycle.lifecycleScope
 import com.aiguruapp.student.daily.DailyQuestionsManager
 import androidx.annotation.RequiresApi
-import androidx.core.view.WindowCompat
 import com.aiguruapp.student.firestore.FirestoreManager
 import com.aiguruapp.student.firestore.HomeSmartContentLoader
 import com.aiguruapp.student.firestore.SmartCard
@@ -119,7 +118,6 @@ class HomeActivity : BaseActivity() {
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
         // Redirect to login if no session
         if (!SessionManager.isLoggedIn(this)) {
             startActivity(Intent(this, LoginActivity::class.java))

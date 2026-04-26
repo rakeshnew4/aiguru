@@ -269,3 +269,100 @@ Note: llm_service.py was modified externally by user/linter — full file now vi
 **Changed:**
 - `server/.env` — POWER_PROVIDER→gemini, POWER_MODEL_ID→gemini-2.5-flash-lite, CHEAPER_MODEL_ID→gemini-2.5-flash-lite, FASTER_MODEL_ID→gemini-2.5-flash-lite
 - Server restart required for .env changes to take effect
+
+---
+
+**Asked:** Keep-alive ping.
+**Changed:** No code changes.
+
+---
+
+**Asked:** Keep-alive ping.
+**Changed:** No code changes.
+
+---
+
+**Date:** 2026-04-26
+**Asked:** Add LLM call logging — write prompt to named file, append response. One file per call type.
+**Changed:**
+- `server/app/services/llm_service.py` — added `_log_llm_call()`, `_LLM_LOG_DIR="llm_logs"`, `call_name` param to `_call_litellm_proxy()` and `generate_response()`
+- 10 call sites updated with names:
+  - `intent_classifier` (chat.py _classify_intent)
+  - `bb_planner` (chat.py _bb_plan)
+  - `bb_main` / `chat_main` (chat.py main response)
+  - `bb_main_retry` / `chat_main_retry` (chat.py image-less retry)
+  - `bb_enrichment` (enrichment_service.py)
+  - `bb_grading` (bb.py)
+  - `bb_svg_builder` (svg_llm_builder.py — calls _call_litellm_proxy directly)
+  - `quiz_generate` (quiz_service.py)
+  - `quiz_evaluation` (evaluation_service.py)
+  - `image_analyze` (analyze_image.py)
+  - `image_picker` (image_search_titles.py)
+  - `daily_question_gen` (daily_questions.py)
+  - `diagram_generate` (diagram_service.py)
+- Files written to `server/llm_logs/<name>.txt` (relative to server run dir)
+- Pushed commit b9e2e85
+
+---
+
+**Asked:** Keep-alive ping.
+**Changed:** No code changes.
+Note: enrichment_service.py and image_search_titles.py loaded into context by linter. Updating meta index.
+
+---
+
+**Date:** 2026-04-26
+**Asked:** Fix Kotlin compile error "Unresolved reference 'dialog'" at BbInteractivePopup.kt:218.
+**Root cause:** All 5 skipButton lambdas referenced `dialog` before it was declared (declared after `buildDialog()` call).
+**Changed:**
+- `app/src/main/java/com/aiguruapp/student/bb/BbInteractivePopup.kt` — lines 218, 300, 415, 578, 734: replaced `dialog.dismiss()` with `skipDialogN?.dismiss()` using a var holder set immediately after `buildDialog()`
+- Pushed commit 1914d94
+
+---
+
+**Asked:** Keep-alive ping.
+**Changed:** No code changes.
+Note: BbInteractivePopup.kt loaded into context by linter. Updating android meta index with real line numbers.
+
+---
+
+**Asked:** Keep-alive ping.
+**Changed:** No code changes.
+
+---
+
+**Date:** 2026-04-26
+**Asked:** Why LLM calls after session ends? Add tracking (session_id, call_name) to correlate calls.
+**Explanation:** Post-BB calls are enrichment pipeline (diagram enrichment + SVG builder) that run as background futures after main lesson — intentional, not runaway.
+**Changed:**
+- `server/app/services/llm_service.py` — `_log_llm_call` adds timestamp+session_id header; `_call_litellm_proxy` sends `metadata:{call_name, uid, session_id}` to LiteLLM proxy (stored in PostgreSQL); `session_id` param added to both functions and `generate_response()`
+- `server/app/api/chat.py` — `_session_id = f"{uid[:8]}_{uuid8}"` generated per request; threaded through `_bb_plan`, `_classify_intent`, all 4 `generate_response` calls
+- Pushed commit 286f535
+**Key facts:**
+- LiteLLM admin UI now shows call_name + session_id in metadata column
+- Log files now show: `=== BB_MAIN | 2026-04-26 18:07:15 | session=KkhkqOQ_a1b2c3d4 ===`
+- No OpenTelemetry needed — LiteLLM PostgreSQL + metadata is sufficient
+
+---
+
+**Asked:** Keep-alive ping.
+**Changed:** No code changes.
+
+---
+
+**Date:** 2026-04-26
+**Asked:** Prompts not showing in LiteLLM logs. Enable context caching for gemini-3.1-flash-lite-preview.
+**Changed:**
+- `server/litellm/litellm_config.yaml` — added `litellm_settings.store_prompts_in_spend_logs: true` (stores full req/resp in spend_logs table), `cache: true` + `cache_params: {type: redis, host: localhost, port: 6379}`, `general_settings.store_model_in_db: true`
+- `server/app/services/llm_service.py` — system message now has `cache_control: {type: ephemeral}` for Gemini implicit caching; request body includes `cache: {no-cache: false}` for LiteLLM cache layer
+- **Requires LiteLLM proxy restart** to pick up config changes
+- Pushed commit 2423ed5
+**Key facts:**
+- Prompt logging: needs LiteLLM restart + `store_prompts_in_spend_logs: true`
+- Gemini implicit caching kicks in only when system prompt is identical across requests AND ≥1024 tokens (Vertex AI threshold); BB main system prompt is ~400 tokens — may not qualify
+- LiteLLM Redis cache is a separate layer that caches identical (model+messages) requests
+
+---
+
+**Asked:** Keep-alive ping.
+**Changed:** No code changes.

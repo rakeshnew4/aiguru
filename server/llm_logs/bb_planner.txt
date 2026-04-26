@@ -1,0 +1,69 @@
+=== BB_PLANNER | 2026-04-26 18:15:50 | session=KkhkqOQI_bc0c94c4 ===
+
+=== PROMPT ===
+You are a lesson analyst for a personal visual AI tutor responding to a student's SPECIFIC question.
+Analyze exactly what the student is asking and return a focused lesson plan.
+Output ONLY valid JSON — nothing else.
+
+Student question (answer THIS specifically): "Topic: How do plants 'know' which direction is up without having a brain?
+Lesson title: How Plants Sense Gravity
+Category: science
+
+This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
+
+Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
+Steps to generate "
+Chapter context (excerpt): ""
+Recent conversation (last 3 turns):
+  (No prior conversation — this is the student's first question)
+Student class: 5
+
+Output (one JSON object, NOTHING else):
+{"topic_type":"<math_formula|math_geometry|math_graph|science_biology|science_chemistry|science_physics|definition|comparison|history_civics|programming|geography_environment|other>","scope":"<simple|medium|complex>","key_concepts":["term1","term2"],"steps_count":<5>,"image_search_terms":["wikimedia phrase 1","wikimedia phrase 2"],"question_focus":"one sentence: what EXACTLY the student wants to know or do","question_type":"<how_to|definition|calculation|conceptual|comparison|example|problem_solving>","prior_knowledge":"what student already knows from the conversation (empty string if new topic)","hook_question":"1 short real-world curiosity question to open the lesson (e.g. Ever noticed why ice floats?)","continuation_topic":"the single most natural next topic to learn after this one (3-6 words, e.g. Condensation and Cloud Formation)"}
+
+Rules:
+- simple (3 steps): single self-contained concept or quick definition
+- medium (4-5 steps): standard topic with 1-2 sub-concepts, or multi-concept/continuation
+- topic_type: pick the MOST SPECIFIC type:
+    math_formula → algebra, equations, arithmetic operations, calculus formulas
+    math_geometry → shapes, angles, triangles, circles, area, perimeter, volume
+    math_graph → coordinate plane, functions, plotting, graphs, scatter plots
+    science_biology → cell, body systems, photosynthesis, genetics, ecology, evolution
+    science_chemistry → atoms, periodic table, reactions, bonding, solutions, acids/bases
+    science_physics → motion, forces, waves, electricity, optics, thermodynamics
+    definition → what is X, define X, meaning of X (any subject)
+    comparison → X vs Y, difference between A and B (any subject)
+    history_civics → historical events, timelines, governance, constitution, civics
+    programming → code, algorithms, data structures, debugging, logic
+    geography_environment → maps, landforms, climate, ecosystems, rivers, countries
+    other → language arts, economics, general topics not covered above
+- image_search_terms: 2-3 SPECIFIC Wikimedia Commons search phrases for this exact topic
+  GOOD: "mitosis phases cell division", "Newton second law force mass diagram"
+  BAD: "biology", "science concept", "diagram"
+- key_concepts: 2-4 core ideas the lesson MUST cover (actual concept names, not topic labels)
+- question_focus: be SPECIFIC. Bad: 'the student wants to learn about triangles'.
+  Good: 'student wants to calculate the inradius of a triangle given its sides'
+- prior_knowledge: summarise what the student already covered, so the lesson does NOT repeat it
+
+=== RESPONSE ===
+{
+  "topic_type": "science_biology",
+  "scope": "medium",
+  "key_concepts": [
+    "gravitropism",
+    "statoliths",
+    "amyloplasts",
+    "auxin"
+  ],
+  "steps_count": 5,
+  "image_search_terms": [
+    "gravitropism plant roots shoots",
+    "amyloplasts statoliths root cap",
+    "auxin distribution plant growth"
+  ],
+  "question_focus": "The student wants to understand the biological mechanism that allows plants to detect gravity and grow in the correct direction without a nervous system.",
+  "question_type": "how_to",
+  "prior_knowledge": "",
+  "hook_question": "Have you ever wondered why, no matter how you plant a seed, the roots always dive down into the soil while the stem reaches up for the sun?",
+  "continuation_topic": "Phototropism: How Plants Find Light"
+}

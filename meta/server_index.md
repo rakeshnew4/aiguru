@@ -19,30 +19,38 @@
 ---
 
 ## api/image_search_titles.py
-**Path:** `server/app/api/image_search_titles.py` | **Size:** ~500+ lines | **⚠️ Expensive**
+**Path:** `server/app/api/image_search_titles.py` | **Size:** ~700+ lines | **⚠️ Expensive**
 
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
-| `get_titles()` | ~380–500 | BB post-processor: enrichment + wikimedia + SVG build |
-| `build_enrichment_tasks()` call | ~407 | Unpacks `(enr_futs, diagram_refs)` — 2-tuple (quiz validator removed) |
+| `get_http_client()` | 15–26 | Shared async HTTP client with connection pooling |
+| `_GENERIC_IMAGE_WORDS` | 31–34 | Words excluded from image relevance scoring |
+| `_FORCE_DIAGRAM_KEYWORDS` | 39–44 | Physics/force terms that trigger LLM SVG builder |
+| `_BASIC_GEOMETRY_TYPES` | 45 | Geometry types that may be overridden by force check |
+| `_FRAME_DEFAULTS` | 53–72 | Default values for BB frame fields after sparse LLM output |
+| `_normalize_frame()` | 75–80 | Fills missing frame fields with defaults |
+| `_best_title_match()` | 83–111 | Word-overlap scorer for Wikimedia image title matching (≥50% threshold) |
+| `extract_json_safe()` | 114–163 | Robust JSON extractor with 5 fallback strategies |
+| `search_wikimedia_images()` | 172–? | Async Wikimedia Commons image search; returns thumbnail URLs |
+| `get_titles()` | ~400+ | BB post-processor: enrichment + wikimedia + SVG build |
+| `build_enrichment_tasks()` call | ~407 | Unpacks `(enr_futs, diagram_refs)` — 2-tuple |
 | diagram enrichment apply | ~444–447 | Writes enriched data back into frame["data"] |
-| Phase 3 SVG build | ~456+ | Builds SVG for each diagram frame |
-| tts_engine default | ~58 | Sets tts_engine="gemini" for BB frames |
+| tts_engine default | 58 | `_FRAME_DEFAULTS` sets tts_engine="gemini" |
 
 ---
 
 ## services/enrichment_service.py
-**Path:** `server/app/services/enrichment_service.py` | **Size:** ~250 lines
+**Path:** `server/app/services/enrichment_service.py` | **Size:** ~300 lines
 
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
-| `_SCHEMAS` | 33–168 | Diagram type → schema + hint dict (atom, flow, cycle, etc.) |
-| `_COLOR_KEYS` | 170–173 | Color key reference string |
-| `_ENRICH_SYSTEM` | 175–178 | System prompt for diagram enricher |
-| `enrich_diagram_data()` | 188–254 | LLM call: fills diagram data dict for a frame |
-| `build_enrichment_tasks()` | ~280–320 | Builds diagram enrichment futures; returns `(futs, refs)` 2-tuple |
-| `_MAX_DIAGRAM_ENRICHMENTS` | ~270 | Cap = 2 enrichments per session |
-| ~~`validate_quiz_mcq()`~~ | removed | Quiz validator deleted — main LLM is reliable |
+| `_SCHEMAS` | 28–163 | Diagram type → schema + hint dict (atom, solar_system, triangle, flow, cycle, etc.) |
+| `_COLOR_KEYS` | 165–168 | Color key reference string |
+| `_ENRICH_SYSTEM` | 170–173 | System prompt for diagram enricher |
+| `enrich_diagram_data()` | 177–254 | LLM call: fills diagram data dict for a frame |
+| `build_enrichment_tasks()` | ~270–310 | Builds diagram enrichment futures; returns `(futs, refs)` 2-tuple |
+| `_MAX_DIAGRAM_ENRICHMENTS` | ~268 | Cap = 2 enrichments per session |
+| ~~`validate_quiz_mcq()`~~ | removed Apr 2026 | Quiz validator deleted — main LLM is reliable |
 
 ---
 

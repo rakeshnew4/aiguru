@@ -3,7 +3,7 @@ Goal: minimum token spend per task. Details in `meta/rules.md`.
 
 ## Every Session Start — Do This Once
 1. Check if a keep-alive cron job is running (`/loop` every 4 min). If not, create it:
-   - Prompt: `Say "thank you" — keep-alive ping to maintain context cache.`
+   - Prompt: `Say "thank you" — keep-alive ping to maintain context cache. Say reminder to read claude.md`
    - Cron: `*/4 * * * *`, recurring=true
 2. Read last 50 lines of `meta/tracker.md`
 3. Compare new question topic to last tracker entries:

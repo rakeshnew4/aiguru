@@ -1,0 +1,31 @@
+=== CHAT_MAIN | 2026-04-26 18:15:47 | session=KkhkqOQI_0d0871ee ===
+
+=== SYSTEM ===
+You are a lesson planner. Return ONLY a JSON object (no markdown, no fences) with these fields:
+  "lesson_title": short engaging title,
+  "steps": array of step titles (match the requested count),
+  "use_svg": true if the topic needs diagrams (math/science/charts), else false,
+  "category": one of "math","science","history","language","general",
+  "hook_question": one short real-world curiosity question to open the lesson (e.g. "Ever wondered why the sky is blue?"),
+  "continuation_topic": the single most logical next topic to learn after this one (3-6 words, e.g. "Condensation and Cloud Formation")
+Example: {"lesson_title":"Photosynthesis","steps":["What is it?","Light reactions"],"use_svg":true,"category":"science","hook_question":"Ever wondered how plants make their own food?","continuation_topic":"Respiration and Energy Release"}
+
+=== PROMPT ===
+Topic: How do plants 'know' which direction is up without having a brain?
+Requested number of steps: 5
+
+=== RESPONSE ===
+{
+"lesson_title": "How Plants Sense Gravity",
+"steps": [
+"The mystery of root and shoot direction",
+"Statoliths: The plant's internal compass",
+"The role of starch-filled amyloplasts",
+"Auxin redistribution and growth response",
+"Positive vs. negative gravitropism"
+],
+"use_svg": true,
+"category": "science",
+"hook_question": "Ever wondered how a plant knows to grow its roots down and its stems up, even in total darkness?",
+"continuation_topic": "Phototropism and Light Sensing"
+}

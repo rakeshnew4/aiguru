@@ -10,14 +10,19 @@
 
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
-| `quiz_mcq` popup builder | ~146–232 | 4-option MCQ quiz popup |
-| `quiz_typed` / `quiz_voice` popup | ~275–318 | Text/voice input quiz |
-| `quiz_fill` popup | ~368–548 | Fill-in-the-blank quiz |
-| `quiz_order` popup | ~612–738 | Tap-to-order quiz |
+| `BbInteractivePopup` object | 44 | Singleton object |
+| `QuizResult` data class | 46–50 | Result: correct, score, feedback |
+| `httpClient` | 56–61 | Shared OkHttp client (lazy) |
+| `show()` | 63–97 | Entry point; routes to quiz type; wraps onResult with once-guard |
+| `safeResult` guard | 81–87 | Ensures onResult called at most once (skip/timer/continue race) |
+| `showConfidenceMeter()` | 105–142 | Pre-quiz confidence check: I know / Not sure / Guessing |
+| `showMcq()` | 146–? | 4-option MCQ quiz popup |
+| `showTyped()` / `quiz_voice` | ~275–318 | Text/voice input quiz, AI-graded via /bb/grade |
+| `showFillBlank()` | ~368–548 | Fill-in-the-blank quiz |
+| `showOrderSteps()` | ~612–738 | Tap-to-order quiz |
 | skip button — all 5 call sites | 218, 298, 413, 576, 732 | `dialog.dismiss(); onResult(QuizResult(false, 0, "Skipped"))` — fixed Apr 2026 |
-| `skipButton()` helper | ~926–935 | Creates skip TextView; onClick is passed in |
-| `buildDialog()` | ~885–930 | Creates Dialog with `setCancelable(false)` |
-| Confidence picker | ~105–142 | Shows before every quiz: "I know / Not sure / Guessing" |
+| `skipButton()` helper | ~926–935 | Creates skip TextView; onClick passed in |
+| `buildDialog()` | ~885 | Creates Dialog with `setCancelable(false)` |
 
 ---
 

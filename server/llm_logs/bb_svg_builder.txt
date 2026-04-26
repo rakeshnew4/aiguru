@@ -1,0 +1,44 @@
+=== BB_SVG_BUILDER | 2026-04-26 18:16:13 | session=none ===
+
+=== SYSTEM ===
+You are an SVG diagram artist for an educational app. Draw accurate diagrams as raw SVG.
+
+HARD RULES:
+1. Output ONLY the <svg> element. No markdown, no ```, no comments, no JS, no separators.
+2. First child: <rect width="400" height="300" fill="#1A2B1A"/>
+3. Attributes: viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg"
+4. Keep all content inside x=8..392, y=8..292. Labels max 22 chars, no overlap.
+5. Max 40 SVG elements total.
+
+COLORS: #4FC3F7 blue, #FF6B6B red, #81C784 green, #F0EDD0 white, #FFB74D orange,
+  #F5E3A0 yellow, #8BAB8B grey, #FFD700 gold, #CE93D8 purple.
+TEXT: font-family="serif" fill="#F0EDD0". Titles font-size="13" font-weight="bold". Labels font-size="11".
+
+ANIMATION (Phase 1 only — staggered draw-on reveal, plays once):
+  Shapes: stroke-dashoffset PATHLEN to 0, dur="0.6s", fill="freeze", stagger begin +0.3s each.
+  Text: opacity 0 to 1, dur="0.35s", fill="freeze".
+
+DRAW REAL STRUCTURES (never flowcharts with boxes/arrows):
+  Biology/Anatomy: organ shapes with ellipse+path curves. Heart: 4 chambers + aorta curves.
+  Cell: membrane, nucleus, mitochondria as distinct shapes. Use path d="M...C...Z" for curves.
+  Physics: resistor zigzag paths, capacitor parallel lines, actual lens/apparatus shapes.
+  Chemistry: atomic shells as circles, bond lines.
+  Fill-opacity="0.25" on main structures. Stroke-width 2-3 main, 1.5 secondary.
+  Minimum: main structure + 4 labeled parts + title.
+
+
+=== PROMPT ===
+Draw this educational diagram as SVG:
+
+  Diagram type : custom
+  Topic/title  : Auxin Growth Response
+  Context      : High concentrations of auxin inhibit cell growth in roots, causing the other side to grow faster and curve the root downward.
+  Data hints   : none
+  Visual layout: A root bending due to uneven cell growth on one side.
+  Follow this layout exactly — positions, arrows, and labels as described above.
+
+Draw "Auxin Growth Response" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
+Animate each part appearing sequentially.  Output ONLY the <svg> element.
+
+=== RESPONSE ===
+<svg viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#1A2B1A"/><text x="200" y="25" font-family="serif" fill="#F0EDD0" font-size="13" font-weight="bold" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0s"/>Auxin Growth Response</text><path d="M100 50 C 150 50, 150 250, 250 250" stroke="#F5E3A0" stroke-width="30" fill="none" stroke-linecap="round" stroke-dasharray="400" stroke-dashoffset="400"><animate attributeName="stroke-dashoffset" values="400;0" dur="0.6s" fill="freeze" begin="0.3s"/></path><path d="M100 50 C 150 50, 150 250, 250 250" stroke="#81C784" stroke-width="26" fill="none" stroke-linecap="round" stroke-dasharray="400" stroke-dashoffset="400"><animate attributeName="stroke-dashoffset" values="400;0" dur="0.6s" fill="freeze" begin="0.6s"/></path><circle cx="150" cy="120" r="8" fill="#FF6B6B" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0.9s"/></circle><text x="165" y="125" font-family="serif" fill="#F0EDD0" font-size="11" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0.9s"/>High Auxin</text><circle cx="150" cy="180" r="5" fill="#4FC3F7" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.2s"/></circle><text x="165" y="185" font-family="serif" fill="#F0EDD0" font-size="11" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.2s"/>Low Auxin</text><line x1="150" y1="128" x2="150" y2="175" stroke="#F0EDD0" stroke-width="1" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.5s"/></line><text x="260" y="260" font-family="serif" fill="#F0EDD0" font-size="11" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.8s"/>Root Tip</text><path d="M250 250 L260 260" stroke="#F0EDD0" stroke-width="1" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.8s"/></path><text x="200" y="285" font-family="serif" fill="#F0EDD0" font-size="11" opacity="0" text-anchor="middle"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="2.1s"/>Inhibition causes curvature</text></svg>

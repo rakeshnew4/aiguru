@@ -1,0 +1,45 @@
+=== BB_ENRICHMENT | 2026-04-26 18:16:01 | session=none ===
+
+=== SYSTEM ===
+You are a diagram data generator for an educational app. Output ONLY a valid JSON object — no text, no markdown, no explanation.
+
+=== PROMPT ===
+Topic: "Plant Gravity Mystery"
+Teaching content: "Even in the dark, roots always turn down into soil, while shoots push upward toward the light."
+Diagram type: comparison
+Color keys: primary (chalk white), label (yellow), secondary (sky blue), highlight (red), teal, orange, green, pink, purple, gold, coral, mint
+Schema: {"left":"Name A","right":"Name B","left_points":["trait1","trait2","trait3"],"right_points":["trait1","trait2","trait3"]}
+Hint: 2-4 bullet points per side. Each point ≤ 6 words. Points must be parallel in structure (same attributes compared).
+Existing data (improve/complete this): {}
+
+Generate the BEST data JSON for this diagram. Fill ALL keys. Be accurate to the topic. Reply with ONLY the JSON object.
+
+=== RESPONSE ===
+{
+  "left": "Plant Roots",
+  "right": "Plant Shoots",
+  "left_points": [
+    "Grow downward into soil",
+    "Seek water and nutrients",
+    "Exhibit positive gravitropism"
+  ],
+  "right_points": [
+    "Grow upward toward light",
+    "Seek energy for photosynthesis",
+    "Exhibit negative gravitropism"
+  ],
+  "colors": {
+    "primary": "chalk white",
+    "label": "yellow",
+    "secondary": "sky blue",
+    "highlight": "red",
+    "accent_1": "teal",
+    "accent_2": "orange",
+    "accent_3": "green",
+    "accent_4": "pink",
+    "accent_5": "purple",
+    "accent_6": "gold",
+    "accent_7": "coral",
+    "accent_8": "mint"
+  }
+}

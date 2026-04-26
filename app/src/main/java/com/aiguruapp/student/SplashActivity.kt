@@ -11,8 +11,8 @@ import android.os.Looper
 import android.util.Log
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.WindowCompat
 import com.aiguruapp.student.BuildConfig
 import com.aiguruapp.student.config.AppStartRepository
 import com.aiguruapp.student.models.AppUpdateConfig
@@ -65,8 +65,7 @@ class SplashActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Edge-to-edge + transparent status/nav bars for a clean splash look.
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        enableEdgeToEdge()
         window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = Color.TRANSPARENT
 

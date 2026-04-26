@@ -1,0 +1,299 @@
+=== BB_MAIN | 2026-04-26 18:15:57 | session=KkhkqOQI_bc0c94c4 ===
+
+=== SYSTEM ===
+You are a visual AI tutor. Return ONLY valid JSON — no text outside JSON.
+
+OUTPUT FORMAT (STRICT):
+Return ONLY valid JSON.
+Top-level MUST be an OBJECT with key "steps".
+NEVER return a list at top level.
+
+{"steps":[{"title":"2-5 words","lang":"en-US","image_description":"educational Wikimedia phrase describing topic visually (e.g. mitosis cell division diagram, Newton second law force mass)","image_show_confidencescore":0.7,"frames":[{"frame_type":"concept","text":"max 2 lines","speech":"1-2 sentences","tts_engine":"gemini","voice_role":"teacher","duration_ms":2500,"diagram_type":"","diagram_data":{},"visual_description":""}],"followup_questions":[{"question":"...","speech":"...","tts_engine":"android","voice_role":"teacher"}],"session_theme":"...","video_search_query":"...","preferred_channels":["Physics Wallah","Khan Academy India"]}]}
+
+SPARSE: Omit empty/default fields. Required on every frame: frame_type, text, speech, tts_engine, voice_role, duration_ms.
+Step fields (title, lang, image_description, image_show_confidencescore) are on the STEP — NEVER inside frames.
+FOLLOWUP_QUESTIONS: ONLY on the LAST step. Exactly 3 thought-provoking questions related to the topic. Each: short question (≤14 words) + speech (TTS-friendly, ≤20 words, conversational, native to lang).
+
+VIDEO SEARCH FIELDS: root-level only. session_theme = 3-8 words describing the topic (e.g. 'Photosynthesis light reactions'). video_search_query = specific educational YouTube query for the exact topic (e.g. 'photosynthesis explained for class 10 CBSE'). preferred_channels = 2-4 India-friendly educational channels relevant to the subject.
+
+FRAME TYPES: concept | memory | diagram | quiz_mcq  summary
+
+DIAGRAM — set diagram_type + data (no svg_elements):
+PATH 1 (semantic engine): atom, solar_system, waveform_signal, triangle, polygon,
+  circle_geometry, angle, pythagoras, coordinate_plane, graph_function, line_graph,
+  bar_chart, pie_chart, number_line, fraction_bar, venn_diagram, cycle, comparison
+PATH 2 (custom): heart, neuron, circuit, force diagram, apparatus, any organic shape
+  → diagram_type="custom", data={"intent":"1 sentence: what to show"}, visual_description="same"
+
+FLOW: Step 1 frame 1 = HOOK (real-world curiosity Q, 1 line). Each step has ≥1 APPLY frame anchoring to real life. Second-to-last frame of each step = CURIOSITY BRIDGE forward question. Last step ends with quiz_mcq → summary AND includes 'followup_questions' (exactly 3 thought-provoking extensions).
+TIMING duration_ms: concept/memory/diagram 1500-2500; HOOK/APPLY/CURIOSITY 2000-2500; summary 2500-3000; quiz 2000.
+
+RULES:
+- 3-5 steps, 2-4 frames/step. Last step: quiz_mcq then summary (final). DO NOT include youtube_clip on any frame — videos surfaced separately at end.
+- Use ONE lesson-level video_search_query for the whole session, never per-step video searches.
+- Step 2 MUST have a diagram or populated image_description.
+- speech: ≤2 sentences ≤50 words. Conversational, calm. No openers ('Today we learn...', 'Hi class!'). TTS-safe: say 'squared' not '^2'.
+- speech language matches lang field (hi-IN→Hindi, te-IN→Telugu, en-US→English).
+- text: **bold** key terms, $$math$$, max 2 lines, always English.
+- lang: same BCP-47 tag on all steps from OUTPUT LANGUAGE instruction.
+- diagram only when visual adds clarity.
+- quiz_mcq: 4 options, only 1 correct (quiz_correct_index 0-3), use misconceptions as distractors.
+- quiz_typed/voice: quiz_model_answer (1 sentence), quiz_keywords (3-6 essential terms).
+- image_description: educational Wikimedia Commons search phrase — MUST include the subject/topic name so results are safe and relevant.
+  GOOD: 'mitosis cell division diagram', 'Newton second law force diagram', 'water cycle evaporation condensation'.
+  BAD: 'diagram', 'cycle', 'force', 'structure' (too vague — risks irrelevant or unsafe images). NEVER null or omit.
+  image_show_confidencescore: 0.85-0.95 concrete visuals, 0.60-0.80 named concepts, 0.10-0.30 abstract, 0.0 quiz/memory/summary.
+TTS every frame: first frame→android/teacher; concept/memory/diagram→gemini/teacher; summary→google/assistant; quiz→android/quiz.
+
+
+=== PROMPT ===
+
+---LESSON BRIEF (follow these instructions exactly)---
+Student's EXACT question: Topic: How do plants 'know' which direction is up without having a brain?
+Lesson title: How Plants Sense Gravity
+Category: science
+
+This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
+
+Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
+Steps to generate in this batch:
+- The mystery of root and shoot direction
+- Statoliths: The plant's internal compass
+- The role of starch-filled amyloplasts
+- Auxin redistribution and growth response
+- Positive vs. negative gravitropism
+
+This topic benefits from SVG diagrams — use at least one diagram frame per step.
+The very last frame of the last step MUST be a summary frame recapping the entire lesson.
+What the student specifically wants: The student wants to understand the biological mechanism that allows plants to detect gravity and grow in the correct direction without a nervous system.
+Question type: how_to
+Student level: Class 5
+Topic type: science_biology | Scope: medium
+Key concepts to cover (ALL of these): gravitropism, statoliths, amyloplasts, auxin
+Generate EXACTLY 5 steps — no more, no less.
+STYLE: This is a personal AI tutor response — NOT a classroom lesson.
+  • Answer the student's specific question directly.
+  • First speech frame MUST directly state the answer/formula/definition.
+  • NEVER start speech with greetings or 'Today we will learn'.
+
+DIAGRAM RECOMMENDATION: This topic likely needs a "comparison" diagram (confidence 77%). Use diagram_type="comparison" for your diagram frame(s).
+
+SUBJECT GUIDANCE (Science — Biology):
+• Use cycle for life cycles/processes (mitosis, water cycle, photosynthesis).
+• Use PATH 2 (diagram_type=custom) for anatomy cross-sections (heart, leaf, kidney).
+• Concept frames: function → structure → real-body example.
+• Quiz: quiz_order (correct biological sequence) or quiz_mcq.
+
+---END LESSON BRIEF---
+
+OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" fields in the language for tag "en-US" (hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.). Board "text" field stays in English (formulas/keywords only).
+
+=== RESPONSE ===
+{
+  "steps": [
+    {
+      "title": "Plant Gravity Mystery",
+      "lang": "en-US",
+      "image_description": "seedling growing roots down and shoot up",
+      "image_show_confidencescore": 0.85,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "Plants use **gravitropism** to grow.",
+          "speech": "Plants don't have brains, but they use a process called gravitropism to sense gravity and direct their growth.",
+          "tts_engine": "android",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
+          "frame_type": "diagram",
+          "text": "Roots vs. Shoots",
+          "speech": "Even in the dark, roots always turn down into soil, while shoots push upward toward the light.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500,
+          "diagram_type": "comparison",
+          "diagram_data": {
+            "left": "Roots grow down",
+            "right": "Shoots grow up"
+          },
+          "visual_description": "A split diagram showing a root growing downwards and a stem growing upwards."
+        },
+        {
+          "frame_type": "concept",
+          "text": "How do they sense it?",
+          "speech": "How exactly do they sense which way is down without eyes or nerves? Let's look inside their cells.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000
+        }
+      ]
+    },
+    {
+      "title": "Statoliths: Plant Compass",
+      "lang": "en-US",
+      "image_description": "plant root tip cell diagram",
+      "image_show_confidencescore": 0.8,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "Specialized **statoliths** cells",
+          "speech": "Inside the root tips, plants have specialized cells containing tiny, heavy structures called statoliths.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
+          "frame_type": "diagram",
+          "text": "Statoliths settle downward",
+          "speech": "Think of statoliths like a bubble in a carpenter's level; they physically settle to the bottom of the cell due to gravity.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500,
+          "diagram_type": "custom",
+          "diagram_data": {
+            "intent": "Show heavy particles settling at the bottom of a plant cell"
+          },
+          "visual_description": "A plant cell showing heavy particles (statoliths) resting at the bottom."
+        },
+        {
+          "frame_type": "concept",
+          "text": "Sensing the position",
+          "speech": "When the plant is tilted, these statoliths roll to the new bottom, telling the plant which way gravity is pulling.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000
+        }
+      ]
+    },
+    {
+      "title": "Amyloplasts and Starch",
+      "lang": "en-US",
+      "image_description": "amyloplast starch grains inside plant cell",
+      "image_show_confidencescore": 0.8,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "**Amyloplasts** store starch",
+          "speech": "The statoliths are actually dense organelles called amyloplasts, which are packed full of heavy starch grains.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
+          "frame_type": "diagram",
+          "text": "Heavy starch grains",
+          "speech": "Because starch is dense, gravity pulls these amyloplasts downward, triggering a signal to the rest of the plant.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500,
+          "diagram_type": "custom",
+          "diagram_data": {
+            "intent": "Diagram showing starch grains inside amyloplasts"
+          },
+          "visual_description": "A diagram of an amyloplast containing dense starch grains."
+        },
+        {
+          "frame_type": "concept",
+          "text": "Connecting to growth",
+          "speech": "Once these amyloplasts settle, the plant knows how to orient its growth. But how does that trigger movement?",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000
+        }
+      ]
+    },
+    {
+      "title": "Auxin Growth Response",
+      "lang": "en-US",
+      "image_description": "auxin hormone distribution in plant root",
+      "image_show_confidencescore": 0.75,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "**Auxin** hormone redistribution",
+          "speech": "The settling of amyloplasts causes a plant hormone called auxin to redistribute to one side of the root.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
+          "frame_type": "diagram",
+          "text": "Uneven growth",
+          "speech": "High concentrations of auxin inhibit cell growth in roots, causing the other side to grow faster and curve the root downward.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500,
+          "diagram_type": "custom",
+          "diagram_data": {
+            "intent": "Diagram showing uneven growth caused by auxin accumulation"
+          },
+          "visual_description": "A root bending due to uneven cell growth on one side."
+        },
+        {
+          "frame_type": "concept",
+          "text": "The magic of auxin",
+          "speech": "This uneven growth is exactly how the plant physically bends to follow gravity's pull.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000
+        }
+      ]
+    },
+    {
+      "title": "Gravitropism Summary",
+      "lang": "en-US",
+      "image_description": "positive and negative gravitropism diagram",
+      "image_show_confidencescore": 0.8,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "Positive vs Negative",
+          "speech": "Roots show positive gravitropism by growing toward gravity, while stems show negative gravitropism by growing away from it.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
+          "frame_type": "quiz_mcq",
+          "text": "Which organelle senses gravity?",
+          "speech": "Which of these organelles acts as the plant's internal compass by settling due to gravity?",
+          "tts_engine": "android",
+          "voice_role": "teacher",
+          "duration_ms": 2000,
+          "diagram_type": "",
+          "diagram_data": {},
+          "visual_description": "Multiple choice question about gravity sensing organelles."
+        },
+        {
+          "frame_type": "summary",
+          "text": "Lesson Summary",
+          "speech": "Plants sense gravity using dense amyloplasts that settle downward, triggering auxin redistribution to control growth direction. Roots grow with gravity, while shoots grow against it.",
+          "tts_engine": "google",
+          "voice_role": "assistant",
+          "duration_ms": 3000
+        }
+      ],
+      "followup_questions": [
+        {
+          "question": "Do plants grown in space show gravitropism?",
+          "speech": "Do plants grown in outer space still show gravitropism, or do they grow randomly?"
+        },
+        {
+          "question": "Can light override the gravity signal?",
+          "speech": "Can a strong light source trick a plant into ignoring the gravity signal?"
+        },
+        {
+          "question": "What happens if amyloplasts are removed?",
+          "speech": "What would happen to a plant if it could no longer produce starch-filled amyloplasts?"
+        }
+      ],
+      "session_theme": "How plants sense gravity via gravitropism",
+      "video_search_query": "how do plants sense gravity explained",
+      "preferred_channels": [
+        "Khan Academy",
+        "Physics Wallah"
+      ]
+    }
+  ]
+}

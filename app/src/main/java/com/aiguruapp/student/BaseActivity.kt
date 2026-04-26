@@ -3,7 +3,7 @@ package com.aiguruapp.student
 import android.os.Bundle
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.WindowCompat
+import androidx.activity.enableEdgeToEdge
 import com.aiguruapp.student.calculator.FloatingCalculatorView
 import com.aiguruapp.student.utils.SchoolTheme
 
@@ -21,10 +21,7 @@ open class BaseActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Edge-to-edge: layout draws under status bar and nav bar.
-        // Layouts that declare fitsSystemWindows="true" will auto-add the
-        // correct inset padding; others draw behind the bars intentionally.
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        enableEdgeToEdge()
         SchoolTheme.ensureLoaded(this)
         SchoolTheme.applyStatusBar(window)
     }
