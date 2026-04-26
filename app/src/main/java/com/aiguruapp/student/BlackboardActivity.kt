@@ -4225,7 +4225,8 @@ class BlackboardActivity : AppCompatActivity() {
                 val toRead = fq.speech.ifBlank { fq.question }
                 try {
                     tts.speak(toRead, object : TTSCallback {
-                        override fun onTtsCompleted() {
+                        override fun onStart() {}
+                        override fun onComplete() {
                             runOnUiThread { requestInlineBbLesson(fq.question, speechContext) }
                         }
                         override fun onError(error: String) {
