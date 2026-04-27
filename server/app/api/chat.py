@@ -1208,7 +1208,8 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     # get_titles does per-step Wikimedia searches + LLM image picker;
                     # run it as a task so we can interleave keepalive pings.
                     _titles_task = asyncio.ensure_future(
-                        get_titles(result["text"], extra_candidates=extra_wiki)
+                        get_titles(result["text"], extra_candidates=extra_wiki,
+                                   animations_enabled=req.bb_animations_enabled is not False)
                     )
                     while not _titles_task.done():
                         await asyncio.sleep(2)

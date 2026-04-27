@@ -1,49 +1,38 @@
-=== BB_ENRICHMENT | 2026-04-27 06:34:03 | session=none ===
+=== BB_ENRICHMENT | 2026-04-27 08:34:31 | session=none ===
 
 === SYSTEM ===
 You are a diagram data generator for an educational app. Output ONLY a valid JSON object — no text, no markdown, no explanation.
 
 === PROMPT ===
-Topic: "Solving Problems & Summary"
-Teaching content: "You can rearrange the formula to find mass or acceleration if you know the other two values."
-Diagram type: triangle
+Topic: "Ingredients for Photosynthesis"
+Teaching content: "Plants act like tiny chefs. They need sunlight for energy, water from roots, and carbon dioxide from the air to start cooking."
+Diagram type: cycle
 Color keys: primary (chalk white), label (yellow), secondary (sky blue), highlight (red), teal, orange, green, pink, purple, gold, coral, mint
-Schema: {"labels":["A","B","C"],"show_height":false,"show_incircle":false,"show_circumcircle":false}
-Hint: show_height: true when Pythagoras or altitude is being taught. Labels can be angle names or side lengths. show_incircle/circumcircle: true only when explicitly relevant.
+Schema: {"title":"Cycle Name","steps":["Stage 1","Stage 2","Stage 3","Stage 4"]}
+Hint: 3-6 stages arranged cyclically. Each stage 1-4 words. Last stage naturally leads back to first.
 Existing data (improve/complete this): {}
 
 Generate the BEST data JSON for this diagram. Fill ALL keys. Be accurate to the topic. Reply with ONLY the JSON object.
 
 === RESPONSE ===
 {
-  "labels": [
-    "F",
-    "m",
-    "a"
+  "title": "Photosynthesis Ingredients Cycle",
+  "steps": [
+    "Absorb Sunlight Energy",
+    "Take Up Water",
+    "Capture Carbon Dioxide",
+    "Produce Glucose & Oxygen"
   ],
-  "show_height": false,
-  "show_incircle": false,
-  "show_circumcircle": false,
   "colors": {
     "primary": "chalk white",
     "label": "yellow",
     "secondary": "sky blue",
     "highlight": "red",
-    "accent_1": "teal",
-    "accent_2": "orange",
-    "accent_3": "green",
-    "accent_4": "pink",
-    "accent_5": "purple",
-    "accent_6": "gold",
-    "accent_7": "coral",
-    "accent_8": "mint"
-  },
-  "layout": {
-    "top": "F",
-    "bottom_left": "m",
-    "bottom_right": "a",
-    "divider_horizontal": true,
-    "divider_vertical": true
-  },
-  "description": "Force triangle showing F at the top, with m and a at the bottom, illustrating the relationship F = m * a."
+    "steps": {
+      "Absorb Sunlight Energy": "gold",
+      "Take Up Water": "teal",
+      "Capture Carbon Dioxide": "mint",
+      "Produce Glucose & Oxygen": "green"
+    }
+  }
 }

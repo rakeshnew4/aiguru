@@ -1675,7 +1675,7 @@ class BlackboardActivity : AppCompatActivity() {
         val labels = arrayOf(
             "🎯  Interactive quizzes",
             "🎬  Related videos at end",
-            "🎨  Animated diagrams",
+            "🎨  Animated diagrams  · uses extra credits",
             "🖼️  Topic images"
         )
         val cfg = sessionConfig
@@ -1683,6 +1683,7 @@ class BlackboardActivity : AppCompatActivity() {
 
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Lesson Settings")
+            .setMessage("💡 Animated diagrams bring lessons to life but use more AI credits per session. Disable to save credits.")
             .setMultiChoiceItems(labels, checked) { _, which, isChecked -> checked[which] = isChecked }
             .setPositiveButton("Start Lesson") { _, _ ->
                 sessionConfig = BBSessionConfig(checked[0], checked[1], checked[2], checked[3])
@@ -1699,7 +1700,7 @@ class BlackboardActivity : AppCompatActivity() {
         val labels = arrayOf(
             "🎯  Interactive quizzes",
             "🎬  Related videos at end",
-            "🎨  Animated diagrams",
+            "🎨  Animated diagrams  · uses extra credits",
             "🖼️  Topic images"
         )
         val cfg = sessionConfig

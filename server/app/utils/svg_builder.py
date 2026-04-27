@@ -22,6 +22,7 @@ This file exposes the public API:
 """
 
 import json
+import re
 from collections import defaultdict
 
 from app.utils.svg_colors import (
@@ -128,7 +129,24 @@ def _make_defs(has_arrow: bool, has_double_arrow: bool) -> str:
 
 # ── Main HTML builder ─────────────────────────────────────────────────────────
 
-def build_animated_svg(elements) -> str:
+def _strip_animations(html: str) -> str:
+    """Remove SMIL animate elements and make shapes immediately fully visible.
+
+    Used when animations_enabled=False so Android renders a static diagram
+    instead of the default fade-in / step-by-step SMIL sequence.
+    """
+    # Remove all SMIL animation elements (self-closing and block forms)
+    html = re.sub(r'<animate\b[^>]*/>', '', html)
+    html = re.sub(r'<animate\b[^>]*>.*?</animate>', '', html, flags=re.DOTALL)
+    html = re.sub(r'<animateTransform\b[^>]*/>', '', html)
+    html = re.sub(r'<animateMotion\b[^>]*/>', '', html)
+    html = re.sub(r'<set\b[^>]*/>', '', html)
+    # Shapes start with opacity="0" for fade-in — make them visible immediately
+    html = html.replace('opacity="0"', 'opacity="1"')
+    return html
+
+
+def build_animated_svg(elements, static: bool = False) -> str:
     """
     Convert a list of shape dicts (or JSON string) into a full animated HTML page.
 
@@ -199,7 +217,7 @@ def build_animated_svg(elements) -> str:
     defs_block = _make_defs(has_arrow, has_double_arrow)
     svg_body   = "\n".join(parts)
 
-    return (
+    html = (
         '<!DOCTYPE html><html>'
         '<head><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">'
         f'<style>*{{margin:0;padding:0}}body{{background:{BG_COLOR};display:flex;'
@@ -211,3 +229,4 @@ def build_animated_svg(elements) -> str:
         f'{svg_body}'
         '</svg></body></html>'
     )
+    return _strip_animations(html) if static else html

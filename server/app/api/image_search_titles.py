@@ -373,13 +373,15 @@ def _pick_titles_sync(steps: list, all_candidates: List[Dict[str, str]]) -> Dict
         return fallback
 
 
-async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -> str:
+async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, animations_enabled: bool = True) -> str:
     """
     Process BB JSON and attach the best Wikimedia image title to each high-confidence step.
     Uses LLM-based selection (much more accurate than word-overlap).
 
-    extra_candidates: pre-fetched titles from the BB planner's image_search_terms
-                      (these arrive while the main BB LLM is running, so they're free).
+    extra_candidates:   pre-fetched titles from the BB planner's image_search_terms
+                        (these arrive while the main BB LLM is running, so they're free).
+    animations_enabled: when False, build_animated_svg() strips all SMIL animations so
+                        diagrams are rendered as static images (lower credit cost).
     """
     try:
         try:
@@ -557,11 +559,11 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
                     if not html:
                         shapes = build_from_diagram_type(d_type, d_data)
                         if shapes:
-                            html = build_animated_svg(shapes)
+                            html = build_animated_svg(shapes, static=not animations_enabled)
                             if html:
                                 logger.info(
-                                    "Built SMIL svg_html (type=%s) for step '%s' [fallback]",
-                                    d_type, step_title,
+                                    "Built SMIL svg_html (type=%s) for step '%s' [fallback, static=%s]",
+                                    d_type, step_title, not animations_enabled,
                                 )
 
                 # ── Force override path: LLM SVG with visual_description ──────
@@ -590,9 +592,9 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None) -
                             if isinstance(svg_elems, list)
                             else str(svg_elems)
                         )
-                        html = build_animated_svg(elems_json)
+                        html = build_animated_svg(elems_json, static=not animations_enabled)
                         if html:
-                            logger.info("Built legacy svg_html for step '%s'", step.get("title", ""))
+                            logger.info("Built legacy svg_html for step '%s' [static=%s]", step.get("title", ""), not animations_enabled)
 
                 if html:
                     frame["svg_html"] = html

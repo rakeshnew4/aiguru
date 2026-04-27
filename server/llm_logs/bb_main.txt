@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-04-27 06:33:59 | session=KkhkqOQI_dd5f4d0c ===
+=== BB_MAIN | 2026-04-27 08:34:27 | session=RFQp1HbS_6f9506f6 ===
 
 === SYSTEM ===
 You are a visual AI tutor. Return ONLY valid JSON — no text outside JSON.
@@ -47,40 +47,39 @@ TTS every frame: first frame→android/teacher; concept/memory/diagram→gemini/
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: Newton's Laws of Motion
-Lesson title: Newton's Laws of Motion: The Rules of the Universe
+Student's EXACT question: Topic: Photosynthesis
+Lesson title: The Magic of Photosynthesis
 Category: science
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
 Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- Introduction to Inertia (First Law)
-- Force, Mass, and Acceleration (Second Law)
-- Action and Reaction (Third Law)
-- Real-world Examples and Applications
-- Solving Basic Force Problems
+- The Ingredients: Water, Sunlight, and Carbon Dioxide
+- The Factory: Inside the Chloroplast
+- The Light-Dependent Reactions
+- The Calvin Cycle: Making Sugar
+- Why It Matters: Oxygen and Life on Earth
 
 This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants an engaging introduction to the fundamental concepts of Newton's Laws of Motion suitable for a 5th-grade level.
+What the student specifically wants: The student wants an engaging introduction to photosynthesis, specifically focusing on how plants use sunlight and water as ingredients.
 Question type: conceptual
 Student level: Class 5
-Topic type: science_physics | Scope: simple
-Key concepts to cover (ALL of these): Inertia, Force, Motion
+Topic type: science_biology | Scope: simple
+Key concepts to cover (ALL of these): Photosynthesis, Sunlight energy, Water absorption
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-DIAGRAM RECOMMENDATION: This topic likely needs a "labeled_diagram" diagram (confidence 98%). Use diagram_type="labeled_diagram" for your diagram frame(s).
+DIAGRAM RECOMMENDATION: This topic likely needs a "leaf_anatomy" diagram (confidence 98%). Use diagram_type="leaf_anatomy" for your diagram frame(s).
 
-SUBJECT GUIDANCE (Science — Physics):
-• Use waveform_signal for waves/sound/light; coordinate_plane for motion graphs.
-• Use PATH 2 (diagram_type=custom) for force diagrams, ray optics, circuit layouts.
-• Concept frames: state law/formula → physical meaning → real-world application.
-• Include units in every formula (e.g. m/s², Newton, Joule).
+SUBJECT GUIDANCE (Science — Biology):
+• Use cycle for life cycles/processes (mitosis, water cycle, photosynthesis).
+• Use PATH 2 (diagram_type=custom) for anatomy cross-sections (heart, leaf, kidney).
+• Concept frames: function → structure → real-body example.
 • End with a summary frame.
 
 ---END LESSON BRIEF---
@@ -91,212 +90,188 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
 {
   "steps": [
     {
-      "title": "Newton's First Law: Inertia",
+      "title": "Ingredients for Photosynthesis",
       "lang": "en-US",
-      "image_description": "Newton first law inertia ball at rest diagram",
+      "image_description": "plant photosynthesis process sunlight water carbon dioxide diagram",
       "image_show_confidencescore": 0.9,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "**Inertia**: Objects stay as they are.",
-          "speech": "An object at rest stays at rest, and an object in motion stays in motion unless a force changes it.",
+          "text": "**Photosynthesis** = Food Production",
+          "speech": "Photosynthesis is how plants create their own food using sunlight, water, and carbon dioxide from the air.",
           "tts_engine": "android",
           "voice_role": "teacher",
-          "duration_ms": 2500
+          "duration_ms": 2500,
+          "visual_description": "A bright green plant absorbing sunlight rays and water from soil."
         },
         {
           "frame_type": "diagram",
-          "text": "**Inertia** visualized",
-          "speech": "Imagine a soccer ball on the grass. It will sit there forever unless someone kicks it.",
+          "text": "**Inputs**: $$H_2O + CO_2 + Light$$",
+          "speech": "Plants act like tiny chefs. They need sunlight for energy, water from roots, and carbon dioxide from the air to start cooking.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500,
-          "diagram_type": "custom",
+          "diagram_type": "cycle",
           "diagram_data": {
-            "intent": "A ball sitting perfectly still on a flat surface representing inertia."
+            "intent": "Show inputs entering a plant: Sunlight, Water, Carbon Dioxide."
           },
-          "visual_description": "A stationary soccer ball on flat grass."
+          "visual_description": "Arrows pointing towards a plant leaf labeled Sunlight, Water, and Carbon Dioxide."
         },
         {
           "frame_type": "concept",
-          "text": "Why does a car **jerk**?",
-          "speech": "Have you ever felt your body jerk when a car suddenly stops? That is inertia in action.",
+          "text": "**Root Absorption**",
+          "speech": "Think of roots like drinking straws, pulling water up from the soil to reach the leaves.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 2500
+          "duration_ms": 2000,
+          "visual_description": "Close up of roots absorbing water droplets from soil."
         }
       ]
     },
     {
-      "title": "Newton's Second Law: F=ma",
+      "title": "Inside the Chloroplast",
       "lang": "en-US",
-      "image_description": "Newton second law force mass acceleration diagram",
+      "image_description": "plant cell chloroplast anatomy diagram",
       "image_show_confidencescore": 0.95,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "$$Force = Mass \\times Acceleration$$",
-          "speech": "Force equals mass times acceleration. The more mass an object has, the more force you need to move it.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
-        {
-          "frame_type": "diagram",
-          "text": "**F=ma** relationship",
-          "speech": "Pushing an empty shopping cart is easy because it has little mass. A full cart needs more force.",
+          "text": "**Chloroplasts**: The Kitchen",
+          "speech": "The kitchen inside every plant cell is called a chloroplast. This is where the magic of photosynthesis actually happens.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500,
-          "diagram_type": "comparison",
-          "diagram_data": {
-            "left_label": "Empty Cart",
-            "right_label": "Full Cart"
-          },
-          "visual_description": "Comparison between an empty shopping cart and a heavy, full one."
-        },
-        {
-          "frame_type": "concept",
-          "text": "Acceleration units: **m/s²**",
-          "speech": "Acceleration is measured in meters per second squared, showing how fast speed changes.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        }
-      ]
-    },
-    {
-      "title": "Newton's Third Law: Pairs",
-      "lang": "en-US",
-      "image_description": "Newton third law action reaction rocket launch",
-      "image_show_confidencescore": 0.9,
-      "frames": [
-        {
-          "frame_type": "concept",
-          "text": "**Action-Reaction** Pairs",
-          "speech": "For every action, there is an equal and opposite reaction. They always come in pairs.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
+          "visual_description": "Zooming into a leaf cell showing green oval chloroplasts."
         },
         {
           "frame_type": "diagram",
-          "text": "**Rocket** propulsion",
-          "speech": "A rocket pushes gas down, and the gas pushes the rocket up with equal force.",
+          "text": "**Chlorophyll** captures light",
+          "speech": "Inside the chloroplast, a green pigment called chlorophyll traps the sunlight, just like a solar panel.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500,
           "diagram_type": "custom",
           "diagram_data": {
-            "intent": "Arrows showing gas pushing down and rocket moving up."
+            "intent": "Cross section of a leaf highlighting green chloroplasts inside cells."
           },
-          "visual_description": "A diagram of a rocket launch showing opposite force vectors."
+          "visual_description": "Leaf cross-section showing cell layers and green chloroplast organelles."
         },
         {
           "frame_type": "concept",
-          "text": "Walking on **ground**",
-          "speech": "When you walk, you push the ground backward, and the ground pushes you forward.",
+          "text": "Why are plants **green**?",
+          "speech": "Plants look green because chlorophyll reflects green light while absorbing other colors to make energy.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 2500
+          "duration_ms": 2000,
+          "visual_description": "Green leaf under sunlight."
         }
       ]
     },
     {
-      "title": "Real-world Applications",
+      "title": "Light-Dependent Reactions",
       "lang": "en-US",
-      "image_description": "Seatbelt safety inertia diagram",
+      "image_description": "light dependent reaction photosynthesis diagram",
       "image_show_confidencescore": 0.85,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "Why wear **seatbelts**?",
-          "speech": "Seatbelts are a perfect example of Newton's first law, keeping you safe when the car stops.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
-        {
-          "frame_type": "diagram",
-          "text": "Forces in **sports**",
-          "speech": "In baseball, the force of the bat on the ball changes its speed and direction.",
+          "text": "**Step 1**: Splitting Water",
+          "speech": "In the first stage, sunlight energy splits water molecules apart. This releases oxygen as a byproduct.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500,
-          "diagram_type": "force diagram",
-          "diagram_data": {
-            "intent": "Arrow showing force of bat hitting a baseball."
-          },
-          "visual_description": "A baseball bat striking a ball with an arrow indicating force."
+          "visual_description": "Water molecule splitting into hydrogen and oxygen bubbles."
         },
         {
-          "frame_type": "concept",
-          "text": "Nature's **motion**",
-          "speech": "From birds flying to swimming fish, Newton's laws describe how everything moves.",
+          "frame_type": "diagram",
+          "text": "$$H_2O \\rightarrow O_2 + Energy$$",
+          "speech": "This energy is stored in tiny 'batteries' to power the next part of the process.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 2500
+          "duration_ms": 2500,
+          "diagram_type": "waveform_signal",
+          "diagram_data": {
+            "intent": "Represent energy transfer as a signal."
+          },
+          "visual_description": "Energy glowing in the chloroplast."
         }
       ]
     },
     {
-      "title": "Solving Problems & Summary",
+      "title": "The Calvin Cycle",
       "lang": "en-US",
-      "image_description": "Force mass acceleration calculation concept",
-      "image_show_confidencescore": 0.7,
+      "image_description": "calvin cycle photosynthesis diagram",
+      "image_show_confidencescore": 0.85,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "Example: **F = 10kg * 2m/s²**",
-          "speech": "If you push a 10 kilogram box with 20 Newtons, it accelerates at 2 meters per second squared.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
-        {
-          "frame_type": "diagram",
-          "text": "Equation **Triangle**",
-          "speech": "You can rearrange the formula to find mass or acceleration if you know the other two values.",
+          "text": "**Step 2**: Making Sugar",
+          "speech": "The Calvin Cycle uses the energy we made to turn carbon dioxide into glucose, which is simple sugar.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500,
-          "diagram_type": "triangle",
+          "visual_description": "Carbon dioxide entering a cycle to produce sugar cubes."
+        },
+        {
+          "frame_type": "diagram",
+          "text": "**Glucose** ($$C_6H_{12}O_6$$)",
+          "speech": "Glucose is the plant's food. It gives the plant energy to grow leaves, flowers, and fruit.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500,
+          "diagram_type": "cycle",
           "diagram_data": {
-            "top": "Force",
-            "bottom_left": "Mass",
-            "bottom_right": "Acceleration"
+            "intent": "Circular flow showing CO2 converting to sugar."
           },
-          "visual_description": "A triangle divided into three parts showing F, M, and A for calculation."
+          "visual_description": "Diagram of the Calvin Cycle."
+        }
+      ]
+    },
+    {
+      "title": "Why It Matters",
+      "lang": "en-US",
+      "image_description": "photosynthesis oxygen cycle earth diagram",
+      "image_show_confidencescore": 0.9,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "**Oxygen Production**",
+          "speech": "When plants make sugar, they release oxygen into the air. This is the air we breathe every single second.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500,
+          "visual_description": "Oxygen bubbles floating out of a leaf into the air."
         },
         {
           "frame_type": "summary",
-          "text": "**Summary**: Laws of Motion",
-          "speech": "In summary, Newton's laws explain inertia, force relationships, and action-reaction pairs that govern all movement.",
+          "text": "**Photosynthesis Recap**",
+          "speech": "Plants use sunlight, water, and carbon dioxide to make sugar for food and release oxygen for us to breathe. It's the foundation of life on Earth.",
           "tts_engine": "google",
           "voice_role": "assistant",
-          "duration_ms": 3000
+          "duration_ms": 3000,
+          "visual_description": "Earth with plants and animals living in harmony."
         }
       ],
       "followup_questions": [
         {
-          "question": "What happens if we remove friction from Earth?",
-          "speech": "What would happen if friction disappeared completely from our world tomorrow?"
+          "question": "What happens if a plant gets no sunlight?",
+          "speech": "What would happen to a plant if it never received any sunlight at all?"
         },
         {
-          "question": "Does mass change on the Moon?",
-          "speech": "Does your mass change if you go to the Moon, or just your weight?"
+          "question": "Why is oxygen important for humans?",
+          "speech": "Why is the oxygen produced by plants so important for humans and animals?"
         },
         {
-          "question": "How do rockets work in space?",
-          "speech": "Since there is no air in space, how do rockets push themselves forward?"
+          "question": "Where does the plant get carbon dioxide?",
+          "speech": "How exactly do plants pull carbon dioxide out of the air?"
         }
       ]
     }
   ],
-  "session_theme": "Newton's Laws of Motion Explained",
-  "video_search_query": "Newton's Laws of Motion explained for kids",
+  "session_theme": "The Magic of Plant Photosynthesis",
+  "video_search_query": "photosynthesis explained for kids",
   "preferred_channels": [
-    "Physics Wallah",
-    "Khan Academy India"
+    "Khan Academy India",
+    "Physics Wallah"
   ]
 }

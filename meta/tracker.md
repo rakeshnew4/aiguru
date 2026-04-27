@@ -5,6 +5,27 @@
 
 ---
 
+## 2026-04-28 (session 2)
+
+**Asked:** When animations disabled in BB settings, SVG animations still appear. Add credit cost info on animations toggle. Fix controlled from Android side.
+**Root cause:** `bb_animations_enabled` flag is received in `chat.py` (request model line 86) and sent from Android, but was **never passed** into the SVG rendering pipeline. `get_titles()` in `image_search_titles.py` called `build_animated_svg(shapes)` and `build_animated_svg(elems_json)` unconditionally, ignoring the flag.
+**Changed:**
+- `server/app/utils/svg_builder.py`:
+  - Added `import re`
+  - Added `_strip_animations(html: str) -> str`: strips `<animate>`, `<animateTransform>`, `<animateMotion>`, `<set>` SMIL tags via regex; replaces `opacity="0"` → `opacity="1"` so shapes are immediately visible
+  - Added `static: bool = False` param to `build_animated_svg()`: when `static=True`, post-processes output through `_strip_animations()`
+- `server/app/api/image_search_titles.py`:
+  - Added `animations_enabled: bool = True` param to `get_titles()` signature
+  - Line ~562 (SMIL fallback path): `build_animated_svg(shapes)` → `build_animated_svg(shapes, static=not animations_enabled)`
+  - Line ~595 (legacy svg_elements path): `build_animated_svg(elems_json)` → `build_animated_svg(elems_json, static=not animations_enabled)`
+- `server/app/api/chat.py` line ~1211: added `animations_enabled=req.bb_animations_enabled is not False` to `get_titles()` call
+- `app/.../BlackboardActivity.kt`:
+  - `showPreSessionDialog()` (~line 1674): changed label `"🎨  Animated diagrams"` → `"🎨  Animated diagrams  · uses extra credits"`; added `.setMessage("💡 Animated diagrams bring lessons to life but use more AI credits per session. Disable to save credits.")`
+  - `showSettingsDialog()` (~line 1698): same label update `"🎨  Animated diagrams  · uses extra credits"`
+**Key facts:** JS-engine diagrams (`build_js_diagram_html`) and LLM-SVG (`build_llm_svg`) still animate — this fix only covers the SMIL `build_animated_svg` paths (fallback + legacy). JS/LLM paths would need separate treatment if full static mode is desired. The `bb_animations_enabled` flag IS correctly sent by Android in `BBSessionConfig.toRequestMap()` (line 131-133).
+
+---
+
 ## 2026-04-28
 
 **Asked:** Fix Firestore "requires an index" error on daily questions feed; fix BB card showing only chat row (height); remove chat+BB session rows from left drawer (keep only Credits).

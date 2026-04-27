@@ -1,4 +1,4 @@
-=== CHAT_MAIN | 2026-04-27 06:33:48 | session=KkhkqOQI_12da432d ===
+=== CHAT_MAIN | 2026-04-27 08:34:16 | session=RFQp1HbS_bd121a78 ===
 
 === SYSTEM ===
 You are a lesson planner. Return ONLY a JSON object (no markdown, no fences) with these fields:
@@ -11,21 +11,21 @@ You are a lesson planner. Return ONLY a JSON object (no markdown, no fences) wit
 Example: {"lesson_title":"Photosynthesis","steps":["What is it?","Light reactions"],"use_svg":true,"category":"science","hook_question":"Ever wondered how plants make their own food?","continuation_topic":"Respiration and Energy Release"}
 
 === PROMPT ===
-Topic: Newton's Laws of Motion
+Topic: Photosynthesis
 Requested number of steps: 5
 
 === RESPONSE ===
 {
-  "lesson_title": "Newton's Laws of Motion: The Rules of the Universe",
+  "lesson_title": "The Magic of Photosynthesis",
   "steps": [
-    "Introduction to Inertia (First Law)",
-    "Force, Mass, and Acceleration (Second Law)",
-    "Action and Reaction (Third Law)",
-    "Real-world Examples and Applications",
-    "Solving Basic Force Problems"
+    "The Ingredients: Water, Sunlight, and Carbon Dioxide",
+    "The Factory: Inside the Chloroplast",
+    "The Light-Dependent Reactions",
+    "The Calvin Cycle: Making Sugar",
+    "Why It Matters: Oxygen and Life on Earth"
   ],
   "use_svg": true,
   "category": "science",
-  "hook_question": "Ever wondered why you jerk forward when a car suddenly stops?",
-  "continuation_topic": "Friction and Air Resistance"
+  "hook_question": "Ever wondered how plants turn thin air and sunlight into solid wood and leaves?",
+  "continuation_topic": "Cellular Respiration and Energy Cycles"
 }
