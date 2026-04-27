@@ -628,3 +628,20 @@ Note: BbInteractivePopup.kt loaded into context by linter. Updating android meta
 - BB planner (`_bb_plan()`) always called with empty images even when photo is attached
 - `sendBbChat()` uses `mode="normal"` (not "blackboard") for ask-bar questions — server handles as image_explain intent, which is correct for Q&A but not a BB-style lesson
 - ⚠️ Race condition: `encodeBbImage()` runs on raw Thread; if user presses send before encode finishes, `bbPendingImageBase64` is null → image silently not sent
+
+---
+
+## 2026-04-28 (session 6)
+
+**Asked:** 3 bugs: (1) Credits not allowing BB sessions when free quota exhausted — user sees "used all BB sessions" even with credits. (2) Followup question click (end of BB session) — TTS repeats but no spinner/visual feedback. (3) Videos from previous BB session persist into new BB session.
+
+**Fix 1 — Issue 1 (Android): Credits bypass client-side BB quota gate**
+- Root cause: `BlackboardQuotaValidator.check()` (→ `PlanEnforcer.checkQuestionsQuota()`) returns `allowed=false` when `bbSessionsToday >= limit` without ever consulting credit balance. The server correctly falls back to credits, but the client blocks the request before it reaches the server.
+- `app/.../BlackboardActivity.kt` — lines ~517–527: when `check.allowed == false` and `check.limitType == LimitType.BB_SESSIONS`, now reads `user_credits/{uid}.balance` from Firestore. If `balance > 0`, proceeds to `showPreSessionDialog` (server is the final authority). If balance == 0 (or Firestore unavailable, optimistic allow), proceeds normally. Only shows upgrade error when credits confirmed at 0.
+
+**Fix 2 — Issue 2 (Android): Followup question visual feedback**
+- `app/.../BlackboardActivity.kt` — `showFollowupQuestionsCard()`, `card.setOnClickListener`: on click, immediately dim all followup cards to 0.4α (isEnabled=false) and swap the tapped card's arrow `→` to `⏳`. Card stays at 1α so user can see which one they tapped.
+
+**Fix 3 — Issue 3 (Android): Video section persistence between inline sessions**
+- `app/.../BlackboardActivity.kt` — `showRelatedVideosSection()`: added `tag = "bb_videos"` to the video section LinearLayout so it can be found and removed.
+- `app/.../BlackboardActivity.kt` — `requestInlineBbLesson()`: before appending inline content, removes any existing `bb_videos` view from `stepsContainer`, removes `bb_followups` card from `boardLayout`, and calls `collectedClips.clear()` so the new inline lesson gets a fresh video slate.

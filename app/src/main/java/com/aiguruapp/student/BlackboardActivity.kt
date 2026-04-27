@@ -516,6 +516,51 @@ class BlackboardActivity : AppCompatActivity() {
 
                             val check = BlackboardQuotaValidator.check(cachedMetadata, limits)
                             if (!check.allowed) {
+                                // If the block is specifically the daily BB session cap, check whether the
+                                // user has credits — if so the server will allow and deduct, so let them through.
+                                if (check.limitType == com.aiguruapp.student.config.PlanEnforcer.LimitType.BB_SESSIONS && userId != null) {
+                                    com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                                        .collection("user_credits").document(userId)
+                                        .get()
+                                        .addOnSuccessListener { creditDoc ->
+                                            val creditBalance = creditDoc.getLong("balance")?.toInt() ?: 0
+                                            if (creditBalance > 0) {
+                                                // Has credits — server is the final authority; allow the session.
+                                                showPreSessionDialog {
+                                                    generateSteps(
+                                                        message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
+                                                        messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
+                                                        userId         = userId,
+                                                        conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
+                                                        recordSession  = true,
+                                                        imageBase64    = intent.getStringExtra(EXTRA_IMAGE_BASE64)
+                                                    )
+                                                }
+                                            } else {
+                                                loadingGroup.visibility = android.view.View.GONE
+                                                loadingText.text = check.upgradeMessage
+                                                loadingText.visibility = android.view.View.VISIBLE
+                                                android.widget.Toast.makeText(this@BlackboardActivity, check.upgradeMessage, android.widget.Toast.LENGTH_LONG).show()
+                                                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                                    startActivity(android.content.Intent(this@BlackboardActivity, SubscriptionActivity::class.java))
+                                                }, 2000)
+                                            }
+                                        }
+                                        .addOnFailureListener {
+                                            // Can't read credits — optimistically allow; server is the final authority.
+                                            showPreSessionDialog {
+                                                generateSteps(
+                                                    message        = intent.getStringExtra(EXTRA_MESSAGE) ?: "",
+                                                    messageId      = intent.getStringExtra(EXTRA_MESSAGE_ID),
+                                                    userId         = userId,
+                                                    conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
+                                                    recordSession  = true,
+                                                    imageBase64    = intent.getStringExtra(EXTRA_IMAGE_BASE64)
+                                                )
+                                            }
+                                        }
+                                    return@runOnUiThread
+                                }
                                 loadingGroup.visibility = android.view.View.GONE
                                 loadingText.text = check.upgradeMessage
                                 loadingText.visibility = android.view.View.VISIBLE
@@ -1615,6 +1660,7 @@ class BlackboardActivity : AppCompatActivity() {
         val dp = resources.displayMetrics.density
 
         val section = LinearLayout(this).apply {
+            tag = "bb_videos"
             orientation = LinearLayout.VERTICAL
             setPadding((16 * dp).toInt(), (20 * dp).toInt(), (16 * dp).toInt(), (12 * dp).toInt())
             layoutParams = LinearLayout.LayoutParams(
@@ -4076,6 +4122,12 @@ class BlackboardActivity : AppCompatActivity() {
         val board = boardLayout ?: return
         val caveat = ResourcesCompat.getFont(this, R.font.kalam)
 
+        // Remove leftover video section and followup card from the previous lesson so they
+        // don't bleed into this inline session's content.
+        stepsContainer.findViewWithTag<View?>("bb_videos")?.let { stepsContainer.removeView(it) }
+        board.findViewWithTag<View?>("bb_followups")?.let { board.removeView(it) }
+        collectedClips.clear()
+
         // Stop current audio so the incoming lesson doesn't compete
         aiTtsEngine.stop()
         typeAnimator?.cancel()
@@ -4404,6 +4456,17 @@ class BlackboardActivity : AppCompatActivity() {
                 typeface = Typeface.create(caveat, Typeface.BOLD)
             })
             card.setOnClickListener {
+                // Immediately disable all followup cards so there's no double-tap
+                (board.findViewWithTag<android.widget.LinearLayout?>("bb_followups"))?.let { fc ->
+                    for (i in 0 until fc.childCount) {
+                        fc.getChildAt(i).isEnabled = false
+                        fc.getChildAt(i).alpha = 0.4f
+                    }
+                }
+                // Keep the tapped card fully visible and swap its arrow to a spinner
+                card.alpha = 1f
+                (card.getChildAt(card.childCount - 1) as? TextView)?.text = "⏳"
+
                 val speechContext = buildLessonSpeechContext()
                 val toRead = fq.speech.ifBlank { fq.question }
                 try {
