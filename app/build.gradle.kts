@@ -105,7 +105,7 @@ android {
 dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.json:json:20240303")
-    implementation("com.razorpay:checkout:1.6.43")  // 1.6.43+ ships 16 KB-aligned native libs
+    implementation("com.razorpay:checkout:1.6.41")
     implementation("com.google.firebase:firebase-auth:23.1.0")
     implementation("com.google.firebase:firebase-firestore:25.1.1")
     implementation("com.google.firebase:firebase-storage:21.1.0")

@@ -45,6 +45,7 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.aiguruapp.student.utils.WikimediaUtils
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.lifecycleScope
@@ -240,7 +241,7 @@ class BlackboardActivity : AppCompatActivity() {
         }
 
     private val bbGalleryLauncher =
-        registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
             if (uri != null) launchBbCrop(uri)
         }
 
@@ -3545,7 +3546,7 @@ class BlackboardActivity : AppCompatActivity() {
             .setItems(arrayOf("📷  Take Photo", "🖼️  Choose from Gallery")) { _, which ->
                 when (which) {
                     0 -> openBbCamera()
-                    1 -> bbGalleryLauncher.launch("image/*")
+                    1 -> bbGalleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 }
             }.show()
     }

@@ -46,6 +46,7 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.content.pm.PackageManager
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.yalantis.ucrop.UCrop
@@ -94,7 +95,7 @@ class HomeActivity : BaseActivity() {
             if (success && homeCameraImageUri != null) launchHomeCrop(homeCameraImageUri!!)
         }
     private val homeGalleryLauncher =
-        registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
             if (uri != null) launchHomeCrop(uri)
         }
     private val homeCropLauncher =
@@ -1460,7 +1461,7 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
             .setItems(arrayOf("📷  Take Photo", "🖼️  Choose from Gallery")) { _, which ->
                 when (which) {
                     0 -> openHomeCameraCapture()
-                    1 -> homeGalleryLauncher.launch("image/*")
+                    1 -> homeGalleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 }
             }.show()
     }

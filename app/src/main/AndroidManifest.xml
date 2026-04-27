@@ -3,18 +3,6 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- READ_EXTERNAL_STORAGE: needed only on API ≤ 32 for image picking -->
-    <uses-permission
-        android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="32" />
-    <!-- On API 33+ use READ_MEDIA_IMAGES instead -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <!-- WRITE_EXTERNAL_STORAGE: no longer granted above API 28 -->
-    <uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
-    <!-- MANAGE_EXTERNAL_STORAGE: Android 11+ for persistent app data directory -->
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- Camera is used to photograph questions; not required — users can type instead -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
