@@ -107,19 +107,53 @@
 ---
 
 ## api/quiz.py
-**Path:** `server/app/api/quiz.py` | Lines: ?
+**Path:** `server/app/api/quiz.py` | Lines: ~320
 
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
-| `generate_quiz()` | ? | Generates quiz via quiz_service, saves to Firestore |
-| `submit_quiz()` | ? | Loads quiz from Firestore, evaluates submission |
+| `generate_quiz()` | 55–118 | POST /quiz/generate — tracks usage, schedules bg indexing if context_text sent, calls quiz_service |
+| `_bg_index_chapter()` | 38–44 | async helper: calls chapter_index_service.index_chapter, swallows errors |
+| `index_chapter()` | 150–183 | POST /quiz/index-chapter — dedup check → bg ES indexing; returns scheduled/already_indexed |
+| `index_status()` | 188–194 | GET /quiz/index-status?chapter_id=… — returns {indexed: bool} |
+| `submit_quiz()` | 200–237 | POST /quiz/submit — loads from Firestore, evaluates MCQ/fill/short-answer |
+| `IndexChapterRequest` | 123–127 | Pydantic model: chapter_id, chapter_title, subject, text |
+| `IndexChapterResponse` | 129–133 | Pydantic model: chapter_id, already_indexed, scheduled, message |
 
 ---
 
-## services/quiz_service.py | Lines: ?
+## services/quiz_service.py
+**Path:** `server/app/services/quiz_service.py` | Lines: ~235
+
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
-| (unread) | ? | — |
+| `QUIZ_SYSTEM_PROMPT` | 32 | System prompt for quiz LLM calls |
+| `_build_prompt()` | 35–109 | Builds LLM prompt with type instructions + context_text section |
+| `_extract_json()` | 114–117 | Strips markdown fences, parses JSON from LLM output |
+| `_parse_question()` | 120–152 | Converts raw dict to typed question model; MCQ fallback if options empty |
+| `generate_quiz()` | 157–235 | Main entry: 1) Redis cache check 2) ES context retrieval 3) LLM call 3 retries |
+| ES context injection | 182–192 | Calls chapter_index_service.is_indexed + retrieve_context; ES beats context_text |
+
+---
+
+## services/chapter_index_service.py  ← NEW (Apr 2026)
+**Path:** `server/app/services/chapter_index_service.py` | Lines: ~240
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `ES_INDEX` | 34 | `"chapter_segments"` — separate from `yt_video_segments` |
+| `CHUNK_SIZE_WORDS` | 35 | 280 words per chunk target |
+| `TOP_K_CHUNKS` | 38 | 6 chunks returned per retrieval |
+| `USAGE_WARM_THRESHOLD` | 40 | Background-index triggers after 3 requests |
+| `_get_es()` | 52–57 | Lazy AsyncElasticsearch singleton |
+| `_get_vertex_model()` | 73–89 | Lazy Vertex AI TextEmbeddingModel (text-embedding-005, 768 dims) |
+| `_embed_texts()` | 97–99 | Async wrapper: runs _embed_batch_sync in executor |
+| `_ensure_index()` | 103–130 | Creates ES index with dense_vector mapping if absent |
+| `is_indexed()` | 134–153 | Redis fast-path → ES count fallback; sets Redis flag on ES hit |
+| `track_usage()` | 156–163 | Increments Redis counter ch_usage:{chapter_id}, returns new count |
+| `_is_content_rich()` | 167–178 | Filters chunks: keeps definitions/concepts/examples (50-70% cost saving) |
+| `_chunk_text()` | 181–212 | Paragraph-aware chunking with CHUNK_OVERLAP_WORDS=40 overlap |
+| `index_chapter()` | 216–248 | Dedup → chunk → embed → ES bulk upsert → Redis flag |
+| `retrieve_context()` | 252–278 | kNN search → score threshold filter → sort by chunk_index → concat |
 
 ---
 

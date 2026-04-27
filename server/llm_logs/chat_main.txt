@@ -1,4 +1,4 @@
-=== CHAT_MAIN | 2026-04-26 18:15:47 | session=KkhkqOQI_0d0871ee ===
+=== CHAT_MAIN | 2026-04-27 06:33:48 | session=KkhkqOQI_12da432d ===
 
 === SYSTEM ===
 You are a lesson planner. Return ONLY a JSON object (no markdown, no fences) with these fields:
@@ -11,21 +11,21 @@ You are a lesson planner. Return ONLY a JSON object (no markdown, no fences) wit
 Example: {"lesson_title":"Photosynthesis","steps":["What is it?","Light reactions"],"use_svg":true,"category":"science","hook_question":"Ever wondered how plants make their own food?","continuation_topic":"Respiration and Energy Release"}
 
 === PROMPT ===
-Topic: How do plants 'know' which direction is up without having a brain?
+Topic: Newton's Laws of Motion
 Requested number of steps: 5
 
 === RESPONSE ===
 {
-"lesson_title": "How Plants Sense Gravity",
-"steps": [
-"The mystery of root and shoot direction",
-"Statoliths: The plant's internal compass",
-"The role of starch-filled amyloplasts",
-"Auxin redistribution and growth response",
-"Positive vs. negative gravitropism"
-],
-"use_svg": true,
-"category": "science",
-"hook_question": "Ever wondered how a plant knows to grow its roots down and its stems up, even in total darkness?",
-"continuation_topic": "Phototropism and Light Sensing"
+  "lesson_title": "Newton's Laws of Motion: The Rules of the Universe",
+  "steps": [
+    "Introduction to Inertia (First Law)",
+    "Force, Mass, and Acceleration (Second Law)",
+    "Action and Reaction (Third Law)",
+    "Real-world Examples and Applications",
+    "Solving Basic Force Problems"
+  ],
+  "use_svg": true,
+  "category": "science",
+  "hook_question": "Ever wondered why you jerk forward when a car suddenly stops?",
+  "continuation_topic": "Friction and Air Resistance"
 }

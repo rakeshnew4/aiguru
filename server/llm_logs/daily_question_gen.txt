@@ -1,11 +1,11 @@
-=== DAILY_QUESTION_GEN | 2026-04-27 05:21:17 | session=none ===
+=== DAILY_QUESTION_GEN | 2026-04-27 06:33:28 | session=none ===
 
 === PROMPT ===
 Generate exactly 3 engaging daily learning questions for a student.
 
-Student's top subjects: Science, Math, History
-Recent topics studied: basic concepts
-Topics already used today (AVOID these): Chemistry, Base Systems, Ancient Architecture, Physics, Renaissance, Arithmetic, Technological History, Number Theory, Biology, Astronomy
+Student's top subjects: General, Biology, Neuroscience
+Recent topics studied: Explain Heart Pumping, How do birds navigate thousands of miles without a map or GPS?, Ohm's Law, Bioluminescence, What is aero dynamic force?, Why do some atoms glow when they are excited by energy?, Cognitive Science, Why do some deep-sea creatures create their own light in total darkness?, Why do leaves change color before falling in autumn?, DNA
+Topics already used today (AVOID these): Neural Signaling, Cardiovascular System, Animal Navigation, Electromagnetism, Marine Adaptation, Neuroplasticity, Memory Encoding, Unihemispheric Sleep, Sensory Evolution, Genetics
 
 Rules:
 - Each question must be thought-provoking and curiosity-driven (not "what is X")
@@ -26,7 +26,25 @@ hook: one-line real-world curiosity fact related to the question (under 12 words
 
 === RESPONSE ===
 [
-  {"question": "Why do some historical empires collapse while others endure for centuries?", "subject": "History", "topic": "Political Science", "difficulty": 1, "hook": "The Roman Empire lasted over 1,000 years."},
-  {"question": "How does the geometry of a spider web maximize its structural strength?", "subject": "Math", "topic": "Geometry", "difficulty": 2, "hook": "Spider silk is stronger than steel by weight."},
-  {"question": "What would happen to Earth's climate if the ocean currents suddenly stopped?", "subject": "Science", "topic": "Earth Science", "difficulty": 3, "hook": "Ocean currents act like a global conveyor belt."}
+  {
+    "question": "Why do some trees drop all their leaves instead of staying green year-round?",
+    "subject": "Biology",
+    "topic": "Plant Physiology",
+    "difficulty": 1,
+    "hook": "Deciduous trees save energy by shedding leaves before winter arrives."
+  },
+  {
+    "question": "How does the brain decide which memories to keep and which to discard?",
+    "subject": "Neuroscience",
+    "topic": "Cognitive Science",
+    "difficulty": 2,
+    "hook": "Your brain constantly edits your life story to prioritize important details."
+  },
+  {
+    "question": "What would happen to cellular function if DNA suddenly stopped replicating?",
+    "subject": "Biology",
+    "topic": "Cell Biology",
+    "difficulty": 3,
+    "hook": "DNA replication is the fundamental process enabling all life to continue."
+  }
 ]

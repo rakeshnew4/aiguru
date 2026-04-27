@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-04-26 18:15:57 | session=KkhkqOQI_bc0c94c4 ===
+=== BB_MAIN | 2026-04-27 06:33:59 | session=KkhkqOQI_dd5f4d0c ===
 
 === SYSTEM ===
 You are a visual AI tutor. Return ONLY valid JSON — no text outside JSON.
@@ -16,7 +16,7 @@ FOLLOWUP_QUESTIONS: ONLY on the LAST step. Exactly 3 thought-provoking questions
 
 VIDEO SEARCH FIELDS: root-level only. session_theme = 3-8 words describing the topic (e.g. 'Photosynthesis light reactions'). video_search_query = specific educational YouTube query for the exact topic (e.g. 'photosynthesis explained for class 10 CBSE'). preferred_channels = 2-4 India-friendly educational channels relevant to the subject.
 
-FRAME TYPES: concept | memory | diagram | quiz_mcq  summary
+FRAME TYPES: concept | memory | diagram | summary
 
 DIAGRAM — set diagram_type + data (no svg_elements):
 PATH 1 (semantic engine): atom, solar_system, waveform_signal, triangle, polygon,
@@ -25,64 +25,63 @@ PATH 1 (semantic engine): atom, solar_system, waveform_signal, triangle, polygon
 PATH 2 (custom): heart, neuron, circuit, force diagram, apparatus, any organic shape
   → diagram_type="custom", data={"intent":"1 sentence: what to show"}, visual_description="same"
 
-FLOW: Step 1 frame 1 = HOOK (real-world curiosity Q, 1 line). Each step has ≥1 APPLY frame anchoring to real life. Second-to-last frame of each step = CURIOSITY BRIDGE forward question. Last step ends with quiz_mcq → summary AND includes 'followup_questions' (exactly 3 thought-provoking extensions).
-TIMING duration_ms: concept/memory/diagram 1500-2500; HOOK/APPLY/CURIOSITY 2000-2500; summary 2500-3000; quiz 2000.
+FLOW: Step 1 frame 1 = HOOK (real-world curiosity Q, 1 line). Each step has ≥1 APPLY frame anchoring to real life. Second-to-last frame of each step = CURIOSITY BRIDGE forward question. Last step ends with summary AND includes 'followup_questions' (exactly 3 thought-provoking extensions).
+TIMING duration_ms: concept/memory/diagram 1500-2500; HOOK/APPLY/CURIOSITY 2000-2500; summary 2500-3000.
 
 RULES:
-- 3-5 steps, 2-4 frames/step. Last step: quiz_mcq then summary (final). DO NOT include youtube_clip on any frame — videos surfaced separately at end.
+- 3-5 steps, 2-4 frames/step. Last step MUST end with summary (final frame). DO NOT include youtube_clip on any frame — videos surfaced separately at end.
 - Use ONE lesson-level video_search_query for the whole session, never per-step video searches.
 - Step 2 MUST have a diagram or populated image_description.
 - speech: ≤2 sentences ≤50 words. Conversational, calm. No openers ('Today we learn...', 'Hi class!'). TTS-safe: say 'squared' not '^2'.
 - speech language matches lang field (hi-IN→Hindi, te-IN→Telugu, en-US→English).
-- text: **bold** key terms, $$math$$, max 2 lines, always English.
+- text: **bold** Prefer only keyWords over sentences, $$math$$, max 2 lines, always English.
 - lang: same BCP-47 tag on all steps from OUTPUT LANGUAGE instruction.
 - diagram only when visual adds clarity.
-- quiz_mcq: 4 options, only 1 correct (quiz_correct_index 0-3), use misconceptions as distractors.
-- quiz_typed/voice: quiz_model_answer (1 sentence), quiz_keywords (3-6 essential terms).
 - image_description: educational Wikimedia Commons search phrase — MUST include the subject/topic name so results are safe and relevant.
   GOOD: 'mitosis cell division diagram', 'Newton second law force diagram', 'water cycle evaporation condensation'.
   BAD: 'diagram', 'cycle', 'force', 'structure' (too vague — risks irrelevant or unsafe images). NEVER null or omit.
   image_show_confidencescore: 0.85-0.95 concrete visuals, 0.60-0.80 named concepts, 0.10-0.30 abstract, 0.0 quiz/memory/summary.
-TTS every frame: first frame→android/teacher; concept/memory/diagram→gemini/teacher; summary→google/assistant; quiz→android/quiz.
+TTS every frame: first frame→android/teacher; concept/memory/diagram→gemini/teacher; summary→google/assistant.
 
 
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: How do plants 'know' which direction is up without having a brain?
-Lesson title: How Plants Sense Gravity
+Student's EXACT question: Topic: Newton's Laws of Motion
+Lesson title: Newton's Laws of Motion: The Rules of the Universe
 Category: science
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
 Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- The mystery of root and shoot direction
-- Statoliths: The plant's internal compass
-- The role of starch-filled amyloplasts
-- Auxin redistribution and growth response
-- Positive vs. negative gravitropism
+- Introduction to Inertia (First Law)
+- Force, Mass, and Acceleration (Second Law)
+- Action and Reaction (Third Law)
+- Real-world Examples and Applications
+- Solving Basic Force Problems
 
 This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants to understand the biological mechanism that allows plants to detect gravity and grow in the correct direction without a nervous system.
-Question type: how_to
+What the student specifically wants: The student wants an engaging introduction to the fundamental concepts of Newton's Laws of Motion suitable for a 5th-grade level.
+Question type: conceptual
 Student level: Class 5
-Topic type: science_biology | Scope: medium
-Key concepts to cover (ALL of these): gravitropism, statoliths, amyloplasts, auxin
+Topic type: science_physics | Scope: simple
+Key concepts to cover (ALL of these): Inertia, Force, Motion
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-DIAGRAM RECOMMENDATION: This topic likely needs a "comparison" diagram (confidence 77%). Use diagram_type="comparison" for your diagram frame(s).
+DIAGRAM RECOMMENDATION: This topic likely needs a "labeled_diagram" diagram (confidence 98%). Use diagram_type="labeled_diagram" for your diagram frame(s).
 
-SUBJECT GUIDANCE (Science — Biology):
-• Use cycle for life cycles/processes (mitosis, water cycle, photosynthesis).
-• Use PATH 2 (diagram_type=custom) for anatomy cross-sections (heart, leaf, kidney).
-• Concept frames: function → structure → real-body example.
-• Quiz: quiz_order (correct biological sequence) or quiz_mcq.
+SUBJECT GUIDANCE (Science — Physics):
+• Use waveform_signal for waves/sound/light; coordinate_plane for motion graphs.
+• Use PATH 2 (diagram_type=custom) for force diagrams, ray optics, circuit layouts.
+• Concept frames: state law/formula → physical meaning → real-world application.
+• Include units in every formula (e.g. m/s², Newton, Joule).
+• End with a summary frame.
 
 ---END LESSON BRIEF---
 
@@ -92,183 +91,187 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
 {
   "steps": [
     {
-      "title": "Plant Gravity Mystery",
+      "title": "Newton's First Law: Inertia",
       "lang": "en-US",
-      "image_description": "seedling growing roots down and shoot up",
-      "image_show_confidencescore": 0.85,
+      "image_description": "Newton first law inertia ball at rest diagram",
+      "image_show_confidencescore": 0.9,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "Plants use **gravitropism** to grow.",
-          "speech": "Plants don't have brains, but they use a process called gravitropism to sense gravity and direct their growth.",
+          "text": "**Inertia**: Objects stay as they are.",
+          "speech": "An object at rest stays at rest, and an object in motion stays in motion unless a force changes it.",
           "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
           "frame_type": "diagram",
-          "text": "Roots vs. Shoots",
-          "speech": "Even in the dark, roots always turn down into soil, while shoots push upward toward the light.",
+          "text": "**Inertia** visualized",
+          "speech": "Imagine a soccer ball on the grass. It will sit there forever unless someone kicks it.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500,
+          "diagram_type": "custom",
+          "diagram_data": {
+            "intent": "A ball sitting perfectly still on a flat surface representing inertia."
+          },
+          "visual_description": "A stationary soccer ball on flat grass."
+        },
+        {
+          "frame_type": "concept",
+          "text": "Why does a car **jerk**?",
+          "speech": "Have you ever felt your body jerk when a car suddenly stops? That is inertia in action.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        }
+      ]
+    },
+    {
+      "title": "Newton's Second Law: F=ma",
+      "lang": "en-US",
+      "image_description": "Newton second law force mass acceleration diagram",
+      "image_show_confidencescore": 0.95,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "$$Force = Mass \\times Acceleration$$",
+          "speech": "Force equals mass times acceleration. The more mass an object has, the more force you need to move it.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
+          "frame_type": "diagram",
+          "text": "**F=ma** relationship",
+          "speech": "Pushing an empty shopping cart is easy because it has little mass. A full cart needs more force.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500,
           "diagram_type": "comparison",
           "diagram_data": {
-            "left": "Roots grow down",
-            "right": "Shoots grow up"
+            "left_label": "Empty Cart",
+            "right_label": "Full Cart"
           },
-          "visual_description": "A split diagram showing a root growing downwards and a stem growing upwards."
+          "visual_description": "Comparison between an empty shopping cart and a heavy, full one."
         },
         {
           "frame_type": "concept",
-          "text": "How do they sense it?",
-          "speech": "How exactly do they sense which way is down without eyes or nerves? Let's look inside their cells.",
+          "text": "Acceleration units: **m/s²**",
+          "speech": "Acceleration is measured in meters per second squared, showing how fast speed changes.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 2000
+          "duration_ms": 2500
         }
       ]
     },
     {
-      "title": "Statoliths: Plant Compass",
+      "title": "Newton's Third Law: Pairs",
       "lang": "en-US",
-      "image_description": "plant root tip cell diagram",
-      "image_show_confidencescore": 0.8,
+      "image_description": "Newton third law action reaction rocket launch",
+      "image_show_confidencescore": 0.9,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "Specialized **statoliths** cells",
-          "speech": "Inside the root tips, plants have specialized cells containing tiny, heavy structures called statoliths.",
+          "text": "**Action-Reaction** Pairs",
+          "speech": "For every action, there is an equal and opposite reaction. They always come in pairs.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
           "frame_type": "diagram",
-          "text": "Statoliths settle downward",
-          "speech": "Think of statoliths like a bubble in a carpenter's level; they physically settle to the bottom of the cell due to gravity.",
+          "text": "**Rocket** propulsion",
+          "speech": "A rocket pushes gas down, and the gas pushes the rocket up with equal force.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500,
           "diagram_type": "custom",
           "diagram_data": {
-            "intent": "Show heavy particles settling at the bottom of a plant cell"
+            "intent": "Arrows showing gas pushing down and rocket moving up."
           },
-          "visual_description": "A plant cell showing heavy particles (statoliths) resting at the bottom."
+          "visual_description": "A diagram of a rocket launch showing opposite force vectors."
         },
         {
           "frame_type": "concept",
-          "text": "Sensing the position",
-          "speech": "When the plant is tilted, these statoliths roll to the new bottom, telling the plant which way gravity is pulling.",
+          "text": "Walking on **ground**",
+          "speech": "When you walk, you push the ground backward, and the ground pushes you forward.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 2000
+          "duration_ms": 2500
         }
       ]
     },
     {
-      "title": "Amyloplasts and Starch",
+      "title": "Real-world Applications",
       "lang": "en-US",
-      "image_description": "amyloplast starch grains inside plant cell",
-      "image_show_confidencescore": 0.8,
+      "image_description": "Seatbelt safety inertia diagram",
+      "image_show_confidencescore": 0.85,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "**Amyloplasts** store starch",
-          "speech": "The statoliths are actually dense organelles called amyloplasts, which are packed full of heavy starch grains.",
+          "text": "Why wear **seatbelts**?",
+          "speech": "Seatbelts are a perfect example of Newton's first law, keeping you safe when the car stops.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
           "frame_type": "diagram",
-          "text": "Heavy starch grains",
-          "speech": "Because starch is dense, gravity pulls these amyloplasts downward, triggering a signal to the rest of the plant.",
+          "text": "Forces in **sports**",
+          "speech": "In baseball, the force of the bat on the ball changes its speed and direction.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500,
-          "diagram_type": "custom",
+          "diagram_type": "force diagram",
           "diagram_data": {
-            "intent": "Diagram showing starch grains inside amyloplasts"
+            "intent": "Arrow showing force of bat hitting a baseball."
           },
-          "visual_description": "A diagram of an amyloplast containing dense starch grains."
+          "visual_description": "A baseball bat striking a ball with an arrow indicating force."
         },
         {
           "frame_type": "concept",
-          "text": "Connecting to growth",
-          "speech": "Once these amyloplasts settle, the plant knows how to orient its growth. But how does that trigger movement?",
+          "text": "Nature's **motion**",
+          "speech": "From birds flying to swimming fish, Newton's laws describe how everything moves.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 2000
+          "duration_ms": 2500
         }
       ]
     },
     {
-      "title": "Auxin Growth Response",
+      "title": "Solving Problems & Summary",
       "lang": "en-US",
-      "image_description": "auxin hormone distribution in plant root",
-      "image_show_confidencescore": 0.75,
+      "image_description": "Force mass acceleration calculation concept",
+      "image_show_confidencescore": 0.7,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "**Auxin** hormone redistribution",
-          "speech": "The settling of amyloplasts causes a plant hormone called auxin to redistribute to one side of the root.",
+          "text": "Example: **F = 10kg * 2m/s²**",
+          "speech": "If you push a 10 kilogram box with 20 Newtons, it accelerates at 2 meters per second squared.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
           "frame_type": "diagram",
-          "text": "Uneven growth",
-          "speech": "High concentrations of auxin inhibit cell growth in roots, causing the other side to grow faster and curve the root downward.",
+          "text": "Equation **Triangle**",
+          "speech": "You can rearrange the formula to find mass or acceleration if you know the other two values.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500,
-          "diagram_type": "custom",
+          "diagram_type": "triangle",
           "diagram_data": {
-            "intent": "Diagram showing uneven growth caused by auxin accumulation"
+            "top": "Force",
+            "bottom_left": "Mass",
+            "bottom_right": "Acceleration"
           },
-          "visual_description": "A root bending due to uneven cell growth on one side."
-        },
-        {
-          "frame_type": "concept",
-          "text": "The magic of auxin",
-          "speech": "This uneven growth is exactly how the plant physically bends to follow gravity's pull.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2000
-        }
-      ]
-    },
-    {
-      "title": "Gravitropism Summary",
-      "lang": "en-US",
-      "image_description": "positive and negative gravitropism diagram",
-      "image_show_confidencescore": 0.8,
-      "frames": [
-        {
-          "frame_type": "concept",
-          "text": "Positive vs Negative",
-          "speech": "Roots show positive gravitropism by growing toward gravity, while stems show negative gravitropism by growing away from it.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
-        {
-          "frame_type": "quiz_mcq",
-          "text": "Which organelle senses gravity?",
-          "speech": "Which of these organelles acts as the plant's internal compass by settling due to gravity?",
-          "tts_engine": "android",
-          "voice_role": "teacher",
-          "duration_ms": 2000,
-          "diagram_type": "",
-          "diagram_data": {},
-          "visual_description": "Multiple choice question about gravity sensing organelles."
+          "visual_description": "A triangle divided into three parts showing F, M, and A for calculation."
         },
         {
           "frame_type": "summary",
-          "text": "Lesson Summary",
-          "speech": "Plants sense gravity using dense amyloplasts that settle downward, triggering auxin redistribution to control growth direction. Roots grow with gravity, while shoots grow against it.",
+          "text": "**Summary**: Laws of Motion",
+          "speech": "In summary, Newton's laws explain inertia, force relationships, and action-reaction pairs that govern all movement.",
           "tts_engine": "google",
           "voice_role": "assistant",
           "duration_ms": 3000
@@ -276,24 +279,24 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ],
       "followup_questions": [
         {
-          "question": "Do plants grown in space show gravitropism?",
-          "speech": "Do plants grown in outer space still show gravitropism, or do they grow randomly?"
+          "question": "What happens if we remove friction from Earth?",
+          "speech": "What would happen if friction disappeared completely from our world tomorrow?"
         },
         {
-          "question": "Can light override the gravity signal?",
-          "speech": "Can a strong light source trick a plant into ignoring the gravity signal?"
+          "question": "Does mass change on the Moon?",
+          "speech": "Does your mass change if you go to the Moon, or just your weight?"
         },
         {
-          "question": "What happens if amyloplasts are removed?",
-          "speech": "What would happen to a plant if it could no longer produce starch-filled amyloplasts?"
+          "question": "How do rockets work in space?",
+          "speech": "Since there is no air in space, how do rockets push themselves forward?"
         }
-      ],
-      "session_theme": "How plants sense gravity via gravitropism",
-      "video_search_query": "how do plants sense gravity explained",
-      "preferred_channels": [
-        "Khan Academy",
-        "Physics Wallah"
       ]
     }
+  ],
+  "session_theme": "Newton's Laws of Motion Explained",
+  "video_search_query": "Newton's Laws of Motion explained for kids",
+  "preferred_channels": [
+    "Physics Wallah",
+    "Khan Academy India"
   ]
 }

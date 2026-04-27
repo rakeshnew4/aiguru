@@ -7,6 +7,19 @@
 
 ## 2026-04-27
 
+**Asked:** Show quota (chat left, BB sessions left, AI voice) on BB button; remove credits chip from home screen (drawer only); fix credit deduction bug (10k tokens → only 2 credits).
+**Root cause:** `record_tokens()` was only called once (for the main LLM response). BB planner + intent classifier + diagram enrichment (2x) each call `generate_response()` but their tokens were never charged. LiteLLM dashboard showed 10k total but only 200 tokens (the last small call) were deducted → 2 credits.
+**Changed:**
+- `server/app/services/llm_service.py` — `generate_response()`: after every successful LLM call, if `uid` is provided and `total_tokens > 0`, spawn a daemon thread to call `record_tokens()`. This auto-charges credits for ALL LLM calls (planner, enrichment, intent classifier, main) not just the final chat response.
+- `server/app/api/chat.py` — removed the explicit `record_tokens()` + `run_in_executor()` call at the end of `chat_stream()` (was step 8, lines ~1318-1325). Now handled automatically inside `generate_response()` to avoid double-charging.
+- `app/.../res/layout/activity_home.xml` — replaced single `bbQuotaPill` TextView with `homeQuotaContainer` LinearLayout containing 3 rows: `homeQuotaChatRow` (💬 Chat + `homeQuotaChatLeftText` + `homeQuotaChatBar` ProgressBar), `homeQuotaBbRow` (🎓 Blackboard + `homeQuotaBbLeftText` + `homeQuotaBbBar` ProgressBar), `homeQuotaVoiceRow` (🎙 AI Voice + `homeQuotaVoiceLeftText`, hidden when 0). Old `bbQuotaPill` kept as 0dp ghost for compat.
+- `app/.../res/layout/activity_home.xml` — `creditsChipText` shrunken to 0dp/gone permanently (credits shown in drawer only).
+- `app/.../HomeActivity.kt` — replaced `updateBbButtonPill()` with `updateHomeQuotaStrip(chatLeft, chatLimit, bbLeft, bbLimit, creditBalance, voiceCharsLeft)`: fills 3-row quota strip with color coding (green=ok, orange=low, red/gold=credits mode). Updated both call sites: `updateQuotaStripUI()` and `loadDailyChallenge()` coroutine.
+- `app/.../HomeActivity.kt` — `updateCreditsDisplay()` simplified: no longer updates `creditsChipText` (0dp now), only updates `drawerCreditsBalance`.
+**Key facts:** `generate_response()` now auto-records tokens via daemon thread for every call where uid is known. `enrich_diagram_data()` still doesn't get uid (future: pass uid through build_enrichment_tasks → get_titles chain for full coverage), but planner + classifier + main are now all charged.
+
+---
+
 **Asked:** Validate credits=1/100tokens flow, add daily free sessions display on BB button, show credits in drawer for BB+chat. Credits fallback: if free quota exhausted but credits>0, allow request.
 **Changed:**
 - `server/app/services/user_service.py` — `check_and_record_quota()`: when free quota exhausted, reads `user_credits.balance`; if >0 allows request (credits auto-deducted by `record_tokens`); if =0 blocks with descriptive message. Previously blocked immediately on quota limit.
@@ -461,3 +474,44 @@ Note: BbInteractivePopup.kt loaded into context by linter. Updating android meta
 **Changed:**
 - `meta/android_index.md` — major expansion: BlackboardActivity (full symbol table with onPause fix, TTS fields, launchers, image/chat functions), FullChatFragment (send flow, BB dialog, image handling), BbAiTtsEngine (scope/stop/destroy/race details), FirestoreManager (all task/chapter/BB cache functions + composite index warning), ChapterActivity (PDF setup + Firebase Storage download), TasksActivity, TeacherTasksActivity, SubjectActivity, StorageService, CloudBackupService. Architecture facts updated with task flow, PDF persistence, Firestore index rule.
 - No server files read this session — server_index.md unchanged
+
+---
+
+**Date:** 2026-04-27
+**Asked:** Implement Lazy + Warm Hybrid embedding pipeline for quiz generation (on-demand ES indexing, persistent cache, background warming).
+**Changed:**
+- `server/app/services/chapter_index_service.py` — NEW file: ES-backed chapter chunking/embedding/retrieval service. ES index `chapter_segments` (768-dim Vertex AI text-embedding-005). Smart chunking (paragraph-aware, 280-word windows, content-rich filter saves 50-70% embedding cost). Dedup via Redis `ch_indexed:{chapter_id}` + ES count fallback. Usage tracking via Redis `ch_usage:{chapter_id}`. `retrieve_context()` does kNN search with cosine similarity, score threshold 0.30, sorts by chunk_index.
+- `server/app/services/quiz_service.py` — `generate_quiz()` now checks `chapter_index_service.is_indexed()` before LLM call; if indexed, calls `retrieve_context()` and uses ES chunks as `effective_context` (beats caller-supplied `context_text`).
+- `server/app/api/quiz.py` — `generate_quiz` endpoint now uses FastAPI `BackgroundTasks`; tracks chapter usage on every request; schedules `_bg_index_chapter()` when `context_text` provided and chapter not yet indexed. Added `POST /quiz/index-chapter` (explicit warm trigger, idempotent), `GET /quiz/index-status` (check if indexed). Added `IndexChapterRequest` / `IndexChapterResponse` models.
+- `server/requirements.txt` — added `pypdf>=4.0.0` for PDF text extraction.
+**Key facts:**
+- Flow: request → track_usage → is_indexed? → YES: ES kNN → context → LLM / NO: LLM direct + bg indexing starts
+- Dedup: if `ch_indexed:{chapter_id}` Redis key exists → skip ES check entirely
+- Background warming: Android can call `POST /quiz/index-chapter` proactively after PDF load
+- ES index `chapter_segments` is separate from `yt_video_segments` (YT extractor)
+- Same Vertex AI SA + project (`ai-app-8ebd0`) as YT extractor; same embed model (`text-embedding-005`, 768 dims)
+- `pypdf` not yet installed in server venv — run `pip install pypdf` on server
+
+---
+
+**Date:** 2026-04-27
+**Asked:** Drawer credits confusing — clean it up so user can understand easily.
+**Changed:**
+- `app/src/main/res/layout/activity_home.xml` — renamed "💬 Credits" label → "💬 Chat messages" (it's a daily quota, not purchasable credits). Added divider + "BALANCE" section header before the ⭐ Credits row to visually separate daily quota from token balance. Changed subtitle "1 credit = 100 tokens · used by BB + Chat" → "Top up to unlock more sessions" (user-facing language).
+- `app/src/main/java/com/aiguruapp/student/HomeActivity.kt` — `updateQuotaStripUI()` line 342: `"$chatLeft credits"` → `"$chatLeft left"` (consistent format with BB row which also says "X left").
+**Key facts:**
+- Drawer now has two clear sections: "TODAY'S USAGE" (chat messages + BB sessions + voice) and "BALANCE" (⭐ Credits purchasable balance)
+- Chat value format is now "X left" / "Unlimited" — same as BB row
+- ⭐ Credits row subtitle is now plain English, no internal jargon
+
+---
+
+**Date:** 2026-04-27
+**Asked:** Remove redundant credits things from drawer.
+**Changed:**
+- `app/src/main/res/layout/activity_home.xml` — removed entire `drawerCreditsRow` block (⭐ Credits balance + "Top up" subtitle + BALANCE section label + divider). Credits balance is already shown as `creditsChipText` chip in the main screen toolbar — showing it again in the drawer was redundant.
+- `app/src/main/java/com/aiguruapp/student/HomeActivity.kt` — removed `drawerCreditsBalance.text = balance.toString()` line from `updateCreditsDisplay()`. Chip update for `creditsChipText` still intact.
+**Key facts:**
+- Drawer now shows ONLY: "TODAY'S USAGE" with 💬 Chat messages / 🎓 Blackboard sessions / 🎙 AI voice (if non-zero)
+- Credits balance lives only in the ⭐ chip in the main screen toolbar (tappable → SubscriptionActivity)
+- No dangling R.id references — grep confirmed zero matches for drawerCreditsRow / drawerCreditsBalance

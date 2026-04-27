@@ -80,20 +80,11 @@
             android:insetBottom="0dp"
             android:layout_marginEnd="8dp" />
 
-        <!-- Credits chip — updated by loadDailyChallenge() -->
+        <!-- Credits chip removed from home screen — balance shown in drawer only -->
         <TextView
             android:id="@+id/creditsChipText"
-            android:layout_width="wrap_content"
-            android:layout_height="28dp"
-            android:gravity="center"
-            android:text="⭐ 0"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:textColor="#FFD700"
-            android:background="@drawable/bg_badge_rounded"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
-            android:layout_marginEnd="6dp"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
             android:visibility="gone" />
 
         <!-- Plan badge — shown beside profile pic -->
@@ -315,19 +306,127 @@
 
                 </HorizontalScrollView>
 
-                <!-- Quota pill at bottom -->
+                <!-- Quota strip at bottom of BB card — shows free sessions + credits mode -->
+                <LinearLayout
+                    android:id="@+id/homeQuotaContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    android:layout_marginTop="8dp">
+
+                    <!-- Row: Chat messages -->
+                    <LinearLayout
+                        android:id="@+id/homeQuotaChatRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="5dp">
+
+                        <TextView
+                            android:layout_width="130dp"
+                            android:layout_height="wrap_content"
+                            android:text="💬 Chat messages"
+                            android:textSize="11sp"
+                            android:textColor="#FFFFFFCC" />
+
+                        <TextView
+                            android:id="@+id/homeQuotaChatLeftText"
+                            android:layout_width="48dp"
+                            android:layout_height="wrap_content"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            android:textColor="#AAFFCC"
+                            android:gravity="end" />
+
+                        <ProgressBar
+                            android:id="@+id/homeQuotaChatBar"
+                            style="?android:attr/progressBarStyleHorizontal"
+                            android:layout_width="0dp"
+                            android:layout_height="5dp"
+                            android:layout_weight="1"
+                            android:layout_marginStart="8dp"
+                            android:max="100"
+                            android:progress="100"
+                            android:progressTint="#64B5F6"
+                            android:progressBackgroundTint="#33FFFFFF" />
+
+                    </LinearLayout>
+
+                    <!-- Row: Blackboard sessions -->
+                    <LinearLayout
+                        android:id="@+id/homeQuotaBbRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="5dp">
+
+                        <TextView
+                            android:layout_width="130dp"
+                            android:layout_height="wrap_content"
+                            android:text="🎓 Blackboard"
+                            android:textSize="11sp"
+                            android:textColor="#FFFFFFCC" />
+
+                        <TextView
+                            android:id="@+id/homeQuotaBbLeftText"
+                            android:layout_width="48dp"
+                            android:layout_height="wrap_content"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            android:textColor="#AAFFCC"
+                            android:gravity="end" />
+
+                        <ProgressBar
+                            android:id="@+id/homeQuotaBbBar"
+                            style="?android:attr/progressBarStyleHorizontal"
+                            android:layout_width="0dp"
+                            android:layout_height="5dp"
+                            android:layout_weight="1"
+                            android:layout_marginStart="8dp"
+                            android:max="100"
+                            android:progress="100"
+                            android:progressTint="#81C784"
+                            android:progressBackgroundTint="#33FFFFFF" />
+
+                    </LinearLayout>
+
+                    <!-- Row: AI voice — hidden when 0 -->
+                    <LinearLayout
+                        android:id="@+id/homeQuotaVoiceRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:visibility="gone">
+
+                        <TextView
+                            android:layout_width="130dp"
+                            android:layout_height="wrap_content"
+                            android:text="🎙 AI Voice"
+                            android:textSize="11sp"
+                            android:textColor="#FFFFFFCC" />
+
+                        <TextView
+                            android:id="@+id/homeQuotaVoiceLeftText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            android:textColor="#FFD54F" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+                <!-- Kept for backward compat — logic now uses homeQuotaContainer -->
                 <TextView
                     android:id="@+id/bbQuotaPill"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:visibility="gone"
-                    android:textSize="11sp"
-                    android:textColor="#AAFFCC"
-                    android:background="@drawable/bg_badge_rounded"
-                    android:paddingStart="8dp"
-                    android:paddingEnd="8dp"
-                    android:paddingTop="3dp"
-                    android:paddingBottom="3dp" />
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:visibility="gone" />
 
                 <!-- Hidden fields for Kotlin compat -->
                 <TextView
@@ -972,7 +1071,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="💬 Credits"
+                        android:text="💬 Chat messages"
                         android:textSize="13sp"
                         android:textColor="@color/colorTextPrimary" />
 
@@ -1092,57 +1191,6 @@
                     android:progressBackgroundTint="@color/colorDivider"
                     android:max="100"
                     android:progress="0" />
-
-            </LinearLayout>
-
-            <!-- Credits balance row -->
-            <LinearLayout
-                android:id="@+id/drawerCreditsRow"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingStart="20dp"
-                android:paddingEnd="20dp"
-                android:paddingBottom="14dp"
-                android:paddingTop="2dp">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="⭐ Credits"
-                        android:textSize="13sp"
-                        android:textColor="@color/colorTextPrimary" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="1 credit = 100 tokens · used by BB + Chat"
-                        android:textSize="10sp"
-                        android:textColor="@color/colorTextSecondary"
-                        android:layout_marginTop="1dp" />
-
-                </LinearLayout>
-
-                <TextView
-                    android:id="@+id/drawerCreditsBalance"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:textColor="#FFD700"
-                    android:background="@drawable/bg_badge_rounded"
-                    android:paddingStart="10dp"
-                    android:paddingEnd="10dp"
-                    android:paddingTop="2dp"
-                    android:paddingBottom="2dp" />
 
             </LinearLayout>
 

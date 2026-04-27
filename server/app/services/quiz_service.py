@@ -25,6 +25,7 @@ from app.models.quiz import (
 )
 from app.services.llm_service import generate_response
 from app.services import cache_service
+from app.services import chapter_index_service
 # from app.services.prompt_service import QUIZ_SYSTEM_PROMPT
 
 logger = get_logger(__name__)
@@ -166,9 +167,14 @@ async def generate_quiz(
 ) -> Quiz:
     """
     Call the LLM to produce a structured quiz and return a validated Quiz object.
-    Results are Redis-cached by (chapter_id, difficulty, question_types, count)
-    so repeated identical requests skip the LLM call entirely.
-    Retries up to 2 times on parse failure before raising.
+
+    Context priority (highest → lowest):
+      1. ES-retrieved chunks (chapter already indexed → best quality)
+      2. context_text provided by caller (Android sent PDF text)
+      3. Chapter title only (fallback — always works instantly)
+
+    Results are Redis-cached by (chapter_id, difficulty, question_types, count).
+    Retries up to 3 times on parse failure before raising.
     """
     # Build a cache key using the request fingerprint
     cache_key_question = f"{chapter_id}:{difficulty.value}:{','.join(sorted(t.value for t in question_types))}:{count}"
@@ -190,7 +196,18 @@ async def generate_quiz(
         except Exception as cache_exc:
             logger.warning("Failed to deserialise cached quiz: %s", cache_exc)
 
-    prompt = _build_prompt(subject, chapter_title, difficulty, question_types, count, context_text)
+    # ── ES-backed context retrieval ───────────────────────────────────────────
+    es_context = ""
+    if await chapter_index_service.is_indexed(chapter_id):
+        query = f"{chapter_title} {difficulty.value} questions"
+        es_context = await chapter_index_service.retrieve_context(chapter_id, query)
+        if es_context:
+            logger.info("Quiz context from ES for chapter=%s (%d chars)", chapter_id, len(es_context))
+
+    # ES context beats caller-supplied text; caller text beats nothing
+    effective_context = es_context or context_text
+
+    prompt = _build_prompt(subject, chapter_title, difficulty, question_types, count, effective_context)
 
     last_error: Exception | None = None
     for attempt in range(3):

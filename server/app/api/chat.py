@@ -1316,13 +1316,8 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     )
                     + "\n\n"
                 )
-                # 8) Fire-and-forget: update token counters in Firestore
-                if req.user_id:
-                    asyncio.get_event_loop().run_in_executor(
-                        None,
-                        user_service.record_tokens,
-                        req.user_id, in_t, out_t, tot_t,
-                    )
+                # Token recording is now handled inside generate_response() for EVERY LLM call
+                # (planner, enrichment, intent classifier, main response) so no separate call here.
             else:
                 yield f"data: {json.dumps({'done': True, 'suggest_blackboard': suggest_bb})}\n\n"
 

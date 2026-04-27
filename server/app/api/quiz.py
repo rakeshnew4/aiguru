@@ -6,9 +6,10 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import List, Union
+from typing import List, Optional, Union
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from app.core.logger import get_logger
 from app.core.auth import require_auth, AuthUser
@@ -24,7 +25,13 @@ from app.models.quiz import (
     SubmitQuizRequest,
     UserStats,
 )
-from app.services import evaluation_service, gamification_service, quiz_service, user_service
+from app.services import (
+    chapter_index_service,
+    evaluation_service,
+    gamification_service,
+    quiz_service,
+    user_service,
+)
 from app.services.library_service import _get_db, update_chapter_progress
 from google.cloud import firestore
 import asyncio
@@ -33,14 +40,52 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/quiz", tags=["quiz"])
 
 
+# ── Background helpers ────────────────────────────────────────────────────────
+
+async def _bg_index_chapter(chapter_id: str, chapter_title: str, subject: str, text: str) -> None:
+    """Background task: embed + index chapter text in ES. Errors are swallowed."""
+    try:
+        ok = await chapter_index_service.index_chapter(chapter_id, chapter_title, subject, text)
+        logger.info("[bg_index] chapter=%s indexed=%s", chapter_id, ok)
+    except Exception as exc:
+        logger.warning("[bg_index] chapter=%s failed: %s", chapter_id, exc)
+
+
 # ── Generate ──────────────────────────────────────────────────────────────────
 
 @router.post("/generate", response_model=GenerateQuizResponse)
-async def generate_quiz(req: GenerateQuizRequest, auth: AuthUser = Depends(require_auth)):
+async def generate_quiz(
+    req: GenerateQuizRequest,
+    background_tasks: BackgroundTasks,
+    auth: AuthUser = Depends(require_auth),
+):
     """
     Generate a new quiz using the LLM and persist it in Firestore.
-    Returned quiz_id is used when submitting answers.
+
+    Lazy + Warm Hybrid embedding flow:
+      • Tracks chapter usage (drives background warming).
+      • If context_text provided and chapter not yet indexed →
+        schedules background ES indexing so future requests get
+        ES-enriched context automatically.
+      • quiz_service itself will use ES-retrieved context when available.
     """
+    # Usage tracking — increments Redis counter; triggers warming after threshold
+    usage = chapter_index_service.track_usage(req.chapter_id)
+    logger.info("Chapter %s usage count=%d", req.chapter_id, usage)
+
+    # If caller sent PDF text and chapter not yet indexed → index in background
+    if req.context_text.strip():
+        already = await chapter_index_service.is_indexed(req.chapter_id)
+        if not already:
+            background_tasks.add_task(
+                _bg_index_chapter,
+                req.chapter_id,
+                req.chapter_title,
+                req.subject,
+                req.context_text,
+            )
+            logger.info("Scheduled background indexing for chapter=%s", req.chapter_id)
+
     try:
         quiz = await quiz_service.generate_quiz(
             subject=req.subject,
@@ -59,8 +104,7 @@ async def generate_quiz(req: GenerateQuizRequest, auth: AuthUser = Depends(requi
         logger.exception("Unexpected error during quiz generation: %s", exc)
         raise HTTPException(status_code=500, detail="Quiz generation failed.")
 
-    # Persist quiz document — non-fatal: a Firestore/network failure must not
-    # prevent the user from receiving the generated quiz.
+    # Persist quiz document — non-fatal
     try:
         db = _get_db()
         await db.collection("quizzes").document(quiz.id).set(quiz.model_dump())
@@ -76,6 +120,71 @@ async def generate_quiz(req: GenerateQuizRequest, auth: AuthUser = Depends(requi
     )
 
     return GenerateQuizResponse(quiz_id=quiz.id, quiz=quiz)
+
+
+# ── Index chapter (explicit trigger) ─────────────────────────────────────────
+
+class IndexChapterRequest(BaseModel):
+    chapter_id: str
+    chapter_title: str
+    subject: str
+    text: str = Field(..., min_length=50, description="Full chapter text to embed and index")
+
+
+class IndexChapterResponse(BaseModel):
+    chapter_id: str
+    already_indexed: bool
+    scheduled: bool
+    message: str
+
+
+@router.post("/index-chapter", response_model=IndexChapterResponse)
+async def index_chapter(
+    req: IndexChapterRequest,
+    background_tasks: BackgroundTasks,
+    auth: AuthUser = Depends(require_auth),
+):
+    """
+    Explicitly trigger ES indexing for a chapter.
+
+    Android calls this after extracting PDF text to warm the index
+    for a chapter before the student requests a quiz.  If the chapter
+    is already indexed, returns immediately without re-embedding.
+    """
+    already = await chapter_index_service.is_indexed(req.chapter_id)
+    if already:
+        return IndexChapterResponse(
+            chapter_id=req.chapter_id,
+            already_indexed=True,
+            scheduled=False,
+            message="Chapter already indexed — quiz will use ES context.",
+        )
+
+    background_tasks.add_task(
+        _bg_index_chapter,
+        req.chapter_id,
+        req.chapter_title,
+        req.subject,
+        req.text,
+    )
+    return IndexChapterResponse(
+        chapter_id=req.chapter_id,
+        already_indexed=False,
+        scheduled=True,
+        message="Indexing started in background. Future quiz requests will use ES context.",
+    )
+
+
+# ── Index status ──────────────────────────────────────────────────────────────
+
+@router.get("/index-status")
+async def index_status(
+    chapter_id: str = Query(...),
+    auth: AuthUser = Depends(require_auth),
+):
+    """Check whether a chapter has been indexed in ES."""
+    indexed = await chapter_index_service.is_indexed(chapter_id)
+    return {"chapter_id": chapter_id, "indexed": indexed}
 
 
 # ── Evaluate short answer (standalone endpoint) ───────────────────────────────

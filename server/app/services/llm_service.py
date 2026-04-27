@@ -613,6 +613,24 @@ def generate_response(
             logger.info(f"LiteLLM success | tier={tier} | tokens={result.get('tokens', {})}")
             with open("response.json", "w") as f:
                 json.dump(result, f, indent=2)
+            # Auto-record tokens for EVERY LLM call so credits are charged for planners,
+            # enrichment, intent classifiers etc. — not just the main chat response.
+            if uid and uid != "guest_user":
+                tok = result.get("tokens", {})
+                in_t  = tok.get("inputTokens", 0)
+                out_t = tok.get("outputTokens", 0)
+                tot_t = tok.get("totalTokens", 0)
+                if tot_t > 0:
+                    try:
+                        from app.services.user_service import record_tokens as _record_tokens
+                        import threading
+                        threading.Thread(
+                            target=_record_tokens,
+                            args=(uid, in_t, out_t, tot_t),
+                            daemon=True,
+                        ).start()
+                    except Exception as _te:
+                        logger.warning("generate_response: token record failed uid=%s: %s", uid, _te)
             return result
         else:
             logger.error(f"LiteLLM returned empty response: {result}")

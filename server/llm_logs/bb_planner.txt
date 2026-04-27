@@ -1,18 +1,19 @@
-=== BB_PLANNER | 2026-04-26 18:15:50 | session=KkhkqOQI_bc0c94c4 ===
+=== BB_PLANNER | 2026-04-27 06:33:52 | session=KkhkqOQI_dd5f4d0c ===
 
 === PROMPT ===
 You are a lesson analyst for a personal visual AI tutor responding to a student's SPECIFIC question.
 Analyze exactly what the student is asking and return a focused lesson plan.
 Output ONLY valid JSON — nothing else.
 
-Student question (answer THIS specifically): "Topic: How do plants 'know' which direction is up without having a brain?
-Lesson title: How Plants Sense Gravity
+Student question (answer THIS specifically): "Topic: Newton's Laws of Motion
+Lesson title: Newton's Laws of Motion: The Rules of the Universe
 Category: science
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
 Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
-Steps to generate "
+Steps to generate in this batch:
+- "
 Chapter context (excerpt): ""
 Recent conversation (last 3 turns):
   (No prior conversation — this is the student's first question)
@@ -47,23 +48,22 @@ Rules:
 
 === RESPONSE ===
 {
-  "topic_type": "science_biology",
-  "scope": "medium",
+  "topic_type": "science_physics",
+  "scope": "simple",
   "key_concepts": [
-    "gravitropism",
-    "statoliths",
-    "amyloplasts",
-    "auxin"
+    "Inertia",
+    "Force",
+    "Motion"
   ],
   "steps_count": 5,
   "image_search_terms": [
-    "gravitropism plant roots shoots",
-    "amyloplasts statoliths root cap",
-    "auxin distribution plant growth"
+    "Isaac Newton portrait",
+    "objects in motion physics diagram",
+    "force and motion illustration"
   ],
-  "question_focus": "The student wants to understand the biological mechanism that allows plants to detect gravity and grow in the correct direction without a nervous system.",
-  "question_type": "how_to",
+  "question_focus": "The student wants an engaging introduction to the fundamental concepts of Newton's Laws of Motion suitable for a 5th-grade level.",
+  "question_type": "conceptual",
   "prior_knowledge": "",
-  "hook_question": "Have you ever wondered why, no matter how you plant a seed, the roots always dive down into the soil while the stem reaches up for the sun?",
-  "continuation_topic": "Phototropism: How Plants Find Light"
+  "hook_question": "Have you ever wondered why you slide forward in your seat when a car suddenly stops?",
+  "continuation_topic": "Newton's First Law of Inertia"
 }

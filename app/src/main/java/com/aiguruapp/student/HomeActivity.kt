@@ -335,11 +335,18 @@ class HomeActivity : BaseActivity() {
         // ── Main screen: Ask AI card subtitle ────────────────────────────
         findViewById<TextView?>(R.id.chatQuotaSubtitle)?.visibility = View.GONE
 
-        // ── Main screen: BB card quota pill ──────────────────────────────
-        updateBbButtonPill(bbLeft, drawerBbLimit, lastKnownCreditBalance)
+        // ── Main screen: BB card 3-row quota strip ───────────────────────
+        updateHomeQuotaStrip(
+            chatLeft    = chatLeft,
+            chatLimit   = drawerChatLimit,
+            bbLeft      = bbLeft,
+            bbLimit     = drawerBbLimit,
+            creditBalance = lastKnownCreditBalance,
+            voiceCharsLeft = aiTtsCharsLeft.coerceAtLeast(0),
+        )
 
         // ── Navigation drawer: chat progress bar ─────────────────────────
-        val chatText = if (chatLeft < 0) "Unlimited" else "$chatLeft credits"
+        val chatText = if (chatLeft < 0) "Unlimited" else "$chatLeft left"
         val chatColor = if (chatLeft in 0..3) "#BF360C" else "#1565C0"
         findViewById<TextView?>(R.id.drawerChatLeft)?.apply {
             text = chatText
@@ -388,53 +395,108 @@ class HomeActivity : BaseActivity() {
     // balance stays in sync whenever the home screen refreshes.
     internal fun updateCreditsDisplay(balance: Int) {
         runOnUiThread {
-            val chipText = "⭐ $balance"
-            findViewById<TextView?>(R.id.creditsChipText)?.apply {
-                text = chipText
-                visibility = View.VISIBLE
-                setOnClickListener {
-                    // Tap → open subscription / top-up screen so user can recharge credits
-                    startActivity(
-                        Intent(this@HomeActivity, SubscriptionActivity::class.java)
-                            .putExtra("schoolId", SessionManager.getSchoolId(this@HomeActivity))
-                            .putExtra("show_topups", true)
-                    )
-                }
-            }
+            // Credits chip removed from home screen — balance is shown in drawer only.
+            // creditsChipText is 0dp/gone in XML; just update drawer balance here.
             findViewById<TextView?>(R.id.drawerCreditsBalance)?.text = balance.toString()
         }
     }
 
     /**
-     * Update the quota pill on the Blackboard card on the home screen.
-     * Shows free sessions remaining, or credits-mode when sessions are exhausted.
-     * @param freeBbLeft   Free sessions still available today (≥0)
-     * @param freeBbLimit  Daily plan limit (0 = unlimited)
+     * Update the 3-row quota strip inside the BB card:
+     *   💬 Chat messages   X left  [────░░░]
+     *   🎓 Blackboard      X left  [──░░░░░]
+     *   🎙 AI Voice        X left  (hidden when 0)
+     *
+     * Also keeps the old [bbQuotaPill] invisible (it's 0dp/gone in XML now).
+     *
+     * @param chatLeft      Free chat questions remaining (-1 = unlimited)
+     * @param chatLimit     Daily chat limit (0 = unlimited)
+     * @param bbLeft        Free BB sessions remaining (-1 = unlimited)
+     * @param bbLimit       Daily BB limit (0 = unlimited)
      * @param creditBalance Current credit balance
+     * @param voiceCharsLeft AI TTS chars remaining (0 = none/hide)
      */
-    private fun updateBbButtonPill(freeBbLeft: Int, freeBbLimit: Int, creditBalance: Int) {
-        val pill = findViewById<TextView?>(R.id.bbQuotaPill) ?: return
-        when {
-            freeBbLimit <= 0 || freeBbLeft < 0 -> {
-                // Unlimited plan — hide the pill
-                pill.visibility = View.GONE
+    private fun updateHomeQuotaStrip(
+        chatLeft: Int,
+        chatLimit: Int,
+        bbLeft: Int,
+        bbLimit: Int,
+        creditBalance: Int,
+        voiceCharsLeft: Int = 0,
+    ) {
+        val container = findViewById<View?>(R.id.homeQuotaContainer) ?: return
+
+        // Hide entire strip for unlimited plans (no useful info to show)
+        val bothUnlimited = (chatLimit <= 0 || chatLeft < 0) && (bbLimit <= 0 || bbLeft < 0)
+        if (bothUnlimited && voiceCharsLeft <= 0) {
+            container.visibility = View.GONE
+            return
+        }
+        container.visibility = View.VISIBLE
+
+        // ── Chat row ─────────────────────────────────────────────────────────
+        val chatRow       = findViewById<View?>(R.id.homeQuotaChatRow)
+        val chatLeftText  = findViewById<TextView?>(R.id.homeQuotaChatLeftText)
+        val chatBar       = findViewById<ProgressBar?>(R.id.homeQuotaChatBar)
+        if (chatLeft < 0 || chatLimit <= 0) {
+            chatRow?.visibility = View.GONE
+        } else {
+            chatRow?.visibility = View.VISIBLE
+            val creditsMode = chatLeft == 0 && creditBalance > 0
+            val label = when {
+                creditsMode -> "⭐ credits"
+                chatLeft == 0 -> "0 left"
+                else -> "$chatLeft left"
             }
-            freeBbLeft > 0 -> {
-                val s = if (freeBbLeft == 1) "session" else "sessions"
-                pill.text = "🎓 $freeBbLeft free $s left"
-                pill.setTextColor(Color.parseColor("#2E7D32"))
-                pill.visibility = View.VISIBLE
+            val color = when {
+                creditsMode -> "#FFB300"
+                chatLeft == 0 -> "#EF5350"
+                chatLeft <= 2 -> "#FF8F00"
+                else -> "#AAFFCC"
             }
-            creditBalance > 0 -> {
-                pill.text = "⭐ Credits mode"
-                pill.setTextColor(Color.parseColor("#E65100"))
-                pill.visibility = View.VISIBLE
+            chatLeftText?.text = label
+            chatLeftText?.setTextColor(Color.parseColor(color))
+            val progress = if (chatLimit > 0) (chatLeft * 100 / chatLimit).coerceIn(0, 100) else 100
+            chatBar?.progress = progress
+            chatBar?.progressTintList = android.content.res.ColorStateList.valueOf(Color.parseColor(color))
+        }
+
+        // ── BB row ────────────────────────────────────────────────────────────
+        val bbRow       = findViewById<View?>(R.id.homeQuotaBbRow)
+        val bbLeftText  = findViewById<TextView?>(R.id.homeQuotaBbLeftText)
+        val bbBar       = findViewById<ProgressBar?>(R.id.homeQuotaBbBar)
+        if (bbLeft < 0 || bbLimit <= 0) {
+            bbRow?.visibility = View.GONE
+        } else {
+            bbRow?.visibility = View.VISIBLE
+            val creditsMode = bbLeft == 0 && creditBalance > 0
+            val label = when {
+                creditsMode -> "⭐ credits"
+                bbLeft == 0 -> "0 left"
+                else -> "$bbLeft left"
             }
-            else -> {
-                pill.text = "No sessions left — add credits"
-                pill.setTextColor(Color.parseColor("#B71C1C"))
-                pill.visibility = View.VISIBLE
+            val color = when {
+                creditsMode -> "#FFB300"
+                bbLeft == 0 -> "#EF5350"
+                bbLeft == 1 -> "#FF8F00"
+                else -> "#AAFFCC"
             }
+            bbLeftText?.text = label
+            bbLeftText?.setTextColor(Color.parseColor(color))
+            val progress = if (bbLimit > 0) (bbLeft * 100 / bbLimit).coerceIn(0, 100) else 100
+            bbBar?.progress = progress
+            bbBar?.progressTintList = android.content.res.ColorStateList.valueOf(Color.parseColor(color))
+        }
+
+        // ── Voice row (only show when non-zero quota exists) ──────────────────
+        val voiceRow      = findViewById<View?>(R.id.homeQuotaVoiceRow)
+        val voiceLeftText = findViewById<TextView?>(R.id.homeQuotaVoiceLeftText)
+        if (voiceCharsLeft > 0) {
+            voiceRow?.visibility = View.VISIBLE
+            val vc = if (voiceCharsLeft >= 1000) "${voiceCharsLeft / 1000}k chars" else "$voiceCharsLeft chars"
+            voiceLeftText?.text = vc
+        } else {
+            voiceRow?.visibility = View.GONE
         }
     }
 
@@ -766,7 +828,13 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
             // Update BB pill immediately from server data (Firestore strip may still be loading)
             quotaStatus?.let { qs ->
                 runOnUiThread {
-                    updateBbButtonPill(qs.freeBbLeft, qs.freeBbLimit, qs.creditBalance)
+                    updateHomeQuotaStrip(
+                        chatLeft      = qs.freeChatLeft,
+                        chatLimit     = qs.freeChatLimit,
+                        bbLeft        = qs.freeBbLeft,
+                        bbLimit       = qs.freeBbLimit,
+                        creditBalance = qs.creditBalance,
+                    )
                 }
             }
             val pending = questions.filter { it.status == "pending" }
