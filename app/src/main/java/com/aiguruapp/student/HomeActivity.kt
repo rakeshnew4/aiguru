@@ -306,15 +306,15 @@ class HomeActivity : BaseActivity() {
         val credits = lastKnownCreditBalance
         val msg = when {
             chatLeft == 0 && credits <= 0 ->
-                "No free questions left and no credits. Add credits to continue."
+                "You've maxed out free questions today! ⭐ Add credits to keep going."
             chatLeft == 0 && credits > 0 ->
-                "Free questions used up — ⭐ $credits credits will be used for chat."
+                "Free questions used — ⭐ $credits credits ready for you! Ask away."
             chatLeft in 1..2 ->
-                "Only $chatLeft free question${if (chatLeft == 1) "" else "s"} left today."
+                "$chatLeft free question${if (chatLeft == 1) "" else "s"} left today — make them count! 💡"
             bbLeft == 0 && credits <= 0 ->
-                "No BB sessions left and no credits. Add credits or upgrade."
+                "Today's free lessons are done! ⭐ Add credits to keep learning."
             bbLeft == 0 && credits > 0 ->
-                "Free BB sessions used — ⭐ credits will be used for new sessions."
+                "Free lessons used — ⭐ credits will power your next session!"
             else -> return
         }
         hasShownQuotaWarning = true
@@ -346,7 +346,12 @@ class HomeActivity : BaseActivity() {
         )
 
         // ── Navigation drawer: chat progress bar ─────────────────────────
-        val chatText = if (chatLeft < 0) "Unlimited" else "$chatLeft left"
+        val chatText = when {
+            chatLeft < 0  -> "Unlimited 🎉"
+            chatLeft == 0 -> "All used today"
+            chatLeft == 1 -> "1 question left!"
+            else          -> "$chatLeft questions free!"
+        }
         val chatColor = if (chatLeft in 0..3) "#BF360C" else "#1565C0"
         findViewById<TextView?>(R.id.drawerChatLeft)?.apply {
             text = chatText
@@ -359,7 +364,12 @@ class HomeActivity : BaseActivity() {
         }
 
         // ── Navigation drawer: BB progress bar ───────────────────────────
-        val bbText = if (bbLeft < 0) "Unlimited" else "$bbLeft left"
+        val bbText = when {
+            bbLeft < 0  -> "Unlimited 🎉"
+            bbLeft == 0 -> "All used today"
+            bbLeft == 1 -> "1 lesson left! 🎓"
+            else        -> "$bbLeft lessons free!"
+        }
         val bbColor = if (bbLeft in 0..1) "#BF360C" else "#7B1FA2"
         findViewById<TextView?>(R.id.drawerBbLeft)?.apply {
             text = bbText
@@ -375,7 +385,12 @@ class HomeActivity : BaseActivity() {
         val voiceRow = findViewById<LinearLayout?>(R.id.drawerVoiceRow)
         if (aiTtsCharsLeft != 0) {
             voiceRow?.visibility = View.VISIBLE
-            val voiceText = if (aiTtsCharsLeft < 0) "Unlimited" else "$aiTtsCharsLeft chars left"
+            val voiceText = when {
+                aiTtsCharsLeft < 0    -> "Unlimited 🎉"
+                aiTtsCharsLeft == 0   -> "All used today"
+                aiTtsCharsLeft < 1000 -> "$aiTtsCharsLeft chars — keep listening! 🎙️"
+                else                  -> "${aiTtsCharsLeft / 1000}k chars ready! 🎙️"
+            }
             val voiceColor = if (aiTtsCharsLeft in 0..1000) "#BF360C" else "#1E9B6B"
             findViewById<TextView?>(R.id.drawerVoiceLeft)?.apply {
                 text = voiceText
@@ -396,8 +411,13 @@ class HomeActivity : BaseActivity() {
     internal fun updateCreditsDisplay(balance: Int) {
         runOnUiThread {
             // Credits chip removed from home screen — balance is shown in drawer only.
-            // creditsChipText is 0dp/gone in XML; just update drawer balance here.
-            findViewById<TextView?>(R.id.drawerCreditsBalance)?.text = balance.toString()
+            val label = when {
+                balance <= 0  -> "0 credits"
+                balance < 100 -> "$balance credits \u2014 top up soon!"
+                balance < 500 -> "$balance credits ready! \u2b50"
+                else          -> "$balance credits \u2014 you're set! \ud83d\ude80"
+            }
+            findViewById<TextView?>(R.id.drawerCreditsBalance)?.text = label
         }
     }
 
@@ -444,15 +464,17 @@ class HomeActivity : BaseActivity() {
             chatRow?.visibility = View.VISIBLE
             val creditsMode = chatLeft == 0 && creditBalance > 0
             val label = when {
-                creditsMode -> "⭐ credits"
-                chatLeft == 0 -> "0 left"
-                else -> "$chatLeft left"
+                creditsMode   -> "⭐ use credits!"
+                chatLeft == 0 -> "All used — upgrade! 🚀"
+                chatLeft == 1 -> "1 free left — ask away!"
+                chatLeft <= 3 -> "$chatLeft free — keep going! 💡"
+                else          -> "$chatLeft free today! Ask anything 💬"
             }
             val color = when {
-                creditsMode -> "#FFB300"
+                creditsMode   -> "#FFB300"
                 chatLeft == 0 -> "#EF5350"
                 chatLeft <= 2 -> "#FF8F00"
-                else -> "#AAFFCC"
+                else          -> "#AAFFCC"
             }
             chatLeftText?.text = label
             chatLeftText?.setTextColor(Color.parseColor(color))
@@ -471,15 +493,17 @@ class HomeActivity : BaseActivity() {
             bbRow?.visibility = View.VISIBLE
             val creditsMode = bbLeft == 0 && creditBalance > 0
             val label = when {
-                creditsMode -> "⭐ credits"
-                bbLeft == 0 -> "0 left"
-                else -> "$bbLeft left"
+                creditsMode  -> "⭐ use credits!"
+                bbLeft == 0  -> "All used — upgrade! 🚀"
+                bbLeft == 1  -> "1 free lesson left! 🎓"
+                bbLeft <= 3  -> "$bbLeft free lessons — learn more! 🎨"
+                else         -> "$bbLeft free lessons today! 🎓"
             }
             val color = when {
-                creditsMode -> "#FFB300"
-                bbLeft == 0 -> "#EF5350"
-                bbLeft == 1 -> "#FF8F00"
-                else -> "#AAFFCC"
+                creditsMode  -> "#FFB300"
+                bbLeft == 0  -> "#EF5350"
+                bbLeft == 1  -> "#FF8F00"
+                else         -> "#AAFFCC"
             }
             bbLeftText?.text = label
             bbLeftText?.setTextColor(Color.parseColor(color))

@@ -1208,12 +1208,12 @@ class BlackboardActivity : AppCompatActivity() {
         val left = BlackboardQuotaValidator.sessionsLeft(cachedMetadata, limits).coerceAtLeast(0)
         bbQuotaChip.visibility = View.VISIBLE
         bbQuotaChip.text = when {
-            left == 0 -> "0 sessions left"
-            left == 1 -> "1 session left"
-            else      -> "$left sessions left"
+            left == 0  -> "Use ⭐ credits to learn more!"
+            left == 1  -> "1 free lesson today — make it count! 🎓"
+            else       -> "$left free lessons today — dive in! 🚀"
         }
         bbQuotaChip.setBackgroundColor(
-            android.graphics.Color.parseColor(if (left <= 1) "#BF360C" else "#5C5BD4")
+            android.graphics.Color.parseColor(if (left == 0) "#BF360C" else "#5C5BD4")
         )
     }
 
@@ -1739,10 +1739,10 @@ class BlackboardActivity : AppCompatActivity() {
             var checked: Boolean,
         )
         val opts = listOf(
-            Opt("🎯", "Interactive quizzes",   "",                               0,          cfg.quizEnabled),
-            Opt("🎬", "Related videos",         "uses credits · ~2–3 per session",0xFFF57F17.toInt(), cfg.videosEnabled),
-            Opt("🎨", "Animated diagrams",      "uses extra credits · ~1–2 per step", 0xFFE65100.toInt(), cfg.animationsEnabled),
-            Opt("🖼️", "Topic images",           "free · Wikimedia thumbnails",    0xFF2E7D32.toInt(), cfg.imagesEnabled),
+            Opt("🎯", "Interactive quizzes",   "Currently not active",                               0,          cfg.quizEnabled),
+            Opt("🎬", "Show Related videos",         "10 extra credits",0xFFF57F17.toInt(), cfg.videosEnabled),
+            Opt("🎨", "Generate Animated Visuals",      "30 extra credits ", 0xFFE65100.toInt(), cfg.animationsEnabled),
+            Opt("🖼️", "generate Topic images",           "10 extra credits",    0xFF2E7D32.toInt(), cfg.imagesEnabled),
         )
 
         // ── Container ─────────────────────────────────────────────────────────
@@ -1753,7 +1753,7 @@ class BlackboardActivity : AppCompatActivity() {
 
         // Credit info banner
         val banner = TextView(this).apply {
-            text = "⭐  1 credit = 100 AI tokens. Disable paid features to reduce credit usage."
+            text = "⭐  Knowledge is power. Grab it from AI"
             textSize = 12f
             setTextColor(Color.parseColor("#FFD54F"))
             setPadding(dp(16), dp(10), dp(16), dp(12))

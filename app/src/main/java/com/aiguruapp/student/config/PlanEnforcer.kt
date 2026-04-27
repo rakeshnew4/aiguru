@@ -342,7 +342,7 @@ object PlanEnforcer {
                 return CheckResult(
                     allowed        = false,
                     reason         = "Daily Blackboard session limit reached ($used / $limit)",
-                    upgradeMessage = "You've used all $limit Blackboard sessions for today 🎓\nUpgrade your plan for more visual lessons!",
+                    upgradeMessage = "Great learning today! You've hit your $limit visual lesson limit. Upgrade for unlimited knowledge! 🎓",
                     limitType      = LimitType.BB_SESSIONS
                 )
             }
@@ -356,7 +356,7 @@ object PlanEnforcer {
                 return CheckResult(
                     allowed        = false,
                     reason         = "Daily chat question limit reached ($used / $effectiveLimit)",
-                    upgradeMessage = "You've asked all $effectiveLimit questions for today 💬\nUpgrade your plan for unlimited questions!",
+                    upgradeMessage = "Amazing — you've asked all $effectiveLimit questions today! 💬\nUpgrade for unlimited daily questions!",
                     limitType      = LimitType.CHAT_QUESTIONS
                 )
             }
@@ -445,7 +445,7 @@ object PlanEnforcer {
                         callback(CheckResult(
                             allowed = false,
                             reason = "Guest blackboard quota exhausted ($bbUsed / $limit)",
-                            upgradeMessage = "You've used all 3 blackboard sessions 🎓\nLogin or upgrade for more!",
+                        upgradeMessage = "You've explored 3 free visual lessons! 🎓 Log in to keep the momentum going!",
                             limitType = LimitType.BB_SESSIONS
                         ))
                     } else {
@@ -457,7 +457,7 @@ object PlanEnforcer {
                         callback(CheckResult(
                             allowed = false,
                             reason = "Guest chat quota exhausted ($chatUsed / $limit)",
-                            upgradeMessage = "You've used all 10 chat questions 💬\nLogin to get daily free questions!",
+                        upgradeMessage = "You've asked 10 free questions — great curiosity! 💬 Log in to get more daily questions!",
                             limitType = LimitType.CHAT_QUESTIONS
                         ))
                     } else {
@@ -519,7 +519,7 @@ object PlanEnforcer {
             return CheckResult(
                 allowed        = false,
                 reason         = "AI TTS quota exceeded ($charsUsedToday / $quotaLimit chars)",
-                upgradeMessage = "AI voice quota reached! You have $charsRemaining chars remaining today.\nUpgrade your plan for more AI voice! 🎙️",
+                upgradeMessage = "Your AI voice quota is full for today! 🎙️\nUpgrade your plan to speak to your AI tutor more.",
                 limitType      = LimitType.FEATURE_AI_TTS
             )
         }

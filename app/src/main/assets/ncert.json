@@ -1,104 +1,548 @@
 {
   "1": {
     "English": [
-      { "text": "Marigold", "code": "aemr1", "chapters": "0-10" },
-      { "text": "Raindrops", "code": "aerd1", "chapters": "0-19" }
+      {
+        "text": "Marigold",
+        "code": "aemr1",
+        "chapters": "0-10"
+      },
+      {
+        "text": "Raindrops",
+        "code": "aerd1",
+        "chapters": "0-19"
+      }
     ],
     "Mathematics": [
-      { "text": "Joyful Mathematics", "code": "aejm1", "chapters": "0-13" }
+      {
+        "text": "Joyful Mathematics",
+        "code": "aejm1",
+        "chapters": "0-13"
+      }
     ]
   },
   "2": {
     "English": [
-      { "text": "Mridang", "code": "bemr1", "chapters": "0-13" },
-      { "text": "Raindrops", "code": "berd1", "chapters": "0-15" }
+      {
+        "text": "Mridang",
+        "code": "bemr1",
+        "chapters": "0-13"
+      },
+      {
+        "text": "Raindrops",
+        "code": "berd1",
+        "chapters": "0-15"
+      }
     ],
     "Mathematics": [
-      { "text": "Joyful Mathematics", "code": "bejm1", "chapters": "0-11" }
+      {
+        "text": "Joyful Mathematics",
+        "code": "bejm1",
+        "chapters": "0-11"
+      }
     ]
   },
   "3": {
     "English": [
-      { "text": "Marigold", "code": "ceen1", "chapters": "0-10" }
+      {
+        "text": "Marigold",
+        "code": "ceen1",
+        "chapters": "0-10"
+      }
     ],
     "Mathematics": [
-      { "text": "Mathematics", "code": "cemh1", "chapters": "0-14" }
+      {
+        "text": "Mathematics",
+        "code": "cemh1",
+        "chapters": "0-14"
+      }
     ],
     "EVS": [
-      { "text": "Looking Around", "code": "ceap1", "chapters": "0-24" }
+      {
+        "text": "Looking Around",
+        "code": "ceap1",
+        "chapters": "0-24"
+      }
     ]
   },
   "4": {
     "English": [
-      { "text": "Marigold", "code": "deen1", "chapters": "0-9" }
+      {
+        "text": "Marigold",
+        "code": "deen1",
+        "chapters": "0-9"
+      }
     ],
     "Mathematics": [
-      { "text": "Math Magic", "code": "demh1", "chapters": "0-14" }
+      {
+        "text": "Math Magic",
+        "code": "demh1",
+        "chapters": "0-14"
+      }
     ],
     "EVS": [
-      { "text": "Looking Around", "code": "deap1", "chapters": "0-27" }
+      {
+        "text": "Looking Around",
+        "code": "deap1",
+        "chapters": "0-27"
+      }
     ]
   },
   "5": {
     "English": [
-      { "text": "Marigold", "code": "eeen1", "chapters": "0-10" }
+      {
+        "text": "Marigold",
+        "code": "eeen1",
+        "chapters": "0-10"
+      }
     ],
     "Mathematics": [
-      { "text": "Math Magic", "code": "eemh1", "chapters": "0-14" }
+      {
+        "text": "Math Magic",
+        "code": "eemh1",
+        "chapters": "0-14"
+      }
     ],
     "EVS": [
-      { "text": "Looking Around", "code": "eeap1", "chapters": "0-22" }
+      {
+        "text": "Looking Around",
+        "code": "eeap1",
+        "chapters": "0-22"
+      }
     ]
   },
   "6": {
     "English": [
-      { "text": "Honeysuckle", "code": "fehl1", "chapters": "0-8" },
-      { "text": "A Pact with the Sun", "code": "fepw1", "chapters": "0-7" }
+      {
+        "text": "Honeysuckle",
+        "code": "fehl1",
+        "chapters": "0-8"
+      },
+      {
+        "text": "A Pact with the Sun",
+        "code": "fepw1",
+        "chapters": "0-7"
+      }
     ],
     "Mathematics": [
-      { "text": "Mathematics", "code": "fegp1", "chapters": "0-10" }
+      {
+        "text": "Mathematics",
+        "code": "fegp1",
+        "chapters": "0-10"
+      }
     ],
     "Science": [
-      { "text": "Science", "code": "fesc1", "chapters": "0-11" }
+      {
+        "text": "Science",
+        "code": "fesc1",
+        "chapters": "0-11"
+      }
     ],
     "Social Science": [
-      { "text": "Our Pasts - I (History)", "code": "fess1", "chapters": "0-10" },
-      { "text": "The Earth Our Habitat (Geography)", "code": "fess2", "chapters": "0-6" },
-      { "text": "Social and Political Life - I (Civics)", "code": "fess3", "chapters": "0-8" }
+      {
+        "text": "Our Pasts - I (History)",
+        "code": "fess1",
+        "chapters": "0-10"
+      },
+      {
+        "text": "The Earth Our Habitat (Geography)",
+        "code": "fess2",
+        "chapters": "0-6"
+      },
+      {
+        "text": "Social and Political Life - I (Civics)",
+        "code": "fess3",
+        "chapters": "0-8"
+      }
     ]
   },
   "7": {
     "English": [
-      { "text": "Honeycomb", "code": "gehl1", "chapters": "0-10" },
-      { "text": "An Alien Hand", "code": "geah1", "chapters": "0-10" }
+      {
+        "text": "Honeycomb",
+        "code": "gehl1",
+        "chapters": "0-10"
+      },
+      {
+        "text": "An Alien Hand",
+        "code": "geah1",
+        "chapters": "0-10"
+      }
     ],
     "Mathematics": [
-      { "text": "Mathematics", "code": "gegp1", "chapters": "0-13" }
+      {
+        "text": "Mathematics",
+        "code": "gegp1",
+        "chapters": "0-13"
+      }
     ],
     "Science": [
-      { "text": "Science", "code": "gecu1", "chapters": "0-18" }
+      {
+        "text": "Science",
+        "code": "gecu1",
+        "chapters": "0-18"
+      }
     ],
     "Social Science": [
-      { "text": "Our Pasts - II (History)", "code": "gees1", "chapters": "0-10" },
-      { "text": "Our Environment (Geography)", "code": "gees2", "chapters": "0-10" },
-      { "text": "Social and Political Life - II (Civics)", "code": "gees3", "chapters": "0-9" }
+      {
+        "text": "Our Pasts - II (History)",
+        "code": "gees1",
+        "chapters": "0-10"
+      },
+      {
+        "text": "Our Environment (Geography)",
+        "code": "gees2",
+        "chapters": "0-10"
+      },
+      {
+        "text": "Social and Political Life - II (Civics)",
+        "code": "gees3",
+        "chapters": "0-9"
+      }
     ]
   },
   "8": {
     "English": [
-      { "text": "Honeydew", "code": "hehd1", "chapters": "0-10" },
-      { "text": "It So Happened", "code": "heih1", "chapters": "0-10" }
+      {
+        "text": "Honeydew",
+        "code": "hehd1",
+        "chapters": "0-10"
+      },
+      {
+        "text": "It So Happened",
+        "code": "heih1",
+        "chapters": "0-10"
+      }
     ],
     "Mathematics": [
-      { "text": "Mathematics", "code": "hemh1", "chapters": "0-13" }
+      {
+        "text": "Mathematics",
+        "code": "hemh1",
+        "chapters": "0-13"
+      }
     ],
     "Science": [
-      { "text": "Science", "code": "hesc1", "chapters": "0-13" }
+      {
+        "text": "Science",
+        "code": "hesc1",
+        "chapters": "0-13"
+      }
     ],
     "Social Science": [
-      { "text": "Our Pasts - III (History)", "code": "hees1", "chapters": "0-12" },
-      { "text": "Resources and Development (Geography)", "code": "hees2", "chapters": "0-6" },
-      { "text": "Social and Political Life - III (Civics)", "code": "hees3", "chapters": "0-10" }
+      {
+        "text": "Our Pasts - III (History)",
+        "code": "hees1",
+        "chapters": "0-12"
+      },
+      {
+        "text": "Resources and Development (Geography)",
+        "code": "hees2",
+        "chapters": "0-6"
+      },
+      {
+        "text": "Social and Political Life - III (Civics)",
+        "code": "hees3",
+        "chapters": "0-10"
+      }
+    ]
+  },
+  "9": {
+    "English": [
+      {
+        "text": "Beehive",
+        "code": "iehe1",
+        "chapters": "0-11"
+      },
+      {
+        "text": "Moments",
+        "code": "iemm1",
+        "chapters": "0-10"
+      }
+    ],
+    "Mathematics": [
+      {
+        "text": "Mathematics",
+        "code": "iemh1",
+        "chapters": "0-15"
+      }
+    ],
+    "Science": [
+      {
+        "text": "Science",
+        "code": "iesc1",
+        "chapters": "0-15"
+      }
+    ],
+    "Social Science": [
+      {
+        "text": "India and the Contemporary World I (History)",
+        "code": "iess1",
+        "chapters": "0-5"
+      },
+      {
+        "text": "Contemporary India I (Geography)",
+        "code": "iess2",
+        "chapters": "0-6"
+      },
+      {
+        "text": "Democratic Politics I (Civics)",
+        "code": "iess3",
+        "chapters": "0-5"
+      },
+      {
+        "text": "Economics",
+        "code": "iess4",
+        "chapters": "0-4"
+      }
+    ]
+  },
+  "10": {
+    "English": [
+      {
+        "text": "First Flight",
+        "code": "jehe1",
+        "chapters": "0-11"
+      },
+      {
+        "text": "Footprints Without Feet",
+        "code": "jefp1",
+        "chapters": "0-10"
+      }
+    ],
+    "Mathematics": [
+      {
+        "text": "Mathematics",
+        "code": "jemh1",
+        "chapters": "0-15"
+      }
+    ],
+    "Science": [
+      {
+        "text": "Science",
+        "code": "jesc1",
+        "chapters": "0-16"
+      }
+    ],
+    "Social Science": [
+      {
+        "text": "India and the Contemporary World II (History)",
+        "code": "jess1",
+        "chapters": "0-5"
+      },
+      {
+        "text": "Contemporary India II (Geography)",
+        "code": "jess2",
+        "chapters": "0-7"
+      },
+      {
+        "text": "Democratic Politics II (Civics)",
+        "code": "jess3",
+        "chapters": "0-8"
+      },
+      {
+        "text": "Understanding Economic Development",
+        "code": "jess4",
+        "chapters": "0-5"
+      }
+    ]
+  },
+  "11": {
+    "English": [
+      {
+        "text": "Hornbill",
+        "code": "kehb1",
+        "chapters": "0-8"
+      },
+      {
+        "text": "Snapshots",
+        "code": "kesn1",
+        "chapters": "0-8"
+      }
+    ],
+    "Mathematics": [
+      {
+        "text": "Mathematics",
+        "code": "kemh1",
+        "chapters": "0-16"
+      }
+    ],
+    "Physics": [
+      {
+        "text": "Physics Part I",
+        "code": "keph1",
+        "chapters": "0-8"
+      },
+      {
+        "text": "Physics Part II",
+        "code": "keph2",
+        "chapters": "0-7"
+      }
+    ],
+    "Chemistry": [
+      {
+        "text": "Chemistry Part I",
+        "code": "kech1",
+        "chapters": "0-7"
+      },
+      {
+        "text": "Chemistry Part II",
+        "code": "kech2",
+        "chapters": "0-7"
+      }
+    ],
+    "Biology": [
+      {
+        "text": "Biology",
+        "code": "kebo1",
+        "chapters": "0-22"
+      }
+    ],
+    "History": [
+      {
+        "text": "Themes in World History",
+        "code": "kehr1",
+        "chapters": "0-11"
+      }
+    ],
+    "Political Science": [
+      {
+        "text": "Political Theory",
+        "code": "keps1",
+        "chapters": "0-10"
+      }
+    ],
+    "Geography": [
+      {
+        "text": "Fundamentals of Physical Geography",
+        "code": "kegp1",
+        "chapters": "0-6"
+      },
+      {
+        "text": "India — Physical Environment",
+        "code": "kegp2",
+        "chapters": "0-7"
+      }
+    ],
+    "Economics": [
+      {
+        "text": "Indian Economic Development",
+        "code": "kees1",
+        "chapters": "0-10"
+      },
+      {
+        "text": "Statistics for Economics",
+        "code": "kees2",
+        "chapters": "0-9"
+      }
+    ]
+  },
+  "12": {
+    "English": [
+      {
+        "text": "Flamingo",
+        "code": "lefl1",
+        "chapters": "0-8"
+      },
+      {
+        "text": "Vistas",
+        "code": "levw1",
+        "chapters": "0-8"
+      }
+    ],
+    "Mathematics": [
+      {
+        "text": "Mathematics Part I",
+        "code": "lemh1",
+        "chapters": "0-6"
+      },
+      {
+        "text": "Mathematics Part II",
+        "code": "lemh2",
+        "chapters": "0-7"
+      }
+    ],
+    "Physics": [
+      {
+        "text": "Physics Part I",
+        "code": "leph1",
+        "chapters": "0-8"
+      },
+      {
+        "text": "Physics Part II",
+        "code": "leph2",
+        "chapters": "0-7"
+      }
+    ],
+    "Chemistry": [
+      {
+        "text": "Chemistry Part I",
+        "code": "lech1",
+        "chapters": "0-9"
+      },
+      {
+        "text": "Chemistry Part II",
+        "code": "lech2",
+        "chapters": "0-7"
+      }
+    ],
+    "Biology": [
+      {
+        "text": "Biology",
+        "code": "lebo1",
+        "chapters": "0-16"
+      }
+    ],
+    "History": [
+      {
+        "text": "Themes in Indian History Part I",
+        "code": "lehr1",
+        "chapters": "0-4"
+      },
+      {
+        "text": "Themes in Indian History Part II",
+        "code": "lehr2",
+        "chapters": "0-4"
+      },
+      {
+        "text": "Themes in Indian History Part III",
+        "code": "lehr3",
+        "chapters": "0-5"
+      }
+    ],
+    "Political Science": [
+      {
+        "text": "Contemporary World Politics",
+        "code": "leps1",
+        "chapters": "0-9"
+      },
+      {
+        "text": "Politics in India since Independence",
+        "code": "leps2",
+        "chapters": "0-9"
+      }
+    ],
+    "Geography": [
+      {
+        "text": "Fundamentals of Human Geography",
+        "code": "legp1",
+        "chapters": "0-12"
+      },
+      {
+        "text": "India — People and Economy",
+        "code": "legp2",
+        "chapters": "0-12"
+      }
+    ],
+    "Economics": [
+      {
+        "text": "Macroeconomics",
+        "code": "lees1",
+        "chapters": "0-6"
+      },
+      {
+        "text": "Microeconomics",
+        "code": "lees2",
+        "chapters": "0-6"
+      }
     ]
   }
 }

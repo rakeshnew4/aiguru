@@ -645,3 +645,38 @@ Note: BbInteractivePopup.kt loaded into context by linter. Updating android meta
 **Fix 3 — Issue 3 (Android): Video section persistence between inline sessions**
 - `app/.../BlackboardActivity.kt` — `showRelatedVideosSection()`: added `tag = "bb_videos"` to the video section LinearLayout so it can be found and removed.
 - `app/.../BlackboardActivity.kt` — `requestInlineBbLesson()`: before appending inline content, removes any existing `bb_videos` view from `stepsContainer`, removes `bb_followups` card from `boardLayout`, and calls `collectedClips.clear()` so the new inline lesson gets a fresh video slate.
+
+---
+
+## 2026-04-28 (session 6b)
+
+**Asked:** Add NCERT classes 9, 10, 11, 12 (they were missing — JSON only had classes 1–8).
+
+**Changed:**
+- `app/src/main/assets/ncert.json` — added classes "9", "10", "11", "12" at top level.
+  - Class 9: English (Beehive iehe1, Moments iemm1), Maths (iemh1), Science (iesc1), Social Science (iess1–4: History/Geography/Civics/Economics)
+  - Class 10: English (First Flight jehe1, Footprints jefp1), Maths (jemh1), Science (jesc1), Social Science (jess1–4)
+  - Class 11: English (Hornbill kehb1, Snapshots kesn1), Maths (kemh1), Physics (keph1/2), Chemistry (kech1/2), Biology (kebo1), History (kehr1), Political Science (keps1), Geography (kegp1/2), Economics (kees1/2)
+  - Class 12: English (Flamingo lefl1, Vistas levw1), Maths (lemh1/2), Physics (leph1/2), Chemistry (lech1/2), Biology (lebo1), History (lehr1/2/3), Political Science (leps1/2), Geography (legp1/2), Economics (lees1/2)
+- No Android code changes needed — `showNcertSubjectImportDialog()` already reads all classes dynamically via `(1..12).filter { ncertRoot.has(it) }`.
+
+---
+
+## 2026-04-28 (session 6c)
+
+**Asked:** Replace all "X sessions left / X questions left / X credits left" language with positive, encouraging copy throughout the app.
+
+**Changed:**
+- `app/.../BlackboardActivity.kt` — `updateBbQuotaChip()`: chip text is now e.g. "5 free lessons today — dive in! 🚀", "1 free lesson left! 🎓", "Use ⭐ credits to learn more!"
+- `app/.../HomeActivity.kt` — `updateHomeQuotaStrip()` chat row: "12 free today! Ask anything 💬", "3 free — keep going! 💡", "⭐ use credits!"
+- `app/.../HomeActivity.kt` — `updateHomeQuotaStrip()` BB row: "5 free lessons today! 🎓", "3 free lessons — learn more! 🎨", "⭐ use credits!"
+- `app/.../HomeActivity.kt` — drawer chat label: "12 questions free!", "1 question left!", "Unlimited 🎉"
+- `app/.../HomeActivity.kt` — drawer BB label: "5 lessons free!", "1 lesson left! 🎓", "Unlimited 🎉"
+- `app/.../HomeActivity.kt` — drawer voice label: "4k chars ready! 🎙️", "800 chars — keep listening! 🎙️"
+- `app/.../HomeActivity.kt` — `updateCreditsDisplay()`: "500 credits ready! ⭐", "1200 credits — you're set! 🚀", "42 credits — top up soon!"
+- `app/.../HomeActivity.kt` — `showQuotaToastIfNeeded()`: "You've maxed out free questions today! ⭐ Add credits to keep going.", "Free questions used — ⭐ 50 credits ready for you! Ask away.", etc.
+- `app/.../config/PlanEnforcer.kt` — `checkQuestionsQuota()` BB block: "Great learning today! You've hit your N visual lesson limit. Upgrade for unlimited knowledge! 🎓"
+- `app/.../config/PlanEnforcer.kt` — `checkQuestionsQuota()` chat block: "Amazing — you've asked all N questions today! 💬 Upgrade for unlimited daily questions!"
+- `app/.../config/PlanEnforcer.kt` — guest BB: "You've explored 3 free visual lessons! 🎓 Log in to keep the momentum going!"
+- `app/.../config/PlanEnforcer.kt` — guest chat: "You've asked 10 free questions — great curiosity! 💬 Log in to get more daily questions!"
+- `app/.../config/PlanEnforcer.kt` — `checkAiTtsQuota()`: "Your AI voice quota is full for today! 🎙️ Upgrade your plan to speak to your AI tutor more."
