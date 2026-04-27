@@ -80,6 +80,11 @@ class TeacherTasksActivity : BaseActivity() {
     /** ID of the quizzes/ document selected for this task (empty = use embedded generatedQuizJson). */
     private var selectedQuizId = ""
 
+    // Dropdown data
+    private val subjectOptions = mutableListOf<String>()
+    private val chapterOptions = mutableMapOf<String, MutableList<String>>()
+    private val bbSessions = mutableListOf<Map<String, Any>>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_teacher_tasks)
@@ -159,6 +164,28 @@ class TeacherTasksActivity : BaseActivity() {
         val sessionSection = SessionManager.getSection(this)
         if (sessionSection.isNotBlank()) taskSectionInput.setText(sessionSection)
 
+        // Subject/chapter/BB pickers — disable keyboard, show dialog on tap
+        taskSubjectInput.isFocusable = false
+        taskSubjectInput.isClickable = true
+        taskSubjectInput.setOnClickListener { pickSubject() }
+
+        taskChapterInput.isFocusable = false
+        taskChapterInput.isClickable = true
+        taskChapterInput.setOnClickListener { pickChapter() }
+
+        bbTopicInput.setOnClickListener {
+            if (bbSessions.isNotEmpty()) {
+                pickBbSession()
+            } else {
+                // No sessions loaded yet — allow normal typing
+                bbTopicInput.isFocusableInTouchMode = true
+                bbTopicInput.requestFocus()
+            }
+        }
+
+        // Load dropdown data in background
+        loadDropdownData()
+
         findViewById<MaterialButton>(R.id.createTaskButton).setOnClickListener {
             createPanel.visibility = if (createPanel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
         }
@@ -175,6 +202,132 @@ class TeacherTasksActivity : BaseActivity() {
         tasksList.adapter = adapter
 
         loadMyTasks()
+    }
+
+    // ── Dropdown data loading ─────────────────────────────────────────────────
+
+    private fun loadDropdownData() {
+        // Load subjects
+        FirestoreManager.loadSubjects(userId,
+            onSuccess = { list ->
+                subjectOptions.clear()
+                subjectOptions.addAll(list)
+                // If a subject is already filled, pre-load its chapters
+                val cur = taskSubjectInput.text.toString().trim()
+                if (cur.isNotBlank() && !chapterOptions.containsKey(cur)) {
+                    loadChaptersForSubject(cur)
+                }
+            }
+        )
+        // Load BB sessions
+        FirestoreManager.loadTeacherBbLessons(userId,
+            onSuccess = { list ->
+                bbSessions.clear()
+                bbSessions.addAll(list)
+                if (list.isNotEmpty() && bbTopicInput.hint?.toString()?.contains("pick") == false) {
+                    bbTopicInput.hint = "Tap to pick from your ${list.size} BB session(s)"
+                }
+            }
+        )
+    }
+
+    private fun loadChaptersForSubject(subject: String) {
+        if (subject.isBlank() || chapterOptions.containsKey(subject)) return
+        FirestoreManager.loadChapters(userId, subject,
+            onSuccess = { list ->
+                chapterOptions[subject] = list.toMutableList()
+            }
+        )
+    }
+
+    private fun pickSubject() {
+        val options = subjectOptions.toMutableList()
+        // Always allow typing a custom one via an "Other…" entry
+        if (options.isEmpty()) {
+            taskSubjectInput.isFocusableInTouchMode = true
+            taskSubjectInput.requestFocus()
+            return
+        }
+        options.add("✏️ Type manually…")
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Select Subject")
+            .setItems(options.toTypedArray()) { _, idx ->
+                if (idx == options.lastIndex) {
+                    taskSubjectInput.isFocusableInTouchMode = true
+                    taskSubjectInput.requestFocus()
+                } else {
+                    val chosen = options[idx]
+                    taskSubjectInput.setText(chosen)
+                    taskChapterInput.setText("")
+                    loadChaptersForSubject(chosen)
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun pickChapter() {
+        val subject = taskSubjectInput.text.toString().trim()
+        val chapters = if (subject.isNotBlank()) chapterOptions[subject] ?: mutableListOf() else mutableListOf()
+        val options = chapters.toMutableList()
+        if (options.isEmpty()) {
+            taskChapterInput.isFocusableInTouchMode = true
+            taskChapterInput.requestFocus()
+            return
+        }
+        options.add("✏️ Type manually…")
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Select Chapter")
+            .setItems(options.toTypedArray()) { _, idx ->
+                if (idx == options.lastIndex) {
+                    taskChapterInput.isFocusableInTouchMode = true
+                    taskChapterInput.requestFocus()
+                } else {
+                    taskChapterInput.setText(options[idx])
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun pickBbSession() {
+        if (bbSessions.isEmpty()) return
+        val labels = bbSessions.map { session ->
+            val topic   = session["topic"]   as? String ?: session["preview"] as? String ?: ""
+            val subject = session["subject"] as? String ?: ""
+            val chapter = session["chapter"] as? String ?: ""
+            val steps   = session["step_count"] as? Long ?: 0L
+            buildString {
+                append(topic.take(50))
+                if (subject.isNotBlank()) append("\n  $subject · $chapter")
+                if (steps > 0) append(" · $steps steps")
+            }
+        }.toTypedArray()
+
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Pick BB Session")
+            .setItems(labels) { _, idx ->
+                val session = bbSessions[idx]
+                val id      = session["bb_cache_id"] as? String ?: session["id"] as? String ?: ""
+                val topic   = session["topic"]   as? String ?: session["preview"] as? String ?: ""
+                val subject = session["subject"] as? String ?: ""
+                val chapter = session["chapter"] as? String ?: ""
+                selectedBbCacheId = id
+                bbTopicInput.setText("📚 ${topic.take(60)}")
+                bbTopicInput.isEnabled = false
+                if (subject.isNotBlank()) taskSubjectInput.setText(subject)
+                if (chapter.isNotBlank()) {
+                    taskChapterInput.setText(chapter)
+                    if (subject.isNotBlank()) loadChaptersForSubject(subject)
+                }
+            }
+            .setNeutralButton("Clear") { _, _ ->
+                selectedBbCacheId = ""
+                bbTopicInput.setText("")
+                bbTopicInput.isEnabled = true
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun updateTaskTypeSections() {

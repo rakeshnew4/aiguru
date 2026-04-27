@@ -1078,12 +1078,11 @@ object FirestoreManager {
         if (teacherId.isBlank()) { onSuccess(emptyList()); return }
         db.collection("school_tasks")
             .whereEqualTo("teacher_id", teacherId)
-            .orderBy("created_at", com.google.firebase.firestore.Query.Direction.DESCENDING)
             .get()
             .addOnSuccessListener { snap ->
                 val tasks = snap.documents.mapNotNull { doc ->
                     doc.data?.toMutableMap()?.also { it["id"] = doc.id }
-                }
+                }.sortedByDescending { (it["created_at"] as? Number)?.toLong() ?: 0L }
                 onSuccess(tasks)
             }
             .addOnFailureListener { onFailure(it) }
