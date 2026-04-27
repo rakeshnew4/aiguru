@@ -7,7 +7,6 @@ import android.view.View
 import android.view.Window
 import androidx.core.graphics.ColorUtils
 import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import com.aiguruapp.student.models.SchoolBranding
 import com.google.android.material.button.MaterialButton
 
@@ -108,14 +107,6 @@ object SchoolTheme {
      * luminance of the chosen color — exactly like BookMyShow / Zomato.
      */
     fun applyStatusBar(window: Window) {
-        // Transparent status bar on all API levels — app header draws behind it.
-        // On API 35+ the system already forces this; on older devices we set it
-        // explicitly so every screen looks consistently edge-to-edge.
-        @Suppress("DEPRECATION")
-        window.statusBarColor = android.graphics.Color.TRANSPARENT
-        // Transparent nav bar so bottom-nav / input bar extends to the screen edge.
-        @Suppress("DEPRECATION")
-        window.navigationBarColor = android.graphics.Color.TRANSPARENT
         val controller = WindowCompat.getInsetsController(window, window.decorView)
         // App background is light (#F5F7FA / white) — always use dark (black) icons
         // so the clock and battery are clearly visible over the app content.

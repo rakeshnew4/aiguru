@@ -748,7 +748,7 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
                 if (wasHidden) {
                     card.alpha = 0f
                     card.translationY = 24f
-                    card.animate().alpha(1f).translationY(0f).setDuration(420).start()
+                    card.animate().alpha(1f).translationY(0f).setDuration(1200).start()
                 }
                 card.findViewById<TextView?>(R.id.challengeCreditsText)?.let { badge ->
                     badge.animate().scaleX(1.12f).scaleY(1.12f).setDuration(380)
@@ -871,7 +871,7 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
         // Progress lives in the drawer — the stub View just satisfies AccessGate
         AccessGate.applyVisibility(this, findViewById(R.id.quickActionProgressBtn), Feature.PROGRESS_DASHBOARD)
 
-        // 🔢 Calculator FAB — opens the floating calculator inherited from BaseActivity
+//        🔢 Calculator FAB — opens the floating calculator inherited from BaseActivity
         findViewById<com.google.android.material.card.MaterialCardView?>(R.id.calcFab)
             ?.setOnClickListener { showCalculator() }
 
@@ -883,14 +883,16 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
     /** Populate quick-launch topic chips and inner BB card topic chips. */
     private fun populateTopicChips() {
         val curatedTopics = listOf(
-            Pair("🌿 Photosynthesis", "Photosynthesis"),
-            Pair("⚛️ Atom Structure", "Atom"),
-            Pair("⚡ Newton's Laws", "Newton's Laws"),
-            Pair("💧 Water Cycle", "Water Cycle"),
-            Pair("🧬 DNA & Genes", "DNA"),
-            Pair("🔋 Electric Circuits", "Electric Circuits"),
-            Pair("📐 Pythagoras", "Pythagoras"),
-            Pair("🌍 Solar System", "Solar System")
+            Pair("🌿 Photosynthesis", "Explain Photosynthesis"),
+            Pair("📐 Pythagoras", "How do we use Pythagoras Theorem in real life"),
+            Pair("🌿 Heart Pumping", "Explain Heart Pumping"),
+            Pair("⚛️ Atom Structure", "How Atoms have their Structures"),
+            Pair("⚡ Newton's Laws", "What are Newton's Laws"),
+            Pair("💧 Water Cycle", "How Water Cycle Works"),
+            Pair("🧬 DNA & Genes", "How DNA & Genes Work"),
+            Pair("🔋 Electric Circuits", "How Electric Circuits Work"),
+            
+            Pair("🌍 Solar System", "How Solar System Works")
         )
 
         val container = findViewById<LinearLayout?>(R.id.topicChipsContainer) ?: return

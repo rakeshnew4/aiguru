@@ -12,6 +12,7 @@ import android.graphics.Color
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.Base64
+import androidx.activity.enableEdgeToEdge
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.yalantis.ucrop.UCrop
@@ -289,6 +290,7 @@ class BlackboardActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContentView(R.layout.activity_blackboard)
 
         loadingGroup    = findViewById(R.id.loadingGroup)
@@ -3926,7 +3928,9 @@ class BlackboardActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.MATCH_PARENT, (2 * dp).toInt()
             ).apply { topMargin = (24 * dp).toInt(); bottomMargin = (8 * dp).toInt() }
             setBackgroundColor(Color.parseColor("#3D1A6E"))
+            
         }
+        divider.setBackgroundResource(R.drawable.bg_daily_challenge_gradient)
         val topicHeader = TextView(this).apply {
             text = "🎓  ${question.take(60)}"
             textSize = computedFontSp - 4f

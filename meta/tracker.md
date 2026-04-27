@@ -80,6 +80,27 @@
 
 ---
 
+**Date:** 2026-04-27
+**Asked:** Investigate Play Console warnings for edge-to-edge compatibility, deprecated window APIs, large-screen orientation/resizability restrictions, and 16 KB native alignment.
+**Changed:**
+- `app/src/main/AndroidManifest.xml` — removed portrait `screenOrientation` locks from `SplashActivity`, `OnboardingActivity`, `BlackboardActivity`, and `UCropActivity` declarations.
+- `app/src/main/res/values/themes.xml` — removed app-level/splash/fullscreen status/navigation bar color and `windowFullscreen` parameters tied to deprecated edge-to-edge/window-display behavior.
+- `app/src/main/java/com/aiguruapp/student/SplashActivity.kt` — kept `enableEdgeToEdge()` and removed manual `window.statusBarColor`/`window.navigationBarColor` writes.
+- `app/src/main/java/com/aiguruapp/student/utils/SchoolTheme.kt` — removed direct window bar color writes from `applyStatusBar`; now only controls icon appearance with `WindowCompat.getInsetsController`.
+- Added `enableEdgeToEdge()` in non-`BaseActivity` screens:
+  - `app/src/main/java/com/aiguruapp/student/BlackboardActivity.kt`
+  - `app/src/main/java/com/aiguruapp/student/ChatHostActivity.kt`
+  - `app/src/main/java/com/aiguruapp/student/TeacherChatHostActivity.kt`
+  - `app/src/main/java/com/aiguruapp/student/TeacherQuizValidationActivity.kt`
+  - `app/src/main/java/com/aiguruapp/student/OnboardingActivity.kt`
+  - `app/src/main/java/com/aiguruapp/student/NcertViewerActivity.kt`
+  - `app/src/main/java/com/aiguruapp/student/PageViewerActivity.kt`
+  - `app/src/main/java/com/aiguruapp/student/notes/NotesActivity.kt`
+  - `app/src/main/java/com/aiguruapp/student/FullscreenImageActivity.kt`
+- `meta/android_index.md` — updated with the newly-read Android file symbols/line references.
+
+---
+
 **Asked:** Add rule: on every new session check/create the 4-min keep-alive cron. Also auto-suggest /clear when new question is unrelated to previous tracker context.
 **Changed:**
 - `CLAUDE.md` — added "Every Session Start" section with: (1) keep-alive cron check/create, (2) tracker read, (3) topic comparison → suggest /clear if unrelated

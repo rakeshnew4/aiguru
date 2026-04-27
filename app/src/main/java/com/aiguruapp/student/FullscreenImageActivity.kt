@@ -12,8 +12,8 @@ import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.WindowCompat
 import com.bumptech.glide.Glide
 
 /**
@@ -44,7 +44,7 @@ class FullscreenImageActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         // Full-screen black window
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        enableEdgeToEdge()
         supportActionBar?.hide()
 
         val uriStr = intent.getStringExtra(EXTRA_IMAGE_URI)

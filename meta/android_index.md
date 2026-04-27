@@ -31,7 +31,9 @@
 
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
-| (unread — use app_context/android_architecture.py first) | ? | Full-screen BB lesson system |
+| `BlackboardActivity` class | 88 | Full-screen BB lesson activity |
+| `onCreate()` | 291–? | Binds full BB UI, input controls, TTS + session flow |
+| `enableEdgeToEdge()` | 293 | Enables edge-to-edge compatibility for pre-Android-15 devices |
 
 ---
 
@@ -108,7 +110,130 @@
 ## SplashActivity.kt
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
-| (unread) | ? | True app launcher (not MainActivity) |
+| `SplashActivity` class | 36 | True app launcher (not MainActivity) |
+| `onCreate()` | 64–? | Runs update gate and routes to HomeActivity |
+| `enableEdgeToEdge()` | 67 | Enables edge-to-edge compatibility |
+
+---
+
+## AndroidManifest.xml
+**Path:** `app/src/main/AndroidManifest.xml`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `.SplashActivity` declaration | 63–71 | Launcher activity entry-point |
+| `.OnboardingActivity` declaration | 79–80 | First-launch onboarding screen |
+| `.BlackboardActivity` declaration | 138–139 | Blackboard lesson activity |
+| `UCropActivity` declaration | 157–159 | Third-party crop activity |
+
+---
+
+## res/values/themes.xml
+**Path:** `app/src/main/res/values/themes.xml`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `Theme.AIGuru` | 11–39 | Main app theme and Material color roles |
+| `Theme.AIGuru.Splash` | 62–68 | Splash window styling |
+| `Theme.AIGuru.Fullscreen` | 70–76 | Fullscreen image viewer theme |
+
+---
+
+## ChatHostActivity.kt
+**Path:** `app/src/main/java/com/aiguruapp/student/ChatHostActivity.kt`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `ChatHostActivity` class | 23 | Thin host around `FullChatFragment` |
+| `onCreate()` | 25–? | Loads host layout and forwards launch extras |
+| `enableEdgeToEdge()` | 27 | Enables edge-to-edge compatibility |
+
+---
+
+## TeacherChatHostActivity.kt
+**Path:** `app/src/main/java/com/aiguruapp/student/TeacherChatHostActivity.kt`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `TeacherChatHostActivity` class | 29 | Teacher chat wrapper with header + defaults dialog |
+| `onCreate()` | 42–? | Loads defaults then hosts `FullChatFragment` |
+| `enableEdgeToEdge()` | 44 | Enables edge-to-edge compatibility |
+
+---
+
+## TeacherQuizValidationActivity.kt
+**Path:** `app/src/main/java/com/aiguruapp/student/TeacherQuizValidationActivity.kt`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `TeacherQuizValidationActivity` class | 30 | Teacher-side generated-quiz filtering UI |
+| `onCreate()` | 47–? | Parses quiz JSON and binds selection recycler |
+| `enableEdgeToEdge()` | 49 | Enables edge-to-edge compatibility |
+
+---
+
+## OnboardingActivity.kt
+**Path:** `app/src/main/java/com/aiguruapp/student/OnboardingActivity.kt`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `OnboardingActivity` class | 21 | 4-screen first-time walkthrough |
+| `onCreate()` | 75–? | Binds onboarding controls and paging actions |
+| `enableEdgeToEdge()` | 77 | Enables edge-to-edge compatibility |
+
+---
+
+## NcertViewerActivity.kt
+**Path:** `app/src/main/java/com/aiguruapp/student/NcertViewerActivity.kt`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `NcertViewerActivity` class | 30 | Safe WebView-based NCERT PDF viewer |
+| `onCreate()` | 47–? | Validates NCERT URL then loads docs viewer |
+| `enableEdgeToEdge()` | 49 | Enables edge-to-edge compatibility |
+
+---
+
+## PageViewerActivity.kt
+**Path:** `app/src/main/java/com/aiguruapp/student/PageViewerActivity.kt`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `PageViewerActivity` class | 27 | Full-screen PDF page browsing and Ask AI handoff |
+| `onCreate()` | 46–? | Reads intent payload and initializes page navigation |
+| `enableEdgeToEdge()` | 48 | Enables edge-to-edge compatibility |
+
+---
+
+## notes/NotesActivity.kt
+**Path:** `app/src/main/java/com/aiguruapp/student/notes/NotesActivity.kt`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `NotesActivity` class | 36 | Chapter notes list with category chips + annotation editing |
+| `onCreate()` | 62–? | Toolbar setup, list binding, and notes loading |
+| `enableEdgeToEdge()` | 64 | Enables edge-to-edge compatibility |
+
+---
+
+## FullscreenImageActivity.kt
+**Path:** `app/src/main/java/com/aiguruapp/student/FullscreenImageActivity.kt`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `FullscreenImageActivity` class | 25 | Pinch-to-zoom fullscreen image viewer |
+| `onCreate()` | 43–? | Builds frame + close UI and gesture handlers |
+| `enableEdgeToEdge()` | 47 | Enables edge-to-edge compatibility |
+
+---
+
+## utils/SchoolTheme.kt
+**Path:** `app/src/main/java/com/aiguruapp/student/utils/SchoolTheme.kt`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `SchoolTheme` object | 33 | Runtime school-brand color registry |
+| `applyStatusBar(window)` | 109–116 | Controls system bar icon appearance via insets controller |
 
 ---
 

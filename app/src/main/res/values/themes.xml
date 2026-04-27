@@ -29,12 +29,6 @@
         <item name="colorOnSurface">@color/colorTextPrimary</item>
         <item name="colorOnSurfaceVariant">@color/colorTextSecondary</item>
 
-        <!-- ── System bars ───────────────────────────────────────────── -->
-        <item name="android:statusBarColor">@color/colorPrimary</item>
-        <!-- Icon mode is set at runtime by SchoolTheme.applyStatusBar()
-             which uses luminance to auto-switch between dark/light icons. -->
-        <item name="android:navigationBarColor">@color/colorSurface</item>
-
         <!-- ── Dialogs ──────────────────────────────────────────────── -->
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.AIGuru.MaterialAlertDialog</item>
 
@@ -70,18 +64,13 @@
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
         <item name="android:windowAnimationStyle">@null</item>
-        <item name="android:statusBarColor">@color/colorPrimary</item>
-        <item name="android:navigationBarColor">@color/colorPrimary</item>
     </style>
 
     <!-- Full-screen immersive theme for FullscreenImageActivity -->
     <style name="Theme.AIGuru.Fullscreen" parent="Theme.AIGuru">
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
-        <item name="android:windowFullscreen">true</item>
         <item name="android:windowContentOverlay">@null</item>
-        <item name="android:statusBarColor">@android:color/black</item>
-        <item name="android:navigationBarColor">@android:color/black</item>
         <item name="android:colorBackground">@android:color/black</item>
     </style>
 

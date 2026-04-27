@@ -8,6 +8,7 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 
@@ -42,25 +43,26 @@ class OnboardingActivity : AppCompatActivity() {
 
     private val pages = listOf(
         OnboardingPage(
-            emoji = "📚",
-            title = "Your AI Homework Helper",
-            subtitle = "Stuck on a question? Get instant answers in seconds from your personal AI tutor."
-        ),
-        OnboardingPage(
-            emoji = "📸",
-            title = "Snap & Solve",
-            subtitle = "Take a photo of your question and get step-by-step solutions for any subject."
-        ),
-        OnboardingPage(
-            emoji = "⚡",
-            title = "Learn Smarter",
-            subtitle = "Understand concepts clearly, finish homework faster, and ace your exams with ease!"
-        ),
-        OnboardingPage(
-            emoji = "🎓",
-            title = "Animated Blackboard Lessons",
-            subtitle = "Ask any topic — get step-by-step animated visual lessons with AI voice narration."
-        )
+        emoji = "📚",
+        title = "Meet Your AI Blackboard Tutor",
+        subtitle = "Learn any concept with clear, step-by-step explanations—just like a real classroom."
+    ),
+    OnboardingPage(
+        emoji = "🎓",
+        title = "Interactive Blackboard Lessons",
+        subtitle = "Got a doubt? Missed a class? Ask anything and watch it explained visually, step by step."
+    ),
+    OnboardingPage(
+        emoji = "📸",
+        title = "Snap. Ask. Understand.",
+        subtitle = "Take a photo of your question and get instant, easy-to-follow solutions."
+    ),
+    OnboardingPage(
+        emoji = "⚡",
+        title = "Learn Faster. Think Smarter.",
+        subtitle = "Build strong concepts, stay curious, and keep improving every day, Also Aligned with NCERT & CBSE concepts for school learning Greaty"
+    ),
+        
     )
 
     private lateinit var emojiView: TextView
@@ -73,6 +75,7 @@ class OnboardingActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContentView(R.layout.activity_onboarding)
 
         emojiView = findViewById(R.id.onboardingEmoji)

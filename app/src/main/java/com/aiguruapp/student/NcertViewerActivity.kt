@@ -13,6 +13,7 @@ import android.widget.ImageButton
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 
@@ -45,6 +46,7 @@ class NcertViewerActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         setContentView(R.layout.activity_ncert_viewer)
 
         val title  = intent.getStringExtra(EXTRA_TITLE) ?: "NCERT Textbook"
