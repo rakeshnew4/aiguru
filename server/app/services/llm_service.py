@@ -574,6 +574,7 @@ def generate_response(
     uid: Optional[str] = None,
     call_name: str = "llm_call",
     session_id: Optional[str] = None,
+    charge_credits: bool = True,
 ) -> Dict[str, Any]:
     """
     Generate LLM response using LiteLLM proxy.
@@ -613,9 +614,9 @@ def generate_response(
             logger.info(f"LiteLLM success | tier={tier} | tokens={result.get('tokens', {})}")
             with open("response.json", "w") as f:
                 json.dump(result, f, indent=2)
-            # Auto-record tokens for EVERY LLM call so credits are charged for planners,
-            # enrichment, intent classifiers etc. — not just the main chat response.
-            if uid and uid != "guest_user":
+            # Auto-record tokens only when running in credit_mode (free-tier sessions
+            # are truly free — credits are only charged once free quota is exhausted).
+            if uid and uid != "guest_user" and charge_credits:
                 tok = result.get("tokens", {})
                 in_t  = tok.get("inputTokens", 0)
                 out_t = tok.get("outputTokens", 0)

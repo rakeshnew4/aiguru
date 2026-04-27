@@ -1850,6 +1850,11 @@ class BlackboardActivity : AppCompatActivity() {
             android.graphics.drawable.ColorDrawable(Color.parseColor("#CC1A1A2E"))
         )
         dialog.show()
+        // Buttons inherit dialog bg color by default — set explicit colors so they're visible
+        dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE)
+            ?.setTextColor(Color.parseColor("#64B5F6"))   // blue — "Start Lesson" / "Save"
+        dialog.getButton(android.app.AlertDialog.BUTTON_NEGATIVE)
+            ?.setTextColor(Color.parseColor("#BDBDBD"))   // grey — "Cancel"
     }
 
     // ── Pre-session settings dialog ───────────────────────────────────────────

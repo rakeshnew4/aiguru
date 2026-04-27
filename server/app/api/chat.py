@@ -160,7 +160,7 @@ def _rule_based_intent(question: str) -> dict | None:
     return None
 
 
-def _classify_intent(question: str, has_image: bool, last_reply: str, uid: Optional[str] = None, session_id: Optional[str] = None) -> dict:
+def _classify_intent(question: str, has_image: bool, last_reply: str, uid: Optional[str] = None, session_id: Optional[str] = None, charge_credits: bool = True) -> dict:
     """
     Fast intent classification using the 'faster' model tier (gemini-2.0-flash).
     Returns {"intent": str, "complexity": str}.
@@ -176,7 +176,7 @@ def _classify_intent(question: str, has_image: bool, last_reply: str, uid: Optio
             has_image=has_image,
             last_reply=last_reply,
         )
-        raw = generate_response(classifier_prompt, [], tier="faster", uid=uid, call_name="intent_classifier", session_id=session_id)
+        raw = generate_response(classifier_prompt, [], tier="faster", uid=uid, call_name="intent_classifier", session_id=session_id, charge_credits=charge_credits)
         text = (raw.get("text") or "").strip()
         parsed = extract_json_safe(text)
         intent = parsed.get("intent", "explain")
@@ -193,7 +193,7 @@ def _classify_intent(question: str, has_image: bool, last_reply: str, uid: Optio
         return {"intent": "explain", "complexity": "medium"}
 
 
-async def _bb_plan(question: str, context: str, history: list, level: int, uid: Optional[str] = None, session_id: Optional[str] = None) -> dict:
+async def _bb_plan(question: str, context: str, history: list, level: int, uid: Optional[str] = None, session_id: Optional[str] = None, charge_credits: bool = True) -> dict:
     """
     Fast BB lesson planner (~150ms, 'faster' model).
     Returns plan dict with topic_type, scope, steps_count, key_concepts,
@@ -214,7 +214,7 @@ async def _bb_plan(question: str, context: str, history: list, level: int, uid: 
         planner_prompt = build_bb_planner_prompt(question, context, history, level)
         loop = asyncio.get_event_loop()
         raw = await loop.run_in_executor(
-            None, lambda: generate_response(planner_prompt, [], tier="faster", uid=uid, call_name="bb_planner", session_id=session_id)
+            None, lambda: generate_response(planner_prompt, [], tier="faster", uid=uid, call_name="bb_planner", session_id=session_id, charge_credits=charge_credits)
         )
         text = (raw.get("text") or "").strip()
         plan = extract_json_safe(text)
@@ -945,9 +945,10 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
     # single source of truth for usage counters.
     _uid = req.user_id or auth.uid
     _session_id = f"{(_uid or 'guest')[:8]}_{uuid.uuid4().hex[:8]}"
+    _credit_mode = False   # True = free quota exhausted, session runs on credits
     if _uid and _uid != "guest_user":
         _mode_type = "blackboard" if req.mode == "blackboard" else "chat"
-        _allowed, _quota_reason = await asyncio.get_event_loop().run_in_executor(
+        _allowed, _quota_reason, _credit_mode = await asyncio.get_event_loop().run_in_executor(
             None, user_service.check_and_record_quota, _uid, _mode_type
         )
         if not _allowed:
@@ -998,6 +999,7 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     req.student_level or 5,
                     uid=_uid,
                     session_id=_session_id,
+                    charge_credits=_credit_mode,
                 )
                 logger.info(
                     "BB plan: type=%s scope=%s steps=%d concepts=%s",
@@ -1048,7 +1050,7 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                             break
                     intent_result = await loop.run_in_executor(
                         None,
-                        lambda: _classify_intent(req.question, has_image, last_reply, uid=_uid, session_id=_session_id),
+                        lambda: _classify_intent(req.question, has_image, last_reply, uid=_uid, session_id=_session_id, charge_credits=_credit_mode),
                     )
                     intent = intent_result["intent"]
                     complexity = intent_result["complexity"]
@@ -1147,6 +1149,7 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                             uid=_uid,
                             call_name="bb_main" if req.mode == "blackboard" else "chat_main",
                             session_id=_session_id,
+                            charge_credits=_credit_mode,
                         ),
                     )
                     while not _llm_future.done():
@@ -1177,7 +1180,7 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     logger.info("Retrying without images...")
                     try:
                         result = await loop.run_in_executor(
-                            None, lambda: generate_response(user_content, [], tier=model_tier, system_prompt=system_prompt, uid=_uid, call_name="bb_main_retry" if req.mode == "blackboard" else "chat_main_retry", session_id=_session_id)
+                            None, lambda: generate_response(user_content, [], tier=model_tier, system_prompt=system_prompt, uid=_uid, call_name="bb_main_retry" if req.mode == "blackboard" else "chat_main_retry", session_id=_session_id, charge_credits=_credit_mode)
                         )
                         if not result or not isinstance(result, dict):
                             logger.error(f"Invalid LLM response on image-less retry: {type(result)}")

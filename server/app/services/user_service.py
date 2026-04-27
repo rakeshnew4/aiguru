@@ -438,7 +438,7 @@ def log_activity(
 
 # ── Server-side quota gate ────────────────────────────────────────────────────
 
-def check_and_record_quota(uid: str, request_type: str) -> tuple[bool, str]:
+def check_and_record_quota(uid: str, request_type: str) -> tuple[bool, str, bool]:
     """
     Authoritative server-side quota gate.
 
@@ -450,25 +450,28 @@ def check_and_record_quota(uid: str, request_type: str) -> tuple[bool, str]:
         request_type: "chat" or "blackboard".
 
     Returns:
-        (allowed: bool, reason: str)
+        (allowed: bool, reason: str, credit_mode: bool)
+        credit_mode=True means the session is running on paid credits (free quota
+        exhausted). credit_mode=False means the session is within the free daily
+        allowance — LLM costs for this session should NOT deduct from credits.
 
-    Fails open (returns True, "") on Firestore/infrastructure errors so users
-    are never blocked due to backend issues.
+    Fails open (returns True, "", False) on Firestore/infrastructure errors so
+    users are never blocked due to backend issues.
     """
     if not uid or uid == "guest_user":
-        return True, ""
+        return True, "", False
 
     db = _get_db()
     if db is None:
         logger.warning("check_and_record_quota: Firestore unavailable — failing open uid=%s", uid)
-        return True, ""
+        return True, "", False
 
     try:
         ref = db.collection("users_table").document(uid)
         doc = ref.get()
         if not doc.exists:
             logger.warning("check_and_record_quota: no users_table doc for uid=%s — failing open", uid)
-            return True, ""
+            return True, "", False
 
         data = doc.to_dict() or {}
         is_bb = request_type == "blackboard"
@@ -514,14 +517,14 @@ def check_and_record_quota(uid: str, request_type: str) -> tuple[bool, str]:
                 logger.warning("check_and_record_quota: credit read failed uid=%s: %s", uid, exc)
 
             if credit_balance > 0:
-                # Free quota exhausted but user has credits — allow; credits auto-deducted
-                # by record_tokens() after the response completes (1 credit per 100 tokens).
+                # Free quota exhausted but user has credits — allow in credit_mode.
+                # record_tokens() will deduct from balance (1 credit per 100 tokens).
                 logger.info(
-                    "check_and_record_quota: FREE_QUOTA_EXHAUSTED uid=%s type=%s "
-                    "count=%d/%d credit_balance=%d — allowing via credits",
+                    "check_and_record_quota: CREDIT_MODE uid=%s type=%s "
+                    "count=%d/%d credit_balance=%d — running on credits",
                     uid, request_type, current_count, limit, credit_balance,
                 )
-                return True, ""
+                return True, "", True   # credit_mode=True
 
             logger.info(
                 "check_and_record_quota: BLOCKED uid=%s type=%s count=%d/%d credits=0",
@@ -530,9 +533,9 @@ def check_and_record_quota(uid: str, request_type: str) -> tuple[bool, str]:
             return False, (
                 f"You've used all {limit} daily {label} sessions and have no credits left. "
                 f"Add credits or come back tomorrow to continue."
-            )
+            ), False
 
-        # Allowed — atomically increment the counter
+        # Allowed within free tier — increment counter, credit_mode=False
         now = _now_ms()
         if is_new_day:
             # Day just rolled over — reset to 1 rather than incrementing a stale value
@@ -541,14 +544,14 @@ def check_and_record_quota(uid: str, request_type: str) -> tuple[bool, str]:
             ref.update({field: Increment(1), "questions_updated_at": now})
 
         logger.debug(
-            "check_and_record_quota: OK uid=%s type=%s count=%d→%d limit=%d",
+            "check_and_record_quota: FREE_TIER uid=%s type=%s count=%d→%d limit=%d",
             uid, request_type, current_count, current_count + 1, limit,
         )
-        return True, ""
+        return True, "", False   # credit_mode=False — free session, don't charge credits
 
     except Exception as exc:
         logger.error("check_and_record_quota: unexpected error uid=%s: %s", uid, exc)
-        return True, ""  # Fail open on any unexpected error
+        return True, "", False  # Fail open
 
 
 # ── Credits helper (used by activate_plan) ────────────────────────────────────

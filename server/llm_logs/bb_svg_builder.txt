@@ -1,4 +1,4 @@
-=== BB_SVG_BUILDER | 2026-04-27 09:02:57 | session=none ===
+=== BB_SVG_BUILDER | 2026-04-27 10:22:02 | session=none ===
 
 === SYSTEM ===
 You are an SVG diagram artist for an educational app. Draw accurate diagrams as raw SVG.
@@ -30,49 +30,15 @@ DRAW REAL STRUCTURES (never flowcharts with boxes/arrows):
 === PROMPT ===
 Draw this educational diagram as SVG:
 
-  Diagram type : leaf_anatomy
-  Topic/title  : Inside the Chloroplast
-  Context      : This diagram shows the inside of a leaf. The chloroplasts are packed inside, waiting to turn light into chemical energy.
+  Diagram type : custom
+  Topic/title  : Heart Valve Function
+  Context      : Without these valves, blood could leak backward, making the heart's job much harder and less efficient.
   Data hints   : none
-  Visual layout: Detailed cross-section of a leaf showing internal layers and chloroplasts.
+  Visual layout: diagram of heart valves opening and closing
   Follow this layout exactly — positions, arrows, and labels as described above.
 
-Draw "Inside the Chloroplast" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
+Draw "Heart Valve Function" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
 Animate each part appearing sequentially.  Output ONLY the <svg> element.
 
 === RESPONSE ===
-<svg viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg">
-<rect width="400" height="300" fill="#1A2B1A"/>
-<text x="200" y="25" text-anchor="middle" font-family="serif" font-size="13" font-weight="bold" fill="#F0EDD0" opacity="0"><animate attributeName="opacity" from="0" to="1" dur="0.35s" fill="freeze" begin="0s"/>Inside the Chloroplast</text>
-
-<path d="M50,60 C150,40 250,40 350,60 C370,150 350,240 250,260 C150,260 50,240 30,150 Z" fill="#81C784" fill-opacity="0.25" stroke="#81C784" stroke-width="2">
-  <animate attributeName="stroke-dasharray" from="1000 1000" to="0 0" dur="0.6s" fill="freeze" begin="0.3s"/>
-</path>
-
-<g fill="#F5E3A0" fill-opacity="0.6" stroke="#F5E3A0" stroke-width="2">
-  <ellipse cx="120" cy="120" rx="25" ry="10" transform="rotate(20 120 120)">
-    <animate attributeName="stroke-dasharray" from="200 200" to="0 0" dur="0.6s" fill="freeze" begin="0.6s"/>
-  </ellipse>
-  <ellipse cx="120" cy="140" rx="25" ry="10" transform="rotate(20 120 140)">
-    <animate attributeName="stroke-dasharray" from="200 200" to="0 0" dur="0.6s" fill="freeze" begin="0.9s"/>
-  </ellipse>
-  <ellipse cx="250" cy="180" rx="25" ry="10" transform="rotate(-15 250 180)">
-    <animate attributeName="stroke-dasharray" from="200 200" to="0 0" dur="0.6s" fill="freeze" begin="1.2s"/>
-  </ellipse>
-  <ellipse cx="250" cy="200" rx="25" ry="10" transform="rotate(-15 250 200)">
-    <animate attributeName="stroke-dasharray" from="200 200" to="0 0" dur="0.6s" fill="freeze" begin="1.5s"/>
-  </ellipse>
-</g>
-
-<line x1="120" y1="130" x2="80" y2="100" stroke="#F0EDD0" stroke-width="1.5" opacity="0"><animate attributeName="opacity" from="0" to="1" dur="0.35s" fill="freeze" begin="1.8s"/></line>
-<text x="75" y="95" font-family="serif" font-size="11" fill="#F0EDD0" opacity="0"><animate attributeName="opacity" from="0" to="1" dur="0.35s" fill="freeze" begin="1.8s"/>Thylakoid</text>
-
-<line x1="250" y1="190" x2="300" y2="160" stroke="#F0EDD0" stroke-width="1.5" opacity="0"><animate attributeName="opacity" from="0" to="1" dur="0.35s" fill="freeze" begin="2.1s"/></line>
-<text x="305" y="155" font-family="serif" font-size="11" fill="#F0EDD0" opacity="0"><animate attributeName="opacity" from="0" to="1" dur="0.35s" fill="freeze" begin="2.1s"/>Granum</text>
-
-<line x1="200" y1="100" x2="200" y2="70" stroke="#F0EDD0" stroke-width="1.5" opacity="0"><animate attributeName="opacity" from="0" to="1" dur="0.35s" fill="freeze" begin="2.4s"/></line>
-<text x="180" y="65" font-family="serif" font-size="11" fill="#F0EDD0" opacity="0"><animate attributeName="opacity" from="0" to="1" dur="0.35s" fill="freeze" begin="2.4s"/>Stroma</text>
-
-<line x1="50" y1="180" x2="20" y2="200" stroke="#F0EDD0" stroke-width="1.5" opacity="0"><animate attributeName="opacity" from="0" to="1" dur="0.35s" fill="freeze" begin="2.7s"/></line>
-<text x="15" y="210" font-family="serif" font-size="11" fill="#F0EDD0" opacity="0"><animate attributeName="opacity" from="0" to="1" dur="0.35s" fill="freeze" begin="2.7s"/>Membrane</text>
-</svg>
+<svg viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#1A2B1A"/><text x="200" y="25" font-family="serif" fill="#F0EDD0" font-size="13" font-weight="bold" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="0s" fill="freeze"/>Heart Valve Function</text><g stroke="#F0EDD0" stroke-width="2" fill="none"><path d="M100 100 C 80 150, 120 200, 150 200 C 180 200, 220 150, 200 100 Z" stroke-dasharray="300" stroke-dashoffset="300"><animate attributeName="stroke-dashoffset" values="300;0" dur="0.6s" begin="0.3s" fill="freeze"/></path><path d="M250 100 C 230 150, 270 200, 300 200 C 330 200, 370 150, 350 100 Z" stroke-dasharray="300" stroke-dashoffset="300"><animate attributeName="stroke-dashoffset" values="300;0" dur="0.6s" begin="0.9s" fill="freeze"/></path><path d="M120 130 L 180 130" stroke="#FF6B6B" stroke-dasharray="60" stroke-dashoffset="60"><animate attributeName="stroke-dashoffset" values="60;0" dur="0.6s" begin="1.5s" fill="freeze"/></path><path d="M270 160 L 330 160" stroke="#81C784" stroke-dasharray="60" stroke-dashoffset="60"><animate attributeName="stroke-dashoffset" values="60;0" dur="0.6s" begin="2.1s" fill="freeze"/></path></g><text x="150" y="220" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="0.6s" fill="freeze"/>Open Valve</text><text x="300" y="220" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="1.2s" fill="freeze"/>Closed Valve</text><text x="150" y="120" font-family="serif" fill="#FF6B6B" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="1.8s" fill="freeze"/>Blood Flow</text><text x="300" y="150" font-family="serif" fill="#81C784" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="2.4s" fill="freeze"/>Seal</text><text x="200" y="270" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="2.7s" fill="freeze"/>Prevents backflow</text></svg>

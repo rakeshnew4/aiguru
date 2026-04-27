@@ -466,6 +466,16 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, a
                 if frame.get("frame_type") != "diagram":
                     continue
 
+                # When user disabled "Animated diagrams", skip ALL diagram rendering
+                # (JS engine, LLM SVG, atom, SMIL — all produce motion).
+                # Steps will render text + images only.
+                if not animations_enabled:
+                    frame.pop("svg_elements", None)
+                    frame.pop("diagram_type", None)
+                    frame.pop("data", None)
+                    frame.pop("visual_description", None)
+                    continue
+
                 html = ""
                 d_type = (frame.get("diagram_type") or "").strip()
                 d_data = frame.get("data") or {}

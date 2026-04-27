@@ -5,6 +5,45 @@
 
 ---
 
+## 2026-04-28 (session 4)
+
+**Asked:** 3 issues: (1) animations still generate even when unchecked; (2) dialog Start/Cancel buttons invisible; (3) free sessions should be truly free — credits only consumed when free quota exhausted. Also clarify credit Firestore key.
+
+**Credit architecture (clarification):**
+- Firestore key: `user_credits/{uid}` → `balance` field = spendable credits (lifetime, never expire unless used)
+- `lifetime_earned` = cumulative credits ever received (never decremented)
+- `record_tokens()` → `_charge_credits_from_usage()` → `Increment(-amount)` on `balance` — 1 credit per 100 tokens
+- Recharge: `grant_topup_credits()` adds to `balance` + `lifetime_earned`; called from `payments.py` when `plan_id` starts with `topup_`
+- BUG FOUND: credits were being deducted for ALL sessions including free-tier sessions (starter credits drained even when user had free sessions left)
+
+**Fix 1 — Issue 1 (server): All diagram types skip when animations=false**
+- Root cause: previous patch only stripped SMIL `build_animated_svg` paths. JS engine (`build_js_diagram_html`), LLM SVG (`build_llm_svg`), and atom JS (`build_atom_html`) still produced animated output.
+- `server/app/api/image_search_titles.py` — in per-frame loop, after `frame_type != "diagram"` check: when `animations_enabled=False`, pop all diagram fields (`svg_elements`, `diagram_type`, `data`, `visual_description`) and `continue`. Single gate covers ALL render paths.
+
+**Fix 2 — Issue 2 (Android): Dialog buttons visible**
+- `app/.../BlackboardActivity.kt` `_showLessonSettingsDialog()`: after `dialog.show()`, set `BUTTON_POSITIVE` → `#64B5F6` (blue), `BUTTON_NEGATIVE` → `#BDBDBD` (grey). Button text was invisible because dark dialog background caused theme to render buttons in matching dark color.
+
+**Fix 3 — Issue 3 (server): Free sessions truly free**
+- `server/app/services/user_service.py` — `check_and_record_quota()`:
+  - Return type changed from `tuple[bool, str]` → `tuple[bool, str, bool]` (3rd = `credit_mode`)
+  - `credit_mode=True` when free quota exhausted but credits available (session runs on credits)
+  - `credit_mode=False` when within free daily allowance (session is free — no credit deduction)
+  - All return statements updated with the 3rd bool
+- `server/app/services/llm_service.py` — `generate_response()`:
+  - Added `charge_credits: bool = True` param
+  - Token recording daemon thread only fires when `charge_credits=True`
+- `server/app/api/chat.py`:
+  - Quota unpack: `_allowed, _quota_reason, _credit_mode = ...` (was 2-tuple)
+  - `_credit_mode = False` default set before quota check
+  - `_classify_intent()`, `_bb_plan()` signatures: added `charge_credits: bool = True` param
+  - All 4 `generate_response()` call sites: added `charge_credits=_credit_mode`
+
+**Key credit flow (corrected):**
+`check_and_record_quota()` → `credit_mode=False` (free) → `generate_response(charge_credits=False)` → `record_tokens` NOT called → balance unchanged
+`check_and_record_quota()` → `credit_mode=True` (credits) → `generate_response(charge_credits=True)` → `record_tokens` → `_charge_credits_from_usage()` → `balance -= tokens/100`
+
+---
+
 ## 2026-04-28 (session 3)
 
 **Asked:** Better UI for lesson settings dialog — show credit cost for videos/images too; let user enable/disable options in the dialog itself (not just a text message).

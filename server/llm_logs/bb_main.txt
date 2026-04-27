@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-04-27 09:02:45 | session=RFQp1HbS_29008bb0 ===
+=== BB_MAIN | 2026-04-27 10:21:41 | session=RFQp1HbS_dfe7224a ===
 
 === SYSTEM ===
 You are a visual AI tutor. Return ONLY valid JSON — no text outside JSON.
@@ -47,34 +47,34 @@ TTS every frame: first frame→android/teacher; concept/memory/diagram→gemini/
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: Photosynthesis
-Lesson title: Photosynthesis: How Plants Eat Light
+Student's EXACT question: Topic: Explain Heart Pumping
+Lesson title: The Heart's Rhythmic Pump
 Category: science
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
 Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- The Ingredients: Water, Carbon Dioxide, and Sunlight
-- The Factory: Inside the Chloroplast
-- The Light-Dependent Reactions
-- The Calvin Cycle: Making Sugar
-- Why It Matters for Life on Earth
+- Deoxygenated blood enters the right atrium
+- The right ventricle pushes blood to the lungs
+- Oxygenated blood returns to the left atrium
+- The left ventricle pumps blood to the body
+- Heart valves ensure one-way flow
 
 This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants to understand how plants obtain and use water as a primary ingredient for photosynthesis.
-Question type: conceptual
+What the student specifically wants: The student wants to understand the initial stage of blood circulation where deoxygenated blood enters the heart.
+Question type: how_to
 Student level: Class 5
 Topic type: science_biology | Scope: simple
-Key concepts to cover (ALL of these): Photosynthesis, Water absorption, Xylem, Roots
+Key concepts to cover (ALL of these): deoxygenated blood, vena cava, right atrium, circulatory system
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-DIAGRAM RECOMMENDATION: This topic likely needs a "leaf_anatomy" diagram (confidence 98%). Use diagram_type="leaf_anatomy" for your diagram frame(s).
+DIAGRAM RECOMMENDATION: This topic likely needs a "blood_circulation_system" diagram (confidence 98%). Use diagram_type="blood_circulation_system" for your diagram frame(s).
 
 SUBJECT GUIDANCE (Science — Biology):
 • Use cycle for life cycles/processes (mitosis, water cycle, photosynthesis).
@@ -90,184 +90,152 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
 {
   "steps": [
     {
-      "title": "Ingredients for Photosynthesis",
+      "title": "Right Atrium Reception",
       "lang": "en-US",
-      "image_description": "photosynthesis water carbon dioxide sunlight diagram",
-      "image_show_confidencescore": 0.9,
+      "image_description": "human heart anatomy diagram with vena cava",
+      "image_show_confidencescore": 0.95,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "**Photosynthesis** ingredients: $$6CO_2 + 6H_2O + light \\rightarrow C_6H_{12}O_6 + 6O_2$$",
-          "speech": "Plants make their own food using sunlight, water, and carbon dioxide. Think of it as a recipe where light is the energy that mixes everything together.",
+          "text": "Deoxygenated blood enters **Right Atrium**",
+          "speech": "Blood without oxygen travels through the vena cava and enters the heart's right atrium first.",
           "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
           "frame_type": "diagram",
-          "text": "**Water Absorption** via Roots",
-          "speech": "Plants drink water from the soil through their roots. Tiny tubes called xylem then carry that water all the way up to the leaves.",
+          "text": "Vena Cava entrance",
+          "speech": "Think of the vena cava as a large pipe bringing used blood back to the heart to be refreshed.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500,
           "diagram_type": "custom",
           "diagram_data": {
-            "intent": "Show a plant with roots absorbing water and arrows moving up the stem."
+            "intent": "Show vena cava entering the right atrium of the heart"
           },
-          "visual_description": "A cross-section of a plant showing roots in soil and water traveling up the stem via xylem."
-        },
-        {
-          "frame_type": "concept",
-          "text": "Ready for the **factory**?",
-          "speech": "Now that we have water and air, where does the magic happen? Let's look inside the leaf.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2000
+          "visual_description": "diagram of vena cava connecting to the right atrium"
         }
       ]
     },
     {
-      "title": "Inside the Chloroplast",
+      "title": "Right Ventricle Action",
       "lang": "en-US",
-      "image_description": "chloroplast plant cell diagram",
+      "image_description": "right ventricle pulmonary artery diagram",
       "image_show_confidencescore": 0.95,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "**Chloroplasts**: Plant kitchens",
-          "speech": "Inside leaf cells are tiny structures called chloroplasts. They contain chlorophyll, which acts like a solar panel to catch sunlight.",
+          "text": "**Right Ventricle** pumps to lungs",
+          "speech": "Once the blood fills the right atrium, it drops into the right ventricle, which pumps it toward your lungs.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
           "frame_type": "diagram",
-          "text": "**Leaf Anatomy** Cross-section",
-          "speech": "This diagram shows the inside of a leaf. The chloroplasts are packed inside, waiting to turn light into chemical energy.",
+          "text": "Pulmonary artery pathway",
+          "speech": "The right ventricle is like a strong muscle that pushes this blood into the pulmonary artery to reach the lungs.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500,
-          "diagram_type": "leaf_anatomy",
+          "diagram_type": "custom",
           "diagram_data": {
-            "intent": "Cross-section of a leaf showing epidermal cells, stomata, and internal mesophyll cells with chloroplasts."
+            "intent": "Show right ventricle pumping blood into the pulmonary artery"
           },
-          "visual_description": "Detailed cross-section of a leaf showing internal layers and chloroplasts."
-        },
-        {
-          "frame_type": "concept",
-          "text": "The **Light Reactions** start",
-          "speech": "What happens when that sunlight hits the chlorophyll? It's time for the first part of the process.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2000
+          "visual_description": "diagram of right ventricle pumping blood to pulmonary artery"
         }
       ]
     },
     {
-      "title": "Light-Dependent Reactions",
+      "title": "Return to Left Atrium",
       "lang": "en-US",
-      "image_description": "light dependent reactions thylakoid diagram",
-      "image_show_confidencescore": 0.85,
+      "image_description": "pulmonary veins entering left atrium",
+      "image_show_confidencescore": 0.95,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "**Light-dependent phase**: Energy capture",
-          "speech": "Sunlight hits the chlorophyll, splitting water molecules apart. This releases oxygen as a byproduct, which is what we breathe!",
+          "text": "**Oxygenated blood** returns",
+          "speech": "After picking up fresh oxygen in the lungs, the blood returns to the heart's left atrium.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
           "frame_type": "diagram",
-          "text": "**Energy conversion** cycle",
-          "speech": "The energy from light is stored in temporary batteries called ATP. This energy is now ready to build sugar molecules.",
+          "text": "Pulmonary veins",
+          "speech": "These pulmonary veins bring the newly oxygen-rich blood back into the heart so it can be circulated again.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500,
-          "diagram_type": "cycle",
+          "diagram_type": "custom",
           "diagram_data": {
-            "intent": "A circular diagram showing sunlight entering, water splitting, and ATP being produced."
+            "intent": "Show pulmonary veins entering the left atrium"
           },
-          "visual_description": "Cycle showing sunlight and water entering, with oxygen exiting and ATP being produced."
-        },
-        {
-          "frame_type": "concept",
-          "text": "Moving to the **Calvin Cycle**",
-          "speech": "We have the energy now. Shall we see how the plant builds actual sugar from it?",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2000
+          "visual_description": "diagram of pulmonary veins connecting to the left atrium"
         }
       ]
     },
     {
-      "title": "The Calvin Cycle: Making Sugar",
+      "title": "Left Ventricle Pump",
       "lang": "en-US",
-      "image_description": "Calvin cycle photosynthesis diagram",
-      "image_show_confidencescore": 0.9,
+      "image_description": "left ventricle aorta pump diagram",
+      "image_show_confidencescore": 0.95,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "**Calvin Cycle**: Carbon fixation",
-          "speech": "In this stage, the plant takes carbon dioxide from the air and uses the stored energy to build glucose, a simple sugar.",
+          "text": "**Left Ventricle** pumps to body",
+          "speech": "The left ventricle is the strongest chamber, pumping that fresh, oxygen-rich blood out to the rest of your body.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
           "frame_type": "diagram",
-          "text": "Glucose **Production**",
-          "speech": "It's like an assembly line. Carbon dioxide is the raw material, and the plant's energy turns it into food for growth.",
+          "text": "Aorta distribution",
+          "speech": "It pushes blood through the aorta, which is the main highway for blood to reach your brain, muscles, and organs.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500,
-          "diagram_type": "cycle",
+          "diagram_type": "custom",
           "diagram_data": {
-            "intent": "A circular diagram showing CO2 entering and glucose exiting."
+            "intent": "Show left ventricle pumping blood into the aorta"
           },
-          "visual_description": "Cycle showing CO2 entering the Calvin cycle and glucose being produced."
-        },
-        {
-          "frame_type": "concept",
-          "text": "Why is this **vital**?",
-          "speech": "This sugar isn't just for the plant. It's the foundation for almost all life on Earth. Why is that?",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2000
+          "visual_description": "diagram showing left ventricle pumping blood into aorta"
         }
       ]
     },
     {
-      "title": "Why It Matters",
+      "title": "Heart Valve Function",
       "lang": "en-US",
-      "image_description": "food chain photosynthesis connection",
-      "image_show_confidencescore": 0.8,
+      "image_description": "heart valves anatomy diagram",
+      "image_show_confidencescore": 0.95,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "**Energy flow** for life",
-          "speech": "Plants are the base of the food chain. When animals eat plants, they get the energy that was originally captured from the sun.",
+          "text": "**Heart valves** ensure flow",
+          "speech": "Valves act like one-way doors, snapping shut to make sure blood always flows in the correct direction.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
           "frame_type": "diagram",
-          "text": "The **Global Cycle**",
-          "speech": "Plants clean our air by taking in carbon dioxide and releasing the oxygen we need to survive. It's a perfect partnership.",
+          "text": "Valve mechanism",
+          "speech": "Without these valves, blood could leak backward, making the heart's job much harder and less efficient.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500,
-          "diagram_type": "cycle",
+          "diagram_type": "custom",
           "diagram_data": {
-            "intent": "Cycle showing plants, animals, oxygen, and carbon dioxide exchange."
+            "intent": "Show heart valves preventing backflow"
           },
-          "visual_description": "A global cycle showing plants and animals exchanging oxygen and carbon dioxide."
+          "visual_description": "diagram of heart valves opening and closing"
         },
         {
           "frame_type": "summary",
-          "text": "**Photosynthesis Summary**:\n1. Roots absorb water.\n2. Light captured by chlorophyll.\n3. Water/CO2 converted to Sugar + O2.",
-          "speech": "In summary, plants use roots to get water, chloroplasts to catch light, and carbon dioxide to build sugar, keeping themselves and us alive.",
+          "text": "Heart circulation **Cycle**",
+          "speech": "In summary, blood enters the right atrium, goes to the lungs via the right ventricle, returns to the left atrium, and is pumped to the body by the left ventricle.",
           "tts_engine": "google",
           "voice_role": "assistant",
           "duration_ms": 3000
@@ -275,24 +243,24 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ],
       "followup_questions": [
         {
-          "question": "What if plants had no roots?",
-          "speech": "What would happen to a plant if it couldn't absorb water through its roots?"
+          "question": "Why is the left ventricle wall thicker than the right?",
+          "speech": "Why do you think the left ventricle wall is thicker than the right side?"
         },
         {
-          "question": "Do plants breathe oxygen?",
-          "speech": "Do plants need oxygen, or do they only produce it?"
+          "question": "What happens if a heart valve fails to close?",
+          "speech": "What would happen if a heart valve failed to close properly?"
         },
         {
-          "question": "Can plants grow in darkness?",
-          "speech": "Could a plant survive and grow if you kept it in a completely dark room?"
+          "question": "Does blood ever stop moving in the heart?",
+          "speech": "Does blood ever stop moving inside the heart during the cycle?"
         }
+      ],
+      "session_theme": "Human heart blood pumping cycle",
+      "video_search_query": "heart pumping mechanism explained for kids",
+      "preferred_channels": [
+        "Khan Academy",
+        "Crash Course Kids"
       ]
     }
-  ],
-  "session_theme": "Photosynthesis and plant biology",
-  "video_search_query": "photosynthesis explained for kids",
-  "preferred_channels": [
-    "Khan Academy India",
-    "Physics Wallah"
   ]
 }
