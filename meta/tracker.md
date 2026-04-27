@@ -101,6 +101,25 @@
 
 ---
 
+**Date:** 2026-04-27
+**Asked:** Validate Play Console fixes — confirm all 4 issues resolved.
+**Result:** All confirmed fixed via code inspection:
+1. ✅ Edge-to-edge: `enableEdgeToEdge()` in `BaseActivity` + `SplashActivity` + 9 other activities
+2. ✅ Deprecated APIs: `SchoolTheme.applyStatusBar()` — `window.statusBarColor`/`navigationBarColor` removed; `FullscreenImageActivity` replaced `setDecorFitsSystemWindows` with `enableEdgeToEdge()`
+3. ✅ Orientation/resizability: `screenOrientation="portrait"` removed from all activity declarations in `AndroidManifest.xml`
+4. ✅ 16 KB alignment: `useLegacyPackaging = false` in `build.gradle.kts`; UCrop `2.2.9` (16 KB-aligned)
+**Files read (validation only, no code changes):**
+- `app/src/main/AndroidManifest.xml` — full file, confirmed no screenOrientation locks
+- `app/build.gradle.kts` — lines 1–95, confirmed useLegacyPackaging = false
+- `app/src/main/java/com/aiguruapp/student/utils/SchoolTheme.kt` — lines 1–135, confirmed applyStatusBar clean
+- `app/src/main/java/com/aiguruapp/student/BaseActivity.kt` — lines 1–50, confirmed enableEdgeToEdge()
+- `app/src/main/java/com/aiguruapp/student/FullscreenImageActivity.kt` — lines 1–70, confirmed enableEdgeToEdge()
+- `app/src/main/java/com/aiguruapp/student/HomeActivity.kt` — lines 1355–1380 (setStatusBarColor = UCrop.Options, not Window)
+- `app/src/main/java/com/aiguruapp/student/BlackboardActivity.kt` — lines 3370–3395 (same)
+- `app/src/main/java/com/aiguruapp/student/FullChatFragment.kt` — lines 1086–1105 (same)
+
+---
+
 **Asked:** Add rule: on every new session check/create the 4-min keep-alive cron. Also auto-suggest /clear when new question is unrelated to previous tracker context.
 **Changed:**
 - `CLAUDE.md` — added "Every Session Start" section with: (1) keep-alive cron check/create, (2) tracker read, (3) topic comparison → suggest /clear if unrelated
