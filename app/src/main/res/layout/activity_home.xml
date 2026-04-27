@@ -1145,6 +1145,55 @@
 
             </LinearLayout>
 
+            <!-- Credits balance row — shows ⭐ balance; updated whenever home screen loads -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:paddingBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="⭐ Credits"
+                        android:textSize="13sp"
+                        android:textColor="@color/colorTextPrimary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="1 credit = 100 tokens · used by BB + Chat"
+                        android:textSize="10sp"
+                        android:textColor="@color/colorTextSecondary"
+                        android:layout_marginTop="1dp" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/drawerCreditsBalance"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFD700"
+                    android:background="@drawable/bg_badge_rounded"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:paddingTop="2dp"
+                    android:paddingBottom="2dp" />
+
+            </LinearLayout>
+
             <!-- AI Voice credits row -->
             <LinearLayout
                 android:id="@+id/drawerVoiceRow"
