@@ -395,20 +395,39 @@ object FirestoreManager {
         chapterName: String,
         isPdf: Boolean = false,
         pdfAssetPath: String = "",
-        ncertUrl: String = ""
+        ncertUrl: String = "",
+        pdfStoragePath: String = "",
+        pdfId: String = ""
     ) {
         if (userId.isBlank() || userId == "guest_user") return
-        val doc = mapOf(
+        val doc = mutableMapOf<String, Any>(
             "name"         to chapterName,
             "isPdf"        to isPdf,
             "pdfAssetPath" to pdfAssetPath,
             "ncertUrl"     to ncertUrl,
             "createdAt"    to System.currentTimeMillis()
         )
+        if (pdfStoragePath.isNotBlank()) doc["pdfStoragePath"] = pdfStoragePath
+        if (pdfId.isNotBlank()) doc["pdfId"] = pdfId
         usersRef(userId).collection("subjects").document(safeId(subjectName))
             .collection("chapters").document(safeId(chapterName))
             .set(doc, SetOptions.merge())
             .addOnFailureListener { Log.e("Firestore", "saveChapter failed uid=$userId: ${it.message}") }
+    }
+
+    fun loadChapterMeta(
+        userId: String,
+        subjectName: String,
+        chapterName: String,
+        onSuccess: (Map<String, Any?>) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") { onFailure(null); return }
+        usersRef(userId).collection("subjects").document(safeId(subjectName))
+            .collection("chapters").document(safeId(chapterName))
+            .get()
+            .addOnSuccessListener { doc -> onSuccess(doc.data ?: emptyMap()) }
+            .addOnFailureListener { onFailure(it) }
     }
 
     fun deleteChapter(userId: String, subjectName: String, chapterName: String) {
@@ -1027,13 +1046,12 @@ object FirestoreManager {
         if (schoolId.isBlank()) { onSuccess(emptyList()); return }
         db.collection("school_tasks")
             .whereEqualTo("school_id", schoolId)
-            .whereEqualTo("is_active", true)
-            .orderBy("created_at", com.google.firebase.firestore.Query.Direction.DESCENDING)
             .get()
             .addOnSuccessListener { snap ->
                 val all = snap.documents.mapNotNull { doc ->
                     doc.data?.toMutableMap()?.also { it["id"] = doc.id }
-                }
+                }.filter { (it["is_active"] as? Boolean) != false }
+                    .sortedByDescending { (it["created_at"] as? Number)?.toLong() ?: 0L }
                 // Filter by grade (empty grade = all grades)
                 val gradeFiltered = if (grade.isBlank()) all else all.filter { task ->
                     val tGrade = task["grade"] as? String ?: ""

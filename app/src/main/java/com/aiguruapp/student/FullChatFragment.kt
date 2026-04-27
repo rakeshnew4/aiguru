@@ -721,8 +721,16 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             it == com.aiguruapp.student.chat.BlackboardGenerator.BbDuration.MIN_2.label
         }.coerceAtLeast(0)
 
+        // Capture context before dialog is shown to avoid IllegalStateException if fragment detaches
+        val ctx = requireContext()
+        // Clear any pending image state — BB session doesn't use the chat's attachment
+        imageEncodeJob?.cancel()
+        imageEncodeJob = null
+        pendingImageBase64 = null
+        imagePreviewStrip.visibility = View.GONE
+
         // Build single-choice list dialog
-        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+        androidx.appcompat.app.AlertDialog.Builder(ctx)
             .setTitle("⏱ Session length")
             .setSingleChoiceItems(labels, selectedIdx) { _, which -> selectedIdx = which }
             .setPositiveButton("▶ Start") { _, _ ->
@@ -730,7 +738,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                 val convId =
                     "${FirestoreManager.safeId(subjectName)}__${FirestoreManager.safeId(chapterName)}"
                 startActivity(
-                    Intent(requireContext(), BlackboardActivity::class.java)
+                    Intent(ctx, BlackboardActivity::class.java)
                         .putExtra(BlackboardActivity.EXTRA_MESSAGE, TutorController.extractAnswerForDisplay(msg.content))
                         .putExtra(BlackboardActivity.EXTRA_MESSAGE_ID, msg.id)
                         .putExtra(BlackboardActivity.EXTRA_USER_ID, userId)

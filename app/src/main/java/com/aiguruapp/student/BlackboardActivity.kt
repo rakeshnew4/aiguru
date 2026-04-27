@@ -594,6 +594,9 @@ class BlackboardActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         aiTtsEngine.stop()
+        // Prevent TTS callbacks from re-triggering when app returns to foreground
+        isPaused = true
+        if (::pauseBtn.isInitialized) pauseBtn.text = "▶"
     }
 
     override fun onDestroy() {
@@ -1851,8 +1854,10 @@ class BlackboardActivity : AppCompatActivity() {
 
             if (serverScore >= 0.7f) {
                 // ── High confidence: show inline ──────────────────────────────────
-                val caption = TextView(this@BlackboardActivity).apply {
-                    text = "📷 ${query.take(50)}"
+                // Only show caption when query is a human-readable description, not a raw URL
+                val captionText = if (!query.startsWith("https://", ignoreCase = true)) "📷 ${query.take(50)}" else ""
+                val caption = if (captionText.isNotBlank()) TextView(this@BlackboardActivity).apply {
+                    text = captionText
                     textSize = 10f
                     setTextColor(android.graphics.Color.parseColor("#88857070"))
                     gravity = Gravity.CENTER
@@ -1861,7 +1866,7 @@ class BlackboardActivity : AppCompatActivity() {
                         LinearLayout.LayoutParams.WRAP_CONTENT
                     ).apply { bottomMargin = (8 * dp).toInt() }
                     alpha = 0f
-                }
+                } else null
                 if (url.lowercase().endsWith(".svg")) {
                     val webView = WebView(this@BlackboardActivity).apply {
                         layoutParams = LinearLayout.LayoutParams(
@@ -1874,26 +1879,29 @@ class BlackboardActivity : AppCompatActivity() {
                         alpha = 0f
                     }
                     placeholder.addView(webView)
-                    placeholder.addView(caption)
+                    caption?.let { placeholder.addView(it) }
                     webView.loadUrl(url)
                     webView.animate().alpha(1f).setDuration(700).start()
-                    caption.animate().alpha(1f).setDuration(700).start()
+                    caption?.animate()?.alpha(1f)?.setDuration(700)?.start()
                 } else {
                     val imageView = ImageView(this@BlackboardActivity).apply {
                         layoutParams = LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.MATCH_PARENT, (180 * dp).toInt()
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
                         ).apply { topMargin = (10 * dp).toInt(); bottomMargin = (4 * dp).toInt() }
-                        scaleType = ImageView.ScaleType.CENTER_CROP
+                        scaleType = ImageView.ScaleType.FIT_CENTER
+                        adjustViewBounds = true
+                        maxHeight = (280 * dp).toInt()
                         alpha = 0f
                     }
                     placeholder.addView(imageView)
-                    placeholder.addView(caption)
+                    caption?.let { placeholder.addView(it) }
                     Glide.with(this@BlackboardActivity)
                         .load(url)
                         .transform(RoundedCorners((12 * dp).toInt()))
                         .into(imageView)
                     imageView.animate().alpha(1f).setDuration(700).start()
-                    caption.animate().alpha(1f).setDuration(700).start()
+                    caption?.animate()?.alpha(1f)?.setDuration(700)?.start()
                 }
                 stepsScrollView.postDelayed(
                     { stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 400

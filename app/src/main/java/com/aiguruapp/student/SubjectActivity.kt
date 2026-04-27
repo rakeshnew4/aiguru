@@ -21,6 +21,7 @@ import com.aiguruapp.student.utils.SessionManager
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -141,6 +142,22 @@ class SubjectActivity : BaseActivity() {
                     runOnUiThread {
                         chapterAdapter.notifyDataSetChanged()
                         updateEmptyState()
+                    }
+                    // Restore chapter meta (isPdf, pdfId) for any chapters missing from SharedPrefs
+                    toAdd.forEach { chapterName ->
+                        val existingMeta = chaptersPrefs().getString("meta_${subjectName}_$chapterName", null)
+                        if (existingMeta.isNullOrBlank()) {
+                            FirestoreManager.loadChapterMeta(userId, subjectName, chapterName,
+                                onSuccess = { meta ->
+                                    val isPdf = meta["isPdf"] as? Boolean ?: false
+                                    val pdfAssetPath = meta["pdfAssetPath"] as? String ?: ""
+                                    val pdfStoragePath = meta["pdfStoragePath"] as? String ?: ""
+                                    val restoredPdfId = (meta["pdfId"] as? String)?.takeIf { it.isNotBlank() }
+                                        ?: if (pdfStoragePath.isNotBlank()) pdfStoragePath.substringAfterLast("/").removeSuffix(".pdf") else ""
+                                    if (isPdf) saveChapterMeta(chapterName, isPdf = true, pdfAssetPath = pdfAssetPath, pdfId = restoredPdfId)
+                                }
+                            )
+                        }
                     }
                 }
             },
@@ -325,6 +342,18 @@ class SubjectActivity : BaseActivity() {
                     destFile.outputStream().use { output -> input.copyTo(output) }
                 } ?: throw Exception("Cannot read selected file")
 
+                // Upload PDF to Firebase Storage for cross-reinstall persistence
+                val storagePath = "user_pdfs/$userId/$pdfId.pdf"
+                try {
+                    com.google.android.gms.tasks.Tasks.await(
+                        FirebaseStorage.getInstance().reference.child(storagePath)
+                            .putFile(Uri.fromFile(destFile))
+                    )
+                } catch (e: Exception) {
+                    android.util.Log.w("SubjectActivity", "PDF upload to Storage failed: ${e.message}")
+                    // Non-fatal — PDF still works locally, just won't survive reinstall
+                }
+
                 withContext(Dispatchers.Main) {
                     progressDialog.dismiss()
                     // Persist chapter
@@ -333,7 +362,7 @@ class SubjectActivity : BaseActivity() {
                     saveChaptersLocally(chapters)
                     // Mark as PDF with empty assetPath (cached file is used directly)
                     saveChapterMeta(chapterName, isPdf = true, pdfAssetPath = "", pdfId = pdfId)
-                    FirestoreManager.saveChapter(userId, subjectName, chapterName, isPdf = true)
+                    FirestoreManager.saveChapter(userId, subjectName, chapterName, isPdf = true, pdfStoragePath = storagePath, pdfId = pdfId)
                     chaptersListData.clear()
                     chaptersListData.addAll(chapters.mapIndexed { idx, n ->
                         ChapterItem(name = n, ncertPdfUrl = ncertUrlMap[idx + 1])

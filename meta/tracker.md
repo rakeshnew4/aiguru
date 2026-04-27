@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-04-27
+
+**Asked:** Read CLAUDE.md + update architecture and folder/file structure in meta indexes.
+**Changed:**
+- `meta/android_index.md` — full structure added: adapters/ (7 files), models/ (17 files), utils/ (16 files), services/ (4 files), streaming/ (5 files), http/, auth/, daily/, quiz/, payments/, chat/ extras (4 files), GeminiLiveActivity, RevisionActivity, LibraryActivity, SubscriptionActivity, dashboard activities, TutorController, BaseActivity. Updated Key Android Architecture Facts with build config + full routing details.
+- `meta/server_index.md` — full structure added: core/config.py, core/auth.py, core/firebase_auth.py, core/logger.py, services/litellm_service.py, services/strands_agent.py, services/cache_service.py, services/context_service.py (stub), services/evaluation_service.py, services/gamification_service.py, services/library_service.py, services/user_service.py, models/ (5 files), api/analyze_image.py, api/library.py, api/tasks.py, api/diagram.py, api/users.py, api/admin.py, api/credits.py, utils/diagram_router.py, utils/js_engine.py, utils/json_utils.py, utils/text_utils.py, SVG builder family, main.py. Added Key Server Architecture Facts section.
+**No code changes.**
+
+---
+
 ## 2026-04-26
 
 ### Session: LLM call analysis + cleanup
@@ -406,3 +416,34 @@ Note: BbInteractivePopup.kt loaded into context by linter. Updating android meta
 
 **Asked:** Keep-alive ping.
 **Changed:** No code changes.
+
+---
+
+**Date:** 2026-04-27
+**Asked:** Production NCERT downloader: clean dataset, robust URL fallback, expand to classes 1–8.
+**Changed:**
+- `app/src/main/assets/ncert.json` — replaced bloated multi-language file with clean English-medium dataset: classes 1–8, correct subjects (EVS for 1–5; Science + Social Science split for 6–8)
+- `app/src/main/java/com/aiguruapp/student/HomeActivity.kt` — class picker now shows 1–12 (was 6–12); `confirmNcertImport()` stores `ncertCode` + `ncertChapterNum` in chapter meta JSON for fallback URL generation
+- `app/src/main/java/com/aiguruapp/student/ChapterActivity.kt` — added `ncertCode`/`ncertChapterNum` instance vars; added `ncertCandidateUrls()` that generates 5 URL pattern variants; `downloadNcertToCache()` now iterates all candidates (2 retries each) instead of retrying one URL 3×
+**Key facts:**
+- NCERT URL patterns: `{code}{ch2}.pdf` (standard), `{code}{ch1}.pdf` (no pad), `{code}{ch2}1.pdf`, `{code}dd.pdf`, `{code}dd1.pdf`
+- Candidate list only generated when `ncertCode` + `ncertChapterNum` are stored (new imports); old chapters fall back to stored URL only
+- ncert.json covers classes 1–8 English medium; classes 9–12 not in dataset yet
+
+---
+
+**Date:** 2026-04-27
+**Asked:** 5 bugs: TTS speaks after close/reopen; camera+BB session crash; student tasks load error; BB image sizing + URL shown; PDF lost after reinstall.
+**Changed:**
+- `BlackboardActivity.kt` onPause (~line 596): added `isPaused = true` + `pauseBtn.text = "▶"` so TTS callbacks don't re-trigger when returning from background
+- `FullChatFragment.kt` showBbDurationPickerAndLaunch (~line 725): capture `ctx = requireContext()` before dialog, cancel `imageEncodeJob`, clear `pendingImageBase64` before launching BB to prevent crash when image was attached
+- `firestore/FirestoreManager.kt` loadTasksForSchool (~line 1048): removed `.whereEqualTo("is_active", true)` + `.orderBy(...)` from query (composite index not created); filter and sort done in-memory
+- `BlackboardActivity.kt` fetchAndShowStepImage (~line 1854): changed `CENTER_CROP` → `FIT_CENTER`, fixed height → `WRAP_CONTENT + maxHeight=280dp`, caption now hidden when query is a raw URL
+- `firestore/FirestoreManager.kt` saveChapter: added `pdfStoragePath` and `pdfId` params, stores them in Firestore
+- `firestore/FirestoreManager.kt`: added `loadChapterMeta()` function
+- `SubjectActivity.kt`: imports `FirebaseStorage`; after PDF import, uploads to Firebase Storage at `user_pdfs/{userId}/{pdfId}.pdf`; passes `storagePath` + `pdfId` to `saveChapter`; on Firestore chapter restore, calls `loadChapterMeta` and restores SharedPrefs meta (isPdf, pdfId) for PDF chapters
+- `ChapterActivity.kt`: imports `FirebaseStorage`; `setupPdfChapter()` splits into two fns — when local PDF is missing, calls `loadChapterMeta`, downloads from Firebase Storage, then calls `setupPdfChapterAfterDownload()`
+**Key facts:**
+- Fix 1 leaves session paused when user returns; user must tap ▶ to resume (expected)
+- Fix 3: school_tasks only needs single-field index on school_id now
+- Fix 5: PDFs uploaded on first import; pre-existing PDFs won't auto-upload (user must re-add once)

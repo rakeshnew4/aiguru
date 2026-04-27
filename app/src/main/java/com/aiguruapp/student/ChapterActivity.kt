@@ -37,6 +37,7 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 
 import com.aiguruapp.student.widget.BoxSpinnerView
+import com.google.firebase.storage.FirebaseStorage
 
 class ChapterActivity : BaseActivity() {
 
@@ -65,6 +66,8 @@ class ChapterActivity : BaseActivity() {
 
     // NCERT download-and-render state
     private var ncertUrl = ""
+    private var ncertCode = ""
+    private var ncertChapterNum = 0
     private val ncertPdfId
         get() = "ncert_${subjectName}_${chapterName}"
             .replace(" ", "_").replace("/", "_").take(60)
@@ -640,6 +643,8 @@ class ChapterActivity : BaseActivity() {
                 // NCERT chapter — open via NcertViewerActivity
                 if (json.optBoolean("isNcert", false)) {
                     val ncertUrl = json.optString("ncertUrl", "")
+                    ncertCode = json.optString("ncertCode", "")
+                    ncertChapterNum = json.optInt("ncertChapterNum", 0)
                     setupNcertChapter(ncertUrl)
                     return
                 }
@@ -710,67 +715,92 @@ class ChapterActivity : BaseActivity() {
         downloadNcertToCache()
     }
 
-    /** Downloads the NCERT PDF directly into the app's private cache, then renders it. */
-    private fun downloadNcertToCache() {
-        if (ncertUrl.isBlank()) return
-        val pdfFileName = ncertUrl.substringAfterLast("/")
+    /**
+     * Generates candidate NCERT URLs to try in order.
+     * NCERT servers use inconsistent patterns — this covers all known variants.
+     */
+    private fun ncertCandidateUrls(): List<String> {
+        val base = "https://ncert.nic.in/textbook/pdf"
+        val candidates = mutableListOf<String>()
+        // Always try the stored URL first (may already be correct)
+        if (ncertUrl.isNotBlank()) candidates.add(ncertUrl)
+        if (ncertCode.isNotBlank() && ncertChapterNum > 0) {
+            val ch2 = ncertChapterNum.toString().padStart(2, '0')  // "01", "10"
+            val ch1 = ncertChapterNum.toString()                    // "1", "10"
+            listOf(
+                "$base/${ncertCode}${ch2}.pdf",   // standard zero-padded  (fesc101.pdf)
+                "$base/${ncertCode}${ch1}.pdf",   // no zero-pad            (fesc11.pdf)
+                "$base/${ncertCode}${ch2}1.pdf",  // trailing-1 variant     (fesc1011.pdf)
+                "$base/${ncertCode}dd.pdf",        // full-book "dd" variant
+                "$base/${ncertCode}dd1.pdf"        // full-book "dd1" variant
+            ).forEach { if (it !in candidates) candidates.add(it) }
+        }
+        return candidates
+    }
 
-        showDownloadOverlay(
-            "Downloading ",
-            "Free NCERT textbook · saved once"
-        )
+    /** Downloads the NCERT PDF directly into the app's private cache, then renders it.
+     *  Tries all known URL patterns before giving up — NCERT URLs are not stable. */
+    private fun downloadNcertToCache() {
+        if (ncertUrl.isBlank() && ncertCode.isBlank()) return
+
+        showDownloadOverlay("Downloading…", "Free NCERT textbook · saved once")
         pageListAdapter.onItemClickOverride = null
 
         lifecycleScope.launch(Dispatchers.IO) {
             val destDir  = java.io.File(cacheDir, "pdf_cache").also { it.mkdirs() }
             val destFile = java.io.File(destDir, "$ncertPdfId.pdf")
             var lastError: Exception? = null
+            var successUrl: String? = null
 
-            // Retry up to 3 times — NCERT servers are flaky and SSL can fail transiently
-            for (attempt in 1..3) {
-                try {
-                    val request = Request.Builder()
-                        .url(ncertUrl)
-                        // Mimic a real browser — ncert.nic.in blocks non-browser User-Agents
-                        .header("User-Agent",
-                            "Mozilla/5.0 (Linux; Android 10; Mobile) " +
-                            "AppleWebKit/537.36 (KHTML, like Gecko) " +
-                            "Chrome/124.0.0.0 Mobile Safari/537.36")
-                        .header("Accept", "application/pdf,*/*")
-                        .header("Referer", "https://ncert.nic.in/")
-                        .build()
+            outer@ for (url in ncertCandidateUrls()) {
+                // 2 attempts per candidate — handles transient SSL/network blips
+                for (attempt in 1..2) {
+                    try {
+                        val request = Request.Builder()
+                            .url(url)
+                            .header("User-Agent",
+                                "Mozilla/5.0 (Linux; Android 10; Mobile) " +
+                                "AppleWebKit/537.36 (KHTML, like Gecko) " +
+                                "Chrome/124.0.0.0 Mobile Safari/537.36")
+                            .header("Accept", "application/pdf,*/*")
+                            .header("Referer", "https://ncert.nic.in/")
+                            .build()
 
-                    val response = ncertHttpClient.newCall(request).execute()
-                    if (!response.isSuccessful) {
-                        throw Exception("Server returned ${response.code}")
+                        val response = ncertHttpClient.newCall(request).execute()
+                        if (!response.isSuccessful) throw Exception("HTTP ${response.code}")
+                        val body = response.body ?: throw Exception("Empty response body")
+
+                        body.byteStream().use { input ->
+                            destFile.outputStream().use { output -> input.copyTo(output) }
+                        }
+                        // Persist working URL for cache-invalidation check
+                        java.io.File(cacheDir, "pdf_cache/$ncertPdfId.url").writeText(url)
+                        successUrl = url
+                        break@outer
+                    } catch (e: Exception) {
+                        lastError = e
+                        destFile.delete()
+                        if (attempt < 2) kotlinx.coroutines.delay(1000L)
                     }
-                    response.body!!.byteStream().use { input ->
-                        destFile.outputStream().use { output -> input.copyTo(output) }
-                    }
-                    // Persist the URL used for this download so we can detect URL changes later
-                    java.io.File(cacheDir, "pdf_cache/$ncertPdfId.url").writeText(ncertUrl)
-                    withContext(Dispatchers.Main) { hideDownloadOverlay(); loadNcertPagesFromCache() }
-                    return@launch
-                } catch (e: Exception) {
-                    lastError = e
-                    destFile.delete() // remove partial file before retry
-                    if (attempt < 3) kotlinx.coroutines.delay(1500L * attempt)
                 }
             }
 
-            // All 3 attempts failed
             withContext(Dispatchers.Main) {
                 hideDownloadOverlay()
-                val fn = ncertUrl.substringAfterLast("/")
-                pagesListData.clear()
-                pagesListData.add("⬇️  Tap to retry downloading \"$fn\"")
-                pageListAdapter.notifyDataSetChanged()
-                pageListAdapter.onItemClickOverride = { pos ->
-                    if (pos == 0) downloadNcertToCache()
+                if (successUrl != null) {
+                    loadNcertPagesFromCache()
+                } else {
+                    val fn = ncertUrl.substringAfterLast("/").ifBlank { "chapter" }
+                    pagesListData.clear()
+                    pagesListData.add("⬇️  Tap to retry downloading \"$fn\"")
+                    pageListAdapter.notifyDataSetChanged()
+                    pageListAdapter.onItemClickOverride = { pos ->
+                        if (pos == 0) downloadNcertToCache()
+                    }
+                    Toast.makeText(this@ChapterActivity,
+                        "Download failed: ${lastError?.message}. Tap to retry.",
+                        Toast.LENGTH_LONG).show()
                 }
-                Toast.makeText(this@ChapterActivity,
-                    "Download failed: ${lastError?.message}. Tap to retry.",
-                    Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -821,11 +851,50 @@ class ChapterActivity : BaseActivity() {
     private fun setupPdfChapter() {
         val cachedPdf = java.io.File(cacheDir, "pdf_cache/$pdfId.pdf")
         if (pdfId.isBlank() || (pdfAssetPath.isBlank() && !cachedPdf.exists())) {
-            pagesListData.clear()
-            pagesListData.add("⚠️ PDF data missing. Re-add this chapter from the Library.")
-            pageListAdapter.notifyDataSetChanged()
+            // PDF not found locally — try to re-download from Firebase Storage
+            val userId = SessionManager.getFirestoreUserId(this)
+            showDownloadOverlay("Looking up PDF…", "")
+            com.aiguruapp.student.firestore.FirestoreManager.loadChapterMeta(
+                userId, subjectName, chapterName,
+                onSuccess = { meta ->
+                    val storagePath = meta["pdfStoragePath"] as? String
+                    if (!storagePath.isNullOrBlank() && pdfId.isNotBlank()) {
+                        showDownloadOverlay("Downloading PDF…", "Please wait")
+                        val destDir = java.io.File(cacheDir, "pdf_cache").also { it.mkdirs() }
+                        val destFile = java.io.File(destDir, "$pdfId.pdf")
+                        FirebaseStorage.getInstance().reference.child(storagePath)
+                            .getBytes(50 * 1024 * 1024)
+                            .addOnSuccessListener { bytes ->
+                                destFile.writeBytes(bytes)
+                                hideDownloadOverlay()
+                                setupPdfChapterAfterDownload()
+                            }
+                            .addOnFailureListener {
+                                hideDownloadOverlay()
+                                pagesListData.clear()
+                                pagesListData.add("⚠️ Could not download PDF. Check your connection and re-add this chapter if the problem persists.")
+                                pageListAdapter.notifyDataSetChanged()
+                            }
+                    } else {
+                        hideDownloadOverlay()
+                        pagesListData.clear()
+                        pagesListData.add("⚠️ PDF data missing. Re-add this chapter from the Library.")
+                        pageListAdapter.notifyDataSetChanged()
+                    }
+                },
+                onFailure = {
+                    hideDownloadOverlay()
+                    pagesListData.clear()
+                    pagesListData.add("⚠️ PDF data missing. Re-add this chapter from the Library.")
+                    pageListAdapter.notifyDataSetChanged()
+                }
+            )
             return
         }
+        setupPdfChapterAfterDownload()
+    }
+
+    private fun setupPdfChapterAfterDownload() {
 
         findViewById<MaterialButton>(R.id.uploadImageButton).apply {
             visibility = View.VISIBLE
