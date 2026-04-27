@@ -118,6 +118,13 @@ class BlackboardActivity : AppCompatActivity() {
         const val EXTRA_DURATION        = "extra_duration"
         /** Optional Base64-encoded image to include in the lesson generation (e.g. from home dialog camera). */
         const val EXTRA_IMAGE_BASE64    = "extra_image_base64"
+        /**
+         * In-memory store for a large base64 image passed from [HomeActivity].
+         * Avoids TransactionTooLargeException — Android Binder IPC has a ~1 MB limit
+         * and a 1920×1920 JPEG encoded in base64 can be 3–6 MB.
+         * Cleared immediately after [BlackboardActivity.onCreate] reads it.
+         */
+        var pendingImageBase64: String? = null
     }
 
     // ── Session feature config ────────────────────────────────────────────────
@@ -215,6 +222,8 @@ class BlackboardActivity : AppCompatActivity() {
     private var bbCameraImageUri: Uri? = null
     private var bbPendingImageUri: Uri? = null
     private var bbPendingImageBase64: String? = null
+    /** Image base64 resolved once in onCreate from companion store (HomeActivity) or Intent fallback. */
+    private var intentImageBase64: String? = null
     private var bbIsListening = false
     private lateinit var bbVoiceManager: VoiceManager
     private lateinit var bbMediaManager: MediaManager
@@ -435,6 +444,10 @@ class BlackboardActivity : AppCompatActivity() {
         totalChunks         = (totalStepsTarget + BlackboardGenerator.CHUNK_SIZE - 1) / BlackboardGenerator.CHUNK_SIZE
         currentTopic = intent.getStringExtra(EXTRA_MESSAGE) ?: ""
 
+        // Claim large image from in-memory store to avoid TransactionTooLargeException (Binder IPC ~1MB limit).
+        intentImageBase64 = BlackboardActivity.pendingImageBase64.also { BlackboardActivity.pendingImageBase64 = null }
+            ?: intent.getStringExtra(EXTRA_IMAGE_BASE64)
+
         val userId = intent.getStringExtra(EXTRA_USER_ID)
             ?.takeIf { it.isNotBlank() }
             ?: SessionManager.getFirestoreUserId(this).takeIf { it.isNotBlank() && it != "guest_user" }
@@ -461,7 +474,7 @@ class BlackboardActivity : AppCompatActivity() {
                     userId         = null,
                     conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
                     recordSession  = false,
-                    imageBase64    = intent.getStringExtra(EXTRA_IMAGE_BASE64)
+                    imageBase64    = intentImageBase64
                 )
             }
             return
@@ -533,7 +546,7 @@ class BlackboardActivity : AppCompatActivity() {
                                                         userId         = userId,
                                                         conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
                                                         recordSession  = true,
-                                                        imageBase64    = intent.getStringExtra(EXTRA_IMAGE_BASE64)
+                                                        imageBase64    = intentImageBase64
                                                     )
                                                 }
                                             } else {
@@ -555,7 +568,7 @@ class BlackboardActivity : AppCompatActivity() {
                                                     userId         = userId,
                                                     conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
                                                     recordSession  = true,
-                                                    imageBase64    = intent.getStringExtra(EXTRA_IMAGE_BASE64)
+                                                    imageBase64    = intentImageBase64
                                                 )
                                             }
                                         }
@@ -578,7 +591,7 @@ class BlackboardActivity : AppCompatActivity() {
                                     userId         = userId,
                                     conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
                                     recordSession  = false,
-                                    imageBase64    = intent.getStringExtra(EXTRA_IMAGE_BASE64)
+                                    imageBase64    = intentImageBase64
                                 )
                             } else {
                                 showPreSessionDialog {
@@ -588,7 +601,7 @@ class BlackboardActivity : AppCompatActivity() {
                                         userId         = userId,
                                         conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
                                         recordSession  = true,
-                                        imageBase64    = intent.getStringExtra(EXTRA_IMAGE_BASE64)
+                                        imageBase64    = intentImageBase64
                                     )
                                 }
                             }
@@ -609,7 +622,7 @@ class BlackboardActivity : AppCompatActivity() {
                                 userId         = userId,
                                 conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
                                 recordSession  = false,
-                                imageBase64    = intent.getStringExtra(EXTRA_IMAGE_BASE64)
+                                imageBase64    = intentImageBase64
                             )
                         }
                     }
@@ -630,7 +643,7 @@ class BlackboardActivity : AppCompatActivity() {
                             userId         = userId,
                             conversationId = intent.getStringExtra(EXTRA_CONVERSATION_ID),
                             recordSession  = false,
-                            imageBase64    = intent.getStringExtra(EXTRA_IMAGE_BASE64)
+                            imageBase64    = intentImageBase64
                         )
                     }
                 }
@@ -1740,9 +1753,9 @@ class BlackboardActivity : AppCompatActivity() {
         )
         val opts = listOf(
             Opt("🎯", "Interactive quizzes",   "Currently not active",                               0,          cfg.quizEnabled),
-            Opt("🎬", "Show Related videos",         "10 extra credits",0xFFF57F17.toInt(), cfg.videosEnabled),
-            Opt("🎨", "Generate Animated Visuals",      "30 extra credits ", 0xFFE65100.toInt(), cfg.animationsEnabled),
-            Opt("🖼️", "generate Topic images",           "10 extra credits",    0xFF2E7D32.toInt(), cfg.imagesEnabled),
+            Opt("🎬", "Show Related videos",         "~ 10 extra credits",0xFFF57F17.toInt(), cfg.videosEnabled),
+            Opt("🎨", "Generate Animated Visuals",      "~ 30 extra credits ", 0xFFE65100.toInt(), cfg.animationsEnabled),
+            Opt("🖼️", "generate Topic images",           "~ 10 extra credits",    0xFF2E7D32.toInt(), cfg.imagesEnabled),
         )
 
         // ── Container ─────────────────────────────────────────────────────────

@@ -680,3 +680,20 @@ Note: BbInteractivePopup.kt loaded into context by linter. Updating android meta
 - `app/.../config/PlanEnforcer.kt` — guest BB: "You've explored 3 free visual lessons! 🎓 Log in to keep the momentum going!"
 - `app/.../config/PlanEnforcer.kt` — guest chat: "You've asked 10 free questions — great curiosity! 💬 Log in to get more daily questions!"
 - `app/.../config/PlanEnforcer.kt` — `checkAiTtsQuota()`: "Your AI voice quota is full for today! 🎙️ Upgrade your plan to speak to your AI tutor more."
+
+---
+
+## 2026-04-27 (session 6d)
+
+**Asked:** Camera attachment from home-screen BB dialog crashes when launching BlackboardActivity with image attached. Also checked NCERT 8–12 status.
+
+**Root cause:** TransactionTooLargeException — a 1920×1920 JPEG at 90% quality encoded as base64 is 3–6 MB, exceeding Android Binder IPC's ~1 MB limit when passed through Intent.putExtra().
+
+**Changed:**
+- `app/.../BlackboardActivity.kt` — Added `companion object { var pendingImageBase64: String? = null }` static field.
+- `app/.../BlackboardActivity.kt` — Added `private var intentImageBase64: String?` instance field; resolved once in `onCreate()` from companion (HomeActivity path) with fallback to `intent.getStringExtra(EXTRA_IMAGE_BASE64)` (other launch paths).
+- `app/.../BlackboardActivity.kt` — Replaced all 7 `intent.getStringExtra(EXTRA_IMAGE_BASE64)` calls in `onCreate` callbacks with `intentImageBase64`.
+- `app/.../HomeActivity.kt` — Replaced `.putExtra(EXTRA_IMAGE_BASE64, capturedImage)` with `BlackboardActivity.pendingImageBase64 = it` before startActivity.
+- `app/.../HomeActivity.kt` — Fixed secondary bug: UCrop failure in `launchHomeCrop()` now falls back to `applyHomeCroppedImage(sourceUri)` (was silently dropping the image).
+
+**NCERT status:** Classes 8–12 are all present in `app/src/main/assets/ncert.json` (lines 203, 248, 298, 348, 438).

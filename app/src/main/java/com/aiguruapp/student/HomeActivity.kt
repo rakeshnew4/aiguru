@@ -1429,6 +1429,8 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
                 homePendingImageBase64 = null
                 homePendingImageUri = null
             }
+            // Store image via companion object — avoids TransactionTooLargeException (Binder IPC ~1MB limit).
+            capturedImage?.let { BlackboardActivity.pendingImageBase64 = it }
             startActivity(
                 Intent(this, BlackboardActivity::class.java)
                     .putExtra(BlackboardActivity.EXTRA_MESSAGE,  topic)
@@ -1437,7 +1439,6 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
                     .putExtra(BlackboardActivity.EXTRA_CHAPTER,  "General")
                     .putExtra(BlackboardActivity.EXTRA_USER_ID,  uid)
                     .putExtra(BlackboardActivity.EXTRA_LANGUAGE_TAG, lang)
-                    .apply { if (capturedImage != null) putExtra(BlackboardActivity.EXTRA_IMAGE_BASE64, capturedImage) }
             )
         }
 
@@ -1525,6 +1526,7 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
             homeCropLauncher.launch(uCrop.getIntent(this))
         } catch (e: Exception) {
             Log.w("Home", "UCrop launch failed: ${e.message}")
+            applyHomeCroppedImage(sourceUri)   // fall back to uncropped image
         }
     }
 
