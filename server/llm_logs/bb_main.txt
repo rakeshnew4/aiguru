@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-04-27 08:34:27 | session=RFQp1HbS_6f9506f6 ===
+=== BB_MAIN | 2026-04-27 09:02:45 | session=RFQp1HbS_29008bb0 ===
 
 === SYSTEM ===
 You are a visual AI tutor. Return ONLY valid JSON — no text outside JSON.
@@ -48,26 +48,26 @@ TTS every frame: first frame→android/teacher; concept/memory/diagram→gemini/
 
 ---LESSON BRIEF (follow these instructions exactly)---
 Student's EXACT question: Topic: Photosynthesis
-Lesson title: The Magic of Photosynthesis
+Lesson title: Photosynthesis: How Plants Eat Light
 Category: science
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
 Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- The Ingredients: Water, Sunlight, and Carbon Dioxide
+- The Ingredients: Water, Carbon Dioxide, and Sunlight
 - The Factory: Inside the Chloroplast
 - The Light-Dependent Reactions
 - The Calvin Cycle: Making Sugar
-- Why It Matters: Oxygen and Life on Earth
+- Why It Matters for Life on Earth
 
 This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants an engaging introduction to photosynthesis, specifically focusing on how plants use sunlight and water as ingredients.
+What the student specifically wants: The student wants to understand how plants obtain and use water as a primary ingredient for photosynthesis.
 Question type: conceptual
 Student level: Class 5
 Topic type: science_biology | Scope: simple
-Key concepts to cover (ALL of these): Photosynthesis, Sunlight energy, Water absorption
+Key concepts to cover (ALL of these): Photosynthesis, Water absorption, Xylem, Roots
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
@@ -92,183 +92,204 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
     {
       "title": "Ingredients for Photosynthesis",
       "lang": "en-US",
-      "image_description": "plant photosynthesis process sunlight water carbon dioxide diagram",
+      "image_description": "photosynthesis water carbon dioxide sunlight diagram",
       "image_show_confidencescore": 0.9,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "**Photosynthesis** = Food Production",
-          "speech": "Photosynthesis is how plants create their own food using sunlight, water, and carbon dioxide from the air.",
+          "text": "**Photosynthesis** ingredients: $$6CO_2 + 6H_2O + light \\rightarrow C_6H_{12}O_6 + 6O_2$$",
+          "speech": "Plants make their own food using sunlight, water, and carbon dioxide. Think of it as a recipe where light is the energy that mixes everything together.",
           "tts_engine": "android",
           "voice_role": "teacher",
-          "duration_ms": 2500,
-          "visual_description": "A bright green plant absorbing sunlight rays and water from soil."
+          "duration_ms": 2500
         },
         {
           "frame_type": "diagram",
-          "text": "**Inputs**: $$H_2O + CO_2 + Light$$",
-          "speech": "Plants act like tiny chefs. They need sunlight for energy, water from roots, and carbon dioxide from the air to start cooking.",
+          "text": "**Water Absorption** via Roots",
+          "speech": "Plants drink water from the soil through their roots. Tiny tubes called xylem then carry that water all the way up to the leaves.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500,
-          "diagram_type": "cycle",
+          "diagram_type": "custom",
           "diagram_data": {
-            "intent": "Show inputs entering a plant: Sunlight, Water, Carbon Dioxide."
+            "intent": "Show a plant with roots absorbing water and arrows moving up the stem."
           },
-          "visual_description": "Arrows pointing towards a plant leaf labeled Sunlight, Water, and Carbon Dioxide."
+          "visual_description": "A cross-section of a plant showing roots in soil and water traveling up the stem via xylem."
         },
         {
           "frame_type": "concept",
-          "text": "**Root Absorption**",
-          "speech": "Think of roots like drinking straws, pulling water up from the soil to reach the leaves.",
+          "text": "Ready for the **factory**?",
+          "speech": "Now that we have water and air, where does the magic happen? Let's look inside the leaf.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 2000,
-          "visual_description": "Close up of roots absorbing water droplets from soil."
+          "duration_ms": 2000
         }
       ]
     },
     {
       "title": "Inside the Chloroplast",
       "lang": "en-US",
-      "image_description": "plant cell chloroplast anatomy diagram",
+      "image_description": "chloroplast plant cell diagram",
       "image_show_confidencescore": 0.95,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "**Chloroplasts**: The Kitchen",
-          "speech": "The kitchen inside every plant cell is called a chloroplast. This is where the magic of photosynthesis actually happens.",
+          "text": "**Chloroplasts**: Plant kitchens",
+          "speech": "Inside leaf cells are tiny structures called chloroplasts. They contain chlorophyll, which acts like a solar panel to catch sunlight.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 2500,
-          "visual_description": "Zooming into a leaf cell showing green oval chloroplasts."
+          "duration_ms": 2500
         },
         {
           "frame_type": "diagram",
-          "text": "**Chlorophyll** captures light",
-          "speech": "Inside the chloroplast, a green pigment called chlorophyll traps the sunlight, just like a solar panel.",
+          "text": "**Leaf Anatomy** Cross-section",
+          "speech": "This diagram shows the inside of a leaf. The chloroplasts are packed inside, waiting to turn light into chemical energy.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500,
-          "diagram_type": "custom",
+          "diagram_type": "leaf_anatomy",
           "diagram_data": {
-            "intent": "Cross section of a leaf highlighting green chloroplasts inside cells."
+            "intent": "Cross-section of a leaf showing epidermal cells, stomata, and internal mesophyll cells with chloroplasts."
           },
-          "visual_description": "Leaf cross-section showing cell layers and green chloroplast organelles."
+          "visual_description": "Detailed cross-section of a leaf showing internal layers and chloroplasts."
         },
         {
           "frame_type": "concept",
-          "text": "Why are plants **green**?",
-          "speech": "Plants look green because chlorophyll reflects green light while absorbing other colors to make energy.",
+          "text": "The **Light Reactions** start",
+          "speech": "What happens when that sunlight hits the chlorophyll? It's time for the first part of the process.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 2000,
-          "visual_description": "Green leaf under sunlight."
+          "duration_ms": 2000
         }
       ]
     },
     {
       "title": "Light-Dependent Reactions",
       "lang": "en-US",
-      "image_description": "light dependent reaction photosynthesis diagram",
+      "image_description": "light dependent reactions thylakoid diagram",
       "image_show_confidencescore": 0.85,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "**Step 1**: Splitting Water",
-          "speech": "In the first stage, sunlight energy splits water molecules apart. This releases oxygen as a byproduct.",
+          "text": "**Light-dependent phase**: Energy capture",
+          "speech": "Sunlight hits the chlorophyll, splitting water molecules apart. This releases oxygen as a byproduct, which is what we breathe!",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 2500,
-          "visual_description": "Water molecule splitting into hydrogen and oxygen bubbles."
+          "duration_ms": 2500
         },
         {
           "frame_type": "diagram",
-          "text": "$$H_2O \\rightarrow O_2 + Energy$$",
-          "speech": "This energy is stored in tiny 'batteries' to power the next part of the process.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500,
-          "diagram_type": "waveform_signal",
-          "diagram_data": {
-            "intent": "Represent energy transfer as a signal."
-          },
-          "visual_description": "Energy glowing in the chloroplast."
-        }
-      ]
-    },
-    {
-      "title": "The Calvin Cycle",
-      "lang": "en-US",
-      "image_description": "calvin cycle photosynthesis diagram",
-      "image_show_confidencescore": 0.85,
-      "frames": [
-        {
-          "frame_type": "concept",
-          "text": "**Step 2**: Making Sugar",
-          "speech": "The Calvin Cycle uses the energy we made to turn carbon dioxide into glucose, which is simple sugar.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500,
-          "visual_description": "Carbon dioxide entering a cycle to produce sugar cubes."
-        },
-        {
-          "frame_type": "diagram",
-          "text": "**Glucose** ($$C_6H_{12}O_6$$)",
-          "speech": "Glucose is the plant's food. It gives the plant energy to grow leaves, flowers, and fruit.",
+          "text": "**Energy conversion** cycle",
+          "speech": "The energy from light is stored in temporary batteries called ATP. This energy is now ready to build sugar molecules.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500,
           "diagram_type": "cycle",
           "diagram_data": {
-            "intent": "Circular flow showing CO2 converting to sugar."
+            "intent": "A circular diagram showing sunlight entering, water splitting, and ATP being produced."
           },
-          "visual_description": "Diagram of the Calvin Cycle."
+          "visual_description": "Cycle showing sunlight and water entering, with oxygen exiting and ATP being produced."
+        },
+        {
+          "frame_type": "concept",
+          "text": "Moving to the **Calvin Cycle**",
+          "speech": "We have the energy now. Shall we see how the plant builds actual sugar from it?",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000
+        }
+      ]
+    },
+    {
+      "title": "The Calvin Cycle: Making Sugar",
+      "lang": "en-US",
+      "image_description": "Calvin cycle photosynthesis diagram",
+      "image_show_confidencescore": 0.9,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "**Calvin Cycle**: Carbon fixation",
+          "speech": "In this stage, the plant takes carbon dioxide from the air and uses the stored energy to build glucose, a simple sugar.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
+          "frame_type": "diagram",
+          "text": "Glucose **Production**",
+          "speech": "It's like an assembly line. Carbon dioxide is the raw material, and the plant's energy turns it into food for growth.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500,
+          "diagram_type": "cycle",
+          "diagram_data": {
+            "intent": "A circular diagram showing CO2 entering and glucose exiting."
+          },
+          "visual_description": "Cycle showing CO2 entering the Calvin cycle and glucose being produced."
+        },
+        {
+          "frame_type": "concept",
+          "text": "Why is this **vital**?",
+          "speech": "This sugar isn't just for the plant. It's the foundation for almost all life on Earth. Why is that?",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000
         }
       ]
     },
     {
       "title": "Why It Matters",
       "lang": "en-US",
-      "image_description": "photosynthesis oxygen cycle earth diagram",
-      "image_show_confidencescore": 0.9,
+      "image_description": "food chain photosynthesis connection",
+      "image_show_confidencescore": 0.8,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "**Oxygen Production**",
-          "speech": "When plants make sugar, they release oxygen into the air. This is the air we breathe every single second.",
+          "text": "**Energy flow** for life",
+          "speech": "Plants are the base of the food chain. When animals eat plants, they get the energy that was originally captured from the sun.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
+          "frame_type": "diagram",
+          "text": "The **Global Cycle**",
+          "speech": "Plants clean our air by taking in carbon dioxide and releasing the oxygen we need to survive. It's a perfect partnership.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500,
-          "visual_description": "Oxygen bubbles floating out of a leaf into the air."
+          "diagram_type": "cycle",
+          "diagram_data": {
+            "intent": "Cycle showing plants, animals, oxygen, and carbon dioxide exchange."
+          },
+          "visual_description": "A global cycle showing plants and animals exchanging oxygen and carbon dioxide."
         },
         {
           "frame_type": "summary",
-          "text": "**Photosynthesis Recap**",
-          "speech": "Plants use sunlight, water, and carbon dioxide to make sugar for food and release oxygen for us to breathe. It's the foundation of life on Earth.",
+          "text": "**Photosynthesis Summary**:\n1. Roots absorb water.\n2. Light captured by chlorophyll.\n3. Water/CO2 converted to Sugar + O2.",
+          "speech": "In summary, plants use roots to get water, chloroplasts to catch light, and carbon dioxide to build sugar, keeping themselves and us alive.",
           "tts_engine": "google",
           "voice_role": "assistant",
-          "duration_ms": 3000,
-          "visual_description": "Earth with plants and animals living in harmony."
+          "duration_ms": 3000
         }
       ],
       "followup_questions": [
         {
-          "question": "What happens if a plant gets no sunlight?",
-          "speech": "What would happen to a plant if it never received any sunlight at all?"
+          "question": "What if plants had no roots?",
+          "speech": "What would happen to a plant if it couldn't absorb water through its roots?"
         },
         {
-          "question": "Why is oxygen important for humans?",
-          "speech": "Why is the oxygen produced by plants so important for humans and animals?"
+          "question": "Do plants breathe oxygen?",
+          "speech": "Do plants need oxygen, or do they only produce it?"
         },
         {
-          "question": "Where does the plant get carbon dioxide?",
-          "speech": "How exactly do plants pull carbon dioxide out of the air?"
+          "question": "Can plants grow in darkness?",
+          "speech": "Could a plant survive and grow if you kept it in a completely dark room?"
         }
       ]
     }
   ],
-  "session_theme": "The Magic of Plant Photosynthesis",
+  "session_theme": "Photosynthesis and plant biology",
   "video_search_query": "photosynthesis explained for kids",
   "preferred_channels": [
     "Khan Academy India",

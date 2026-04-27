@@ -1,11 +1,11 @@
-=== BB_ENRICHMENT | 2026-04-27 08:34:31 | session=none ===
+=== BB_ENRICHMENT | 2026-04-27 09:02:48 | session=none ===
 
 === SYSTEM ===
 You are a diagram data generator for an educational app. Output ONLY a valid JSON object — no text, no markdown, no explanation.
 
 === PROMPT ===
-Topic: "Ingredients for Photosynthesis"
-Teaching content: "Plants act like tiny chefs. They need sunlight for energy, water from roots, and carbon dioxide from the air to start cooking."
+Topic: "The Calvin Cycle: Making Sugar"
+Teaching content: "It's like an assembly line. Carbon dioxide is the raw material, and the plant's energy turns it into food for growth."
 Diagram type: cycle
 Color keys: primary (chalk white), label (yellow), secondary (sky blue), highlight (red), teal, orange, green, pink, purple, gold, coral, mint
 Schema: {"title":"Cycle Name","steps":["Stage 1","Stage 2","Stage 3","Stage 4"]}
@@ -16,23 +16,39 @@ Generate the BEST data JSON for this diagram. Fill ALL keys. Be accurate to the 
 
 === RESPONSE ===
 {
-  "title": "Photosynthesis Ingredients Cycle",
+  "title": "The Calvin Cycle",
   "steps": [
-    "Absorb Sunlight Energy",
-    "Take Up Water",
-    "Capture Carbon Dioxide",
-    "Produce Glucose & Oxygen"
+    {
+      "name": "Carbon Fixation",
+      "description": "CO2 attaches to RuBP",
+      "color": "teal",
+      "highlight": false
+    },
+    {
+      "name": "Reduction",
+      "description": "ATP and NADPH convert molecules",
+      "color": "orange",
+      "highlight": true
+    },
+    {
+      "name": "Sugar Production",
+      "description": "G3P leaves to form glucose",
+      "color": "gold",
+      "highlight": true
+    },
+    {
+      "name": "Regeneration",
+      "description": "RuBP is reformed using ATP",
+      "color": "mint",
+      "highlight": false
+    }
   ],
-  "colors": {
+  "theme": {
     "primary": "chalk white",
     "label": "yellow",
     "secondary": "sky blue",
     "highlight": "red",
-    "steps": {
-      "Absorb Sunlight Energy": "gold",
-      "Take Up Water": "teal",
-      "Capture Carbon Dioxide": "mint",
-      "Produce Glucose & Oxygen": "green"
-    }
+    "background_accent": "purple",
+    "connector_color": "pink"
   }
 }

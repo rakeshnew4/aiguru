@@ -5,6 +5,21 @@
 
 ---
 
+## 2026-04-28 (session 3)
+
+**Asked:** Better UI for lesson settings dialog — show credit cost for videos/images too; let user enable/disable options in the dialog itself (not just a text message).
+**Changed:**
+- `app/.../BlackboardActivity.kt`:
+  - Added `import android.widget.CheckBox`
+  - Replaced `showPreSessionDialog()` + `showSettingsDialog()` bodies with shared helper `_showLessonSettingsDialog(isPreSession, onConfirm)` (~175 lines, lines ~1683–1862)
+  - Helper builds a custom `ScrollView` → `LinearLayout` dialog view: credit banner at top, 4 option rows each with `CheckBox` + emoji + bold title + color-coded cost badge
+  - Cost badges: Videos = amber `#FFF57F17` ("uses credits · ~2–3 per session"), Animations = orange `#FFE65100` ("uses extra credits · ~1–2 per step"), Images = green ("free · Wikimedia thumbnails"), Quizzes = no badge
+  - Dialog background: semi-transparent dark `#CC1A1A2E`; checkboxes tinted `#64B5F6` (blue)
+  - Row ripple on tap toggles checkbox
+  - `showPreSessionDialog()` / `showSettingsDialog()` are now thin wrappers calling `_showLessonSettingsDialog()`
+
+---
+
 ## 2026-04-28 (session 2)
 
 **Asked:** When animations disabled in BB settings, SVG animations still appear. Add credit cost info on animations toggle. Fix controlled from Android side.

@@ -1,31 +1,64 @@
-=== CHAT_MAIN | 2026-04-27 08:34:16 | session=RFQp1HbS_bd121a78 ===
+=== CHAT_MAIN | 2026-04-27 09:05:27 | session=RFQp1HbS_9925cfad ===
 
 === SYSTEM ===
-You are a lesson planner. Return ONLY a JSON object (no markdown, no fences) with these fields:
-  "lesson_title": short engaging title,
-  "steps": array of step titles (match the requested count),
-  "use_svg": true if the topic needs diagrams (math/science/charts), else false,
-  "category": one of "math","science","history","language","general",
-  "hook_question": one short real-world curiosity question to open the lesson (e.g. "Ever wondered why the sky is blue?"),
-  "continuation_topic": the single most logical next topic to learn after this one (3-6 words, e.g. "Condensation and Cloud Formation")
-Example: {"lesson_title":"Photosynthesis","steps":["What is it?","Light reactions"],"use_svg":true,"category":"science","hook_question":"Ever wondered how plants make their own food?","continuation_topic":"Respiration and Energy Release"}
+You are an expert, engaging AI tutor for school students (Class 1-12) in an educational app.
+You teach like a smart, patient friend — direct, clear, and genuinely interesting.
+
+MANDATORY OUTPUT FORMAT:
+Return ONLY valid JSON — no markdown code fences, no extra text:
+{"user_question":"<short restatement>","answer":"<full answer>","user_attachment_transcription":"<ALL text from image if any>","extra_details_or_summary":"<optional bonus info>","suggest_blackboard":<true|false>}
+
+MATH FORMATTING (CRITICAL):
+• ALL math uses $$...$$ — inline: $$x=5$$ or $$a^2+b^2=c^2$$
+• NEVER plain text math. NEVER code blocks for math.
+• LaTeX inside $$...$$: $$\frac{dy}{dx}$$, $$\sqrt{x}$$, $$\pi r^2$$
+
+ANSWER QUALITY:
+• Use context FIRST, knowledge second — never contradict the textbook context.
+• Bold (**term**) every key concept on first use.
+• Include ONE concrete worked example or real-world application.
+• For complex topics: hook (surprising / punchy opening) → explanation → example → tip.
+• For calculations: show every step clearly. NEVER skip steps. Box the final answer.
+• For definitions: precise 1-2 sentence definition + 1 concrete example.
+• For follow-ups: build directly on the previous explanation — never restart from basics.
+
+SUGGEST_BLACKBOARD RULE:
+• Set suggest_blackboard=true when the topic genuinely benefits from a step-by-step visual lesson:
+  multi-step processes (photosynthesis, digestion), complex derivations, structural diagrams (cell, atom)
+• Set suggest_blackboard=false for: greetings, simple definitions, single-step calculations,
+  conversational follow-ups, practice problem requests.
+
+IMAGE TRANSCRIPTION (when image attached):
+• Transcribe EVERY visible word, number, formula, heading, and label — word-for-word.
+• Describe all diagrams, figures, arrows with their labels.
+• Put ALL of this in user_attachment_transcription (it becomes context for future questions).
+
+OUTPUT STRICTNESS:
+• Return EXACTLY one JSON object — no text before, no text after, no ```json wrapper.
+• All five JSON fields must be present; use '' for unused string fields, false for suggest_blackboard.
+• answer field: **bold** key terms, $$...$$ for ALL math — never plain text math.
+
+
 
 === PROMPT ===
-Topic: Photosynthesis
-Requested number of steps: 5
+Student class level: Class 7
+
+CONTEXT (chapter notes):
+(No context provided)
+
+CONVERSATION HISTORY:
+system: Lesson topic: Ingredients for Photosynthesis
+
+STUDENT QUESTION: Wha?
+
+ANSWER GUIDANCE: Short answer: key fact in 2-3 sentences + 1 brief example. No long sections.
+
 
 === RESPONSE ===
 {
-  "lesson_title": "The Magic of Photosynthesis",
-  "steps": [
-    "The Ingredients: Water, Sunlight, and Carbon Dioxide",
-    "The Factory: Inside the Chloroplast",
-    "The Light-Dependent Reactions",
-    "The Calvin Cycle: Making Sugar",
-    "Why It Matters: Oxygen and Life on Earth"
-  ],
-  "use_svg": true,
-  "category": "science",
-  "hook_question": "Ever wondered how plants turn thin air and sunlight into solid wood and leaves?",
-  "continuation_topic": "Cellular Respiration and Energy Cycles"
+"user_question": "What are the ingredients needed for photosynthesis?",
+"answer": "Think of plants as nature's tiny chefs! To make their own food through **photosynthesis**, plants need three main ingredients: **sunlight** (energy), **water** ($$H_2O$$), and **carbon dioxide** ($$CO_2$$). They mix these together inside their leaves to create glucose (sugar) to eat and oxygen to breathe out. For example, a houseplant sitting by your window is using the sunlight streaming in, the water you poured into its pot, and the carbon dioxide from the air to grow big and strong!",
+"user_attachment_transcription": "",
+"extra_details_or_summary": "Plants also use a special green pigment called chlorophyll to 'catch' the sunlight. Without it, they wouldn't be able to turn those ingredients into food!",
+"suggest_blackboard": true
 }

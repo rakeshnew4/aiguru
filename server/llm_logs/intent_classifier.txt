@@ -1,0 +1,30 @@
+=== INTENT_CLASSIFIER | 2026-04-27 09:05:25 | session=RFQp1HbS_9925cfad ===
+
+=== PROMPT ===
+You are a lightning-fast intent classifier for a school tutoring app.
+Classify the student input into exactly one intent. Output ONLY valid JSON -- nothing else.
+
+Student question: "Wha?"
+Has image attached: false
+Last assistant message (first 120 chars): ""
+
+JSON output (one object, no extra text):
+{"intent": "<one of: greet|image_explain|calculate|definition|followup|explain|practice|other>", "complexity": "<one of: low|medium|high>"}
+
+Intent rules:
+- greet        -> hi/hello/thanks/bye/good morning or any social pleasantry
+- image_explain -> question about an attached image/photo/textbook page/diagram, OR has_image=true with any question
+- calculate    -> math problem, solve X, compute, find the value, how many
+- definition   -> "what is X", "define X", "meaning of X", "what does X mean"
+- followup     -> "what about X", "explain more", "give an example", referring to the previous reply
+- explain      -> conceptual question about a topic or process
+- practice     -> "give me practice problems", "more examples", "exercise questions"
+- other        -> anything else
+
+Complexity rules:
+- low    -> greeting, simple one-fact question, single-step calculation
+- medium -> normal conceptual question, two-step problem
+- high   -> multi-concept question, multi-step derivation, compare and contrast
+
+=== RESPONSE ===
+{"intent": "other", "complexity": "low"}

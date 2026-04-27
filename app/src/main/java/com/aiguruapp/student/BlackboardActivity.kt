@@ -34,6 +34,7 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.EditText
+import android.widget.CheckBox
 import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.TextView
@@ -1670,52 +1671,195 @@ class BlackboardActivity : AppCompatActivity() {
         stepsScrollView.postDelayed({ stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 300)
     }
 
+    // ── Shared lesson-settings dialog builder ─────────────────────────────────
+    /**
+     * Builds a custom-view AlertDialog for lesson options.
+     * Each option row shows: checkbox  |  emoji + title  |  cost badge (if applicable)
+     *
+     * @param isPreSession true = "Start Lesson" + cancel finishes activity;
+     *                     false = "Save" (gear icon inside lesson)
+     * @param onConfirm    called with the updated [BBSessionConfig]
+     */
+    private fun _showLessonSettingsDialog(isPreSession: Boolean, onConfirm: (BBSessionConfig) -> Unit) {
+        val dp = { n: Int -> (n * resources.displayMetrics.density).toInt() }
+        val cfg = sessionConfig
+
+        // ── Option descriptors ────────────────────────────────────────────────
+        data class Opt(
+            val emoji: String,
+            val title: String,
+            val subtitle: String,   // empty = free / no extra cost
+            val badgeColor: Int,    // badge background; 0 = no badge
+            var checked: Boolean,
+        )
+        val opts = listOf(
+            Opt("🎯", "Interactive quizzes",   "",                               0,          cfg.quizEnabled),
+            Opt("🎬", "Related videos",         "uses credits · ~2–3 per session",0xFFF57F17.toInt(), cfg.videosEnabled),
+            Opt("🎨", "Animated diagrams",      "uses extra credits · ~1–2 per step", 0xFFE65100.toInt(), cfg.animationsEnabled),
+            Opt("🖼️", "Topic images",           "free · Wikimedia thumbnails",    0xFF2E7D32.toInt(), cfg.imagesEnabled),
+        )
+
+        // ── Container ─────────────────────────────────────────────────────────
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(4), dp(8), dp(4), dp(4))
+        }
+
+        // Credit info banner
+        val banner = TextView(this).apply {
+            text = "⭐  1 credit = 100 AI tokens. Disable paid features to reduce credit usage."
+            textSize = 12f
+            setTextColor(Color.parseColor("#FFD54F"))
+            setPadding(dp(16), dp(10), dp(16), dp(12))
+        }
+        container.addView(banner)
+
+        // Divider
+        container.addView(android.view.View(this).apply {
+            setBackgroundColor(Color.parseColor("#33FFFFFF"))
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1))
+                .also { it.bottomMargin = dp(4) }
+        })
+
+        val checkBoxes = mutableListOf<CheckBox>()
+
+        opts.forEach { opt ->
+            // Row wrapper
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                setPadding(dp(12), dp(10), dp(12), dp(10))
+                isClickable = true
+                isFocusable = true
+                background = android.graphics.drawable.RippleDrawable(
+                    android.content.res.ColorStateList.valueOf(Color.parseColor("#33FFFFFF")),
+                    null, null
+                )
+            }
+
+            // Checkbox (left)
+            val cb = CheckBox(this).apply {
+                isChecked = opt.checked
+                setButtonTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#64B5F6")))
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT).also { it.marginEnd = dp(12) }
+            }
+            checkBoxes.add(cb)
+            row.setOnClickListener { cb.isChecked = !cb.isChecked }
+
+            // Text column
+            val textCol = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            }
+
+            // Emoji + Title row
+            val titleRow = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+            }
+            val emojiTv = TextView(this).apply {
+                text = opt.emoji
+                textSize = 18f
+                setPadding(0, 0, dp(6), 0)
+            }
+            val titleTv = TextView(this).apply {
+                text = opt.title
+                textSize = 15f
+                setTextColor(Color.WHITE)
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+            }
+            titleRow.addView(emojiTv)
+            titleRow.addView(titleTv)
+
+            // Cost badge (if not free)
+            if (opt.badgeColor != 0 && opt.subtitle.isNotEmpty()) {
+                val badge = TextView(this).apply {
+                    text = opt.subtitle
+                    textSize = 11f
+                    setTextColor(Color.WHITE)
+                    setPadding(dp(7), dp(2), dp(7), dp(3))
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).also { it.topMargin = dp(4) }
+                    background = android.graphics.drawable.GradientDrawable().apply {
+                        setColor(opt.badgeColor)
+                        cornerRadius = dp(10).toFloat()
+                    }
+                }
+                textCol.addView(titleRow)
+                textCol.addView(badge)
+            } else if (opt.subtitle.isNotEmpty()) {
+                // Free badge (green)
+                val freeBadge = TextView(this).apply {
+                    text = opt.subtitle
+                    textSize = 11f
+                    setTextColor(Color.parseColor("#A5D6A7"))
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).also { it.topMargin = dp(3) }
+                }
+                textCol.addView(titleRow)
+                textCol.addView(freeBadge)
+            } else {
+                textCol.addView(titleRow)
+            }
+
+            row.addView(cb)
+            row.addView(textCol)
+            container.addView(row)
+
+            // Light divider between rows (not after last)
+            if (opt !== opts.last()) {
+                container.addView(android.view.View(this).apply {
+                    setBackgroundColor(Color.parseColor("#1AFFFFFF"))
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, 1
+                    ).also { it.marginStart = dp(12); it.marginEnd = dp(12) }
+                })
+            }
+        }
+
+        val scrollView = ScrollView(this).apply { addView(container) }
+
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Lesson Settings")
+            .setView(scrollView)
+            .setPositiveButton(if (isPreSession) "Start Lesson" else "Save") { _, _ ->
+                val newCfg = BBSessionConfig(
+                    checkBoxes[0].isChecked,
+                    checkBoxes[1].isChecked,
+                    checkBoxes[2].isChecked,
+                    checkBoxes[3].isChecked,
+                )
+                sessionConfig = newCfg
+                BBSessionConfig.save(this, newCfg)
+                onConfirm(newCfg)
+            }
+            .apply {
+                if (isPreSession) setNegativeButton("Cancel") { _, _ -> finish() }
+                else              setNegativeButton("Cancel", null)
+            }
+            .setCancelable(!isPreSession)
+            .create()
+
+        // Dark background so the dialog reads well
+        dialog.window?.setBackgroundDrawable(
+            android.graphics.drawable.ColorDrawable(Color.parseColor("#CC1A1A2E"))
+        )
+        dialog.show()
+    }
+
     // ── Pre-session settings dialog ───────────────────────────────────────────
     private fun showPreSessionDialog(onConfirm: () -> Unit) {
-        val labels = arrayOf(
-            "🎯  Interactive quizzes",
-            "🎬  Related videos at end",
-            "🎨  Animated diagrams  · uses extra credits",
-            "🖼️  Topic images"
-        )
-        val cfg = sessionConfig
-        val checked = booleanArrayOf(cfg.quizEnabled, cfg.videosEnabled, cfg.animationsEnabled, cfg.imagesEnabled)
-
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("Lesson Settings")
-            .setMessage("💡 Animated diagrams bring lessons to life but use more AI credits per session. Disable to save credits.")
-            .setMultiChoiceItems(labels, checked) { _, which, isChecked -> checked[which] = isChecked }
-            .setPositiveButton("Start Lesson") { _, _ ->
-                sessionConfig = BBSessionConfig(checked[0], checked[1], checked[2], checked[3])
-                BBSessionConfig.save(this, sessionConfig)
-                onConfirm()
-            }
-            .setNegativeButton("Cancel") { _, _ -> finish() }
-            .setCancelable(false)
-            .show()
+        _showLessonSettingsDialog(isPreSession = true) { onConfirm() }
     }
 
     // ── Inside-BB settings (gear button) — saves for next session ────────────
     private fun showSettingsDialog() {
-        val labels = arrayOf(
-            "🎯  Interactive quizzes",
-            "🎬  Related videos at end",
-            "🎨  Animated diagrams  · uses extra credits",
-            "🖼️  Topic images"
-        )
-        val cfg = sessionConfig
-        val checked = booleanArrayOf(cfg.quizEnabled, cfg.videosEnabled, cfg.animationsEnabled, cfg.imagesEnabled)
-
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("Lesson Settings")
-            .setMessage("Changes apply from your next session.")
-            .setMultiChoiceItems(labels, checked) { _, which, isChecked -> checked[which] = isChecked }
-            .setPositiveButton("Save") { _, _ ->
-                sessionConfig = BBSessionConfig(checked[0], checked[1], checked[2], checked[3])
-                BBSessionConfig.save(this, sessionConfig)
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+        _showLessonSettingsDialog(isPreSession = false) { /* config already saved inside helper */ }
     }
 
     private fun showYouTubeClipDialog(clip: BlackboardGenerator.YouTubeClip, onDismiss: (() -> Unit)? = null) {

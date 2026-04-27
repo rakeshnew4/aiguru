@@ -1,4 +1,4 @@
-=== BB_PLANNER | 2026-04-27 08:34:20 | session=RFQp1HbS_6f9506f6 ===
+=== BB_PLANNER | 2026-04-27 09:02:37 | session=RFQp1HbS_29008bb0 ===
 
 === PROMPT ===
 You are a lesson analyst for a personal visual AI tutor responding to a student's SPECIFIC question.
@@ -6,14 +6,14 @@ Analyze exactly what the student is asking and return a focused lesson plan.
 Output ONLY valid JSON — nothing else.
 
 Student question (answer THIS specifically): "Topic: Photosynthesis
-Lesson title: The Magic of Photosynthesis
+Lesson title: Photosynthesis: How Plants Eat Light
 Category: science
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
 Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- The Ingredients: Water, Sunlight"
+- The Ingredients: Water,"
 Chapter context (excerpt): ""
 Recent conversation (last 3 turns):
   (No prior conversation — this is the student's first question)
@@ -52,18 +52,19 @@ Rules:
   "scope": "simple",
   "key_concepts": [
     "Photosynthesis",
-    "Sunlight energy",
-    "Water absorption"
+    "Water absorption",
+    "Xylem",
+    "Roots"
   ],
   "steps_count": 5,
   "image_search_terms": [
-    "sunlight hitting green leaf",
-    "plant roots absorbing water from soil",
-    "photosynthesis diagram simple"
+    "plant root system diagram",
+    "xylem plant anatomy",
+    "water absorption in plants"
   ],
-  "question_focus": "The student wants an engaging introduction to photosynthesis, specifically focusing on how plants use sunlight and water as ingredients.",
+  "question_focus": "The student wants to understand how plants obtain and use water as a primary ingredient for photosynthesis.",
   "question_type": "conceptual",
   "prior_knowledge": "",
-  "hook_question": "Have you ever wondered how a plant grows so big without ever eating a meal like we do?",
-  "continuation_topic": "Carbon Dioxide and Glucose Production"
+  "hook_question": "Have you ever wondered how a plant drinks water when it doesn't have a mouth?",
+  "continuation_topic": "The Role of Carbon Dioxide"
 }
