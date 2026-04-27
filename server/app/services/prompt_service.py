@@ -729,11 +729,14 @@ def build_blackboard_mode_user_content(
     plan: dict = None,
     lang: str = "en-US",
     image_data: dict = None,
+    animations_enabled: bool = True,
 ) -> str:
     """
     Dynamic user content for BB mode — lesson brief only (NO blackboard_prompt prefix).
     Pairs with get_blackboard_mode_system_prompt() to enable prompt caching.
     Mirrors the dynamic portion of build_bb_main_prompt() exactly.
+    When animations_enabled=False, skips diagram classification and tells the LLM
+    to omit diagram frames, saving tokens on both the sub-call and the main response.
     """
     topic_type = (plan or {}).get("topic_type", "other")
     scope = (plan or {}).get("scope", "medium")
@@ -755,60 +758,66 @@ def build_blackboard_mode_user_content(
     resolved_lang = lang or "en-US"
 
     # ── Diagram hint: classify best diagram_type for this question ───────────
+    # Skip entirely when animations are disabled — saves the classify_diagram_need
+    # sub-call and avoids injecting diagram instructions the LLM should not use.
     _diagram_hint = ""
-    # Keyword-based forced diagram rules (override everything)
-    _q_lower = (question or "").lower()
-    _k_lower = " ".join(str(c) for c in key_concepts).lower()
-    _combined = _q_lower + " " + _k_lower
-    _forced_type = ""
-    if any(w in _combined for w in ("incircle", "inradius", "in-radius", "inscribed circle", "in circle")):
-        _forced_type = "triangle"
-        _forced_data = '{"labels":["A","B","C"],"show_incircle":true}'
-        _forced_reason = "incircle/inradius keyword detected → triangle with show_incircle"
-    elif any(w in _combined for w in ("circumcircle", "circumradius", "circumscribed")):
-        _forced_type = "triangle"
-        _forced_data = '{"labels":["A","B","C"],"show_circumcircle":true}'
-        _forced_reason = "circumcircle keyword detected → triangle with show_circumcircle"
-    elif any(w in _combined for w in ("bohr", "electron shell", "atomic structure", "electrons orbit")):
-        _forced_type = "atom"
-        _forced_data = ''
-        _forced_reason = "atomic structure keyword → atom"
-    elif any(w in _combined for w in ("solar system", "planet orbit", "planetary")):
-        _forced_type = "solar_system"
-        _forced_data = ''
-        _forced_reason = "solar system keyword → solar_system"
-    elif any(w in _combined for w in ("wavelength", "frequency", "sound wave", "light wave", "waveform", "transverse wave")):
-        _forced_type = "waveform_signal"
-        _forced_data = ''
-        _forced_reason = "wave keyword → waveform_signal"
+    if animations_enabled:
+        # ── Diagram hint: classify best diagram_type for this question ───────────
+        _diagram_hint = ""
+        # Keyword-based forced diagram rules (override everything)
+        _q_lower = (question or "").lower()
+        _k_lower = " ".join(str(c) for c in key_concepts).lower()
+        _combined = _q_lower + " " + _k_lower
+        _forced_type = ""
+        if any(w in _combined for w in ("incircle", "inradius", "in-radius", "inscribed circle", "in circle")):
+            _forced_type = "triangle"
+            _forced_data = '{"labels":["A","B","C"],"show_incircle":true}'
+            _forced_reason = "incircle/inradius keyword detected → triangle with show_incircle"
+        elif any(w in _combined for w in ("circumcircle", "circumradius", "circumscribed")):
+            _forced_type = "triangle"
+            _forced_data = '{"labels":["A","B","C"],"show_circumcircle":true}'
+            _forced_reason = "circumcircle keyword detected → triangle with show_circumcircle"
+        elif any(w in _combined for w in ("bohr", "electron shell", "atomic structure", "electrons orbit")):
+            _forced_type = "atom"
+            _forced_data = ''
+            _forced_reason = "atomic structure keyword → atom"
+        elif any(w in _combined for w in ("solar system", "planet orbit", "planetary")):
+            _forced_type = "solar_system"
+            _forced_data = ''
+            _forced_reason = "solar system keyword → solar_system"
+        elif any(w in _combined for w in ("wavelength", "frequency", "sound wave", "light wave", "waveform", "transverse wave")):
+            _forced_type = "waveform_signal"
+            _forced_data = ''
+            _forced_reason = "wave keyword → waveform_signal"
 
-    if _forced_type:
-        if _forced_data:
-            _diagram_hint = (
-                f"\n⚠ REQUIRED DIAGRAM (keyword match — do NOT change this): "
-                f'diagram_type="{_forced_type}" with data={_forced_data}\n'
-                f"Reason: {_forced_reason}\n"
-            )
-        else:
-            _diagram_hint = (
-                f"\n⚠ REQUIRED DIAGRAM (keyword match — do NOT change this): "
-                f'diagram_type="{_forced_type}"\n'
-                f"Reason: {_forced_reason}\n"
-            )
-    else:
-        try:
-            from app.utils.diagram_router import classify_diagram_need
-            import re as _re2
-            decision = classify_diagram_need(question, subject_hint=topic_type, topic_keywords=key_concepts)
-            _is_def_q = bool(_re2.match(r"^(what is|what are|define|meaning of|what does)\b", question.lower().strip()))
-            if decision.needed and decision.diagram_type and decision.confidence >= 0.65 and not _is_def_q:
+        if _forced_type:
+            if _forced_data:
                 _diagram_hint = (
-                    f"\nDIAGRAM RECOMMENDATION: This topic likely needs a "
-                    f'"{decision.diagram_type}" diagram (confidence {decision.confidence:.0%}). '
-                    f"Use diagram_type=\"{decision.diagram_type}\" for your diagram frame(s).\n"
+                    f"\n⚠ REQUIRED DIAGRAM (keyword match — do NOT change this): "
+                    f'diagram_type="{_forced_type}" with data={_forced_data}\n'
+                    f"Reason: {_forced_reason}\n"
                 )
-        except Exception:
-            pass
+            else:
+                _diagram_hint = (
+                    f"\n⚠ REQUIRED DIAGRAM (keyword match — do NOT change this): "
+                    f'diagram_type="{_forced_type}"\n'
+                    f"Reason: {_forced_reason}\n"
+                )
+        else:
+            try:
+                from app.utils.diagram_router import classify_diagram_need
+                import re as _re2
+                decision = classify_diagram_need(question, subject_hint=topic_type, topic_keywords=key_concepts)
+                _is_def_q = bool(_re2.match(r"^(what is|what are|define|meaning of|what does)\b", question.lower().strip()))
+                if decision.needed and decision.diagram_type and decision.confidence >= 0.65 and not _is_def_q:
+                    _diagram_hint = (
+                        f"\nDIAGRAM RECOMMENDATION: This topic likely needs a "
+                        f'"{decision.diagram_type}" diagram (confidence {decision.confidence:.0%}). '
+                        f"Use diagram_type=\"{decision.diagram_type}\" for your diagram frame(s).\n"
+                    )
+            except Exception:
+                pass
+
 
     # Question focus from planner — tells the LLM exactly what was asked
     question_focus = (plan or {}).get("question_focus", "").strip()
@@ -837,7 +846,13 @@ def build_blackboard_mode_user_content(
         "  • First speech frame MUST directly state the answer/formula/definition.\n"
         "  • NEVER start speech with greetings or 'Today we will learn'.\n"
     )
-    if _diagram_hint:
+    if not animations_enabled:
+        parts.append(
+            "\nNO DIAGRAM FRAMES: The user has disabled animated diagrams. "
+            "Do NOT include any frames with frame_type=\"diagram\". "
+            "Use only concept, memory, and summary frames.\n"
+        )
+    elif _diagram_hint:
         parts.append(_diagram_hint)
 
     if ctx_snippet:

@@ -64,12 +64,19 @@ object DailyQuestionsManager {
     private const val PREF_NAME = "daily_questions_cache"
     private const val KEY_DATE = "cache_date"
     private const val KEY_DATA = "cache_data"
+    private const val KEY_LAST_INTEREST_DATE = "last_interest_date"
 
     private val JSON_TYPE = "application/json; charset=utf-8".toMediaType()
 
     // ── Feed ─────────────────────────────────────────────────────────────────
 
     fun fetchFeed(context: Context): List<DailyQuestion> {
+        // Return today's cached questions immediately — no network call needed.
+        // Cache is populated on the first fetch of the day and invalidated at midnight.
+        val cached = loadCache(context)
+        if (cached.isNotEmpty()) return cached
+
+        // Cache miss (new day or first launch) — fetch from server.
         val token = TokenManager.buildAuthHeader() ?: return emptyList()
         val url = "${AdminConfigRepository.effectiveServerUrl()}/daily-questions/feed"
 
@@ -90,8 +97,29 @@ object DailyQuestionsManager {
             saveCache(context, today, body)
             result
         } catch (e: Exception) {
-            loadCache(context)
+            emptyList()
         }
+    }
+
+    /**
+     * Mark a question as completed in the local cache so the UI reflects the
+     * correct status even before the next server fetch.
+     */
+    fun markCachedCompleted(context: Context, questionId: String) {
+        val p = prefs(context)
+        val raw = p.getString(KEY_DATA, null) ?: return
+        try {
+            val json = JSONObject(raw)
+            val arr = json.optJSONArray("questions") ?: return
+            for (i in 0 until arr.length()) {
+                val q = arr.optJSONObject(i) ?: continue
+                if (q.optString("id") == questionId) {
+                    q.put("status", "completed")
+                    break
+                }
+            }
+            p.edit().putString(KEY_DATA, json.toString()).apply()
+        } catch (e: Exception) { /* ignore */ }
     }
 
     // ── Complete ─────────────────────────────────────────────────────────────
@@ -121,7 +149,15 @@ object DailyQuestionsManager {
 
     // ── Interests ─────────────────────────────────────────────────────────────
 
-    fun recordInterest(subject: String, topics: List<String>): Boolean {
+    /**
+     * Record the student's subject/topic interest after a BB session.
+     * Rate-limited to one server call per day — subsequent calls return true silently.
+     */
+    fun recordInterest(context: Context, subject: String, topics: List<String>): Boolean {
+        val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
+        val p = prefs(context)
+        if (p.getString(KEY_LAST_INTEREST_DATE, "") == today) return true  // already sent today
+
         val token = TokenManager.buildAuthHeader() ?: return false
         val url = "${AdminConfigRepository.effectiveServerUrl()}/daily-questions/interests"
 
@@ -138,6 +174,9 @@ object DailyQuestionsManager {
 
         return try {
             val resp = HttpClientManager.standardClient.newCall(request).execute()
+            if (resp.isSuccessful) {
+                p.edit().putString(KEY_LAST_INTEREST_DATE, today).apply()
+            }
             resp.isSuccessful
         } catch (e: Exception) {
             false

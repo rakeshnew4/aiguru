@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-04-27 10:21:41 | session=RFQp1HbS_dfe7224a ===
+=== BB_MAIN | 2026-04-27 15:26:36 | session=RFQp1HbS_9ecdb9bc ===
 
 === SYSTEM ===
 You are a visual AI tutor. Return ONLY valid JSON — no text outside JSON.
@@ -47,39 +47,38 @@ TTS every frame: first frame→android/teacher; concept/memory/diagram→gemini/
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: Explain Heart Pumping
-Lesson title: The Heart's Rhythmic Pump
-Category: science
+Student's EXACT question: Topic: Why is it harder to push a heavy truck?
+
+[Speech context from previous lesson: Have you ever wondered why your body jerks forward when a car stops suddenly? That is inertia in action. Newton's first law says an object will stay still or keep moving in a straight line unless a force pushes or pulls it. Imagine a soccer ball on grass. It will sit there forever until you kick it, which is the force that breaks its inertia. The second law explains how much force you need to move something. The formula is Force equals mass times acceleration. If you push a shopping cart, adding more force makes it speed up faster. More mass makes it harder to accelerate. We measure force in Newtons. If you have a heavy object, you need a much bigger force to get it moving quickly. Every action has an equal and opposite reaction. When you push on something, it pushes back on you just as hard. Think of jumping off a skateboard. You push backward on the board, and the board pushes you forward. These forces always happen at the same time and in opposite directions. Isn't it cool how everything is balanced? Rockets work by shooting gas downward, which pushes the rocket upward. That is Newton's third law in space. In cars, seatbelts provide the force to stop your body from continuing fo]
+Lesson title: Why is it harder to push a heavy truck?
+
+[Speech context fro
+Category: general
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
-Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
+Generate EXACTLY 0 steps with APPROXIMATELY 4 frames each.
 Steps to generate in this batch:
-- Deoxygenated blood enters the right atrium
-- The right ventricle pushes blood to the lungs
-- Oxygenated blood returns to the left atrium
-- The left ventricle pumps blood to the body
-- Heart valves ensure one-way flow
 
-This topic benefits from SVG diagrams — use at least one diagram frame per step.
+
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants to understand the initial stage of blood circulation where deoxygenated blood enters the heart.
-Question type: how_to
+What the student specifically wants: The student wants to understand the relationship between an object's mass and the force required to move it, specifically why heavier objects are harder to push.
+Question type: conceptual
 Student level: Class 5
-Topic type: science_biology | Scope: simple
-Key concepts to cover (ALL of these): deoxygenated blood, vena cava, right atrium, circulatory system
+Topic type: science_physics | Scope: medium
+What student already knows (DO NOT repeat this): The student understands the basic definition of inertia and Newton's first law (objects stay still or keep moving unless acted upon by a force).
+Key concepts to cover (ALL of these): Mass, Inertia, Newton's Second Law of Motion
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-DIAGRAM RECOMMENDATION: This topic likely needs a "blood_circulation_system" diagram (confidence 98%). Use diagram_type="blood_circulation_system" for your diagram frame(s).
-
-SUBJECT GUIDANCE (Science — Biology):
-• Use cycle for life cycles/processes (mitosis, water cycle, photosynthesis).
-• Use PATH 2 (diagram_type=custom) for anatomy cross-sections (heart, leaf, kidney).
-• Concept frames: function → structure → real-body example.
+SUBJECT GUIDANCE (Science — Physics):
+• Use waveform_signal for waves/sound/light; coordinate_plane for motion graphs.
+• Use PATH 2 (diagram_type=custom) for force diagrams, ray optics, circuit layouts.
+• Concept frames: state law/formula → physical meaning → real-world application.
+• Include units in every formula (e.g. m/s², Newton, Joule).
 • End with a summary frame.
 
 ---END LESSON BRIEF---
@@ -90,152 +89,116 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
 {
   "steps": [
     {
-      "title": "Right Atrium Reception",
+      "title": "Mass and Inertia",
       "lang": "en-US",
-      "image_description": "human heart anatomy diagram with vena cava",
-      "image_show_confidencescore": 0.95,
+      "image_description": "heavy truck vs toy car comparison",
+      "image_show_confidencescore": 0.85,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "Deoxygenated blood enters **Right Atrium**",
-          "speech": "Blood without oxygen travels through the vena cava and enters the heart's right atrium first.",
+          "text": "Pushing a **truck** vs **toy**",
+          "speech": "It's harder to push a truck because of its massive amount of matter. Mass is simply the amount of stuff an object is made of.",
           "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
-          "frame_type": "diagram",
-          "text": "Vena Cava entrance",
-          "speech": "Think of the vena cava as a large pipe bringing used blood back to the heart to be refreshed.",
+          "frame_type": "concept",
+          "text": "Mass = **Resistance**",
+          "speech": "Everything with mass resists changing its motion. This resistance is called inertia. More mass means more inertia, which means it's much harder to get that truck moving.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 2500,
-          "diagram_type": "custom",
-          "diagram_data": {
-            "intent": "Show vena cava entering the right atrium of the heart"
-          },
-          "visual_description": "diagram of vena cava connecting to the right atrium"
+          "duration_ms": 2500
         }
       ]
     },
     {
-      "title": "Right Ventricle Action",
+      "title": "Newton's Second Law",
       "lang": "en-US",
-      "image_description": "right ventricle pulmonary artery diagram",
-      "image_show_confidencescore": 0.95,
+      "image_description": "Newton second law force mass acceleration diagram",
+      "image_show_confidencescore": 0.9,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "**Right Ventricle** pumps to lungs",
-          "speech": "Once the blood fills the right atrium, it drops into the right ventricle, which pumps it toward your lungs.",
+          "text": "$$F = m \\times a$$",
+          "speech": "Newton's second law gives us the secret formula: Force equals mass times acceleration. To move something, you need to apply a force.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
           "frame_type": "diagram",
-          "text": "Pulmonary artery pathway",
-          "speech": "The right ventricle is like a strong muscle that pushes this blood into the pulmonary artery to reach the lungs.",
+          "text": "Force vs **Mass**",
+          "speech": "If the acceleration stays the same, as the mass goes up, the force required must also go up. That is why the heavy truck needs a huge push.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500,
           "diagram_type": "custom",
           "diagram_data": {
-            "intent": "Show right ventricle pumping blood into the pulmonary artery"
+            "intent": "Show a large truck needing a big force arrow compared to a small car with a tiny force arrow."
           },
-          "visual_description": "diagram of right ventricle pumping blood to pulmonary artery"
+          "visual_description": "A diagram showing a large force arrow pushing a heavy truck and a small force arrow pushing a light car."
         }
       ]
     },
     {
-      "title": "Return to Left Atrium",
+      "title": "Acceleration Explained",
       "lang": "en-US",
-      "image_description": "pulmonary veins entering left atrium",
-      "image_show_confidencescore": 0.95,
+      "image_description": "car speeding up acceleration diagram",
+      "image_show_confidencescore": 0.75,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "**Oxygenated blood** returns",
-          "speech": "After picking up fresh oxygen in the lungs, the blood returns to the heart's left atrium.",
+          "text": "**Acceleration** ($$m/s^2$$)",
+          "speech": "Acceleration is how quickly you change an object's speed. Pushing a truck requires a massive force just to get it to start rolling, let alone speed up.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
-          "frame_type": "diagram",
-          "text": "Pulmonary veins",
-          "speech": "These pulmonary veins bring the newly oxygen-rich blood back into the heart so it can be circulated again.",
+          "frame_type": "concept",
+          "text": "Fixed Force, **Heavy Mass**",
+          "speech": "If you push a truck with the same force you use for a bicycle, the truck's acceleration will be almost zero. The mass effectively cancels out your effort.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 2500,
-          "diagram_type": "custom",
-          "diagram_data": {
-            "intent": "Show pulmonary veins entering the left atrium"
-          },
-          "visual_description": "diagram of pulmonary veins connecting to the left atrium"
+          "duration_ms": 2500
         }
       ]
     },
     {
-      "title": "Left Ventricle Pump",
+      "title": "Real World Application",
       "lang": "en-US",
-      "image_description": "left ventricle aorta pump diagram",
-      "image_show_confidencescore": 0.95,
+      "image_description": "mechanic pushing heavy equipment",
+      "image_show_confidencescore": 0.8,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "**Left Ventricle** pumps to body",
-          "speech": "The left ventricle is the strongest chamber, pumping that fresh, oxygen-rich blood out to the rest of your body.",
+          "text": "Why engines are **big**",
+          "speech": "This is why trucks have such powerful engines. They need to generate massive amounts of force to overcome their own huge mass and get moving.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
-          "frame_type": "diagram",
-          "text": "Aorta distribution",
-          "speech": "It pushes blood through the aorta, which is the main highway for blood to reach your brain, muscles, and organs.",
+          "frame_type": "concept",
+          "text": "Inertia in **daily life**",
+          "speech": "You feel this every time you try to push a heavy piece of furniture at home. The heavier it is, the more force you have to apply to get it sliding.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 2500,
-          "diagram_type": "custom",
-          "diagram_data": {
-            "intent": "Show left ventricle pumping blood into the aorta"
-          },
-          "visual_description": "diagram showing left ventricle pumping blood into aorta"
+          "duration_ms": 2500
         }
       ]
     },
     {
-      "title": "Heart Valve Function",
+      "title": "Summary",
       "lang": "en-US",
-      "image_description": "heart valves anatomy diagram",
-      "image_show_confidencescore": 0.95,
+      "image_description": "physics concept summary chart",
+      "image_show_confidencescore": 0.2,
       "frames": [
-        {
-          "frame_type": "concept",
-          "text": "**Heart valves** ensure flow",
-          "speech": "Valves act like one-way doors, snapping shut to make sure blood always flows in the correct direction.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
-        {
-          "frame_type": "diagram",
-          "text": "Valve mechanism",
-          "speech": "Without these valves, blood could leak backward, making the heart's job much harder and less efficient.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500,
-          "diagram_type": "custom",
-          "diagram_data": {
-            "intent": "Show heart valves preventing backflow"
-          },
-          "visual_description": "diagram of heart valves opening and closing"
-        },
         {
           "frame_type": "summary",
-          "text": "Heart circulation **Cycle**",
-          "speech": "In summary, blood enters the right atrium, goes to the lungs via the right ventricle, returns to the left atrium, and is pumped to the body by the left ventricle.",
+          "text": "**Summary:** $$F=ma$$",
+          "speech": "In summary, mass is the amount of matter in an object. Newton's second law shows that higher mass requires higher force to achieve acceleration. That is why a heavy truck is so difficult to push.",
           "tts_engine": "google",
           "voice_role": "assistant",
           "duration_ms": 3000
@@ -243,24 +206,24 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ],
       "followup_questions": [
         {
-          "question": "Why is the left ventricle wall thicker than the right?",
-          "speech": "Why do you think the left ventricle wall is thicker than the right side?"
+          "question": "What happens if we push a truck in space?",
+          "speech": "What would happen if you tried to push a truck while floating in deep space?"
         },
         {
-          "question": "What happens if a heart valve fails to close?",
-          "speech": "What would happen if a heart valve failed to close properly?"
+          "question": "Does friction also make it harder?",
+          "speech": "Does friction play a role in making the truck harder to push, too?"
         },
         {
-          "question": "Does blood ever stop moving in the heart?",
-          "speech": "Does blood ever stop moving inside the heart during the cycle?"
+          "question": "Could a tiny force move a truck?",
+          "speech": "Is it possible for a very tiny force to eventually move a massive truck?"
         }
-      ],
-      "session_theme": "Human heart blood pumping cycle",
-      "video_search_query": "heart pumping mechanism explained for kids",
-      "preferred_channels": [
-        "Khan Academy",
-        "Crash Course Kids"
       ]
     }
+  ],
+  "session_theme": "Newton's Second Law and Mass",
+  "video_search_query": "Newton's second law of motion explained for kids",
+  "preferred_channels": [
+    "Khan Academy India",
+    "Physics Wallah"
   ]
 }

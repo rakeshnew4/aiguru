@@ -2238,9 +2238,11 @@ class BlackboardActivity : AppCompatActivity() {
         val topic = currentTopic
         val dailyQId = intent.getStringExtra("daily_question_id").orEmpty()
         GlobalScope.launch(Dispatchers.IO) {
-            DailyQuestionsManager.recordInterest(subject, listOf(topic))
+            DailyQuestionsManager.recordInterest(applicationContext, subject, listOf(topic))
             if (dailyQId.isNotBlank()) {
-                DailyQuestionsManager.completeQuestion(dailyQId)
+                if (DailyQuestionsManager.completeQuestion(dailyQId)) {
+                    DailyQuestionsManager.markCachedCompleted(applicationContext, dailyQId)
+                }
             }
         }
         val subtitle = bbCompletionCard.findViewById<TextView?>(R.id.bbCompletionSubtitle)

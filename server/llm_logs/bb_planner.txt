@@ -1,19 +1,13 @@
-=== BB_PLANNER | 2026-04-27 10:21:34 | session=RFQp1HbS_dfe7224a ===
+=== BB_PLANNER | 2026-04-27 15:26:29 | session=RFQp1HbS_9ecdb9bc ===
 
 === PROMPT ===
 You are a lesson analyst for a personal visual AI tutor responding to a student's SPECIFIC question.
 Analyze exactly what the student is asking and return a focused lesson plan.
 Output ONLY valid JSON — nothing else.
 
-Student question (answer THIS specifically): "Topic: Explain Heart Pumping
-Lesson title: The Heart's Rhythmic Pump
-Category: science
+Student question (answer THIS specifically): "Topic: Why is it harder to push a heavy truck?
 
-This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
-
-Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
-Steps to generate in this batch:
-- Deoxygenated blood enters t"
+[Speech context from previous lesson: Have you ever wondered why your body jerks forward when a car stops suddenly? That is inertia in action. Newton's first law says an object will stay still or keep moving in a straight line unless a force pushes or "
 Chapter context (excerpt): ""
 Recent conversation (last 3 turns):
   (No prior conversation — this is the student's first question)
@@ -48,23 +42,21 @@ Rules:
 
 === RESPONSE ===
 {
-  "topic_type": "science_biology",
-  "scope": "simple",
+  "topic_type": "science_physics",
+  "scope": "medium",
   "key_concepts": [
-    "deoxygenated blood",
-    "vena cava",
-    "right atrium",
-    "circulatory system"
+    "Mass",
+    "Inertia",
+    "Newton's Second Law of Motion"
   ],
   "steps_count": 5,
   "image_search_terms": [
-    "human heart anatomy diagram",
-    "superior and inferior vena cava",
-    "deoxygenated blood flow heart"
+    "Newton second law force mass acceleration",
+    "heavy truck pushing diagram"
   ],
-  "question_focus": "The student wants to understand the initial stage of blood circulation where deoxygenated blood enters the heart.",
-  "question_type": "how_to",
-  "prior_knowledge": "",
-  "hook_question": "Did you know your heart beats about 100,000 times a day without you ever having to think about it?",
-  "continuation_topic": "Right Ventricle to Lungs"
+  "question_focus": "The student wants to understand the relationship between an object's mass and the force required to move it, specifically why heavier objects are harder to push.",
+  "question_type": "conceptual",
+  "prior_knowledge": "The student understands the basic definition of inertia and Newton's first law (objects stay still or keep moving unless acted upon by a force).",
+  "hook_question": "Have you ever tried to push a shopping cart when it's empty versus when it's full of heavy groceries?",
+  "continuation_topic": "Newton's Second Law: F=ma"
 }

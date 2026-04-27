@@ -1134,6 +1134,7 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                             plan=plan,
                             lang=lang,
                             image_data=req.image_data,
+                            animations_enabled=req.bb_animations_enabled is not False,
                         )
                     
                     # Run the LLM in the background and emit SSE keepalive pings

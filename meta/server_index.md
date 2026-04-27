@@ -10,11 +10,20 @@
 
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
-| `chat_stream()` | ~937–1300 | Main POST /chat-stream handler; BB + normal chat flow |
-| `_bb_plan()` | ~992–1001 | Calls BB planner LLM (tier=faster) |
-| `_classify_intent()` | ~1045–1048 | Intent classification LLM call (tier=faster) |
+| `ChatRequest` model | 60–75 | Pydantic model; includes `image_base64: Optional[str]`, `images: Optional[List[str]]`, `image_data: Optional[Dict]` |
+| `_normalize_images()` | 90–98 | Converts `image_base64` → `["data:image/jpeg;base64,..."]`; returns list for LLM |
+| `_merge_context_with_image_data()` | 119–150 | Merges structured `image_data` (transcript, key_terms, diagrams) into context string |
+| `chat_stream()` | ~937–1326 | Main POST /chat-stream handler; BB + normal chat flow |
+| `has_image` flag | 981 | `bool(normalized_images)` — controls intent override + context merge |
+| `_bb_plan()` | 196–240 | Fast BB planner (tier=faster); called with NO images; parses JSON → plan dict with defaults |
+| `_classify_intent()` | ~1051–1057 | Intent classification LLM call (tier=faster); skipped when `has_image=True` (→ image_explain) |
+| BB path entry | 992–1030 | `mode="blackboard"`: calls `_bb_plan()` → `build_blackboard_mode_user_content()` → `generate_response(user_content, normalized_images, ...)` |
+| `mode="blackboard_intent"` path | 1031–1036 | Fast planner only; `user_content = req.question`; passes `normalized_images` to LLM |
+| `mode="normal"` path | 1039–1079 | Intent classify → `build_normal_mode_user_content()` → `generate_response(user_content, normalized_images, ...)` |
+| image-less retry | 1176–1192 | On LLM exception with images present → retries without images |
 | TTS engine default | ~672–673 | Defaults tts_engine to "gemini" |
-| prompt.txt write | ~1076–1079 | Debug artifact: writes constructed prompt to file |
+| prompt.txt write | ~1082–1086 | Debug artifact: writes constructed prompt to file |
+| ⚠️ BB planner no-image | 217 | `_bb_plan()` calls `generate_response(planner_prompt, [], ...)` — always empty images, even when user attached a photo |
 
 ---
 
@@ -83,7 +92,7 @@
 | BB main system prompt | ~203–399 | Full blackboard lesson generation prompt |
 | frame types definition | ~238 | `concept \| memory \| diagram \| quiz_mcq \| summary` |
 | quiz_mcq instructions | ~260–261 | 4 options, 1 correct, use misconceptions as distractors |
-| `build_blackboard_mode_user_content()` | ~726+ | Builds dynamic user content: chapter context, level, lesson brief |
+| `build_blackboard_mode_user_content()` | 724–900+ | Builds dynamic BB user content: chapter context, level, lesson brief, diagram hints; takes `image_data` dict NOT raw image bytes; `image_data` → appends transcript + key_terms to prompt |
 
 ---
 

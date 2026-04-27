@@ -605,3 +605,26 @@ Note: BbInteractivePopup.kt loaded into context by linter. Updating android meta
 - Drawer now shows ONLY: "TODAY'S USAGE" with 💬 Chat messages / 🎓 Blackboard sessions / 🎙 AI voice (if non-zero)
 - Credits balance lives only in the ⭐ chip in the main screen toolbar (tappable → SubscriptionActivity)
 - No dangling R.id references — grep confirmed zero matches for drawerCreditsRow / drawerCreditsBalance
+
+---
+
+**Date:** 2026-04-27
+**Asked:** BB mode button crashes when image is attached; image should transcribe + answer properly in BB session.
+**Changed:** No code changed this session — investigation + index update only.
+**Files read:**
+- `BlackboardActivity.kt` — image attach flow (lines 215–250, 320–342, 3478–3584, 3657–3901, 3906–4060, 4072–4163, 4165–4217); `generateSteps()` entry (457–593); EXTRA_IMAGE_BASE64 intent chain
+- `BlackboardGenerator.kt` — `callIntent()` 145–208; `generateChunk()` 224–312; `generate()` 323–510
+- `ServerProxyClient.kt` — `streamChat()` 95–137; `executeStream()` 153–174; constructor 38–43
+- `FullChatFragment.kt` — `showBbDurationPickerAndLaunch()` 718–754; `sendMessage()` 1203–1295; `proceedWithMessageSendAfterQuotaCheck()` 1595–1660
+- `HomeActivity.kt` — BB launch with image 1404–1416; `launchHomeCrop()` 1461–1505; `applyHomeCroppedImage()` 1507–1520
+- `utils/MediaManager.kt` — `uriToBase64()` 115–172
+- `server/app/api/chat.py` — `_normalize_images()` 90–98; `_bb_plan()` 196–240; `chat_stream()` image paths 960–1192
+- `server/app/services/prompt_service.py` — `build_blackboard_mode_user_content()` signature 724–735
+- `server/app/services/llm_service.py` — `_call_litellm_proxy()` image handling 475–510; `generate_response()` 569–634
+- `app/src/main/res/layout/activity_blackboard.xml` — bbImgPreviewRow (374–410), ask-bar pill (412–468)
+**Key findings (no fix applied yet):**
+- Previous "BB+image crash" fix (commit 5e09bc5) fixed FullChatFragment: cancel `imageEncodeJob` + capture `ctx` before BB dialog
+- Current issue likely: (a) `sendBbQuestion` lambda silently does nothing when text is blank but image IS attached; (b) `generate()` → `requestInlineBbLesson()` doesn't pass image to inline BB; (c) `HomeActivity.launchHomeCrop()` has NO fallback if UCrop throws (unlike BB which falls back to `encodeBbImage()`)
+- BB planner (`_bb_plan()`) always called with empty images even when photo is attached
+- `sendBbChat()` uses `mode="normal"` (not "blackboard") for ask-bar questions — server handles as image_explain intent, which is correct for Q&A but not a BB-style lesson
+- ⚠️ Race condition: `encodeBbImage()` runs on raw Thread; if user presses send before encode finishes, `bbPendingImageBase64` is null → image silently not sent

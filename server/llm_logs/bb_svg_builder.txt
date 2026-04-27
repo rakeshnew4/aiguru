@@ -1,4 +1,4 @@
-=== BB_SVG_BUILDER | 2026-04-27 10:22:02 | session=none ===
+=== BB_SVG_BUILDER | 2026-04-27 15:26:43 | session=none ===
 
 === SYSTEM ===
 You are an SVG diagram artist for an educational app. Draw accurate diagrams as raw SVG.
@@ -31,14 +31,49 @@ DRAW REAL STRUCTURES (never flowcharts with boxes/arrows):
 Draw this educational diagram as SVG:
 
   Diagram type : custom
-  Topic/title  : Heart Valve Function
-  Context      : Without these valves, blood could leak backward, making the heart's job much harder and less efficient.
+  Topic/title  : Newton's Second Law
+  Context      : If the acceleration stays the same, as the mass goes up, the force required must also go up. That is why the heavy truck needs a huge push.
   Data hints   : none
-  Visual layout: diagram of heart valves opening and closing
+  Visual layout: A diagram showing a large force arrow pushing a heavy truck and a small force arrow pushing a light car.
   Follow this layout exactly — positions, arrows, and labels as described above.
 
-Draw "Heart Valve Function" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
+Draw "Newton's Second Law" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
 Animate each part appearing sequentially.  Output ONLY the <svg> element.
 
 === RESPONSE ===
-<svg viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#1A2B1A"/><text x="200" y="25" font-family="serif" fill="#F0EDD0" font-size="13" font-weight="bold" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="0s" fill="freeze"/>Heart Valve Function</text><g stroke="#F0EDD0" stroke-width="2" fill="none"><path d="M100 100 C 80 150, 120 200, 150 200 C 180 200, 220 150, 200 100 Z" stroke-dasharray="300" stroke-dashoffset="300"><animate attributeName="stroke-dashoffset" values="300;0" dur="0.6s" begin="0.3s" fill="freeze"/></path><path d="M250 100 C 230 150, 270 200, 300 200 C 330 200, 370 150, 350 100 Z" stroke-dasharray="300" stroke-dashoffset="300"><animate attributeName="stroke-dashoffset" values="300;0" dur="0.6s" begin="0.9s" fill="freeze"/></path><path d="M120 130 L 180 130" stroke="#FF6B6B" stroke-dasharray="60" stroke-dashoffset="60"><animate attributeName="stroke-dashoffset" values="60;0" dur="0.6s" begin="1.5s" fill="freeze"/></path><path d="M270 160 L 330 160" stroke="#81C784" stroke-dasharray="60" stroke-dashoffset="60"><animate attributeName="stroke-dashoffset" values="60;0" dur="0.6s" begin="2.1s" fill="freeze"/></path></g><text x="150" y="220" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="0.6s" fill="freeze"/>Open Valve</text><text x="300" y="220" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="1.2s" fill="freeze"/>Closed Valve</text><text x="150" y="120" font-family="serif" fill="#FF6B6B" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="1.8s" fill="freeze"/>Blood Flow</text><text x="300" y="150" font-family="serif" fill="#81C784" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="2.4s" fill="freeze"/>Seal</text><text x="200" y="270" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="2.7s" fill="freeze"/>Prevents backflow</text></svg>
+<svg viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg">
+<rect width="400" height="300" fill="#1A2B1A"/>
+<text x="200" y="25" text-anchor="middle" font-family="serif" fill="#F0EDD0" font-size="13" font-weight="bold" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0s"/>Newton's Second Law</text>
+
+<!-- Heavy Truck -->
+<path d="M50 180 L130 180 L135 160 L110 160 L100 140 L60 140 L50 180 Z" fill="#FF6B6B" fill-opacity="0.25" stroke="#FF6B6B" stroke-width="2" stroke-dasharray="150" stroke-dashoffset="150">
+  <animate attributeName="stroke-dashoffset" values="150;0" dur="0.6s" fill="freeze" begin="0.3s"/>
+</path>
+<circle cx="70" cy="180" r="10" fill="#8BAB8B" stroke="#F0EDD0" stroke-width="2" stroke-dasharray="63" stroke-dashoffset="63">
+  <animate attributeName="stroke-dashoffset" values="63;0" dur="0.6s" fill="freeze" begin="0.6s"/>
+</circle>
+<circle cx="110" cy="180" r="10" fill="#8BAB8B" stroke="#F0EDD0" stroke-width="2" stroke-dasharray="63" stroke-dashoffset="63">
+  <animate attributeName="stroke-dashoffset" values="63;0" dur="0.6s" fill="freeze" begin="0.9s"/>
+</circle>
+<path d="M20 160 L45 160 M25 155 L20 160 L25 165" stroke="#FFB74D" stroke-width="4" stroke-dasharray="40" stroke-dashoffset="40">
+  <animate attributeName="stroke-dashoffset" values="40;0" dur="0.6s" fill="freeze" begin="1.2s"/>
+</path>
+<text x="90" y="210" text-anchor="middle" font-family="serif" fill="#F0EDD0" font-size="11" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.5s"/>Heavy Mass</text>
+
+<!-- Light Car -->
+<path d="M250 180 L320 180 L325 165 L250 165 Z" fill="#4FC3F7" fill-opacity="0.25" stroke="#4FC3F7" stroke-width="2" stroke-dasharray="120" stroke-dashoffset="120">
+  <animate attributeName="stroke-dashoffset" values="120;0" dur="0.6s" fill="freeze" begin="1.8s"/>
+</path>
+<circle cx="265" cy="180" r="7" fill="#8BAB8B" stroke="#F0EDD0" stroke-width="2" stroke-dasharray="44" stroke-dashoffset="44">
+  <animate attributeName="stroke-dashoffset" values="44;0" dur="0.6s" fill="freeze" begin="2.1s"/>
+</circle>
+<circle cx="305" cy="180" r="7" fill="#8BAB8B" stroke="#F0EDD0" stroke-width="2" stroke-dasharray="44" stroke-dashoffset="44">
+  <animate attributeName="stroke-dashoffset" values="44;0" dur="0.6s" fill="freeze" begin="2.4s"/>
+</circle>
+<path d="M230 172 L245 172 M240 169 L245 172 L240 175" stroke="#FFB74D" stroke-width="2" stroke-dasharray="20" stroke-dashoffset="20">
+  <animate attributeName="stroke-dashoffset" values="20;0" dur="0.6s" fill="freeze" begin="2.7s"/>
+</path>
+<text x="285" y="210" text-anchor="middle" font-family="serif" fill="#F0EDD0" font-size="11" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="3.0s"/>Light Mass</text>
+
+<text x="200" y="260" text-anchor="middle" font-family="serif" fill="#F0EDD0" font-size="11" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="3.3s"/>F = ma (Force increases with Mass)</text>
+</svg>

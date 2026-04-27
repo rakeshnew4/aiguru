@@ -45,12 +45,19 @@
 | `pauseBtn` | 169 | lateinit TextView; text "▶"/"⏸" |
 | `fetchAndShowStepImage()` | ~1840–1935 | Wikimedia image fetch; `serverScore≥0.7` → inline img; caption hidden for raw URLs (fixed Apr 2026); `FIT_CENTER`+`maxHeight=280dp` (fixed Apr 2026) |
 | `showImageDialog()` | 1936–1975 | AlertDialog with ImageView (FIT_CENTER, 300dp) or WebView for SVG |
-| `sendBbChat()` | 3748–3870 | Sends student question to server; builds question/response cards on board |
-| `buildChatCard()` | 4007–4060 | Creates card view; decodes base64 image thumbnail if present |
-| `launchBbCamera()` / `openBbCamera()` | 3323–3355 | Camera picker dialog → ContentValues insert → bbCameraLauncher |
-| `launchBbCrop()` | 3357–3400 | UCrop launch; fallback `encodeBbImage()` on exception |
-| `encodeBbImage()` | 3403–3425 | Background thread base64 encode; shows bbImgPreviewRow |
-| `clearBbImage()` | 3422–3426 | Clears `bbPendingImageUri/Base64`, hides row |
+| `sendBbChat()` | 3906–4060 | Captures `bbPendingImageBase64`; builds question+response cards; streams `mode="normal"` with `imageBase64`; adds "▶ Explain in Blackboard Mode" button on done |
+| `requestInlineBbLesson()` | 4072–4163 | Appends inline BB lesson to board; calls `BlackboardGenerator.generate()` with NO image |
+| `buildChatCard()` | 4165–4217 | Creates card view; decodes raw base64 image thumbnail if present (try/catch safe) |
+| `showAskBottomSheet()` | 3657–3901 | Full bottom sheet with multiline input + 📷/🎤/⛶ tiles + Send button; shows sheetImgCard if `bbPendingImageBase64 != null` |
+| `sendBbQuestion` lambda | 333–336 | Sends if text non-blank only — ⚠️ image-only sends silently ignored |
+| `launchBbCamera()` / `openBbCamera()` | 3481–3509 | Camera picker dialog → ContentValues insert → bbCameraLauncher |
+| `launchBbCrop()` | 3515–3560 | UCrop launch with `Uri.fromFile(destFile)`; catches `FileUriExposedException` → fallback `encodeBbImage(sourceUri)` |
+| `encodeBbImage()` | 3566–3578 | Background thread `bbMediaManager.uriToBase64(uri)` → sets `bbPendingImageBase64`; shows bbImgPreviewRow |
+| `clearBbImage()` | 3580–3584 | Clears `bbPendingImageUri/Base64`; hides bbImgPreviewRow |
+| BB image fields | 216–217 | `bbPendingImageUri: Uri?`, `bbPendingImageBase64: String?` |
+| `bbImgPreviewRow/Thumb/Remove` | 223–225 | Preview strip views bound in `onCreate()` lines 326–328 |
+| `bbCameraLauncher` / `bbGalleryLauncher` / `bbCropLauncher` | 228–250 | Activity result launchers for camera, gallery, and UCrop |
+| ⚠️ Race: encode vs send | — | `encodeBbImage()` runs on raw Thread; if user sends before encode completes, `bbPendingImageBase64` is null → image silently dropped |
 
 ---
 
@@ -79,7 +86,12 @@
 
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
-| (unread) | ? | Client-side BB request builder / response parser |
+| `BlackboardIntent` data class | 55 | Structured lesson plan: `lessonTitle`, `stepTitles`, `useSvg`, `category`, `hookQuestion`, `continuationTopic` |
+| `callIntent()` | 145–208 | Fast BB planner: sends topic + `imageBase64` to server with `mode="blackboard_intent"`; parses JSON → `BlackboardIntent`; fallback outline on parse failure |
+| `generateChunk()` | 224–312 | Generates N steps for one chunk; takes `imageBase64`, `bbFeatures`, `previousContext`; sends `mode="blackboard"` to server; parses JSON steps array |
+| `generate()` | 323–510 | Cache-aware single-topic generation (teacher tasks / inline BB); checks Firestore cache first; falls back to `generateChunk()` with no image; saves result to Firestore |
+| `CHUNK_SIZE` constant | ~30 | How many steps to generate per chunk (used by BlackboardActivity) |
+| ⚠️ `generate()` no-image | 486–510 | `generate()` → `generateChunk()` called with NO `imageBase64` — inline BB lessons from ask-bar don't use the attached image |
 
 ---
 
@@ -97,7 +109,13 @@
 
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
-| (unread) | ? | Proxies requests to backend server |
+| `class ServerProxyClient` | 38–43 | Constructor: `serverUrl`, `modelName` (unused), `apiKey`, `userId=""` |
+| `streamChat()` | 101–137 | Builds JSON body; puts `image_base64` if non-null; calls `executeStream()` |
+| `executeStream()` | 153–174 | Calls `executeStreamInternal`; retries once on HTTP 401 with fresh Firebase token |
+| `executeStreamInternal()` | 177–? | Actual OkHttp SSE stream; parses `{"text":"..."}` tokens → `onToken`; handles `{"done":true}` → `onDone` |
+| `streamWithImage()` | 139–149 | ⚠️ NOT a real multimodal call — falls back to text-only `streamText()`; use `streamChat(imageBase64=...)` instead |
+| `bbFeatures` param | 110 | Map<String,Boolean> key-value pairs appended to JSON body (e.g. `bb_images_enabled`) |
+| Token refresh | 277 | Skips refresh if `serverUrl` blank, `userId` blank, or `userId=="guest_user"` |
 
 ---
 
@@ -164,8 +182,21 @@
 
 ---
 
-## HomeActivity.kt | ChatActivity.kt
-**⚠️ Expensive** — partially read. Use meta index for specific symbols.
+## HomeActivity.kt
+**Path:** `app/src/main/java/com/aiguruapp/student/HomeActivity.kt` | **⚠️ Expensive**
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `homePendingImageBase64` | 81 | Raw base64 string (no prefix); passed as `EXTRA_IMAGE_BASE64` to BlackboardActivity |
+| `homePendingImageUri` | 80 | URI of selected/cropped image |
+| `homeMediaManager` | 84 | `MediaManager(this)`; initialized in `onCreate()` line 133 |
+| `homeCameraLauncher` / `homeGalleryLauncher` | 92–98 | Launchers; both call `launchHomeCrop(uri)` on result |
+| `homeCropLauncher` | 100–112 | UCrop result; on OK → `applyHomeCroppedImage(cropped)` |
+| BB launch with image | 1408–1416 | Puts `EXTRA_IMAGE_BASE64 = homePendingImageBase64` in intent if non-null |
+| `launchHomeCrop()` | 1461–1505 | UCrop with `Uri.fromFile(destFile)`; ⚠️ NO fallback on exception (image silently dropped — unlike BlackboardActivity which has fallback) |
+| `applyHomeCroppedImage()` | 1507–1520 | `lifecycleScope.launch(IO)` → `homeMediaManager.uriToBase64(uri)`; shows sheetImgCard |
+| `openHomeCamera()` / `openHomeCameraCapture()` | 1432–1457 | Camera dialog → ContentValues insert |
+| `updateQuotaStripUI()` | 342 | Updates chat/BB quota displays in drawer |
 
 ---
 
@@ -365,7 +396,7 @@
 | `FeedbackManager.kt` | Rating prompt logic |
 | `ImageOptimizer.kt` | Compresses + resizes images before upload |
 | `MasteryCalculator.kt` | Computes mastery % from quiz/flashcard data |
-| `MediaManager.kt` | Audio/video media session management |
+| `MediaManager.kt` | Image encoding utility: `uriToBase64(uri, maxSizeKb=500)` — 2-pass decode (bounds then pixels), compresses JPEG until ≤maxSizeKb, returns raw base64 (no data-URI prefix); handles `file://` + `content://` URIs; catches OOM |
 | `PdfPageManager.kt` | PDF rendering and page extraction |
 | `PdfPreloadManager.kt` | Background PDF page preloading |
 | `PromptRepository.kt` | Stores + retrieves user-defined custom prompts |

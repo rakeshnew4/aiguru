@@ -1,11 +1,11 @@
-=== BB_ENRICHMENT | 2026-04-27 09:02:48 | session=none ===
+=== BB_ENRICHMENT | 2026-04-27 15:06:43 | session=none ===
 
 === SYSTEM ===
 You are a diagram data generator for an educational app. Output ONLY a valid JSON object — no text, no markdown, no explanation.
 
 === PROMPT ===
-Topic: "The Calvin Cycle: Making Sugar"
-Teaching content: "It's like an assembly line. Carbon dioxide is the raw material, and the plant's energy turns it into food for growth."
+Topic: "Evaporation: Sun's Energy"
+Teaching content: "This process is called evaporation. As water molecules absorb heat energy, they speed up and escape into the air as gas."
 Diagram type: cycle
 Color keys: primary (chalk white), label (yellow), secondary (sky blue), highlight (red), teal, orange, green, pink, purple, gold, coral, mint
 Schema: {"title":"Cycle Name","steps":["Stage 1","Stage 2","Stage 3","Stage 4"]}
@@ -16,39 +16,25 @@ Generate the BEST data JSON for this diagram. Fill ALL keys. Be accurate to the 
 
 === RESPONSE ===
 {
-  "title": "The Calvin Cycle",
+  "title": "The Evaporation Cycle",
   "steps": [
-    {
-      "name": "Carbon Fixation",
-      "description": "CO2 attaches to RuBP",
-      "color": "teal",
-      "highlight": false
-    },
-    {
-      "name": "Reduction",
-      "description": "ATP and NADPH convert molecules",
-      "color": "orange",
-      "highlight": true
-    },
-    {
-      "name": "Sugar Production",
-      "description": "G3P leaves to form glucose",
-      "color": "gold",
-      "highlight": true
-    },
-    {
-      "name": "Regeneration",
-      "description": "RuBP is reformed using ATP",
-      "color": "mint",
-      "highlight": false
-    }
+    "Sun radiates heat",
+    "Water absorbs energy",
+    "Molecules speed up",
+    "Vapor escapes air"
   ],
-  "theme": {
+  "colors": {
     "primary": "chalk white",
     "label": "yellow",
     "secondary": "sky blue",
     "highlight": "red",
-    "background_accent": "purple",
-    "connector_color": "pink"
+    "teal": "teal",
+    "orange": "orange",
+    "green": "green",
+    "pink": "pink",
+    "purple": "purple",
+    "gold": "gold",
+    "coral": "coral",
+    "mint": "mint"
   }
 }
