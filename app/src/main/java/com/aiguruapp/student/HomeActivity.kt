@@ -465,7 +465,7 @@ class HomeActivity : BaseActivity() {
             val creditsMode = chatLeft == 0 && creditBalance > 0
             val label = when {
                 creditsMode   -> "⭐ use credits!"
-                chatLeft == 0 -> "All used — upgrade! 🚀"
+                chatLeft == 0 -> "All used "
                 chatLeft == 1 -> "1 free left — ask away!"
                 chatLeft <= 3 -> "$chatLeft free — keep going! 💡"
                 else          -> "$chatLeft free today! Ask anything 💬"

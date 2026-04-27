@@ -27,6 +27,15 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Server URL, Razorpay key, and payment URL are fetched from Firestore admin_config/global
         // at runtime via AdminConfigRepository — no compile-time keys needed.
+
+        // Limit to real-device ABIs. x86_64 is emulator-only and several of its
+        // pre-built transitive .so files (e.g. libimage_processing_util_jni.so from
+        // ML Kit) are not built with 16 KB page-size alignment, causing Google Play
+        // to reject APKs/AABs targeting Android 15+ (required since Nov 1, 2025).
+        // arm64-v8a covers >95% of devices; armeabi-v7a covers older 32-bit ARM.
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
 
     signingConfigs {

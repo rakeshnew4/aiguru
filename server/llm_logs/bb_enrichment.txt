@@ -1,11 +1,11 @@
-=== BB_ENRICHMENT | 2026-04-27 15:06:43 | session=none ===
+=== BB_ENRICHMENT | 2026-04-27 16:37:31 | session=none ===
 
 === SYSTEM ===
 You are a diagram data generator for an educational app. Output ONLY a valid JSON object — no text, no markdown, no explanation.
 
 === PROMPT ===
-Topic: "Evaporation: Sun's Energy"
-Teaching content: "This process is called evaporation. As water molecules absorb heat energy, they speed up and escape into the air as gas."
+Topic: "The Calvin Cycle: Making Sugar"
+Teaching content: "Glucose is the sugar plants use to build stems, leaves, and fruit. It is essentially stored energy for the plant to use later."
 Diagram type: cycle
 Color keys: primary (chalk white), label (yellow), secondary (sky blue), highlight (red), teal, orange, green, pink, purple, gold, coral, mint
 Schema: {"title":"Cycle Name","steps":["Stage 1","Stage 2","Stage 3","Stage 4"]}
@@ -16,25 +16,30 @@ Generate the BEST data JSON for this diagram. Fill ALL keys. Be accurate to the 
 
 === RESPONSE ===
 {
-  "title": "The Evaporation Cycle",
+  "title": "The Calvin Cycle",
   "steps": [
-    "Sun radiates heat",
-    "Water absorbs energy",
-    "Molecules speed up",
-    "Vapor escapes air"
+    "Carbon Fixation",
+    "Reduction Phase",
+    "Glucose Production",
+    "Regeneration of RuBP"
   ],
   "colors": {
     "primary": "chalk white",
     "label": "yellow",
     "secondary": "sky blue",
     "highlight": "red",
-    "teal": "teal",
-    "orange": "orange",
-    "green": "green",
-    "pink": "pink",
-    "purple": "purple",
-    "gold": "gold",
-    "coral": "coral",
-    "mint": "mint"
+    "stage_1_color": "teal",
+    "stage_2_color": "orange",
+    "stage_3_color": "green",
+    "stage_4_color": "purple",
+    "glucose_node": "gold",
+    "energy_input": "coral",
+    "byproduct_output": "mint"
+  },
+  "descriptions": {
+    "Carbon Fixation": "CO2 attaches to RuBP.",
+    "Reduction Phase": "ATP and NADPH convert molecules.",
+    "Glucose Production": "G3P leaves to form glucose.",
+    "Regeneration of RuBP": "RuBP is recycled for cycle."
   }
 }

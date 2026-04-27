@@ -1222,8 +1222,8 @@ class BlackboardActivity : AppCompatActivity() {
         bbQuotaChip.visibility = View.VISIBLE
         bbQuotaChip.text = when {
             left == 0  -> "Use ⭐ credits to learn more!"
-            left == 1  -> "1 free lesson today — make it count! 🎓"
-            else       -> "$left free lessons today — dive in! 🚀"
+            left == 1  -> "1 free — make it count! 🎓"
+            else       -> "$left free — dive in! 🚀"
         }
         bbQuotaChip.setBackgroundColor(
             android.graphics.Color.parseColor(if (left == 0) "#BF360C" else "#5C5BD4")

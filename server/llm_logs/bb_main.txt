@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-04-27 15:26:36 | session=RFQp1HbS_9ecdb9bc ===
+=== BB_MAIN | 2026-04-27 16:37:28 | session=QZCFBBGJ_94d9ab90 ===
 
 === SYSTEM ===
 You are a visual AI tutor. Return ONLY valid JSON — no text outside JSON.
@@ -47,38 +47,39 @@ TTS every frame: first frame→android/teacher; concept/memory/diagram→gemini/
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: Why is it harder to push a heavy truck?
-
-[Speech context from previous lesson: Have you ever wondered why your body jerks forward when a car stops suddenly? That is inertia in action. Newton's first law says an object will stay still or keep moving in a straight line unless a force pushes or pulls it. Imagine a soccer ball on grass. It will sit there forever until you kick it, which is the force that breaks its inertia. The second law explains how much force you need to move something. The formula is Force equals mass times acceleration. If you push a shopping cart, adding more force makes it speed up faster. More mass makes it harder to accelerate. We measure force in Newtons. If you have a heavy object, you need a much bigger force to get it moving quickly. Every action has an equal and opposite reaction. When you push on something, it pushes back on you just as hard. Think of jumping off a skateboard. You push backward on the board, and the board pushes you forward. These forces always happen at the same time and in opposite directions. Isn't it cool how everything is balanced? Rockets work by shooting gas downward, which pushes the rocket upward. That is Newton's third law in space. In cars, seatbelts provide the force to stop your body from continuing fo]
-Lesson title: Why is it harder to push a heavy truck?
-
-[Speech context fro
-Category: general
+Student's EXACT question: Topic: Photosynthesis
+Lesson title: Unlocking Photosynthesis: How Plants Eat Light
+Category: science
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
-Generate EXACTLY 0 steps with APPROXIMATELY 4 frames each.
+Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
+- The Ingredients: Sunlight, Water, and CO2
+- Inside the Leaf: Chloroplasts and Chlorophyll
+- The Light-Dependent Reactions
+- The Calvin Cycle: Making Sugar
+- The Big Picture: Why Oxygen Matters
 
-
+This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants to understand the relationship between an object's mass and the force required to move it, specifically why heavier objects are harder to push.
+What the student specifically wants: The student wants an engaging introduction to photosynthesis, focusing on the basic ingredients plants need to create energy.
 Question type: conceptual
 Student level: Class 5
-Topic type: science_physics | Scope: medium
-What student already knows (DO NOT repeat this): The student understands the basic definition of inertia and Newton's first law (objects stay still or keep moving unless acted upon by a force).
-Key concepts to cover (ALL of these): Mass, Inertia, Newton's Second Law of Motion
+Topic type: science_biology | Scope: simple
+Key concepts to cover (ALL of these): Photosynthesis definition, Sunlight as energy, Carbon dioxide and water, Glucose production
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-SUBJECT GUIDANCE (Science — Physics):
-• Use waveform_signal for waves/sound/light; coordinate_plane for motion graphs.
-• Use PATH 2 (diagram_type=custom) for force diagrams, ray optics, circuit layouts.
-• Concept frames: state law/formula → physical meaning → real-world application.
-• Include units in every formula (e.g. m/s², Newton, Joule).
+DIAGRAM RECOMMENDATION: This topic likely needs a "leaf_anatomy" diagram (confidence 98%). Use diagram_type="leaf_anatomy" for your diagram frame(s).
+
+SUBJECT GUIDANCE (Science — Biology):
+• Use cycle for life cycles/processes (mitosis, water cycle, photosynthesis).
+• Use PATH 2 (diagram_type=custom) for anatomy cross-sections (heart, leaf, kidney).
+• Concept frames: function → structure → real-body example.
 • End with a summary frame.
 
 ---END LESSON BRIEF---
@@ -89,23 +90,36 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
 {
   "steps": [
     {
-      "title": "Mass and Inertia",
+      "title": "The Ingredients: Sunlight, Water, CO2",
       "lang": "en-US",
-      "image_description": "heavy truck vs toy car comparison",
-      "image_show_confidencescore": 0.85,
+      "image_description": "photosynthesis chemical formula diagram sunlight water carbon dioxide",
+      "image_show_confidencescore": 0.9,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "Pushing a **truck** vs **toy**",
-          "speech": "It's harder to push a truck because of its massive amount of matter. Mass is simply the amount of stuff an object is made of.",
+          "text": "**Photosynthesis**:\n6CO2 + 6H2O + Light → C6H12O6 + 6O2",
+          "speech": "Photosynthesis is the process where plants transform sunlight, water, and carbon dioxide into glucose for energy. Think of it as a plant cooking its own food using light.",
           "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
+          "frame_type": "diagram",
+          "text": "**Inputs**:\nSunlight, Water, CO2",
+          "speech": "Plants act like tiny factories. They soak up water through their roots, breathe in carbon dioxide from the air, and capture energy from the sun.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500,
+          "diagram_type": "custom",
+          "diagram_data": {
+            "intent": "Show a plant with arrows pointing inward for Sun, Water, and CO2"
+          },
+          "visual_description": "simple plant diagram with arrows for inputs"
+        },
+        {
           "frame_type": "concept",
-          "text": "Mass = **Resistance**",
-          "speech": "Everything with mass resists changing its motion. This resistance is called inertia. More mass means more inertia, which means it's much harder to get that truck moving.",
+          "text": "**Real-world**:\nSolar panels vs leaves",
+          "speech": "Just like solar panels on a house roof collect energy from the sun, leaves collect energy to power the plant's growth.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
@@ -113,92 +127,134 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ]
     },
     {
-      "title": "Newton's Second Law",
+      "title": "Inside the Leaf: Chloroplasts",
       "lang": "en-US",
-      "image_description": "Newton second law force mass acceleration diagram",
-      "image_show_confidencescore": 0.9,
+      "image_description": "plant cell chloroplast diagram biology",
+      "image_show_confidencescore": 0.95,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "$$F = m \\times a$$",
-          "speech": "Newton's second law gives us the secret formula: Force equals mass times acceleration. To move something, you need to apply a force.",
+          "text": "**Chloroplasts**:\nThe plant's kitchen",
+          "speech": "Inside every leaf are tiny structures called chloroplasts. These are the specific kitchen areas where the food-making magic actually happens.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
           "frame_type": "diagram",
-          "text": "Force vs **Mass**",
-          "speech": "If the acceleration stays the same, as the mass goes up, the force required must also go up. That is why the heavy truck needs a huge push.",
+          "text": "**Chlorophyll**:\nGreen pigment",
+          "speech": "Inside the chloroplasts, a green pigment called chlorophyll acts like a solar collector. It grabs the light energy needed to start the reaction.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500,
           "diagram_type": "custom",
           "diagram_data": {
-            "intent": "Show a large truck needing a big force arrow compared to a small car with a tiny force arrow."
+            "intent": "Cross-section of a leaf showing cells and chloroplasts"
           },
-          "visual_description": "A diagram showing a large force arrow pushing a heavy truck and a small force arrow pushing a light car."
+          "visual_description": "microscopic view of leaf cells with green chloroplasts"
+        },
+        {
+          "frame_type": "concept",
+          "text": "**Next step**:\nHow does light start the reaction?",
+          "speech": "Now that we have the ingredients and the kitchen ready, how does the light actually start the process? Let's explore the light reactions.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000
         }
       ]
     },
     {
-      "title": "Acceleration Explained",
+      "title": "The Light-Dependent Reactions",
       "lang": "en-US",
-      "image_description": "car speeding up acceleration diagram",
-      "image_show_confidencescore": 0.75,
+      "image_description": "light dependent reaction photosynthesis cycle diagram",
+      "image_show_confidencescore": 0.85,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "**Acceleration** ($$m/s^2$$)",
-          "speech": "Acceleration is how quickly you change an object's speed. Pushing a truck requires a massive force just to get it to start rolling, let alone speed up.",
+          "text": "**Light-Dependent**:\nSplitting water",
+          "speech": "In the first stage, sunlight hits the chlorophyll and splits water molecules apart. This releases oxygen as a byproduct and stores energy.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
-          "frame_type": "concept",
-          "text": "Fixed Force, **Heavy Mass**",
-          "speech": "If you push a truck with the same force you use for a bicycle, the truck's acceleration will be almost zero. The mass effectively cancels out your effort.",
+          "frame_type": "diagram",
+          "text": "**Energy storage**:\nATP and NADPH",
+          "speech": "The energy captured from sunlight is converted into chemical batteries called ATP and NADPH, which power the next stage.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 2500
+          "duration_ms": 2500,
+          "diagram_type": "cycle",
+          "diagram_data": {
+            "intent": "Cycle diagram showing light and water entering, oxygen leaving"
+          },
+          "visual_description": "cycle showing water and light entering, oxygen exiting"
+        },
+        {
+          "frame_type": "concept",
+          "text": "**Curiosity**:\nWhere does the sugar come from?",
+          "speech": "We have energy, but we don't have food yet. How do we turn that energy into sugar? That happens in the Calvin Cycle.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000
         }
       ]
     },
     {
-      "title": "Real World Application",
+      "title": "The Calvin Cycle: Making Sugar",
       "lang": "en-US",
-      "image_description": "mechanic pushing heavy equipment",
+      "image_description": "calvin cycle photosynthesis diagram",
+      "image_show_confidencescore": 0.85,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "**Calvin Cycle**:\nFixing Carbon",
+          "speech": "The Calvin Cycle doesn't need light directly. It uses the energy we just made to grab carbon dioxide and stitch it into glucose molecules.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
+          "frame_type": "diagram",
+          "text": "**Glucose**:\nPlant food",
+          "speech": "Glucose is the sugar plants use to build stems, leaves, and fruit. It is essentially stored energy for the plant to use later.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500,
+          "diagram_type": "cycle",
+          "diagram_data": {
+            "intent": "Cycle showing CO2 entering and Glucose leaving"
+          },
+          "visual_description": "Calvin cycle diagram showing sugar production"
+        },
+        {
+          "frame_type": "concept",
+          "text": "**Real-life**:\nEating veggies",
+          "speech": "When you eat a vegetable, you are actually eating the stored energy that the plant made during this cycle. Isn't that wild?",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000
+        }
+      ]
+    },
+    {
+      "title": "The Big Picture: Why Oxygen Matters",
+      "lang": "en-US",
+      "image_description": "photosynthesis oxygen cycle earth diagram",
       "image_show_confidencescore": 0.8,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "Why engines are **big**",
-          "speech": "This is why trucks have such powerful engines. They need to generate massive amounts of force to overcome their own huge mass and get moving.",
+          "text": "**Oxygen**:\nOur byproduct",
+          "speech": "Remember that oxygen released during the light reactions? That is what humans and animals breathe. Plants clean our air while making their food.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
-          "frame_type": "concept",
-          "text": "Inertia in **daily life**",
-          "speech": "You feel this every time you try to push a heavy piece of furniture at home. The heavier it is, the more force you have to apply to get it sliding.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        }
-      ]
-    },
-    {
-      "title": "Summary",
-      "lang": "en-US",
-      "image_description": "physics concept summary chart",
-      "image_show_confidencescore": 0.2,
-      "frames": [
-        {
           "frame_type": "summary",
-          "text": "**Summary:** $$F=ma$$",
-          "speech": "In summary, mass is the amount of matter in an object. Newton's second law shows that higher mass requires higher force to achieve acceleration. That is why a heavy truck is so difficult to push.",
+          "text": "**Summary**:\n1. Sun/Water/CO2 in\n2. Chloroplasts work\n3. Oxygen released\n4. Glucose created",
+          "speech": "In summary, photosynthesis uses light energy to turn water and carbon dioxide into glucose for the plant, while releasing life-giving oxygen for us.",
           "tts_engine": "google",
           "voice_role": "assistant",
           "duration_ms": 3000
@@ -206,22 +262,22 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ],
       "followup_questions": [
         {
-          "question": "What happens if we push a truck in space?",
-          "speech": "What would happen if you tried to push a truck while floating in deep space?"
+          "question": "What happens to plants at night?",
+          "speech": "What do plants do at night when there is no sunlight for photosynthesis?"
         },
         {
-          "question": "Does friction also make it harder?",
-          "speech": "Does friction play a role in making the truck harder to push, too?"
+          "question": "Do all plants have green leaves?",
+          "speech": "Do plants that aren't green still perform photosynthesis? How?"
         },
         {
-          "question": "Could a tiny force move a truck?",
-          "speech": "Is it possible for a very tiny force to eventually move a massive truck?"
+          "question": "Could we live without photosynthesis?",
+          "speech": "What would happen to the Earth's atmosphere if all plants suddenly stopped photosynthesizing?"
         }
       ]
     }
   ],
-  "session_theme": "Newton's Second Law and Mass",
-  "video_search_query": "Newton's second law of motion explained for kids",
+  "session_theme": "Photosynthesis process and energy production",
+  "video_search_query": "photosynthesis explained for kids simple",
   "preferred_channels": [
     "Khan Academy India",
     "Physics Wallah"
