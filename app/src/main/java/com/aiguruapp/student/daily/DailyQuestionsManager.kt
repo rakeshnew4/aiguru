@@ -24,6 +24,22 @@ data class DailyQuestion(
 )
 
 /**
+ * Combined quota status — one call replaces separate balance + session-count fetches.
+ * @property freeBbLeft   Free BB sessions remaining today (0 = exhausted, use credits)
+ * @property freeBbLimit  Daily BB session allowance from plan (0 = unlimited)
+ * @property freeChatLeft Free chat questions remaining today
+ * @property freeChatLimit Daily chat question allowance from plan (0 = unlimited)
+ * @property creditBalance Current credit balance (1 credit ≈ 100 tokens)
+ */
+data class QuotaStatus(
+    val freeBbLeft: Int,
+    val freeBbLimit: Int,
+    val freeChatLeft: Int,
+    val freeChatLimit: Int,
+    val creditBalance: Int,
+)
+
+/**
  * Credit top-up pack — purchased via the Razorpay flow with planId="topup_<id>"
  * to grant additional credits on top of the user's plan allowance.
  */
@@ -181,6 +197,42 @@ object DailyQuestionsManager {
             JSONObject(body).optInt("balance", 0)
         } catch (e: Exception) {
             0
+        }
+    }
+
+    /**
+     * Fetch combined quota status (free sessions remaining + credit balance) in one call.
+     * Returns null on network error — callers should fall back to locally-cached data.
+     */
+    fun fetchQuotaStatus(): QuotaStatus? {
+        val token = TokenManager.buildAuthHeader() ?: return null
+        val url = "${AdminConfigRepository.effectiveServerUrl()}/credits/quota-status"
+
+        val request = Request.Builder()
+            .url(url)
+            .get()
+            .header("Authorization", token)
+            .build()
+
+        return try {
+            val resp = HttpClientManager.standardClient.newCall(request).execute()
+            val body = resp.body?.string() ?: return null
+            if (!resp.isSuccessful) return null
+            val j = JSONObject(body)
+            val bbToday   = j.optInt("free_bb_today", 0)
+            val bbLimit   = j.optInt("free_bb_limit", 2)
+            val chatToday = j.optInt("free_chat_today", 0)
+            val chatLimit = j.optInt("free_chat_limit", 12)
+            val balance   = j.optInt("credit_balance", 0)
+            QuotaStatus(
+                freeBbLeft    = (bbLimit - bbToday).coerceAtLeast(0),
+                freeBbLimit   = bbLimit,
+                freeChatLeft  = (chatLimit - chatToday).coerceAtLeast(0),
+                freeChatLimit = chatLimit,
+                creditBalance = balance,
+            )
+        } catch (e: Exception) {
+            null
         }
     }
 

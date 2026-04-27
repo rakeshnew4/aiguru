@@ -1,11 +1,11 @@
-=== DAILY_QUESTION_GEN | 2026-04-26 18:14:59 | session=none ===
+=== DAILY_QUESTION_GEN | 2026-04-27 05:21:17 | session=none ===
 
 === PROMPT ===
 Generate exactly 3 engaging daily learning questions for a student.
 
-Student's top subjects: General, Neuroscience, Biology
-Recent topics studied: Sleep Patterns, Plant Physiology, Photosynthesis, Atom, DNA, Why do some atoms glow when they are excited by energy?, Why do some animals sleep with only half their brain at a time?, Atomic Structure, What is aero dynamic force?, How do our brains distinguish between a real memory and a vivid dream?
-Topics already used today (AVOID these): Bioluminescence, Magnetism, Genetics, Gravity, States of Matter, Neuroscience, States of Matter, Neuroscience, Gravity, Neuroscience
+Student's top subjects: Science, Math, History
+Recent topics studied: basic concepts
+Topics already used today (AVOID these): Chemistry, Base Systems, Ancient Architecture, Physics, Renaissance, Arithmetic, Technological History, Number Theory, Biology, Astronomy
 
 Rules:
 - Each question must be thought-provoking and curiosity-driven (not "what is X")
@@ -26,25 +26,7 @@ hook: one-line real-world curiosity fact related to the question (under 12 words
 
 === RESPONSE ===
 [
-  {
-    "question": "How do plants 'know' which direction is up without having a brain?",
-    "subject": "Biology",
-    "topic": "Plant Physiology",
-    "difficulty": 1,
-    "hook": "Plants use specialized starch grains to sense gravity's pull."
-  },
-  {
-    "question": "What would happen to your body if your DNA stopped repairing itself?",
-    "subject": "Biology",
-    "topic": "Cell Biology",
-    "difficulty": 2,
-    "hook": "Your cells perform thousands of DNA repairs every single hour."
-  },
-  {
-    "question": "Why do electrons jump to higher energy levels instead of staying put?",
-    "subject": "General Science",
-    "topic": "Atomic Physics",
-    "difficulty": 3,
-    "hook": "Electrons act like tiny quantum springs absorbing specific energy packets."
-  }
+  {"question": "Why do some historical empires collapse while others endure for centuries?", "subject": "History", "topic": "Political Science", "difficulty": 1, "hook": "The Roman Empire lasted over 1,000 years."},
+  {"question": "How does the geometry of a spider web maximize its structural strength?", "subject": "Math", "topic": "Geometry", "difficulty": 2, "hook": "Spider silk is stronger than steel by weight."},
+  {"question": "What would happen to Earth's climate if the ocean currents suddenly stopped?", "subject": "Science", "topic": "Earth Science", "difficulty": 3, "hook": "Ocean currents act like a global conveyor belt."}
 ]

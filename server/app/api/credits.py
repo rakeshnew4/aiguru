@@ -168,3 +168,57 @@ async def spend_credits(
         "debited": req.amount,
         "balance_after": current - req.amount,
     }
+
+
+@router.get("/quota-status")
+async def quota_status(auth: AuthUser = Depends(require_auth)):
+    """
+    Single call that returns everything the home screen needs to display quota:
+      - free_bb_today      : BB sessions used today
+      - free_bb_limit      : daily BB session allowance (0 = unlimited)
+      - free_chat_today    : chat questions used today
+      - free_chat_limit    : daily chat question allowance (0 = unlimited)
+      - credit_balance     : current credit balance (1 credit = 100 tokens)
+      - is_new_day         : whether the quota counters just reset (UTC rollover)
+    """
+    from datetime import datetime, timezone as _tz
+    db = get_firestore_db()
+    if db is None:
+        raise HTTPException(503, "Database unavailable")
+
+    uid = auth.uid
+    try:
+        user_ref = db.collection("users_table").document(uid)
+        credit_ref = db.collection("user_credits").document(uid)
+        user_doc, credit_doc = user_ref.get(), credit_ref.get()
+    except Exception as exc:
+        logger.warning("quota_status uid=%s: %s", uid, exc)
+        raise HTTPException(500, "Failed to fetch quota status")
+
+    user_data = user_doc.to_dict() if user_doc.exists else {}
+    credit_data = credit_doc.to_dict() if credit_doc.exists else {}
+
+    # Detect UTC day rollover
+    questions_updated_at = int(user_data.get("questions_updated_at") or 0)
+    is_new_day = False
+    if questions_updated_at > 0:
+        try:
+            last_day = datetime.fromtimestamp(questions_updated_at / 1000, tz=_tz.utc).date()
+            is_new_day = last_day < datetime.now(tz=_tz.utc).date()
+        except Exception:
+            pass
+
+    bb_today   = 0 if is_new_day else int(user_data.get("bb_sessions_today") or 0)
+    chat_today = 0 if is_new_day else int(user_data.get("chat_questions_today") or 0)
+    bb_limit   = int(user_data.get("plan_daily_bb_limit") or 2)
+    chat_limit = int(user_data.get("plan_daily_chat_limit") or 12)
+    balance    = int(credit_data.get("balance") or 0)
+
+    return {
+        "free_bb_today":   bb_today,
+        "free_bb_limit":   bb_limit,
+        "free_chat_today": chat_today,
+        "free_chat_limit": chat_limit,
+        "credit_balance":  balance,
+        "is_new_day":      is_new_day,
+    }

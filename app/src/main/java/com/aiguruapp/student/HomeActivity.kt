@@ -114,6 +114,8 @@ class HomeActivity : BaseActivity() {
     private var drawerBbLimit: Int    = 0
     private var drawerVoiceLimit: Int = 0
     private var hasShownQuotaWarning  = false
+    /** Last fetched credit balance — used by BB pill + quota toast. */
+    @Volatile private var lastKnownCreditBalance: Int = -1
 
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -301,11 +303,19 @@ class HomeActivity : BaseActivity() {
 
     private fun showQuotaToastIfNeeded(chatLeft: Int, bbLeft: Int) {
         if (hasShownQuotaWarning) return
+        val credits = lastKnownCreditBalance
         val msg = when {
-            chatLeft == 0 -> "You've used all your credits for today. Upgrade to get more."
-            chatLeft in 1..2 -> "Only $chatLeft credit${if (chatLeft == 1) "" else "s"} left today."
-            bbLeft == 0   -> "No blackboard sessions left today. Upgrade for more."
-            else          -> return
+            chatLeft == 0 && credits <= 0 ->
+                "No free questions left and no credits. Add credits to continue."
+            chatLeft == 0 && credits > 0 ->
+                "Free questions used up — ⭐ $credits credits will be used for chat."
+            chatLeft in 1..2 ->
+                "Only $chatLeft free question${if (chatLeft == 1) "" else "s"} left today."
+            bbLeft == 0 && credits <= 0 ->
+                "No BB sessions left and no credits. Add credits or upgrade."
+            bbLeft == 0 && credits > 0 ->
+                "Free BB sessions used — ⭐ credits will be used for new sessions."
+            else -> return
         }
         hasShownQuotaWarning = true
         Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
@@ -326,7 +336,7 @@ class HomeActivity : BaseActivity() {
         findViewById<TextView?>(R.id.chatQuotaSubtitle)?.visibility = View.GONE
 
         // ── Main screen: BB card quota pill ──────────────────────────────
-        findViewById<TextView?>(R.id.bbQuotaPill)?.visibility = View.GONE
+        updateBbButtonPill(bbLeft, drawerBbLimit, lastKnownCreditBalance)
 
         // ── Navigation drawer: chat progress bar ─────────────────────────
         val chatText = if (chatLeft < 0) "Unlimited" else "$chatLeft credits"
@@ -392,6 +402,39 @@ class HomeActivity : BaseActivity() {
                 }
             }
             findViewById<TextView?>(R.id.drawerCreditsBalance)?.text = balance.toString()
+        }
+    }
+
+    /**
+     * Update the quota pill on the Blackboard card on the home screen.
+     * Shows free sessions remaining, or credits-mode when sessions are exhausted.
+     * @param freeBbLeft   Free sessions still available today (≥0)
+     * @param freeBbLimit  Daily plan limit (0 = unlimited)
+     * @param creditBalance Current credit balance
+     */
+    private fun updateBbButtonPill(freeBbLeft: Int, freeBbLimit: Int, creditBalance: Int) {
+        val pill = findViewById<TextView?>(R.id.bbQuotaPill) ?: return
+        when {
+            freeBbLimit <= 0 || freeBbLeft < 0 -> {
+                // Unlimited plan — hide the pill
+                pill.visibility = View.GONE
+            }
+            freeBbLeft > 0 -> {
+                val s = if (freeBbLeft == 1) "session" else "sessions"
+                pill.text = "🎓 $freeBbLeft free $s left"
+                pill.setTextColor(Color.parseColor("#2E7D32"))
+                pill.visibility = View.VISIBLE
+            }
+            creditBalance > 0 -> {
+                pill.text = "⭐ Credits mode"
+                pill.setTextColor(Color.parseColor("#E65100"))
+                pill.visibility = View.VISIBLE
+            }
+            else -> {
+                pill.text = "No sessions left — add credits"
+                pill.setTextColor(Color.parseColor("#B71C1C"))
+                pill.visibility = View.VISIBLE
+            }
         }
     }
 
@@ -713,10 +756,20 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
 
     private fun loadDailyChallenge() {
         lifecycleScope.launch(Dispatchers.IO) {
-            val questions = DailyQuestionsManager.fetchFeed(this@HomeActivity)
-            val credits = DailyQuestionsManager.fetchCreditBalance()
-            val pending = questions.filter { it.status == "pending" }
+            val questions    = DailyQuestionsManager.fetchFeed(this@HomeActivity)
+            // fetchQuotaStatus covers credits + free-session counts in one call
+            val quotaStatus  = DailyQuestionsManager.fetchQuotaStatus()
+            val credits      = quotaStatus?.creditBalance
+                ?: DailyQuestionsManager.fetchCreditBalance()
+            if (quotaStatus != null) lastKnownCreditBalance = quotaStatus.creditBalance
             updateCreditsDisplay(credits)
+            // Update BB pill immediately from server data (Firestore strip may still be loading)
+            quotaStatus?.let { qs ->
+                runOnUiThread {
+                    updateBbButtonPill(qs.freeBbLeft, qs.freeBbLimit, qs.creditBalance)
+                }
+            }
+            val pending = questions.filter { it.status == "pending" }
             runOnUiThread {
                 // Show or hide daily challenge card
                 val card = findViewById<android.view.ViewGroup?>(R.id.dailyChallengeCard) ?: return@runOnUiThread
@@ -1896,7 +1949,7 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
             Toast.makeText(this, "Could not load NCERT data", Toast.LENGTH_SHORT).show()
             return
         }
-        val classNums = (6..12).map { it.toString() }.filter { ncertRoot.has(it) }
+        val classNums = (1..12).map { it.toString() }.filter { ncertRoot.has(it) }
         val classLabels = classNums.map { "\ud83c\udf93 Class $it" }.toTypedArray()
         AlertDialog.Builder(this)
             .setTitle("\ud83d\udcd6 NCERT \u2014 Pick Class")
@@ -1979,6 +2032,8 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
                                 put("isPdf", false)
                                 put("isNcert", true)
                                 put("ncertUrl", url)
+                                put("ncertCode", code)
+                                put("ncertChapterNum", ch)
                             }.toString()
                         ).apply()
                         FirestoreManager.saveChapter(userId, subjectLabel, title, ncertUrl = url)

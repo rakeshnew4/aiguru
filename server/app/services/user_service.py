@@ -502,15 +502,34 @@ def check_and_record_quota(uid: str, request_type: str) -> tuple[bool, str]:
         if is_new_day:
             current_count = 0
 
-        # Block if limit exceeded (0 = unlimited)
+        # Block if limit exceeded (0 = unlimited) — but allow credit fallback first
         if limit > 0 and current_count >= limit:
+            # Check if user has credits to spend as a fallback
+            credit_balance = 0
+            try:
+                credit_doc = db.collection("user_credits").document(uid).get()
+                if credit_doc.exists:
+                    credit_balance = int((credit_doc.to_dict() or {}).get("balance", 0))
+            except Exception as exc:
+                logger.warning("check_and_record_quota: credit read failed uid=%s: %s", uid, exc)
+
+            if credit_balance > 0:
+                # Free quota exhausted but user has credits — allow; credits auto-deducted
+                # by record_tokens() after the response completes (1 credit per 100 tokens).
+                logger.info(
+                    "check_and_record_quota: FREE_QUOTA_EXHAUSTED uid=%s type=%s "
+                    "count=%d/%d credit_balance=%d — allowing via credits",
+                    uid, request_type, current_count, limit, credit_balance,
+                )
+                return True, ""
+
             logger.info(
-                "check_and_record_quota: BLOCKED uid=%s type=%s count=%d/%d",
+                "check_and_record_quota: BLOCKED uid=%s type=%s count=%d/%d credits=0",
                 uid, request_type, current_count, limit,
             )
             return False, (
-                f"You've used all {limit} daily {label} sessions. "
-                f"Come back tomorrow or upgrade your plan to continue."
+                f"You've used all {limit} daily {label} sessions and have no credits left. "
+                f"Add credits or come back tomorrow to continue."
             )
 
         # Allowed — atomically increment the counter

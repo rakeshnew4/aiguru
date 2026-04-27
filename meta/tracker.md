@@ -7,6 +7,17 @@
 
 ## 2026-04-27
 
+**Asked:** Validate credits=1/100tokens flow, add daily free sessions display on BB button, show credits in drawer for BB+chat. Credits fallback: if free quota exhausted but credits>0, allow request.
+**Changed:**
+- `server/app/services/user_service.py` — `check_and_record_quota()`: when free quota exhausted, reads `user_credits.balance`; if >0 allows request (credits auto-deducted by `record_tokens`); if =0 blocks with descriptive message. Previously blocked immediately on quota limit.
+- `server/app/api/credits.py` — added `GET /credits/quota-status` endpoint returning `{free_bb_today, free_bb_limit, free_chat_today, free_chat_limit, credit_balance, is_new_day}`. Single call replaces separate balance + counter fetches.
+- `app/.../daily/DailyQuestionsManager.kt` — added `QuotaStatus` data class (`freeBbLeft, freeBbLimit, freeChatLeft, freeChatLimit, creditBalance`) + `fetchQuotaStatus()` calling `/credits/quota-status`.
+- `app/.../HomeActivity.kt` — `loadDailyChallenge()` now calls `fetchQuotaStatus()` (falls back to `fetchCreditBalance()` on error); stores result in `lastKnownCreditBalance`; calls new `updateBbButtonPill()`. Added `updateBbButtonPill(freeBbLeft, freeBbLimit, creditBalance)`: shows 🎓 free sessions / ⭐ Credits mode / red "add credits" based on state. `updateQuotaStripUI()` now calls `updateBbButtonPill` instead of hiding pill. `showQuotaToastIfNeeded()` messages updated to mention credits. Added `lastKnownCreditBalance` instance var.
+- `app/.../res/layout/activity_home.xml` — drawer "⭐ Token balance" label changed to "⭐ Credits" with subtitle "1 credit = 100 tokens · used by BB + Chat".
+**Key facts:** Credits auto-deducted by `record_tokens()` already (1 credit/100 tokens). New fallback: quota gate allows when `balance > 0`. Blocked only when both free quota AND credits are exhausted. BB pill now shows real-time status from server on home screen load.
+
+---
+
 **Asked:** Read CLAUDE.md + update architecture and folder/file structure in meta indexes.
 **Changed:**
 - `meta/android_index.md` — full structure added: adapters/ (7 files), models/ (17 files), utils/ (16 files), services/ (4 files), streaming/ (5 files), http/, auth/, daily/, quiz/, payments/, chat/ extras (4 files), GeminiLiveActivity, RevisionActivity, LibraryActivity, SubscriptionActivity, dashboard activities, TutorController, BaseActivity. Updated Key Android Architecture Facts with build config + full routing details.
@@ -433,17 +444,12 @@ Note: BbInteractivePopup.kt loaded into context by linter. Updating android meta
 ---
 
 **Date:** 2026-04-27
-**Asked:** 5 bugs: TTS speaks after close/reopen; camera+BB session crash; student tasks load error; BB image sizing + URL shown; PDF lost after reinstall.
+**Asked:** Tasks not showing in student view after teacher assigns; teacher form needs dropdowns for subject/chapter/BB session.
 **Changed:**
-- `BlackboardActivity.kt` onPause (~line 596): added `isPaused = true` + `pauseBtn.text = "▶"` so TTS callbacks don't re-trigger when returning from background
-- `FullChatFragment.kt` showBbDurationPickerAndLaunch (~line 725): capture `ctx = requireContext()` before dialog, cancel `imageEncodeJob`, clear `pendingImageBase64` before launching BB to prevent crash when image was attached
-- `firestore/FirestoreManager.kt` loadTasksForSchool (~line 1048): removed `.whereEqualTo("is_active", true)` + `.orderBy(...)` from query (composite index not created); filter and sort done in-memory
-- `BlackboardActivity.kt` fetchAndShowStepImage (~line 1854): changed `CENTER_CROP` → `FIT_CENTER`, fixed height → `WRAP_CONTENT + maxHeight=280dp`, caption now hidden when query is a raw URL
-- `firestore/FirestoreManager.kt` saveChapter: added `pdfStoragePath` and `pdfId` params, stores them in Firestore
-- `firestore/FirestoreManager.kt`: added `loadChapterMeta()` function
-- `SubjectActivity.kt`: imports `FirebaseStorage`; after PDF import, uploads to Firebase Storage at `user_pdfs/{userId}/{pdfId}.pdf`; passes `storagePath` + `pdfId` to `saveChapter`; on Firestore chapter restore, calls `loadChapterMeta` and restores SharedPrefs meta (isPdf, pdfId) for PDF chapters
-- `ChapterActivity.kt`: imports `FirebaseStorage`; `setupPdfChapter()` splits into two fns — when local PDF is missing, calls `loadChapterMeta`, downloads from Firebase Storage, then calls `setupPdfChapterAfterDownload()`
+- `firestore/FirestoreManager.kt` loadTasksByTeacher: removed `.orderBy("created_at", DESC)` — same composite index issue as loadTasksForSchool; sort in-memory now
+- `TeacherTasksActivity.kt`: added `subjectOptions`, `chapterOptions`, `bbSessions` state; added `loadDropdownData()`, `loadChaptersForSubject()`, `pickSubject()`, `pickChapter()`, `pickBbSession()`; subject + chapter inputs are now non-focusable (tap = dialog picker); BB topic input shows session picker when sessions loaded, falls back to text entry if empty; picking BB session auto-fills subject + chapter + selectedBbCacheId
 **Key facts:**
-- Fix 1 leaves session paused when user returns; user must tap ▶ to resume (expected)
-- Fix 3: school_tasks only needs single-field index on school_id now
-- Fix 5: PDFs uploaded on first import; pre-existing PDFs won't auto-upload (user must re-add once)
+- Both loadTasksForSchool and loadTasksByTeacher now only use single-field indexes (no composite)
+- Subject picker loads from `users/{teacherId}/subjects/` (teacher's own subjects)
+- BB session picker from `bb_cache` where `teacher_id = teacherId`, shows topic + subject + chapter + step count
+- "Type manually…" option always available at bottom of picker dialogs

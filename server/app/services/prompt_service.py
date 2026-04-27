@@ -10,21 +10,21 @@ _TOPIC_TYPE_TEACHING_HINTS: dict[str, str] = {
         "• Lead with the formula in a concept frame. Show what each variable means.\n"
         "• Dedicate 2 concept frames to worked substitution (step-by-step numbers).\n"
         "• Prefer diagram_type: graph_function, fraction_bar, number_line, or pythagoras.\n"
-        "• Quiz: quiz_typed asking student to apply the formula to a new set of values."
+        "• End with a summary frame recapping key takeaways."
     ),
     "math_geometry": (
         "SUBJECT GUIDANCE (Math — Geometry):\n"
         "• Use diagram_type triangle, polygon, circle_geometry, angle, or coordinate_plane.\n"
         "• Show labelled measurements in the diagram data (a_val, b_val, show_angles, etc.).\n"
         "• Concept frames: state property → prove/derive → example with numbers.\n"
-        "• Quiz: quiz_mcq with numerically distinct distractor values."
+        "• End with a summary frame of key properties."
     ),
     "math_graph": (
         "SUBJECT GUIDANCE (Math — Graphs/Functions):\n"
         "• Always include a graph_function or coordinate_plane diagram frame.\n"
         "• Concept frames: equation form → what the graph looks like → key points (intercepts, vertex).\n"
         "• Include a bar_chart or line_graph if comparing data sets.\n"
-        "• Quiz: quiz_typed asking student to identify the graph type or a key coordinate."
+        "• End with a summary frame."
     ),
     "science_biology": (
         "SUBJECT GUIDANCE (Science — Biology):\n"
@@ -32,7 +32,7 @@ _TOPIC_TYPE_TEACHING_HINTS: dict[str, str] = {
        
         "• Use PATH 2 (diagram_type=custom) for anatomy cross-sections (heart, leaf, kidney).\n"
         "• Concept frames: function → structure → real-body example.\n"
-        "• Quiz: quiz_order (correct biological sequence) or quiz_mcq."
+        "• End with a summary frame."
     ),
     "science_chemistry": (
         "SUBJECT GUIDANCE (Science — Chemistry):\n"
@@ -40,7 +40,7 @@ _TOPIC_TYPE_TEACHING_HINTS: dict[str, str] = {
         "• Use comparison for reactants vs products or acid vs base.\n"
         "• Use PATH 2 (diagram_type=custom) for lab apparatus (test tube, flask, burner).\n"
         "• Concept frames: particles/structure → reaction rule → balanced equation.\n"
-        "• Quiz: quiz_typed with quiz_keywords = key chemical terms."
+        "• End with a summary frame."
     ),
     "science_physics": (
         "SUBJECT GUIDANCE (Science — Physics):\n"
@@ -48,21 +48,21 @@ _TOPIC_TYPE_TEACHING_HINTS: dict[str, str] = {
         "• Use PATH 2 (diagram_type=custom) for force diagrams, ray optics, circuit layouts.\n"
         "• Concept frames: state law/formula → physical meaning → real-world application.\n"
         "• Include units in every formula (e.g. m/s², Newton, Joule).\n"
-        "• Quiz: quiz_mcq with plausible numerical distractors."
+        "• End with a summary frame."
     ),
     "definition": (
         "SUBJECT GUIDANCE (Definition/Vocabulary):\n"
         "• Frame 1: crisp 1-sentence definition in bold. Frame 2: concrete real-world analogy.\n"
         "• Keep image_show_confidencescore ≤ 0.50 — use diagram only if concept has visible structure.\n"
         "• Include a memory frame (mnemonic, acronym, or 'think of it as...').\n"
-        "• Quiz: quiz_typed asking student to define in their own words."
+        "• End with a summary frame."
     ),
     "comparison": (
         "SUBJECT GUIDANCE (Comparison/Contrast):\n"
         "• Use comparison diagram_type as the centrepiece (left_points vs right_points).\n"
         "• Structure: what is A → what is B → key differences table → when to use which.\n"
         "• Use **bold** for terms being compared in text fields.\n"
-        "• Quiz: quiz_mcq testing which scenario belongs to which concept."
+        "• End with a summary frame."
     ),
     "history_civics": (
         "SUBJECT GUIDANCE (History / Civics / Social Studies):\n"
@@ -70,14 +70,14 @@ _TOPIC_TYPE_TEACHING_HINTS: dict[str, str] = {
         "• NEVER use cycle, waveform, or heavy SVG — history has no process diagrams.\n"
         "• Keep image_show_confidencescore ≤ 0.40. Prioritise concept + memory frames.\n"
         "• Memory frame: key date + person + outcome in one catchy sentence.\n"
-        "• Quiz: quiz_mcq with plausible historical distractors."
+        "• End with a summary frame."
     ),
     "programming": (
         "SUBJECT GUIDANCE (Computer Science / Programming):\n"
         "• Use flow diagram for algorithms, control flow, or function call sequences.\n"
         "• Concept frames: syntax rule → example code snippet (use ``` in text) → output.\n"
         "• Use comparison for two data structures or two approaches (e.g. array vs list).\n"
-        "• Quiz: quiz_typed asking student to write or complete a small code expression."
+        "• End with a summary frame."
     ),
     "geography_environment": (
         "SUBJECT GUIDANCE (Geography / Environment):\n"
@@ -85,13 +85,13 @@ _TOPIC_TYPE_TEACHING_HINTS: dict[str, str] = {
        
         "• Use PATH 2 (diagram_type=custom) for cross-section diagrams (mountain, valley).\n"
         "• Concept frames: location/name → characteristic → human impact or real example.\n"
-        "• Quiz: quiz_mcq with plausible geographic distractors."
+        "• End with a summary frame."
     ),
     "other": (
         "SUBJECT GUIDANCE (General):\n"
         "• Mix concept + memory + one diagram frame appropriate to the topic.\n"
         "• Choose PATH 1 diagram if a standard type fits; PATH 2 (diagram_type=custom) for custom structures.\n"
-        "• End with quiz_mcq and summary."
+        "• End with a summary frame."
     ),
 }
 
@@ -235,7 +235,7 @@ blackboard_prompt = (
     "VIDEO SEARCH FIELDS: root-level only. session_theme = 3-8 words describing the topic (e.g. 'Photosynthesis light reactions'). "
     "video_search_query = specific educational YouTube query for the exact topic (e.g. 'photosynthesis explained for class 10 CBSE'). "
     "preferred_channels = 2-4 India-friendly educational channels relevant to the subject.\n\n"
-    "FRAME TYPES: concept | memory | diagram | quiz_mcq  summary\n\n"
+    "FRAME TYPES: concept | memory | diagram | summary\n\n"
     "DIAGRAM — set diagram_type + data (no svg_elements):\n"
     "PATH 1 (semantic engine): atom, solar_system, waveform_signal, triangle, polygon,\n"
     "  circle_geometry, angle, pythagoras, coordinate_plane, graph_function, line_graph,\n"
@@ -244,26 +244,24 @@ blackboard_prompt = (
     '  → diagram_type="custom", data={"intent":"1 sentence: what to show"}, visual_description="same"\n\n'
 
     "FLOW: Step 1 frame 1 = HOOK (real-world curiosity Q, 1 line). Each step has ≥1 APPLY frame anchoring to real life. "
-    "Second-to-last frame of each step = CURIOSITY BRIDGE forward question. Last step ends with quiz_mcq → summary AND "
+    "Second-to-last frame of each step = CURIOSITY BRIDGE forward question. Last step ends with summary AND "
     "includes 'followup_questions' (exactly 3 thought-provoking extensions).\n"
-    "TIMING duration_ms: concept/memory/diagram 1500-2500; HOOK/APPLY/CURIOSITY 2000-2500; summary 2500-3000; quiz 2000.\n\n"
+    "TIMING duration_ms: concept/memory/diagram 1500-2500; HOOK/APPLY/CURIOSITY 2000-2500; summary 2500-3000.\n\n"
 
     "RULES:\n"
-    "- 3-5 steps, 2-4 frames/step. Last step: quiz_mcq then summary (final). DO NOT include youtube_clip on any frame — videos surfaced separately at end.\n"
+    "- 3-5 steps, 2-4 frames/step. Last step MUST end with summary (final frame). DO NOT include youtube_clip on any frame — videos surfaced separately at end.\n"
     "- Use ONE lesson-level video_search_query for the whole session, never per-step video searches.\n"
     "- Step 2 MUST have a diagram or populated image_description.\n"
     "- speech: ≤2 sentences ≤50 words. Conversational, calm. No openers ('Today we learn...', 'Hi class!'). TTS-safe: say 'squared' not '^2'.\n"
     "- speech language matches lang field (hi-IN→Hindi, te-IN→Telugu, en-US→English).\n"
-    "- text: **bold** key terms, $$math$$, max 2 lines, always English.\n"
+    "- text: **bold** Prefer only keyWords over sentences, $$math$$, max 2 lines, always English.\n"
     "- lang: same BCP-47 tag on all steps from OUTPUT LANGUAGE instruction.\n"
     "- diagram only when visual adds clarity.\n"
-    "- quiz_mcq: 4 options, only 1 correct (quiz_correct_index 0-3), use misconceptions as distractors.\n"
-    "- quiz_typed/voice: quiz_model_answer (1 sentence), quiz_keywords (3-6 essential terms).\n"
     "- image_description: educational Wikimedia Commons search phrase — MUST include the subject/topic name so results are safe and relevant.\n"
     "  GOOD: 'mitosis cell division diagram', 'Newton second law force diagram', 'water cycle evaporation condensation'.\n"
     "  BAD: 'diagram', 'cycle', 'force', 'structure' (too vague — risks irrelevant or unsafe images). NEVER null or omit.\n"
     "  image_show_confidencescore: 0.85-0.95 concrete visuals, 0.60-0.80 named concepts, 0.10-0.30 abstract, 0.0 quiz/memory/summary.\n"
-    "TTS every frame: first frame→android/teacher; concept/memory/diagram→gemini/teacher; summary→google/assistant; quiz→android/quiz.\n"
+    "TTS every frame: first frame→android/teacher; concept/memory/diagram→gemini/teacher; summary→google/assistant.\n"
 )
 
 # ---Intent-Specific Prompt Builders---

@@ -133,22 +133,290 @@
 
 ---
 
-## core/config.py | Lines: ?
+## core/config.py
+**Path:** `server/app/core/config.py`
+
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
-| `settings` | ? | App config: LITELLM_MASTER_KEY, USE_LITELLM_PROXY, etc. |
+| `Settings` class | ? | Pydantic settings: GEMINI_API_KEY, LITELLM_MASTER_KEY, USE_LITELLM_PROXY, POWER/CHEAPER/FASTER model IDs |
+| `settings` singleton | ? | Global config instance |
+| Active models (Apr 2026) | ? | All 3 tiers → `gemini-2.5-flash-lite` |
 
 ---
 
-## api/payments.py | api/users.py | api/admin.py | api/credits.py
-> Unread. Update on first access.
+## core/auth.py
+**Path:** `server/app/core/auth.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | FastAPI dependency for Bearer token validation |
 
 ---
 
-## services/diagram_service.py
-> Standalone `/diagram/generate` endpoint — separate from BB pipeline. Unread.
+## core/firebase_auth.py
+**Path:** `server/app/core/firebase_auth.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | Firebase Admin SDK token verification |
 
 ---
 
-## utils/svg_builder.py | utils/svg_renderers.py | utils/svg_renderers_sci.py | utils/svg_renderers_math.py
-> SVG rendering pipeline. Unread — read `app_context/backend_svg_pipeline.py` first.
+## core/logger.py
+**Path:** `server/app/core/logger.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | Structured logging setup |
+
+---
+
+## services/litellm_service.py
+**Path:** `server/app/services/litellm_service.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | LiteLLM proxy management / key generation helpers |
+
+---
+
+## services/strands_agent.py
+**Path:** `server/app/services/strands_agent.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | AWS Strands agent integration (possibly for Bedrock) |
+
+---
+
+## services/cache_service.py
+**Path:** `server/app/services/cache_service.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | Server-side response caching layer |
+
+---
+
+## services/context_service.py
+**Path:** `server/app/services/context_service.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `get_context()` | ? | **Stub** — returns empty/minimal context. Do NOT expand. |
+
+---
+
+## services/evaluation_service.py
+**Path:** `server/app/services/evaluation_service.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | Evaluates student answers / quiz submissions |
+
+---
+
+## services/gamification_service.py
+**Path:** `server/app/services/gamification_service.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | XP / streak / badge award logic |
+
+---
+
+## services/library_service.py
+**Path:** `server/app/services/library_service.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | NCERT/library resource fetch and metadata |
+
+---
+
+## services/user_service.py
+**Path:** `server/app/services/user_service.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| credit charge/award | 142, 231–238 | Deducts or adds credits to user balance |
+| credit init | 311–392 | Initializes new user with welcome credits (50) |
+| quota logic | 537–619 | Per-plan daily quota enforcement |
+
+---
+
+## models/request.py
+**Path:** `server/app/models/request.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | Pydantic request body models |
+
+---
+
+## models/response.py
+**Path:** `server/app/models/response.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | Pydantic response models |
+
+---
+
+## models/quiz.py
+**Path:** `server/app/models/quiz.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | Quiz question/submission/result models |
+
+---
+
+## models/payment.py
+**Path:** `server/app/models/payment.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | Payment order/verification models |
+
+---
+
+## models/library.py
+**Path:** `server/app/models/library.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | Library resource models |
+
+---
+
+## api/analyze_image.py
+**Path:** `server/app/api/analyze_image.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | POST /analyze-image — describes PDF/image page for Ask AI |
+
+---
+
+## api/library.py
+**Path:** `server/app/api/library.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | GET/POST library resources |
+
+---
+
+## api/tasks.py
+**Path:** `server/app/api/tasks.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | Teacher task assignment/submission endpoints |
+
+---
+
+## api/diagram.py
+**Path:** `server/app/api/diagram.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | POST /diagram/generate — standalone diagram generation |
+
+---
+
+## api/users.py
+**Path:** `server/app/api/users.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | User profile CRUD, signup, plan info |
+
+---
+
+## api/admin.py
+**Path:** `server/app/api/admin.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | Admin-only endpoints (school management, config) |
+
+---
+
+## api/credits.py
+**Path:** `server/app/api/credits.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `GET /credits/balance` | ~170 lines total | Returns user credit balance |
+| `POST /credits/spend` | ? | Deducts credits |
+| `GET /credits/transactions` | ? | Returns credit history |
+| `GET /credits/topup-packs` | ? | Returns available top-up options |
+
+---
+
+## utils/diagram_router.py
+**Path:** `server/app/utils/diagram_router.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | Routes diagram type to correct SVG builder |
+
+---
+
+## utils/js_engine.py
+**Path:** `server/app/utils/js_engine.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | JS evaluation engine for diagram rendering |
+
+---
+
+## utils/json_utils.py
+**Path:** `server/app/utils/json_utils.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | JSON parsing helpers (probably shared with extract_json_safe) |
+
+---
+
+## utils/text_utils.py
+**Path:** `server/app/utils/text_utils.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| (unread) | ? | Text cleaning, truncation, token estimation helpers |
+
+---
+
+## utils/svg_builder.py (family)
+> `svg_builder.py`, `svg_builder_new.py`, `svg_renderers.py`, `svg_renderers_math.py`, `svg_renderers_sci.py`, `svg_primitives.py`, `svg_primitives_ext.py`, `svg_atom.py`, `svg_colors.py`
+> Full SVG rendering pipeline for BB diagrams. Routed via `diagram_router.py`.
+> **⚠️ Never open `svg_builder_original_backup.py`**
+
+---
+
+## main.py
+**Path:** `server/app/main.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| FastAPI `app` | ? | App instance; mounts all routers |
+| Router mounts | ? | Registers api/chat.py, bb.py, tts.py, quiz.py, etc. |
+
+---
+
+## Key Server Architecture Facts
+- **Entry point:** `server/app/main.py` (FastAPI)
+- **All LLM calls:** `generate_response()` → `_call_litellm_proxy()` in `llm_service.py`
+- **Active LLM:** `gemini-2.5-flash-lite` (all 3 tiers) via LiteLLM proxy on localhost
+- **Per-user LLM keys:** stored in `users_table/{uid}.litellm_key`, cached in `_user_key_cache` dict
+- **BB pipeline:** `api/chat.py` → BB planner LLM → main BB LLM → `image_search_titles.get_titles()` → enrichment + SVG + wikimedia
+- **Enrichment:** `enrichment_service.build_enrichment_tasks()` returns `(futs, refs)` 2-tuple (quiz validator removed Apr 2026)
+- **TTS:** `api/tts.py` → Google/ElevenLabs/OpenAI audio API — **zero LLM calls**
+- **Credits:** `api/credits.py` + `services/user_service.py` — welcome bonus 50, daily question awards 5 each, 1 credit per 100 tokens/TTS chars
+- **context_service.get_context():** stub — do NOT expand
+- **blackboard_prompt:** ~400 tokens — do NOT expand
