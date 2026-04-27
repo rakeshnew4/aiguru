@@ -21,7 +21,6 @@ import com.aiguruapp.student.utils.SessionManager
 import com.google.android.material.button.MaterialButton
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Source
-import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -346,7 +345,8 @@ class SubjectActivity : BaseActivity() {
                 val storagePath = "user_pdfs/$userId/$pdfId.pdf"
                 try {
                     com.google.android.gms.tasks.Tasks.await(
-                        FirebaseStorage.getInstance().reference.child(storagePath)
+                        com.google.firebase.storage.FirebaseStorage.getInstance()
+                            .reference.child(storagePath)
                             .putFile(Uri.fromFile(destFile))
                     )
                 } catch (e: Exception) {

@@ -37,7 +37,6 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 
 import com.aiguruapp.student.widget.BoxSpinnerView
-import com.google.firebase.storage.FirebaseStorage
 
 class ChapterActivity : BaseActivity() {
 
@@ -49,6 +48,28 @@ class ChapterActivity : BaseActivity() {
     private lateinit var chapterName: String
     private var cameraImageUri: Uri? = null
     private val CAMERA_PERMISSION_CODE = 201
+
+    /** SharedPreferences key for tracking which pages have been opened in this chapter. */
+    private val openedPagesPrefsKey get() =
+        "opened_pages_${subjectName}_${chapterName}".replace(" ", "_").take(80)
+
+    /** Load the set of opened page indices (0-based) from local storage. */
+    private fun loadOpenedPages(): MutableSet<Int> {
+        val raw = getSharedPreferences("page_tracker", MODE_PRIVATE)
+            .getString(openedPagesPrefsKey, "") ?: ""
+        return if (raw.isBlank()) mutableSetOf()
+        else raw.split(",").mapNotNull { it.trim().toIntOrNull() }.toMutableSet()
+    }
+
+    /** Mark a page as opened, persist it, and refresh the adapter indicator. */
+    private fun markPageOpened(position: Int) {
+        val set = loadOpenedPages()
+        if (set.add(position)) {
+            getSharedPreferences("page_tracker", MODE_PRIVATE)
+                .edit().putString(openedPagesPrefsKey, set.joinToString(",")).apply()
+            pageListAdapter.openedPages = set
+        }
+    }
 
     // PDF chapter state
     private var isPdfChapter = false
@@ -159,6 +180,8 @@ class ChapterActivity : BaseActivity() {
         )
         pagesRecyclerView.layoutManager = LinearLayoutManager(this)
         pagesRecyclerView.adapter = pageListAdapter
+        // Restore opened-page indicators immediately
+        pageListAdapter.openedPages = loadOpenedPages()
 
         loadChapterType()
         loadMasteryScore()
@@ -862,17 +885,18 @@ class ChapterActivity : BaseActivity() {
                         showDownloadOverlay("Downloading PDF…", "Please wait")
                         val destDir = java.io.File(cacheDir, "pdf_cache").also { it.mkdirs() }
                         val destFile = java.io.File(destDir, "$pdfId.pdf")
-                        FirebaseStorage.getInstance().reference.child(storagePath)
-                            .getBytes(50 * 1024 * 1024)
+                        com.google.firebase.storage.FirebaseStorage.getInstance()
+                            .reference.child(storagePath)
+                            .getBytes(50L * 1024 * 1024)
                             .addOnSuccessListener { bytes ->
                                 destFile.writeBytes(bytes)
                                 hideDownloadOverlay()
-                                setupPdfChapterAfterDownload()
+                                setupPdfChapterLoad()
                             }
                             .addOnFailureListener {
                                 hideDownloadOverlay()
                                 pagesListData.clear()
-                                pagesListData.add("⚠️ Could not download PDF. Check your connection and re-add this chapter if the problem persists.")
+                                pagesListData.add("⚠️ Could not download PDF. Check your connection and re-add if the problem persists.")
                                 pageListAdapter.notifyDataSetChanged()
                             }
                     } else {
@@ -891,11 +915,10 @@ class ChapterActivity : BaseActivity() {
             )
             return
         }
-        setupPdfChapterAfterDownload()
+        setupPdfChapterLoad()
     }
 
-    private fun setupPdfChapterAfterDownload() {
-
+    private fun setupPdfChapterLoad() {
         findViewById<MaterialButton>(R.id.uploadImageButton).apply {
             visibility = View.VISIBLE
             setOnClickListener { showImageSourceDialog() }
@@ -935,6 +958,7 @@ class ChapterActivity : BaseActivity() {
 
     private fun onViewPage(position: Int) {
         metricsTracker.recordPageViewed(position + 1)
+        markPageOpened(position)
         // Pre-render this page (and let PageViewerActivity handle rest)
         lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -960,6 +984,7 @@ class ChapterActivity : BaseActivity() {
 
     private fun onAskPage(position: Int) {
         metricsTracker.recordPageViewed(position + 1)
+        markPageOpened(position)
         Toast.makeText(this, "Rendering page ${position + 1}…", Toast.LENGTH_SHORT).show()
         lifecycleScope.launch(Dispatchers.IO) {
             try {
