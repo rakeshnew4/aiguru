@@ -453,3 +453,11 @@ Note: BbInteractivePopup.kt loaded into context by linter. Updating android meta
 - Subject picker loads from `users/{teacherId}/subjects/` (teacher's own subjects)
 - BB session picker from `bb_cache` where `teacher_id = teacherId`, shows topic + subject + chapter + step count
 - "Type manually…" option always available at bottom of picker dialogs
+
+---
+
+**Date:** 2026-04-27
+**Asked:** Update tracker, server index, read claude.md
+**Changed:**
+- `meta/android_index.md` — major expansion: BlackboardActivity (full symbol table with onPause fix, TTS fields, launchers, image/chat functions), FullChatFragment (send flow, BB dialog, image handling), BbAiTtsEngine (scope/stop/destroy/race details), FirestoreManager (all task/chapter/BB cache functions + composite index warning), ChapterActivity (PDF setup + Firebase Storage download), TasksActivity, TeacherTasksActivity, SubjectActivity, StorageService, CloudBackupService. Architecture facts updated with task flow, PDF persistence, Firestore index rule.
+- No server files read this session — server_index.md unchanged

@@ -59,7 +59,18 @@
 
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
-| (unread — use app_context/android_index.py first) | ? | Main chat UI implementation |
+| `isAutoExplainActive` | 342 | Loaded from `user_prefs/blackboard_mode_on`; if true, nudges toward BB after response |
+| Image fields | 157–180 | `cameraImageUri`, `pendingImageBase64`, `pendingImagePath`, `imageEncodeJob`, `selectedImageUri` |
+| `initializeUI()` | ~503–580 | Binds RecyclerView, adapter, imageButton, imagePreviewStrip, message input |
+| `onExplainClick` callback | ~534–545 | Plan check → `showBbDurationPickerAndLaunch(msg)` |
+| `showBbDurationPickerAndLaunch()` | 718–751 | Captures `ctx=requireContext()` before dialog; cancels imageEncodeJob; clears pendingImage; duration picker → BlackboardActivity intent (fixed Apr 2026) |
+| `showImageSourceDialog()` | 1121–1132 | Dialog: Take Photo / Gallery |
+| `openCamera()` | 1133–1155 | Permission check → ContentValues → `cameraLauncher.launch()` |
+| `sendMessage()` | 1203–1295 | Captures image/pdf/base64 state; checks plan; fires SERVER quota refresh then `proceedWithSendMessage` |
+| `proceedWithSendMessage()` | 1295–1365 | Guest vs regular quota check; calls `proceedWithMessageSendAfterQuotaCheck()` |
+| `proceedWithMessageSendAfterQuotaCheck()` | 1366–1660 | Builds user Message; launches IO coroutine; streams via `ServerProxyClient` or `AiClient`; on done → `showBlackboardNudge()` |
+| `showBlackboardNudge()` | ~1695–1720 | Scrolls to message, highlights Explain button (no dialog) |
+| `imageEncodeJob` | 180 | Job for background Base64 encode; always cancel before launching BB |
 
 ---
 
@@ -95,9 +106,15 @@
 
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
-| TTS cache + fetch | ~36–266 | Fetches MP3 from /api/tts/synthesize; falls back to Android native TTS |
+| `scope` | 41 | `CoroutineScope(SupervisorJob() + Dispatchers.IO)` — cancelled only in `destroy()`, NOT in `stop()` |
+| `mediaPlayer` | 51 | `MediaPlayer?` — reset in `stop()`, released in `destroy()` |
+| `play()` | 100–130 | Checks cache; if hit → `playFile()`; if miss → Android TTS + background preload |
+| `stop()` | 130–136 | Stops MediaPlayer + `androidTts.stop()`; does NOT cancel scope (pending coroutines can still fire) |
+| `destroy()` | 138–142 | Cancels scope, releases MediaPlayer; called from `BlackboardActivity.onDestroy()` |
+| `playFile()` | 178–210 | Sets MediaPlayer datasource; `onCompletionListener` calls `callback.onComplete()` |
+| `preload()` | 84 | `scope.launch { generateAndCache(...) }` — background MP3 download |
 | Server call | ~227–235 | Calls `/api/tts/synthesize` with tts_engine param |
-| No LLM calls | — | Confirmed: zero LLM calls in TTS path |
+| ⚠️ Race risk | — | `stop()` resets player but scope coroutines survive until `destroy()` — fixed in `onPause` by setting `isPaused=true` |
 
 ---
 
@@ -115,12 +132,40 @@
 
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
-| (unread) | ? | All Firestore read/write operations |
+| `loadSubjects()` | 375–390 | `users/{uid}/subjects/` orderBy createdAt → list of names |
+| `saveChapter()` | 392–415 | Saves chapter meta; accepts `pdfStoragePath` + `pdfId` (added Apr 2026); uses `SetOptions.merge()` |
+| `loadChapterMeta()` | 416–430 | NEW (Apr 2026): returns full chapter doc map including `pdfStoragePath`, `pdfId`, `isPdf` |
+| `loadChapters()` | 440–460 | Returns list of chapter names (not full docs) |
+| `loadTasksForSchool()` | ~1040–1070 | Queries `school_tasks` by `school_id` only (removed composite index req Apr 2026); filters `is_active` + grade/section in-memory |
+| `saveTask()` | ~988–1040 | Writes `school_tasks/{docId}`; fields: task_id, teacher_id, school_id, grade, title, description, task_type, subject, chapter, bb_topic, bb_cache_id, quiz_id, is_active=true |
+| `loadTasksByTeacher()` | ~1073–1090 | Queries by `teacher_id` only (removed orderBy Apr 2026); sorts in-memory |
+| `deactivateTask()` | ~1093–1102 | Updates `is_active=false` on school_tasks doc |
+| `loadTeacherBbLessons()` | 1489–1510 | `bb_cache` where `teacher_id` + orderBy created_at + limit 50 |
+| `saveBbLesson()` / bb_cache | ~1425–1470 | Fields: bb_cache_id, teacher_id, school_id, subject, chapter, topic, preview(150), steps_json, language_tag, step_count, created_at |
+| ⚠️ Composite index trap | — | Any `whereEqualTo + orderBy` on different fields needs explicit Firestore index; use single-field filter + in-memory sort |
 
 ---
 
-## HomeActivity.kt | ChapterActivity.kt | ChatActivity.kt
-**⚠️ Expensive** — unread. Use `app_context/android_architecture.py` first.
+## ChapterActivity.kt
+**Path:** `app/src/main/java/com/aiguruapp/student/ChapterActivity.kt` | **⚠️ Expensive**
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `isPdfChapter`, `pdfAssetPath`, `pdfId` | 75–77 | PDF chapter state flags |
+| `ncertPdfId` | 92–94 | Computed: `ncert_{subject}_{chapter}` (safe, max 60 chars) |
+| `ncertUrl`, `ncertCode`, `ncertChapterNum` | 89–91 | NCERT download state |
+| Chapter meta load | 651–665 | Reads SharedPrefs JSON `meta_{subject}_{chapter}`; extracts isPdf, pdfAssetPath, pdfId, ncertUrl |
+| `setupPdfChapter()` | ~874–920 | Checks `cacheDir/pdf_cache/{pdfId}.pdf`; if missing → calls `loadChapterMeta` → downloads from Firebase Storage (Apr 2026); falls back to "missing" message |
+| `setupPdfChapterLoad()` | ~920–960 | Actual page-count load via PdfPageManager; shows overlay while loading |
+| `setupNcertChapter()` | ~685–810 | Downloads NCERT PDF from URL; tries `ncertCandidateUrls()` variants |
+| NCERT cached PDF path | 685 | `cacheDir/pdf_cache/{ncertPdfId}.pdf` |
+| `pdfPageManager.getPageCount()` | ~929 | Returns int page count |
+| Firebase Storage download | ~883–903 | `com.google.firebase.storage.FirebaseStorage.getInstance().reference.child(storagePath).getBytes(50MB)` |
+
+---
+
+## HomeActivity.kt | ChatActivity.kt
+**⚠️ Expensive** — partially read. Use meta index for specific symbols.
 
 ---
 
@@ -453,6 +498,73 @@
 
 ---
 
+## TasksActivity.kt
+**Path:** `app/src/main/java/com/aiguruapp/student/TasksActivity.kt`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `TasksActivity` class | ~20 | Student task list; calls `loadAllTaskProgress` then `loadTasksForSchool` |
+| `loadData()` | ~60–85 | Short-circuits if `schoolId.isBlank()` ("Join a school first"); otherwise loads progress then tasks |
+| `loadTasks()` | ~86–115 | Calls `FirestoreManager.loadTasksForSchool(schoolId, grade, section)`; shows "Couldn't load tasks" toast on failure |
+| `launchLesson()` | ~117–145 | Starts `BlackboardActivity` with `EXTRA_BB_CACHE_ID` (preferred) or `EXTRA_MESSAGE` (legacy) |
+| `launchQuiz()` | ~147–175 | Loads quiz by `quiz_id` from `quizzes/` collection, or uses embedded `quiz_json` |
+| `TasksAdapter` | ~185–end | Shows bb/quiz/both badges; locks quiz until BB lesson read for "both" type; shows due-date countdown |
+
+---
+
+## TeacherTasksActivity.kt
+**Path:** `app/src/main/java/com/aiguruapp/student/TeacherTasksActivity.kt`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| Companion extras | 37–46 | EXTRA_PREFILL_QUIZ_JSON, EXTRA_PREFILL_SUBJECT, EXTRA_PREFILL_CHAPTER, EXTRA_PREFILL_BB_TOPIC, EXTRA_PREFILL_QUIZ_ID, EXTRA_PREFILL_BB_CACHE_ID |
+| Dropdown state | ~80–85 | `subjectOptions`, `chapterOptions`, `bbSessions` (added Apr 2026) |
+| `loadDropdownData()` | ~195–225 | Loads subjects + BB sessions from Firestore on startup (Apr 2026) |
+| `loadChaptersForSubject()` | ~226–232 | Lazy-loads chapters for selected subject into `chapterOptions` map |
+| `pickSubject()` | ~234–252 | Dialog: teacher's subjects + "Type manually…" fallback |
+| `pickChapter()` | ~254–272 | Dialog: chapters for current subject + "Type manually…" fallback |
+| `pickBbSession()` | ~274–325 | Dialog: teacher's bb_cache sessions; picking one fills `selectedBbCacheId` + subject + chapter (Apr 2026) |
+| `onSaveTask()` | ~365–405 | Validates fields → `FirestoreManager.saveTask()` |
+| `loadMyTasks()` | ~408–430 | `FirestoreManager.loadTasksByTeacher(userId)` |
+
+---
+
+## SubjectActivity.kt
+**Path:** `app/src/main/java/com/aiguruapp/student/SubjectActivity.kt`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `importPdfChapter()` | ~310–365 | Copies PDF to `cacheDir/pdf_cache/`; uploads to Firebase Storage at `user_pdfs/{uid}/{pdfId}.pdf` using `Tasks.await()` (Apr 2026); calls `saveChapter` with `pdfStoragePath` + `pdfId` |
+| Firestore restore callback | ~130–165 | After `loadChapters()` returns remote chapters, calls `loadChapterMeta()` for each missing-from-SharedPrefs chapter to restore `isPdf`/`pdfId` (Apr 2026) |
+| `saveChapterMeta()` | ~227–235 | Writes `meta_{subject}_{chapter}` JSON to SharedPrefs with isPdf, pdfAssetPath, pdfId |
+| PDF storage path | — | Firebase Storage: `user_pdfs/{userId}/{pdfId}.pdf`; Firestore field: `pdfStoragePath` |
+| ⚠️ cacheDir vs persistence | — | `cacheDir/pdf_cache/` is cleared on reinstall; Firebase Storage is the source of truth |
+
+---
+
+## services/StorageService.kt
+**Path:** `app/src/main/java/com/aiguruapp/student/services/StorageService.kt`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| Storage root | ~47 | `Environment.DIRECTORY_DOCUMENTS/AI Guru/` — public external; survives reinstall IF permissions granted |
+| `initialize()` | ~42–75 | Creates subdirs: pdfs/, images/, audio/tts/, cache/, metadata/ |
+| `getPdfFile()` | ~88 | Returns `File` in pdfs/ subdir |
+| ⚠️ Not used for custom PDFs | — | Custom PDFs use `cacheDir/pdf_cache/` (lost on reinstall); only Firebase Storage survives |
+
+---
+
+## services/CloudBackupService.kt
+**Path:** `app/src/main/java/com/aiguruapp/student/services/CloudBackupService.kt`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `firebaseStorage` | 25 | `FirebaseStorage.getInstance()` |
+| `uploadFile()` | ~171–190 | `fileRef.putFile(Uri.fromFile(file))` pattern |
+| `downloadFile()` | ~241–260 | `sourceRef.getBytes(Long.MAX_VALUE)` → `destFile.writeBytes(bytes)` pattern |
+
+---
+
 ## Key Android Architecture Facts
 - **Launcher:** `SplashActivity` → update gate → `HomeActivity`
 - **Main chat:** `FullChatFragment` (hosted in `ChatHostActivity` or `HomeActivity`)
@@ -468,3 +580,7 @@
 - **Quota gates:** `validators/BlackboardQuotaValidator.kt`, `ChatQuotaValidator.kt`, `AiVoiceQuotaValidator.kt`
 - **Plan access:** `config/AccessGate.kt`, `config/PlanEnforcer.kt`
 - **Build config:** `compileSdk=36`, `targetSdk=36`, `minSdk=26`, `versionCode=15`, `versionName=1.3.0`
+- **Tasks flow:** Teacher creates in `TeacherTasksActivity` → `school_tasks/{id}` (global collection) → Student reads in `TasksActivity` via `loadTasksForSchool(schoolId, grade, section)` — match on school_id
+- **PDF persistence:** Import → `cacheDir/pdf_cache/` (local, lost on reinstall) + `user_pdfs/{uid}/{pdfId}.pdf` (Firebase Storage, permanent) + Firestore chapter doc has `pdfStoragePath`/`pdfId`
+- **Firebase Storage pattern:** Use fully-qualified `com.google.firebase.storage.FirebaseStorage.getInstance()` (no import) to survive offline-Gradle linter stripping
+- **Composite index rule:** Never use `whereEqualTo(A) + orderBy(B)` in Firestore without creating index — use single-field filter + in-memory sort
