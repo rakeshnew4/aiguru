@@ -5,6 +5,21 @@
 
 ---
 
+## 2026-04-28
+
+**Asked:** Fix Firestore "requires an index" error on daily questions feed; fix BB card showing only chat row (height); remove chat+BB session rows from left drawer (keep only Credits).
+**Root cause (Firestore):** Query used `.where("date", "==", today).order_by("difficulty")` — Firestore requires a composite index for a `where` on one field + `order_by` on a different field. We don't create indexes via code.
+**Root cause (BB card):** Card was `android:layout_height="140dp"` — too short to display quota rows when `homeQuotaContainer` became visible. Also Chat row was visible in the strip alongside BB row, wasting limited space.
+**Root cause (drawer):** Chat usage row and BB sessions row were still in the drawer after the BB card quota strip was added, duplicating info.
+**Changed:**
+- `server/app/api/daily_questions.py` line ~155: removed `.order_by("difficulty")` from Firestore query. Now does `.where("date", "==", today).get()` and sorts by `difficulty` in Python (`sorted(..., key=lambda q: q.get("difficulty", 1))`). Eliminates composite index requirement.
+- `app/src/main/res/layout/activity_home.xml` — `quickActionBbBtn` `MaterialCardView`: changed `android:layout_height="140dp"` → `android:layout_height="wrap_content"` so the card expands to fit the BB-sessions quota row.
+- `app/src/main/res/layout/activity_home.xml` — `homeQuotaChatRow` in BB card replaced with 0dp/gone ghost views (`homeQuotaChatLeftText`, `homeQuotaChatBar`, `homeQuotaChatRow`). Only BB sessions row (`homeQuotaBbRow`) is visible on the BB card.
+- `app/src/main/res/layout/activity_home.xml` — drawer: removed "Chat messages" and "Blackboard sessions" usage rows (was ~60 lines of LinearLayout+ProgressBar). Replaced with 0dp ghost TextViews/ProgressBars with same IDs so Kotlin `R.id` references still compile. Removed "TODAY'S USAGE" section label (no longer needed).
+**Key facts:** `HomeActivity.kt` drawer-update code uses `?.` null-safe calls for drawerChatLeft/drawerBbLeft/etc. so 0dp ghosts cause no crash. `updateHomeQuotaStrip()` still sets `chatRow?.visibility = View.VISIBLE` but 0dp means it's effectively invisible — no functional issue.
+
+---
+
 ## 2026-04-27
 
 **Asked:** Show quota (chat left, BB sessions left, AI voice) on BB button; remove credits chip from home screen (drawer only); fix credit deduction bug (10k tokens → only 2 credits).

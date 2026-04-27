@@ -214,7 +214,7 @@
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/quickActionBbBtn"
             android:layout_width="match_parent"
-            android:layout_height="140dp"
+            android:layout_height="wrap_content"
             android:clickable="true"
             android:focusable="true"
             app:cardCornerRadius="20dp"
@@ -315,44 +315,11 @@
                     android:visibility="gone"
                     android:layout_marginTop="8dp">
 
-                    <!-- Row: Chat messages -->
-                    <LinearLayout
-                        android:id="@+id/homeQuotaChatRow"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginBottom="5dp">
-
-                        <TextView
-                            android:layout_width="130dp"
-                            android:layout_height="wrap_content"
-                            android:text="💬 Chat messages"
-                            android:textSize="11sp"
-                            android:textColor="#FFFFFFCC" />
-
-                        <TextView
-                            android:id="@+id/homeQuotaChatLeftText"
-                            android:layout_width="48dp"
-                            android:layout_height="wrap_content"
-                            android:textSize="11sp"
-                            android:textStyle="bold"
-                            android:textColor="#AAFFCC"
-                            android:gravity="end" />
-
-                        <ProgressBar
-                            android:id="@+id/homeQuotaChatBar"
-                            style="?android:attr/progressBarStyleHorizontal"
-                            android:layout_width="0dp"
-                            android:layout_height="5dp"
-                            android:layout_weight="1"
-                            android:layout_marginStart="8dp"
-                            android:max="100"
-                            android:progress="100"
-                            android:progressTint="#64B5F6"
-                            android:progressBackgroundTint="#33FFFFFF" />
-
-                    </LinearLayout>
+                    <!-- Chat row removed — only BB sessions shown on BB card -->
+                    <!-- Kept as 0dp ghost for Kotlin compat -->
+                    <TextView android:id="@+id/homeQuotaChatLeftText" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+                    <ProgressBar android:id="@+id/homeQuotaChatBar" style="?android:attr/progressBarStyleHorizontal" android:layout_width="0dp" android:layout_height="0dp" android:max="100" />
+                    <LinearLayout android:id="@+id/homeQuotaChatRow" android:layout_width="0dp" android:layout_height="0dp" />
 
                     <!-- Row: Blackboard sessions -->
                     <LinearLayout
@@ -1037,113 +1004,14 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- Usage section label -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="TODAY'S USAGE"
-                android:textSize="10sp"
-                android:textStyle="bold"
-                android:textColor="@color/colorTextSecondary"
-                android:letterSpacing="0.12"
-                android:paddingStart="20dp"
-                android:paddingEnd="20dp"
-                android:paddingTop="16dp"
-                android:paddingBottom="8dp" />
+            <!-- Usage section label removed — chat/BB rows removed; Credits has its own label -->
 
-            <!-- Chat usage row -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingStart="20dp"
-                android:paddingEnd="20dp"
-                android:paddingBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="4dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="💬 Chat messages"
-                        android:textSize="13sp"
-                        android:textColor="@color/colorTextPrimary" />
-
-                    <TextView
-                        android:id="@+id/drawerChatLeft"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="—"
-                        android:textSize="13sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/colorSecondary" />
-
-                </LinearLayout>
-
-                <ProgressBar
-                    android:id="@+id/drawerChatProgress"
-                    style="@style/Widget.AppCompat.ProgressBar.Horizontal"
-                    android:layout_width="match_parent"
-                    android:layout_height="6dp"
-                    android:progressTint="@color/colorSecondary"
-                    android:progressBackgroundTint="@color/colorDivider"
-                    android:max="100"
-                    android:progress="0" />
-
-            </LinearLayout>
-
-            <!-- Blackboard usage row -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingStart="20dp"
-                android:paddingEnd="20dp"
-                android:paddingBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="4dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="🎓 Blackboard sessions"
-                        android:textSize="13sp"
-                        android:textColor="@color/colorTextPrimary" />
-
-                    <TextView
-                        android:id="@+id/drawerBbLeft"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="—"
-                        android:textSize="13sp"
-                        android:textStyle="bold"
-                        android:textColor="#7B1FA2" />
-
-                </LinearLayout>
-
-                <ProgressBar
-                    android:id="@+id/drawerBbProgress"
-                    style="@style/Widget.AppCompat.ProgressBar.Horizontal"
-                    android:layout_width="match_parent"
-                    android:layout_height="6dp"
-                    android:progressTint="#7B1FA2"
-                    android:progressBackgroundTint="@color/colorDivider"
-                    android:max="100"
-                    android:progress="0" />
-
-            </LinearLayout>
+            <!-- Chat + BB session rows removed from drawer — shown on BB card instead -->
+            <!-- Kept as 0dp ghosts so Kotlin references compile -->
+            <TextView android:id="@+id/drawerChatLeft"  android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+            <ProgressBar android:id="@+id/drawerChatProgress" style="@style/Widget.AppCompat.ProgressBar.Horizontal" android:layout_width="0dp" android:layout_height="0dp" android:max="100" />
+            <TextView android:id="@+id/drawerBbLeft"   android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+            <ProgressBar android:id="@+id/drawerBbProgress"  style="@style/Widget.AppCompat.ProgressBar.Horizontal" android:layout_width="0dp" android:layout_height="0dp" android:max="100" />
 
             <!-- Credits balance row — shows ⭐ balance; updated whenever home screen loads -->
             <LinearLayout

@@ -151,9 +151,14 @@ async def get_daily_feed(auth: AuthUser = Depends(require_auth)):
     feed_ref = db.collection("daily_questions_feed").document(uid).collection("questions")
 
     # Try to load today's existing questions
+    # NOTE: no order_by("difficulty") — that requires a composite Firestore index.
+    # Sort in Python after fetch to avoid the index requirement.
     try:
-        docs = feed_ref.where("date", "==", today).order_by("difficulty").get()
-        questions = [{"id": d.id, **d.to_dict()} for d in docs]
+        docs = feed_ref.where("date", "==", today).get()
+        questions = sorted(
+            [{"id": d.id, **d.to_dict()} for d in docs],
+            key=lambda q: q.get("difficulty", 1),
+        )
     except Exception as exc:
         logger.warning("get_daily_feed fetch error uid=%s: %s", uid, exc)
         questions = []

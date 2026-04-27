@@ -1,11 +1,11 @@
-=== DAILY_QUESTION_GEN | 2026-04-27 06:33:28 | session=none ===
+=== DAILY_QUESTION_GEN | 2026-04-27 08:25:58 | session=none ===
 
 === PROMPT ===
 Generate exactly 3 engaging daily learning questions for a student.
 
-Student's top subjects: General, Biology, Neuroscience
-Recent topics studied: Explain Heart Pumping, How do birds navigate thousands of miles without a map or GPS?, Ohm's Law, Bioluminescence, What is aero dynamic force?, Why do some atoms glow when they are excited by energy?, Cognitive Science, Why do some deep-sea creatures create their own light in total darkness?, Why do leaves change color before falling in autumn?, DNA
-Topics already used today (AVOID these): Neural Signaling, Cardiovascular System, Animal Navigation, Electromagnetism, Marine Adaptation, Neuroplasticity, Memory Encoding, Unihemispheric Sleep, Sensory Evolution, Genetics
+Student's top subjects: Science, Math, History
+Recent topics studied: basic concepts
+Topics already used today (AVOID these): none
 
 Rules:
 - Each question must be thought-provoking and curiosity-driven (not "what is X")
@@ -27,24 +27,24 @@ hook: one-line real-world curiosity fact related to the question (under 12 words
 === RESPONSE ===
 [
   {
-    "question": "Why do some trees drop all their leaves instead of staying green year-round?",
-    "subject": "Biology",
-    "topic": "Plant Physiology",
+    "question": "Why do shadows change length throughout the day?",
+    "subject": "Science",
+    "topic": "Light and Shadows",
     "difficulty": 1,
-    "hook": "Deciduous trees save energy by shedding leaves before winter arrives."
+    "hook": "Shadows are longest when the sun is lowest in the sky."
   },
   {
-    "question": "How does the brain decide which memories to keep and which to discard?",
-    "subject": "Neuroscience",
-    "topic": "Cognitive Science",
+    "question": "How would our number system change without the number zero?",
+    "subject": "Math",
+    "topic": "Number Systems",
     "difficulty": 2,
-    "hook": "Your brain constantly edits your life story to prioritize important details."
+    "hook": "Ancient Romans did not have a symbol for zero."
   },
   {
-    "question": "What would happen to cellular function if DNA suddenly stopped replicating?",
-    "subject": "Biology",
-    "topic": "Cell Biology",
+    "question": "What if ancient civilizations never discovered how to write things down?",
+    "subject": "History",
+    "topic": "Early Civilizations",
     "difficulty": 3,
-    "hook": "DNA replication is the fundamental process enabling all life to continue."
+    "hook": "Writing was invented independently in at least four different places."
   }
 ]
