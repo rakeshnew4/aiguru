@@ -628,7 +628,7 @@ def grant_topup_credits(uid: str, amount: int, pack_id: str, pack_name: str) -> 
         logger.warning("grant_topup_credits uid=%s pack=%s: %s", uid, pack_id, exc)
 
 
-_STARTER_CREDITS = 1000   # welcome bonus for every new user
+_STARTER_CREDITS = 500   # welcome bonus for every new user (signup gift)
 
 
 def init_user_credits(db, uid: str) -> None:

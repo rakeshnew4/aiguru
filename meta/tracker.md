@@ -5,6 +5,44 @@
 
 ---
 
+## 2026-04-26 (prod readiness audit session)
+
+**Asked:** Read CLAUDE.md + rules.md + do a full prod readiness analysis of the entire app. Then update relevant meta files with everything read.
+
+**Files read (no code changes):**
+- `CLAUDE.md` — full file; confirmed rules: meta/ index is primary, app_context/ is legacy (do NOT read), tracker required after every task
+- `meta/rules.md` — full file; confirmed app_context deprecated, meta/ is source of truth
+- `meta/tracker.md` — full file (history)
+- `meta/server_index.md` — full file
+- `meta/android_index.md` — full file
+- `app_context/backend_index.py` — read (legacy; routed to correct meta files; no new info)
+- `app_context/android_index.py` — read (legacy)
+- `app_context/backend_architecture.py` — read (legacy)
+- `app_context/android_architecture.py` — read (legacy)
+- `app_context/backend_chat_services.py` — read (legacy)
+- `app_context/android_learning_flows.py` — read (legacy)
+- `app_context/android_state_and_network.py` — read (legacy)
+- `app_context/backend_svg_pipeline.py` — read (legacy)
+- `server/app/main.py` — full file (103 lines): 13 routers, CORS, health, admin portal
+- `server/app/core/config.py` — full file (143 lines): all 3 model tiers, AUTH_REQUIRED, LiteLLM config
+- `server/app/core/auth.py` — full file (149 lines): require_auth, require_teacher, DEV bypass
+- `server/app/services/user_service.py` — lines 1–244: create_user_if_missing, copy_samples_to_user, activate_plan
+- `server/app/api/payments.py` — lines 1–80: Razorpay client, order/verify response models
+
+**Key findings (prod risks documented in server_index.md):**
+- `config.py:122` — POWER tier `supports_images=False` for gemini provider (only bedrock) → pro user images silently dropped
+- `main.py:63` — CORS default is hardcoded server IP, breaks if server moves or HTTPS added
+- `auth.py:63-66` — Commented-out hardcoded bypass (dead code, safe but should be deleted)
+- `payments.py` — `activate_plan()` called from both /verify and webhook; `_award_activation_credits` can double-fire concurrently
+- `config.py:92` — LiteLLM master key has insecure default in code; must be overridden in .env
+- `gemini-3.1-flash-lite-preview` (POWER tier) — preview model, thinking ON by default, may be deprecated
+
+**Meta files updated:**
+- `meta/server_index.md` — filled real line numbers for main.py (51–98), core/config.py (6–142), core/auth.py (42–148), user_service.py (67–244 expanded), api/payments.py (20–80); added ⚠️ risk annotations; updated Key Server Architecture Facts with correct credit welcome bonus (500 not 50), correct model tiers, CORS warning, POWER image bug
+- `meta/tracker.md` — this entry
+
+---
+
 ## 2026-04-28 (session 5)
 
 **Asked:** Check 16KB page-size compliance of app-release.aab; run tests and fix.
@@ -716,3 +754,34 @@ Note: BbInteractivePopup.kt loaded into context by linter. Updating android meta
 
 **NCERT status:** Classes 8–12 are all present in `app/src/main/assets/ncert.json` (lines 203, 248, 298, 348, 438).
 2026-04-28 | Fix edge-to-edge black bars on Android 15 / Pixel 9 | app/src/main/java/com/aiguruapp/student/BaseActivity.kt:37-47 (added ViewCompat.setOnApplyWindowInsetsListener on android.R.id.content to apply systemBars insets); app/src/main/res/layout/activity_*.xml all 30 files (removed android:fitsSystemWindows=true from root views via sed)
+
+2026-04-28 | LLM model tier optimization + quota enforcer rebuild | Files:
+  server/app/core/config.py: POWER_MODEL_ID changed from gemini-2.5-flash-lite to gemini-3.1-flash-lite-preview (lines 23-50); CHEAPER/FASTER stay gemini-2.5-flash-lite
+  server/app/api/users.py: added GET /users/quota/status endpoint (lines 212-350); returns free_chat_remaining, free_bb_remaining, free_tts_chars_remaining, credit_balance, chat_mode/bb_mode/tts_mode (free|ai_credit|blocked), using_ai_credits_for_tts, maintenance_mode
+  app/src/main/java/com/aiguruapp/student/config/QuotaManager.kt: NEW FILE — server-only quota enforcement object; enum CreditType {CHAT, LESSON, TTS}; enum Mode {FREE, AI_CREDIT, BLOCKED}; fetchStatus() calls /users/quota/status; check() is a simple gate (fail-open on network error)
+  app/src/main/java/com/aiguruapp/student/BlackboardActivity.kt: useAiTts default changed from false to true (prefs.getBoolean("use_ai_tts", true)); added lifecycleScope.launch(IO) QuotaManager.fetchStatus to show "Using AI Credits" banner; toggle click also shows credit-aware toast
+
+2026-04-28 | Registration credits 500 + LiteLLM key alias + Firestore persistence + credits_on_activation in plans + subscription credit balance UI | Files:
+  server/app/services/user_service.py:631 — _STARTER_CREDITS changed from 1000 to 500
+  server/app/services/litellm_service.py:53 — added "key_alias": f"user-{user_id[:8]}" to /key/generate payload
+  server/app/services/llm_service.py:~39 — added "key_alias": f"user-{uid[:8]}" to fallback /key/generate payload in get_or_create_litellm_key
+  server/app/api/users.py:~112 — after LiteLLM key creation in register_user, now stores litellm_key in users_table/{uid} Firestore doc via users_service._get_db()
+  Firestore plans collection — added limits.credits_on_activation: basic=200, premium=500, school_unlimited=1000
+  app/src/main/res/layout/activity_subscription.xml — added creditBalanceRow LinearLayout + creditBalanceText TextView before Title row
+  app/src/main/java/com/aiguruapp/student/SubscriptionActivity.kt:29 — added import QuotaManager; line 84 added loadCreditBalance() call; lines 590-608 new loadCreditBalance() function fetches QuotaManager.fetchStatus and shows credit_balance in creditBalanceText
+  Context caching: already fully implemented via cache_control:ephemeral on system messages in _call_litellm_proxy + LiteLLM cache:true with Redis in litellm_config.yaml — no additional changes needed
+  BB mode images: confirmed fully working end-to-end — BlackboardGenerator.callIntent/generateChunk pass imageBase64 → ServerProxyClient adds image_base64 to request body → chat.py _normalize_images → generate_response(normalized_images) — no changes needed
+
+2026-04-28 | NCERT ES pipeline — fix context_service stub with semantic retrieval | Files:
+  server/ncert_extractor/__init__.py — new package
+  server/ncert_extractor/config.py — ES_HOST, ES_INDEX="ncert_chunks", EMBED_DIMS=768, CHUNK_SIZE=1200, CHUNK_OVERLAP=150, RETRIEVAL_K=4, MAX_CONTEXT_CHARS=2400; reuses same Vertex AI service account as youtube_extractor
+  server/ncert_extractor/indexer.py — get_es(), ensure_index() with kNN dense_vector mapping, embed_texts() via Vertex AI text-embedding-005, chunk_text() with sentence-boundary snapping
+  server/ncert_extractor/retriever.py — retrieve_context(question, chapter_id): kNN search filtered by chapter_id; retrieve_context_sync() wrapper for sync callers
+  server/seed_ncert_es.py — one-time seeder script; reads 454 chapters from Firestore, downloads ncert_pdf_url PDFs, extracts text via pypdf, chunks, embeds (batch 10), bulk-indexes; supports --subject --reset --batch flags; skips already-indexed chapters
+  server/app/services/context_service.py — REPLACED stub with: (1) lazy in-memory Firestore chapter index keyed by normalised "subjectslug__chaptertitle"; (2) _retrieve_from_es(question, chapter_id) calls ncert_extractor retriever; (3) get_context(page_id, question="") signature — returns grade+chapter header always + relevant textbook chunks when ES available; graceful fallback if ES down
+  server/app/api/chat.py:979 — changed get_context(req.page_id) → get_context(req.page_id, req.question or "") to enable semantic retrieval
+
+Run to start seeding:
+  docker compose -f server/youtube_extractor/docker-compose.yml up -d
+  cd server && python seed_ncert_es.py --subject science_10th   # test one subject first
+  python seed_ncert_es.py  # all 454 chapters (~60-90 min)

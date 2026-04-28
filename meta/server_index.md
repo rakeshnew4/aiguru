@@ -443,23 +443,98 @@
 ---
 
 ## main.py
-**Path:** `server/app/main.py`
+**Path:** `server/app/main.py` | **Size:** 103 lines
 
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
-| FastAPI `app` | ? | App instance; mounts all routers |
-| Router mounts | ? | Registers api/chat.py, bb.py, tts.py, quiz.py, etc. |
+| FastAPI `app` | 51–55 | App instance with title/description/version |
+| CORS middleware | 58–70 | `allow_origins` from `ALLOWED_ORIGINS` env var; default hardcoded `http://108.181.187.227:8003` (prod IP) |
+| Router mounts | 73–85 | 13 routers: chat, payments, library, quiz, analyze_image, tts, admin, users, bb, diagram, daily_questions, credits, tasks |
+| Static mount | 88–90 | `/static` → `server/app/static/` |
+| Admin portal | 92–94 | `GET /admin` → `static/admin/index.html` (no auth check) |
+| Health endpoint | 96–98 | `GET /health` → `{status: ok}` |
+| GOOGLE_APPLICATION_CREDENTIALS auto-set | 45–49 | Auto-sets to `firebase_serviceaccount.json` if file exists and env var not set |
+| ⚠️ CORS risk | 63 | Default CORS origin is a hardcoded IP — if server IP or HTTPS changes, Android breaks. Always set `ALLOWED_ORIGINS` env var in prod. |
+
+---
+
+## core/config.py
+**Path:** `server/app/core/config.py` | **Size:** 143 lines
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `ModelConfig` class | 6–18 | Simple config DTO: provider, model_id, temperature, max_tokens, supports_images |
+| `Settings` class | 22–141 | Pydantic settings; reads from `.env`; `extra="ignore"` |
+| POWER tier config | 43–47 | `gemini-3.1-flash-lite-preview`, temp=0.7, max_tokens=16384 |
+| CHEAPER tier config | 49–53 | `gemini-2.5-flash-lite`, temp=0.7, max_tokens=14096 |
+| FASTER tier config | 55–59 | `gemini-2.5-flash-lite`, temp=0.3, max_tokens=20000 |
+| AUTH_REQUIRED | 101 | `bool = True` — must stay True in prod |
+| LiteLLM proxy URL | 91 | `http://localhost:8005` default |
+| LiteLLM master key default | 92 | `sk-1234567890abcdefghijklmnopqrstuvwxyz` — insecure default, MUST override in `.env` |
+| `get_model_config()` | 114–139 | Returns `ModelConfig` for tier; POWER tier `supports_images=True` only for "bedrock" |
+| ⚠️ POWER image bug | 122 | `supports_images=self.POWER_PROVIDER in ["bedrock"]` — "gemini" NOT in list → POWER tier image support is False even though provider=gemini |
+| `settings` singleton | 142 | Module-level instance; imported everywhere |
+
+---
+
+## core/auth.py
+**Path:** `server/app/core/auth.py` | **Size:** 149 lines
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `AuthUser` dataclass | 42–43 | `uid: str`, `email: str = ""`; frozen |
+| `require_auth()` | 49–128 | FastAPI dependency; validates Firebase Bearer token; raises HTTP 401 on failure |
+| DEV bypass path | 67–84 | When `AUTH_REQUIRED=False`: decodes JWT payload without sig check, returns `AuthUser(uid=extracted_uid, email="dev@local")` |
+| Commented bypass | 63–66 | Dead code: `# return AuthUser(uid="BujsVJE2cMX6wU7Jg3acMUlRChm1")` — old hardcoded guest bypass, safe to delete |
+| `require_teacher()` | 131–148 | Chains `require_auth` + Firestore role check on `users_table/{uid}.role`; raises HTTP 403 if role not in ("teacher", "admin") |
+| Token expiry handling | 96–100 | `ExpiredIdTokenError` → 401 "token has expired" |
+| Token revoke handling | 101–104 | `RevokedIdTokenError` → 401 |
+| Network error handling | 115–120 | Unexpected exceptions (JWKS fetch fail) → 401 "Token verification failed. Please try again." |
+
+---
+
+## services/user_service.py (updated)
+**Path:** `server/app/services/user_service.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `create_user_if_missing()` | 67–154 | Idempotent; creates `users_table/{uid}` with free defaults + mirrors identity to `users/{uid}`; calls `init_user_credits` |
+| Free plan defaults | 107–144 | `plan_daily_chat_limit=12`, `plan_daily_bb_limit=2`, `plan_tts_enabled=True`, `plan_ai_tts_enabled=False`, `plan_image_enabled=False` |
+| `copy_samples_to_user()` | 157–188 | Copies up to 10 docs from `bb_samples` → `users/{uid}/saved_bb_sessions_flat/`; sets `is_sample=True` |
+| `activate_plan()` | 191–244 | Sets plan fields from `plans/{plan_id}.limits`; resets daily counters; awards `credits_on_activation` credits |
+| ⚠️ Webhook+verify race | 191 | `activate_plan()` called from both `/payments/razorpay/verify` and webhook handler; `_award_activation_credits` can fire twice if both complete concurrently — add `plan_activated_at` guard |
+| credit charge/award | ~142, 231–238 | Deducts or adds credits to user balance |
+| credit init | ~311–392 | `init_user_credits()`: initializes new user with 500 starter credits |
+| quota logic | ~537–619 | `check_and_record_quota()`: returns `(allowed, reason, credit_mode)` 3-tuple; credit_mode=True when on credits |
+
+---
+
+## api/payments.py (updated)
+**Path:** `server/app/api/payments.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| Router prefix | 20 | `/payments/razorpay` |
+| `get_razorpay_client()` | 36–50 | Creates Razorpay client from settings; raises HTTP 500 if keys missing; logs masked key for audit |
+| `CreateOrderResponse` | 67–75 | `order_id, amount, currency, key_id, prefill_*` |
+| `VerifyPaymentResponse` | 78–80 | `verified: bool, message: str` |
+| ⚠️ Race condition | — | Both webhook and /verify call `activate_plan()` — idempotency relies on merge=True but `_award_activation_credits` can double-fire |
 
 ---
 
 ## Key Server Architecture Facts
-- **Entry point:** `server/app/main.py` (FastAPI)
+- **Entry point:** `server/app/main.py` (FastAPI, 13 routers mounted)
 - **All LLM calls:** `generate_response()` → `_call_litellm_proxy()` in `llm_service.py`
-- **Active LLM:** `gemini-2.5-flash-lite` (all 3 tiers) via LiteLLM proxy on localhost
+- **Active LLM:** POWER=`gemini-3.1-flash-lite-preview` (16384 tokens), CHEAPER/FASTER=`gemini-2.5-flash-lite`; all via LiteLLM proxy on localhost:8005
+- **⚠️ gemini-3.1-flash-lite-preview:** preview model — has thinking ON by default; may be deprecated by Google without warning
 - **Per-user LLM keys:** stored in `users_table/{uid}.litellm_key`, cached in `_user_key_cache` dict
 - **BB pipeline:** `api/chat.py` → BB planner LLM → main BB LLM → `image_search_titles.get_titles()` → enrichment + SVG + wikimedia
 - **Enrichment:** `enrichment_service.build_enrichment_tasks()` returns `(futs, refs)` 2-tuple (quiz validator removed Apr 2026)
 - **TTS:** `api/tts.py` → Google/ElevenLabs/OpenAI audio API — **zero LLM calls**
-- **Credits:** `api/credits.py` + `services/user_service.py` — welcome bonus 50, daily question awards 5 each, 1 credit per 100 tokens/TTS chars
+- **Credits:** welcome bonus 500, daily question awards 5 each, 1 credit per 100 tokens/TTS chars; plans award `credits_on_activation` (basic=200, premium=500, school=1000)
 - **context_service.get_context():** stub — do NOT expand
 - **blackboard_prompt:** ~400 tokens — do NOT expand
+- **CORS:** default origin is hardcoded IP `http://108.181.187.227:8003` — always set `ALLOWED_ORIGINS` env var in prod
+- **POWER tier image support:** `supports_images=False` for gemini provider (only bedrock) — bug, pro users' image context silently dropped
+- **Auth:** `AUTH_REQUIRED=True` in prod; DEV bypass available via env var; `require_teacher()` reads Firestore on every call (no cache)
+- **Free plan limits:** 12 chat/day, 2 BB sessions/day; reset at UTC midnight

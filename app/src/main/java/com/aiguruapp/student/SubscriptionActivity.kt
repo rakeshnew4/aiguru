@@ -26,6 +26,7 @@ import com.aiguruapp.student.payments.CreateOrderRequest
 import com.aiguruapp.student.payments.PaymentApiClient
 import com.aiguruapp.student.payments.VerifyPaymentRequest
 import com.aiguruapp.student.utils.ConfigManager
+import com.aiguruapp.student.config.QuotaManager
 import com.aiguruapp.student.utils.SessionManager
 import com.google.android.material.button.MaterialButton
 import com.razorpay.Checkout
@@ -80,6 +81,7 @@ class SubscriptionActivity : BaseActivity(), PaymentResultWithDataListener {
         loadPlansAndRender()
         // Top-up packs: shown above the plan list so users can recharge credits anytime.
         loadAndRenderTopupPacks()
+        loadCreditBalance()
     }
 
     private fun resolvePaymentBaseUrl(): String = AdminConfigRepository.effectiveServerUrl()
@@ -585,6 +587,25 @@ class SubscriptionActivity : BaseActivity(), PaymentResultWithDataListener {
      * Razorpay flow with planId="topup_<id>" — server detects the prefix and grants
      * credits instead of activating a plan.
      */
+    private fun loadCreditBalance() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            QuotaManager.fetchStatus(
+                onResult = { status ->
+                    val balance = status.creditBalance
+                    val text = if (balance == 0) "0 AI credits" else "$balance AI credits"
+                    runOnUiThread {
+                        findViewById<android.widget.TextView>(R.id.creditBalanceText)?.text = text
+                    }
+                },
+                onError = {
+                    runOnUiThread {
+                        findViewById<android.widget.TextView>(R.id.creditBalanceText)?.text = "—"
+                    }
+                }
+            )
+        }
+    }
+
     private fun loadAndRenderTopupPacks() {
         lifecycleScope.launch(Dispatchers.IO) {
             val packs = DailyQuestionsManager.fetchTopupPacks()

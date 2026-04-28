@@ -51,6 +51,7 @@ async def create_user_api_key(user_id: str, user_metadata: Optional[Dict[str, An
                 headers={"Authorization": f"Bearer {LITELLM_MASTER_KEY}"},
                 json={
                     "user_id": user_id,
+                    "key_alias": f"user-{user_id[:8]}",
                     "models": ["cheaper", "faster", "gemini-3.1-flash-lite-preview"],
                     "duration": "365d",
                     "metadata": user_metadata or {}

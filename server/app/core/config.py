@@ -29,19 +29,30 @@ class Settings(BaseSettings):
     
     
     # ── Model Tier Configuration ──────────────────────────────────────────────
-    # POWER: Most capable models for premium users
-    POWER_PROVIDER: str = "gemini"
-    POWER_MODEL_ID: str = "gemini-2.5-flash-lite"
-    POWER_TEMPERATURE: float = 0.7
-    POWER_MAX_TOKENS: int = 18192
+    #
+    # POWER  → gemini-3.1-flash-lite-preview  (reasoning / teaching responses)
+    #   Used for: main chat (pro users), BB main generation, image analysis
+    #
+    # CHEAPER → gemini-2.5-flash-lite          (structured output tasks)
+    #   Used for: quiz generation, quiz evaluation, free-tier chat
+    #
+    # FASTER  → gemini-2.5-flash-lite          (lightweight / classification)
+    #   Used for: intent classifier, BB planner, image picker, enrichment,
+    #             BB grading, daily question gen, diagram generation
 
-    # CHEAPER: Balanced cost/performance for standard users
+    # POWER: Deep-reasoning model for high-quality teaching responses
+    POWER_PROVIDER: str = "gemini"
+    POWER_MODEL_ID: str = "gemini-3.1-flash-lite-preview"
+    POWER_TEMPERATURE: float = 0.7
+    POWER_MAX_TOKENS: int = 16384
+
+    # CHEAPER: Balanced cost/performance — structured JSON tasks, free-tier chat
     CHEAPER_PROVIDER: str = "gemini"
     CHEAPER_MODEL_ID: str = "gemini-2.5-flash-lite"
     CHEAPER_TEMPERATURE: float = 0.7
     CHEAPER_MAX_TOKENS: int = 14096
 
-    # FASTER: Quickest tier for small structured tasks (intent classifier, BB planner, grading)
+    # FASTER: Lightweight — intent classification, short structured calls
     FASTER_PROVIDER: str = "gemini"
     FASTER_MODEL_ID: str = "gemini-2.5-flash-lite"
     FASTER_TEMPERATURE: float = 0.3

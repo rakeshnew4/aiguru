@@ -976,7 +976,8 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
             )
 
             # 1) context fetch + image normalisation (both modes)
-            context = get_context(req.page_id)
+            # Pass the question so context_service can do semantic ES retrieval
+            context = get_context(req.page_id, req.question or "")
             normalized_images = _normalize_images(req)
             has_image = bool(normalized_images)
             loop = asyncio.get_event_loop()

@@ -1,0 +1,1 @@
+# NCERT Elasticsearch extractor package

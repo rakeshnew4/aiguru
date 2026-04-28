@@ -393,10 +393,30 @@ class BlackboardActivity : AppCompatActivity() {
             if (keys.isNotEmpty()) aiTtsEngine.prewarmKeys(keys)
         }
 
-        // Restore AI TTS preference
+        // Restore AI TTS preference — AI voice is ON by default
         val prefs = getSharedPreferences("bb_prefs", MODE_PRIVATE)
-        useAiTts = prefs.getBoolean("use_ai_tts", false)
+        useAiTts = prefs.getBoolean("use_ai_tts", true)
         updateAiTtsToggleUi()
+
+        // Check server-side TTS quota and inform user if AI credits will be used
+        if (useAiTts) {
+            lifecycleScope.launch(Dispatchers.IO) {
+                com.aiguruapp.student.config.QuotaManager.fetchStatus(
+                    onResult = { status ->
+                        if (status.usingAiCreditsForTts) {
+                            lifecycleScope.launch(Dispatchers.Main) {
+                                android.widget.Toast.makeText(
+                                    this@BlackboardActivity,
+                                    "🎙 AI Voice is using your AI Credits",
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        }
+                    },
+                    onError = { /* silent — quota check is best-effort */ }
+                )
+            }
+        }
 
         aiTtsToggleBtn.setOnClickListener {
             useAiTts = !useAiTts
@@ -422,7 +442,26 @@ class BlackboardActivity : AppCompatActivity() {
                 // Preload current + next 2 speech texts with new setting
                 android.util.Log.d("BB_TTS_TOGGLE", "✓ AI TTS enabled, preloading...")
                 preloadUpcoming(currentStepIdx, currentFrameIdx, count = 3)
-                android.widget.Toast.makeText(this, "🎙 AI Voice ON — preloading…", android.widget.Toast.LENGTH_SHORT).show()
+
+                // Check server-side TTS credit mode to inform the user
+                lifecycleScope.launch(Dispatchers.IO) {
+                    com.aiguruapp.student.config.QuotaManager.fetchStatus(
+                        onResult = { status ->
+                            lifecycleScope.launch(Dispatchers.Main) {
+                                val msg = if (status.usingAiCreditsForTts)
+                                    "🎙 AI Voice ON — using AI Credits"
+                                else
+                                    "🎙 AI Voice ON — preloading…"
+                                android.widget.Toast.makeText(this@BlackboardActivity, msg, android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        onError = {
+                            lifecycleScope.launch(Dispatchers.Main) {
+                                android.widget.Toast.makeText(this@BlackboardActivity, "🎙 AI Voice ON — preloading…", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    )
+                }
             } else {
                 android.util.Log.d("BB_TTS_TOGGLE", "✗ AI TTS disabled")
                 aiTtsEngine.stop()
