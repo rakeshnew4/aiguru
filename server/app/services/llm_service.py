@@ -3,8 +3,6 @@ import json
 from typing import List, Literal, Optional, Dict, Any
 
 import httpx
-import boto3
-from groq import Groq
 from google import genai
 from google.genai import types as genai_types
 
@@ -13,7 +11,7 @@ from app.core.logger import get_logger
 
 logger = get_logger(__name__)
 
-# ── Per-user LiteLLM key cache (uid → key) ────────────────────────────────────
+# ── Per-user LiteLLM key cache (uid -> key) ───────────────────────────────────
 _user_key_cache: Dict[str, str] = {}
 
 
@@ -56,399 +54,109 @@ def get_or_create_litellm_key(uid: str) -> Optional[str]:
         return None
 
 
-# ── Client Initialization (once at module load) ───────────────────────────────
+# ── Google GenAI client (native SDK — used as LiteLLM fallback) ───────────────
+_genai_client: Optional[genai.Client] = None
 
-def _init_gemini():
+
+def _init_gemini() -> Optional[genai.Client]:
     if not settings.GEMINI_API_KEY:
-        logger.warning("Gemini client not initialized: GEMINI_API_KEY not set")
+        logger.warning("Google native client not initialized: GEMINI_API_KEY not set")
         return None
     try:
         client = genai.Client(api_key=settings.GEMINI_API_KEY)
-        logger.info("Gemini client initialized")
+        logger.info("Google native GenAI client initialized")
         return client
-    except Exception as e:
-        logger.error(f"Failed to initialize Gemini client: {e}")
+    except Exception as exc:
+        logger.error("Failed to initialize Google GenAI client: %s", exc)
         return None
 
-def _init_groq():
-    if not settings.GROQ_API_KEY:
-        logger.warning("Groq client not initialized: GROQ_API_KEY not set")
-        return None
-    try:
-        client = Groq(api_key=settings.GROQ_API_KEY)
-        logger.info("Groq client initialized")
-        return client
-    except Exception as e:
-        logger.error(f"Failed to initialize Groq client: {e}")
-        return None
-
-def _init_bedrock():
-    try:
-        if settings.AWS_ACCESS_KEY_ID and settings.AWS_SECRET_ACCESS_KEY:
-            client = boto3.client(
-                "bedrock-runtime",
-                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                region_name=settings.AWS_REGION,
-            )
-            logger.info(f"Bedrock client initialized with access keys (region: {settings.AWS_REGION})")
-            return client
-        elif settings.AWS_BEARER_TOKEN_BEDROCK:
-            import os
-            os.environ['AWS_BEARER_TOKEN_BEDROCK'] = settings.AWS_BEARER_TOKEN_BEDROCK
-            client = boto3.client(
-                "bedrock-runtime",
-                region_name=settings.AWS_REGION,
-            )
-            logger.info(f"Bedrock client initialized with bearer token (region: {settings.AWS_REGION})")
-            return client
-        else:
-            logger.warning("Bedrock client not initialized: provide AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or AWS_BEARER_TOKEN_BEDROCK")
-            return None
-    except Exception as e:
-        logger.error(f"Failed to initialize Bedrock client: {e}")
-        return None
 
 _genai_client = _init_gemini()
-_groq_client = _init_groq()
-_bedrock_client = _init_bedrock()
 
 
-# ── Image Processing Utilities ────────────────────────────────────────────────
+# ── Image helpers ─────────────────────────────────────────────────────────────
 def _images_to_gemini_parts(images: List[str]) -> list:
-    """
-    Convert images to Gemini Part objects with validation.
-    Supports base64 data URIs and HTTPS URLs.
-    Invalid images are skipped with warning logs.
-    """
+    """Convert base64 data URIs or HTTPS URLs to Gemini Part objects."""
     parts = []
     for idx, img in enumerate(images):
         try:
             if not img or not isinstance(img, str):
-                logger.warning(f"Image {idx}: Invalid type (expected string), skipping")
                 continue
-            
             if img.startswith("data:"):
-                # data:image/jpeg;base64,<data>
-                try:
-                    header, data = img.split(",", 1)
-                    mime_type = header.split(":")[1].split(";")[0]
-                    
-                    # Validate MIME type is image/*
-                    if not mime_type.startswith("image/"):
-                        logger.warning(f"Image {idx}: Invalid MIME type '{mime_type}', skipping")
-                        continue
-                    
-                    # Validate base64 is decodable
-                    decoded = base64.b64decode(data)
-                    if len(decoded) == 0:
-                        logger.warning(f"Image {idx}: Empty base64 data, skipping")
-                        continue
-                    
-                    parts.append(
-                        genai_types.Part.from_bytes(
-                            data=decoded, mime_type=mime_type
-                        )
-                    )
-                except (ValueError, AssertionError) as e:
-                    logger.warning(f"Image {idx}: Failed to decode base64: {e}, skipping")
+                header, data = img.split(",", 1)
+                mime_type = header.split(":")[1].split(";")[0]
+                if not mime_type.startswith("image/"):
+                    logger.warning("Image %d: invalid MIME type '%s', skipping", idx, mime_type)
                     continue
+                decoded = base64.b64decode(data)
+                if not decoded:
+                    continue
+                parts.append(genai_types.Part.from_bytes(data=decoded, mime_type=mime_type))
             else:
-                # Remote URL — download and inline
-                try:
-                    resp = httpx.get(img, timeout=15, follow_redirects=True)
-                    resp.raise_for_status()
-                    mime_type = resp.headers.get("content-type", "image/jpeg").split(";")[0]
-                    
-                    # Validate MIME type is image/*
-                    if not mime_type.startswith("image/"):
-                        logger.warning(f"Image {idx}: URL returned non-image MIME type '{mime_type}', skipping")
-                        continue
-                    
-                    parts.append(
-                        genai_types.Part.from_bytes(data=resp.content, mime_type=mime_type)
-                    )
-                except Exception as e:
-                    logger.warning(f"Image {idx}: Failed to download from URL: {e}, skipping")
+                resp = httpx.get(img, timeout=15, follow_redirects=True)
+                resp.raise_for_status()
+                mime_type = resp.headers.get("content-type", "image/jpeg").split(";")[0]
+                if not mime_type.startswith("image/"):
                     continue
-        except Exception as e:
-            logger.warning(f"Image {idx}: Unexpected error: {e}, skipping")
-            continue
-    
-    if not parts and images:
-        logger.warning(f"No valid images found ({len(images)} provided, all skipped)")
-    
+                parts.append(genai_types.Part.from_bytes(data=resp.content, mime_type=mime_type))
+        except Exception as exc:
+            logger.warning("Image %d: skipped — %s", idx, exc)
     return parts
 
 
-def _images_to_bedrock_content(images: List[str]) -> list:
-    """
-    Convert images to Bedrock converse() API content format with validation.
-    Returns list of image content blocks for Claude.
-    Invalid images are skipped with warning logs.
-    """
-    content_blocks = []
-    
-    for idx, img in enumerate(images):
-        try:
-            if not img or not isinstance(img, str):
-                logger.warning(f"Image {idx}: Invalid type (expected string), skipping")
-                continue
-            
-            if img.startswith("data:"):
-                # Extract base64 data and mime type
-                try:
-                    header, data = img.split(",", 1)
-                    mime_type = header.split(":")[1].split(";")[0]
-                    
-                    # Validate MIME type is image/*
-                    if not mime_type.startswith("image/"):
-                        logger.warning(f"Image {idx}: Invalid MIME type '{mime_type}', skipping")
-                        continue
-                    
-                    # Validate base64 is decodable
-                    try:
-                        decoded = base64.b64decode(data)
-                        if len(decoded) == 0:
-                            logger.warning(f"Image {idx}: Empty base64 data, skipping")
-                            continue
-                    except Exception as e:
-                        logger.warning(f"Image {idx}: Failed to decode base64: {e}, skipping")
-                        continue
-                    
-                    # Map MIME types to Bedrock image formats
-                    format_map = {
-                        "image/jpeg": "jpeg",
-                        "image/jpg": "jpeg",
-                        "image/png": "png",
-                        "image/gif": "gif",
-                        "image/webp": "webp",
-                    }
-                    image_format = format_map.get(mime_type.lower())
-                    
-                    if not image_format:
-                        logger.warning(f"Image {idx}: Unsupported format '{mime_type}', skipping")
-                        continue
-                    
-                    # Bedrock converse() 'bytes' expects raw binary bytes, not base64 string
-                    content_blocks.append({
-                        "image": {
-                            "format": image_format,
-                            "source": {
-                                "bytes": decoded,  # Raw binary bytes (already decoded above)
-                            },
-                        },
-                    })
-                    logger.info(f"Image {idx}: Valid base64 ({image_format}, {len(decoded)} bytes) added")
-                except Exception as e:
-                    logger.warning(f"Image {idx}: Failed to parse data URI: {e}, skipping")
-                    continue
-            else:
-                # Download URL and convert to base64
-                try:
-                    resp = httpx.get(img, timeout=15, follow_redirects=True)
-                    resp.raise_for_status()
-                    mime_type = resp.headers.get("content-type", "image/jpeg").split(";")[0]
-                    
-                    # Validate MIME type is image/*
-                    if not mime_type.startswith("image/"):
-                        logger.warning(f"Image {idx}: URL returned non-image MIME type '{mime_type}', skipping")
-                        continue
-                    
-                    # Map MIME types to Bedrock image formats
-                    format_map = {
-                        "image/jpeg": "jpeg",
-                        "image/jpg": "jpeg",
-                        "image/png": "png",
-                        "image/gif": "gif",
-                        "image/webp": "webp",
-                    }
-                    image_format = format_map.get(mime_type.lower())
-                    
-                    if not image_format:
-                        logger.warning(f"Image {idx}: Unsupported format '{mime_type}', skipping")
-                        continue
-                    
-                    # Bedrock converse() 'bytes' expects raw binary bytes
-                    content_blocks.append({
-                        "image": {
-                            "format": image_format,
-                            "source": {
-                                "bytes": resp.content,  # Raw binary bytes directly
-                            },
-                        },
-                    })
-                    logger.info(f"Image {idx}: Valid URL ({image_format}, {len(resp.content)} bytes) added")
-                except Exception as e:
-                    logger.warning(f"Image {idx}: Failed to download from URL: {e}, skipping")
-                    continue
-        except Exception as e:
-            logger.warning(f"Image {idx}: Unexpected error: {e}, skipping")
-            continue
-    
-    if not content_blocks and images:
-        logger.warning(f"No valid images found ({len(images)} provided, all skipped)")
-    
-    return content_blocks
-
-
-# ── Provider-Specific LLM Calls ───────────────────────────────────────────────
+# ── Google native call (fallback when LiteLLM is unavailable) ─────────────────
 def _call_gemini(
     prompt: str,
     model_config: ModelConfig,
-    images: Optional[List[str]] = None
+    images: Optional[List[str]] = None,
+    system_prompt: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Call Google Gemini API with comprehensive error handling."""
+    """Call Gemini directly via google-genai SDK. Used as LiteLLM fallback."""
     if not _genai_client:
-        raise ValueError("GEMINI_API_KEY not configured")
-    
-    try:
-        # Build contents: image parts first, then text prompt
-        if images and model_config.supports_images:
-            contents: list = _images_to_gemini_parts(images) + [
-                genai_types.Part.from_text(text=prompt)
-            ]
-        else:
-            if images:
-                logger.warning("Images provided but Gemini model doesn't support them")
-            contents = prompt
-        
-        response = _genai_client.models.generate_content(
-            model=model_config.model_id,
-            contents=contents,
-            config=genai_types.GenerateContentConfig(
-                temperature=model_config.temperature,
-                max_output_tokens=model_config.max_tokens,
-            ),
-        )
-        
-        usage = response.usage_metadata
-        logger.info(f"Gemini response: {len(response.text)} chars, {usage.total_token_count} tokens")
-        
-        return {
-            "text": response.text,
-            "tokens": {
-                "inputTokens": usage.prompt_token_count,
-                "outputTokens": usage.candidates_token_count,
-                "totalTokens": usage.total_token_count,
-            },
-            "provider": "gemini",
-            "model": model_config.model_id,
-        }
-    
-    except Exception as e:
-        logger.error(f"Gemini API error: {type(e).__name__}: {e}")
-        raise
+        raise RuntimeError("Google native client unavailable (GEMINI_API_KEY not set)")
 
-
-def _call_groq(
-    prompt: str,
-    model_config: ModelConfig,
-    images: Optional[List[str]] = None
-) -> Dict[str, Any]:
-    """Call Groq API with comprehensive error handling."""
-    if not _groq_client:
-        raise ValueError("GROQ_API_KEY not configured")
-    
-    try:
-        if images:
-            logger.warning("Groq does not support images; images will be ignored")
-        
-        response = _groq_client.chat.completions.create(
-            model=model_config.model_id,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=model_config.temperature,
-            max_tokens=model_config.max_tokens,
-        )
-        
-        usage = response.usage
-        logger.info(f"Groq response: {len(response.choices[0].message.content)} chars, {usage.total_tokens} tokens")
-        
-        return {
-            "text": response.choices[0].message.content,
-            "tokens": {
-                "inputTokens": usage.prompt_tokens,
-                "outputTokens": usage.completion_tokens,
-                "totalTokens": usage.total_tokens,
-            },
-            "provider": "groq",
-            "model": model_config.model_id,
-        }
-    
-    except Exception as e:
-        logger.error(f"Groq API error: {type(e).__name__}: {e}")
-        raise
-
-
-def _call_bedrock(
-    prompt: str,
-    model_config: ModelConfig,
-    images: Optional[List[str]] = None
-) -> Dict[str, Any]:
-    """Call AWS Bedrock (Claude) API using converse method.
-    
-    Supports Claude 3 Haiku, Sonnet, and Opus models.
-    """
-    if not _bedrock_client:
-        raise ValueError("AWS Bedrock not configured (missing AWS credentials or bearer token)")
-    
-    # Build content blocks for converse() API
-    # Format: each block is one of {"text": ...}, {"image": ...}, etc.
-    content_blocks = []
     if images and model_config.supports_images:
-        content_blocks.extend(_images_to_bedrock_content(images))
-    elif images:
-        logger.warning("Images provided but model doesn't support them")
-    
-    # Add text prompt (must be a dict with "text" key, no "type" wrapper)
-    content_blocks.append({"text": prompt})
-    
-    # Build messages for converse API
-    messages = [{
-        "role": "user",
-        "content": content_blocks,
-    }]
-    
-    logger.info(f"Calling Bedrock model: {model_config.model_id} with {len(content_blocks)} content blocks")
-    
-    try:
-        # Use converse API (recommended for Claude 3)
-        response = _bedrock_client.converse(
-            modelId=model_config.model_id,
-            messages=messages,
-            inferenceConfig={
-                "maxTokens": model_config.max_tokens,
-                "temperature": model_config.temperature,
-            },
-        )
-        
-        # Extract response
-        response_text = response["output"]["message"]["content"][0]["text"]
-        usage = response.get("usage", {})
-        
-        logger.info(f"Bedrock response received: {len(response_text)} chars")
-        
-        return {
-            "text": response_text,
-            "tokens": {
-                "inputTokens": usage.get("inputTokens", 0),
-                "outputTokens": usage.get("outputTokens", 0),
-                "totalTokens": usage.get("inputTokens", 0) + usage.get("outputTokens", 0),
-            },
-            "provider": "bedrock",
-            "model": model_config.model_id,
-        }
-        
-    except Exception as e:
-        logger.error(f"Bedrock API error: {e}")
-        raise
+        contents: Any = _images_to_gemini_parts(images) + [genai_types.Part.from_text(text=prompt)]
+    else:
+        if images:
+            logger.warning("_call_gemini: images provided but model does not support them")
+        contents = prompt
+
+    cfg = genai_types.GenerateContentConfig(
+        temperature=model_config.temperature,
+        max_output_tokens=model_config.max_tokens,
+    )
+    if system_prompt:
+        cfg.system_instruction = system_prompt
+
+    response = _genai_client.models.generate_content(
+        model=model_config.model_id,
+        contents=contents,
+        config=cfg,
+    )
+
+    usage = response.usage_metadata
+    logger.info("Google native response: %d chars, %d tokens, model=%s",
+                len(response.text), usage.total_token_count, model_config.model_id)
+    return {
+        "text": response.text,
+        "tokens": {
+            "inputTokens":  usage.prompt_token_count,
+            "outputTokens": usage.candidates_token_count,
+            "totalTokens":  usage.total_token_count,
+            "cachedTokens": 0,
+        },
+        "provider": "google_native",
+        "model": model_config.model_id,
+    }
 
 
-# ── Main LLM Interface ────────────────────────────────────────────────────────
+# ── LLM call logging ──────────────────────────────────────────────────────────
 _LLM_LOG_DIR = "llm_logs"
 
 
-def _log_llm_call(call_name: str, prompt: str, system_prompt: Optional[str], response_text: Optional[str], session_id: Optional[str] = None) -> None:
+def _log_llm_call(call_name: str, prompt: str, system_prompt: Optional[str],
+                  response_text: Optional[str], session_id: Optional[str] = None) -> None:
     try:
         import os
         from datetime import datetime
@@ -465,13 +173,14 @@ def _log_llm_call(call_name: str, prompt: str, system_prompt: Optional[str], res
         with open(path, "a", encoding="utf-8") as f:
             f.write("\n\n=== RESPONSE ===\n")
             f.write(response_text or "[empty]")
-    except Exception as e:
-        logger.warning("_log_llm_call failed for %s: %s", call_name, e)
+    except Exception as exc:
+        logger.warning("_log_llm_call failed for %s: %s", call_name, exc)
 
 
+# ── LiteLLM proxy call (primary path) ────────────────────────────────────────
 def _call_litellm_proxy(
     prompt: str,
-    model_config,
+    model_config: ModelConfig,
     images: Optional[List[str]] = None,
     system_prompt: Optional[str] = None,
     uid: Optional[str] = None,
@@ -481,7 +190,6 @@ def _call_litellm_proxy(
     """Call Gemini via LiteLLM proxy using the user's per-user key."""
     messages = []
     if system_prompt:
-        # cache_control marks this prefix for Gemini implicit context caching (Vertex AI)
         messages.append({
             "role": "system",
             "content": system_prompt,
@@ -493,7 +201,7 @@ def _call_litellm_proxy(
             [{"type": "image_url", "image_url": {"url": img}} for img in images]
             + [{"type": "text", "text": prompt}]
         )
-        logger.info(f"LiteLLM multimodal request: {len(images)} image(s) + text")
+        logger.info("LiteLLM multimodal request: %d image(s) + text", len(images))
     else:
         content = prompt
 
@@ -506,66 +214,61 @@ def _call_litellm_proxy(
             auth_key = user_key
 
     model = model_config.model_id
-    logger.debug(f"LiteLLM proxy request: model={model}, uid={uid}, has_system={'yes' if system_prompt else 'no'}, images={len(images) if images else 0}")
+    logger.debug("LiteLLM proxy request: model=%s uid=%s images=%d",
+                 model, uid, len(images) if images else 0)
 
-    try:
-        with httpx.Client(timeout=300.0) as client:
-            resp = client.post(
-                f"{settings.LITELLM_PROXY_URL}/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {auth_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": model,
-                    "messages": messages,
-                    "temperature": model_config.temperature,
-                    "max_tokens": model_config.max_tokens,
-                    "cache": {"no-cache": False},   # allow LiteLLM cache layer to serve hits
-                    "metadata": {
-                        "call_name": call_name,
-                        "uid": uid or "guest",
-                        "session_id": session_id or "",
-                    },
-                },
-            )
-
-        if resp.status_code != 200:
-            logger.error(f"LiteLLM proxy returned {resp.status_code}: {resp.text[:500]}")
-            raise RuntimeError(f"LiteLLM proxy error {resp.status_code}: {resp.text[:300]}")
-
-        data = resp.json()
-        if not data.get("choices") or not data["choices"][0].get("message"):
-            raise RuntimeError("LiteLLM response missing choices[0].message")
-
-        text = data["choices"][0]["message"]["content"]
-        if not text:
-            logger.warning("LiteLLM returned empty text content")
-
-        _log_llm_call(call_name, prompt, system_prompt, text, session_id=session_id)
-
-        usage = data.get("usage", {})
-        result = {
-            "text": text,
-            "tokens": {
-                "inputTokens": usage.get("prompt_tokens", 0),
-                "outputTokens": usage.get("completion_tokens", 0),
-                "totalTokens": usage.get("total_tokens", 0),
-                "cachedTokens": usage.get("prompt_tokens_details", {}).get("cached_tokens", 0),
+    with httpx.Client(timeout=300.0) as client:
+        resp = client.post(
+            f"{settings.LITELLM_PROXY_URL}/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {auth_key}",
+                "Content-Type": "application/json",
             },
-            "provider": "litellm",
-            "model": model,
-        }
-        logger.info(f"LiteLLM success: model={model} | uid={uid} | tokens={result['tokens']['totalTokens']}")
-        return result
+            json={
+                "model": model,
+                "messages": messages,
+                "temperature": model_config.temperature,
+                "max_tokens": model_config.max_tokens,
+                "cache": {"no-cache": False},
+                "metadata": {
+                    "call_name": call_name,
+                    "uid": uid or "guest",
+                    "session_id": session_id or "",
+                },
+            },
+        )
 
-    except json.JSONDecodeError as e:
-        raise RuntimeError(f"LiteLLM returned invalid JSON: {str(e)[:100]}")
-    except Exception as e:
-        logger.error(f"LiteLLM call failed for model={model}: {type(e).__name__}: {e}")
-        raise
+    if resp.status_code != 200:
+        raise RuntimeError(f"LiteLLM proxy error {resp.status_code}: {resp.text[:300]}")
+
+    data = resp.json()
+    if not data.get("choices") or not data["choices"][0].get("message"):
+        raise RuntimeError("LiteLLM response missing choices[0].message")
+
+    text = data["choices"][0]["message"]["content"]
+    if not text:
+        logger.warning("LiteLLM returned empty text content")
+
+    _log_llm_call(call_name, prompt, system_prompt, text, session_id=session_id)
+
+    usage = data.get("usage", {})
+    result = {
+        "text": text,
+        "tokens": {
+            "inputTokens":  usage.get("prompt_tokens", 0),
+            "outputTokens": usage.get("completion_tokens", 0),
+            "totalTokens":  usage.get("total_tokens", 0),
+            "cachedTokens": usage.get("prompt_tokens_details", {}).get("cached_tokens", 0),
+        },
+        "provider": "litellm",
+        "model": model,
+    }
+    logger.info("LiteLLM success: model=%s uid=%s tokens=%d",
+                model, uid, result["tokens"]["totalTokens"])
+    return result
 
 
+# ── Main interface ────────────────────────────────────────────────────────────
 def generate_response(
     prompt: str,
     images: Optional[List[str]] = None,
@@ -577,76 +280,76 @@ def generate_response(
     charge_credits: bool = True,
 ) -> Dict[str, Any]:
     """
-    Generate LLM response using LiteLLM proxy.
+    Generate LLM response.
 
-    UNIFIED PATH: All requests go through LiteLLM proxy (http://localhost:8005).
-    LiteLLM handles routing to the configured models in litellm_config.yaml.
+    Primary path  : LiteLLM proxy (localhost:8005) — handles per-user keys,
+                    caching, and usage tracking.
+    Fallback path : Google native SDK (google-genai) — used when LiteLLM is
+                    unavailable or returns an error.
 
-    Args:
-        prompt: The user message text
-        images: Optional list of image URLs or base64 data URIs
-        tier: Model tier - "power", "cheaper", or "faster"
-        system_prompt: Optional static system instruction (role="system").
-                       Identical content across requests enables provider caching:
-                       Gemini implicit caching (≥1024 tokens), Anthropic cache_control.
-
-    Returns:
-        Dict with 'text', 'tokens', 'provider', 'model' keys
-
-    Raises:
-        RuntimeError: If LiteLLM is down or all models fail
+    Both paths use the same model IDs (gemini-2.5-flash / gemini-2.5-flash-lite)
+    so behaviour is identical regardless of which path is taken.
     """
-    logger.info(f"generate_response | tier={tier} | has_system={'yes' if system_prompt else 'no'} | images={len(images) if images else 0}")
+    logger.info("generate_response | tier=%s | images=%d | system=%s",
+                tier, len(images) if images else 0, "yes" if system_prompt else "no")
 
-    # LiteLLM proxy is the ONLY path (all tiers including faster go through LiteLLM)
-    if not settings.USE_LITELLM_PROXY:
-        logger.error("USE_LITELLM_PROXY is disabled. LiteLLM proxy is required.")
-        raise RuntimeError("LiteLLM proxy is not enabled in configuration")
-    
-    try:
-        model_config = settings.get_model_config(tier)
-        model_config._tier_name = tier
-        
-        logger.info(f"Calling LiteLLM proxy with tier={tier}")
-        result = _call_litellm_proxy(prompt, model_config, images, system_prompt=system_prompt, uid=uid, call_name=call_name, session_id=session_id)
-        
-        if result and result.get("text"):
-            logger.info(f"LiteLLM success | tier={tier} | tokens={result.get('tokens', {})}")
-            with open("response.json", "w") as f:
-                json.dump(result, f, indent=2)
-            # Auto-record tokens only when running in credit_mode (free-tier sessions
-            # are truly free — credits are only charged once free quota is exhausted).
-            if uid and uid != "guest_user" and charge_credits:
-                tok = result.get("tokens", {})
-                in_t  = tok.get("inputTokens", 0)
-                out_t = tok.get("outputTokens", 0)
-                tot_t = tok.get("totalTokens", 0)
-                if tot_t > 0:
-                    try:
-                        from app.services.user_service import record_tokens as _record_tokens
-                        import threading
-                        threading.Thread(
-                            target=_record_tokens,
-                            args=(uid, in_t, out_t, tot_t),
-                            daemon=True,
-                        ).start()
-                    except Exception as _te:
-                        logger.warning("generate_response: token record failed uid=%s: %s", uid, _te)
-            return result
-        else:
-            logger.error(f"LiteLLM returned empty response: {result}")
-            raise RuntimeError("LiteLLM returned empty or invalid response")
-            
-    except Exception as e:
-        logger.error(f"LiteLLM call failed for tier={tier}: {type(e).__name__}: {e}")
-        
-        # Return a clear error response instead of None
-        error_response = {
-            "text": f"[LLM SERVICE ERROR] {str(e)[:200]}",
-            "tokens": {"inputTokens": 0, "outputTokens": 0, "totalTokens": 0},
+    model_config = settings.get_model_config(tier)
+
+    result: Optional[Dict[str, Any]] = None
+    last_error: Optional[Exception] = None
+
+    # ── 1. Try LiteLLM proxy ──────────────────────────────────────────────────
+    if settings.USE_LITELLM_PROXY:
+        try:
+            result = _call_litellm_proxy(
+                prompt, model_config, images,
+                system_prompt=system_prompt, uid=uid,
+                call_name=call_name, session_id=session_id,
+            )
+        except Exception as exc:
+            last_error = exc
+            logger.warning("LiteLLM failed (tier=%s), falling back to Google native: %s",
+                           tier, exc)
+
+    # ── 2. Google native fallback ─────────────────────────────────────────────
+    if result is None:
+        try:
+            result = _call_gemini(prompt, model_config, images, system_prompt)
+            _log_llm_call(call_name, prompt, system_prompt, result.get("text"), session_id=session_id)
+        except Exception as exc:
+            last_error = exc
+            logger.error("Google native fallback also failed (tier=%s): %s", tier, exc)
+
+    if result is None or not result.get("text"):
+        logger.error("All LLM paths failed for tier=%s: %s", tier, last_error)
+        return {
+            "text": f"[LLM SERVICE ERROR] {str(last_error)[:200]}",
+            "tokens": {"inputTokens": 0, "outputTokens": 0, "totalTokens": 0, "cachedTokens": 0},
             "provider": "error",
             "model": f"error-{tier}",
-            "error": str(e),
+            "error": str(last_error),
         }
-        return error_response
 
+    # ── Record token usage ────────────────────────────────────────────────────
+    try:
+        with open("response.json", "w") as f:
+            json.dump(result, f, indent=2)
+    except Exception:
+        pass
+
+    if uid and uid != "guest_user" and charge_credits:
+        tok = result.get("tokens", {})
+        tot_t = tok.get("totalTokens", 0)
+        if tot_t > 0:
+            try:
+                from app.services.user_service import record_tokens as _record_tokens
+                import threading
+                threading.Thread(
+                    target=_record_tokens,
+                    args=(uid, tok.get("inputTokens", 0), tok.get("outputTokens", 0), tot_t),
+                    daemon=True,
+                ).start()
+            except Exception as exc:
+                logger.warning("generate_response: token record failed uid=%s: %s", uid, exc)
+
+    return result

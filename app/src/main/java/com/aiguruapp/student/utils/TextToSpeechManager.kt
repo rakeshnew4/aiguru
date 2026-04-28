@@ -84,16 +84,27 @@ class TextToSpeechManager(private val context: Context) : TextToSpeech.OnInitLis
         }
     }
 
-    fun setLocale(locale: Locale) {
-        if (!isReady) return
-        try {
+    /**
+     * Set the TTS voice locale.
+     * Returns true if the locale is supported by the device TTS engine,
+     * false if the voice pack is not installed (locale unchanged in that case).
+     */
+    fun setLocale(locale: Locale): Boolean {
+        if (!isReady) return false
+        return try {
             val result = tts?.setLanguage(locale)
             if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                Log.w(TAG, "TTS language not available: ${locale.language}, falling back to US English")
-                tts?.setLanguage(Locale.US)
+                Log.w(TAG, "TTS language not available on device: ${locale.toLanguageTag()}")
+                // Do NOT fall back to US English — an English voice speaking Telugu/Hindi
+                // text sounds worse than silence. Caller should warn the user to install
+                // the language pack from Android Settings → Text-to-speech.
+                false
+            } else {
+                true
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error setting locale", e)
+            false
         }
     }
 

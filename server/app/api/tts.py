@@ -26,7 +26,8 @@ class TtsSynthesizeRequest(BaseModel):
     language_code: str = "en-US"
     voice_name: str = ""
     speaking_rate: float = 1.0
-    user_plan: str = "free"   # 🔥 add this
+    user_plan: str = "free"
+    tts_engine: str = "google"   # google | gemini | android
 
 
 # ================================
@@ -216,10 +217,16 @@ async def synthesize(
     if len(text) > 5000:
         raise HTTPException(400, "text too long")
 
+    # Android engine: no server audio needed — client uses device TTS
+    if req.tts_engine == "android":
+        return Response(content=b"", status_code=204)
+
     text = _clean_for_tts(text)
 
-    # 🔥 Smart selection
     speaking_rate = _select_speaking_rate(req.user_plan, text)
+
+    # Determine if this is a non-English language
+    is_english = req.language_code.lower().startswith("en")
 
     mp3 = await _google_tts(
         text,
@@ -229,14 +236,17 @@ async def synthesize(
         req.user_plan
     )
 
-    if mp3 is None:
+    # For non-English languages: ElevenLabs and OpenAI do not support Indian regional
+    # languages — they would speak with an English accent. Only fall through for English.
+    if mp3 is None and is_english:
         mp3 = await _elevenlabs_tts(text)
 
-    if mp3 is None:
+    if mp3 is None and is_english:
         mp3 = await _openai_tts(text)
 
     if mp3 is None:
-        raise HTTPException(503, "TTS unavailable")
+        lang = req.language_code
+        raise HTTPException(503, f"TTS unavailable for language '{lang}'")
 
     # track usage
     import asyncio

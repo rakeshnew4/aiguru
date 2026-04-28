@@ -1,13 +1,13 @@
-=== BB_PLANNER | 2026-04-28 05:07:24 | session=RFQp1HbS_77e60e5f ===
+=== BB_PLANNER | 2026-04-28 16:50:22 | session=KkhkqOQI_880f2ec6 ===
 
 === PROMPT ===
 You are a lesson analyst for a personal visual AI tutor responding to a student's SPECIFIC question.
 Analyze exactly what the student is asking and return a focused lesson plan.
 Output ONLY valid JSON — nothing else.
 
-Student question (answer THIS specifically): "Topic: What if the angle isn't 90 degrees?
+Student question (answer THIS specifically): "Topic: Great choice! Let's break down **Question 1**, which asks us to express numbers as a product of their **prime factors**. 
 
-[Speech context from previous lesson: A right-angled triangle is special because it always has one perfect 90-degree corner, like the corner of a square. Look for the small square symbol in the corner. That marks the ninety-degree angle. Not every triangle"
+Think of **prime factors** like the 'building blocks' of a number. Just like you can build a LEGO set using specific bricks, every whole number can be built by multiplyin"
 Chapter context (excerpt): ""
 Recent conversation (last 3 turns):
   (No prior conversation — this is the student's first question)
@@ -42,21 +42,22 @@ Rules:
 
 === RESPONSE ===
 {
-  "topic_type": "math_geometry",
+  "topic_type": "math_formula",
   "scope": "medium",
   "key_concepts": [
-    "acute triangle",
-    "obtuse triangle",
-    "triangle classification by angles"
+    "prime numbers",
+    "composite numbers",
+    "factor trees",
+    "prime factorization"
   ],
-  "steps_count": 4,
+  "steps_count": 5,
   "image_search_terms": [
-    "acute obtuse right triangles",
-    "triangle angle types diagram"
+    "prime factorization factor tree example",
+    "prime numbers chart 1 to 100"
   ],
-  "question_focus": "The student wants to understand how triangles are classified when they do not contain a 90-degree angle.",
-  "question_type": "conceptual",
-  "prior_knowledge": "The student understands that a right-angled triangle has one 90-degree angle marked by a small square symbol.",
-  "hook_question": "Have you ever tried to build a triangle with sticks and realized some corners are sharper or wider than others?",
-  "continuation_topic": "Classifying Triangles by Side Length"
+  "question_focus": "The student wants to learn how to break down a composite number into its prime factors using the factor tree method.",
+  "question_type": "how_to",
+  "prior_knowledge": "",
+  "hook_question": "Did you know that every single number greater than 1 is either a prime number or can be built by multiplying prime numbers together?",
+  "continuation_topic": "Greatest Common Factors (GCF)"
 }

@@ -1,4 +1,4 @@
-=== CHAT_MAIN | 2026-04-28 05:04:56 | session=RFQp1HbS_dbba467c ===
+=== CHAT_MAIN | 2026-04-28 16:50:19 | session=KkhkqOQI_aab0afeb ===
 
 === SYSTEM ===
 You are a lesson planner. Return ONLY a JSON object (no markdown, no fences) with these fields:
@@ -11,21 +11,47 @@ You are a lesson planner. Return ONLY a JSON object (no markdown, no fences) wit
 Example: {"lesson_title":"Photosynthesis","steps":["What is it?","Light reactions"],"use_svg":true,"category":"science","hook_question":"Ever wondered how plants make their own food?","continuation_topic":"Respiration and Energy Release"}
 
 === PROMPT ===
-Topic: Pythagoras Theorem
+Topic: Great choice! Let's break down **Question 1**, which asks us to express numbers as a product of their **prime factors**. 
+
+Think of **prime factors** like the 'building blocks' of a number. Just like you can build a LEGO set using specific bricks, every whole number can be built by multiplying together prime numbers (numbers that can only be divided by 1 and themselves, like 2, 3, 5, 7, 11...). 
+
+Let's solve **part (i): 140**.
+
+To find the prime factors, we use a **factor tree** approach. We keep dividing by the smallest prime number possible until we reach 1.
+
+**Step-by-step calculation:**
+1. Start with 140. It's even, so divide by 2: $$140 \div 2 = 70$$
+2. 70 is also even, so divide by 2 again: $$70 \div 2 = 35$$
+3. 35 isn't divisible by 2 or 3. Let's try 5: $$35 \div 5 = 7$$
+4. 7 is a prime number, so we divide by 7: $$7 \div 7 = 1$$
+
+Now, collect all the numbers you divided by: 2, 2, 5, and 7.
+
+So, the prime factorization of 140 is:
+$$140 = 2 \times 2 \times 5 \times 7$$
+
+We can write this more neatly using exponents:
+$$\boxed{140 = 2^2 \times 5 \times 7}$$
+
+**Real-world tip:** This is exactly how computers encrypt secret messages! They use huge numbers and their prime factors to create codes that are super hard to break.
+
+Prime factorization is the first step to understanding how numbers are built! It helps us find the HCF (Highest Common Factor) and LCM (Least Common Multiple) later on.
 Requested number of steps: 5
+
+IMPORTANT: Teach using Telugu mixed with English — explain reasoning in Telugu, but use English for technical terms, formulas, and subject-specific vocabulary.
 
 === RESPONSE ===
 {
-  "lesson_title": "Unlocking the Pythagoras Theorem",
+  "lesson_title": "Prime Factorization: Numbers Building Blocks",
   "steps": [
-    "Defining the Right-Angled Triangle",
-    "Introducing the Formula: a² + b² = c²",
-    "Identifying Hypotenuse vs. Legs",
-    "Solving for the Missing Side",
-    "Real-World Applications and Geometry"
+    "Prime Numbers ante enti? (Understanding the building blocks)",
+    "Factor Tree method ni use chesi 140 ni divide cheyadam",
+    "Smallest prime numbers (2, 3, 5) tho step-by-step division",
+    "Factors anni collect chesi product form lo rayadam",
+    "Exponents use chesi final answer ni represent cheyadam"
   ],
   "use_svg": true,
   "category": "math",
-  "hook_question": "Ever wondered how builders ensure a corner is perfectly square without a giant protractor?",
-  "continuation_topic": "Trigonometric Ratios and Sine Rules"
+  "hook_question": "Did you know that every number has a secret 'DNA' made of prime numbers?",
+  "continuation_topic": "Finding HCF and LCM"
 }

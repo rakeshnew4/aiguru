@@ -474,7 +474,15 @@ class BlackboardActivity : AppCompatActivity() {
         val intentLang = intent.getStringExtra(EXTRA_LANGUAGE_TAG)?.takeIf { it.isNotBlank() } ?: "en-US"
         val sessionLang = com.aiguruapp.student.utils.SessionManager.getPreferredLang(this)
         preferredLanguageTag = sessionLang.ifBlank { intentLang }
-        tts.setLocale(Locale.forLanguageTag(preferredLanguageTag))
+        val ttsLangOk = tts.setLocale(Locale.forLanguageTag(preferredLanguageTag))
+        if (!ttsLangOk && !preferredLanguageTag.startsWith("en")) {
+            android.widget.Toast.makeText(
+                this,
+                "⚠️ ${preferredLanguageTag.split("-").firstOrNull()?.uppercase()} voice not installed. " +
+                "Go to Settings → Accessibility → Text-to-speech to install it.",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+        }
 
         // Read session duration chosen in the launch sheet
         val durationLabel = intent.getStringExtra(EXTRA_DURATION) ?: ""

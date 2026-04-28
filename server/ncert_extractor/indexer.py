@@ -18,7 +18,7 @@ from elasticsearch import AsyncElasticsearch
 from .config import (
     ES_HOST, ES_INDEX, EMBED_DIMS,
     EMBED_MODEL_NAME, VERTEX_SA_JSON, VERTEX_PROJECT, VERTEX_LOCATION,
-    CHUNK_SIZE, CHUNK_OVERLAP,
+    CHUNK_SIZE, CHUNK_OVERLAP, PAGES_PER_CHUNK,
 )
 
 logger = logging.getLogger(__name__)
@@ -50,6 +50,8 @@ MAPPING = {
             "grade":          {"type": "keyword"},
             "chapter_title":  {"type": "text"},
             "chunk_index":    {"type": "integer"},
+            "page_start":     {"type": "integer"},   # 1-based first page in chunk
+            "page_end":       {"type": "integer"},   # 1-based last page in chunk
             "chunk_text":     {"type": "text"},
             "embedding": {
                 "type":       "dense_vector",
@@ -107,7 +109,44 @@ async def embed_texts(texts: List[str]) -> List[List[float]]:
     return await loop.run_in_executor(None, _embed_batch_sync, texts)
 
 
-# ── Text chunking ─────────────────────────────────────────────────────────────
+# ── Page-level chunking ───────────────────────────────────────────────────────
+def chunk_pages(pages: List[str], pages_per_chunk: int = PAGES_PER_CHUNK) -> List[tuple]:
+    """
+    Group PDF pages into chunks of `pages_per_chunk`.
+    Near-empty pages (< 80 chars) are merged into the next group rather than
+    creating a useless one-liner chunk.
+
+    Returns list of (page_start, page_end, text) — page numbers are 1-based.
+    """
+    MIN_PAGE_CHARS = 80
+    result: List[tuple] = []
+    group_pages: List[int] = []   # 1-based page numbers in current group
+    group_texts: List[str] = []
+
+    def flush():
+        if group_texts:
+            combined = "\n\n".join(t for t in group_texts if t.strip())
+            if combined.strip():
+                result.append((group_pages[0], group_pages[-1], combined))
+
+    for i, text in enumerate(pages):
+        page_num = i + 1
+        stripped = text.strip()
+
+        group_pages.append(page_num)
+        group_texts.append(stripped)
+
+        # Flush when we've collected enough pages AND the page has real content
+        if len(group_pages) >= pages_per_chunk and len(stripped) >= MIN_PAGE_CHARS:
+            flush()
+            group_pages = []
+            group_texts = []
+
+    flush()  # remaining pages
+    return result
+
+
+# ── Text chunking (char-level fallback) ──────────────────────────────────────
 def chunk_text(text: str) -> List[str]:
     """
     Split text into overlapping char-level chunks.

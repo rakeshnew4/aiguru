@@ -181,6 +181,57 @@ def _render_line_graph(data: dict) -> list:
     return shapes
 
 
+def _render_bar_chart(data: dict) -> list:
+    labels  = [str(l) for l in (data.get("labels") or [])]
+    values  = [float(v) for v in (data.get("values") or [])]
+    x_label = str(data.get("x_label") or "")
+    y_label = str(data.get("y_label") or "")
+
+    if not labels or not values:
+        return []
+
+    n = min(len(labels), len(values))
+    labels, values = labels[:n], values[:n]
+
+    OX, OY = 55, 240
+    chart_w, chart_h = 300, 190
+    max_val = max(values) or 1
+    bar_w = max(8, int((chart_w - 10) / n) - 6)
+    gap   = max(2, int((chart_w - 10 - bar_w * n) / (n + 1)))
+    bar_colors = ["primary", "secondary", "highlight", "accent",
+                  "primary", "secondary", "highlight", "accent"]
+
+    shapes: list = [
+        {"shape": "arrow", "x1": OX, "y1": OY, "x2": OX + chart_w + 10, "y2": OY,
+         "color": "primary", "animation_stage": 0},
+        {"shape": "arrow", "x1": OX, "y1": OY, "x2": OX, "y2": OY - chart_h - 10,
+         "color": "primary", "animation_stage": 0},
+    ]
+    if x_label:
+        shapes.append({"shape": "text", "x": OX + chart_w // 2, "y": OY + 28,
+                       "value": x_label, "color": "label", "bold": True, "animation_stage": 0})
+    if y_label:
+        shapes.append({"shape": "text", "x": OX - 40, "y": OY - chart_h // 2,
+                       "value": y_label, "color": "label", "bold": True, "animation_stage": 0})
+
+    for i, (lbl, val) in enumerate(zip(labels, values)):
+        bh    = max(4, int(val / max_val * chart_h))
+        bx    = OX + gap + i * (bar_w + gap)
+        by    = OY - bh
+        color = bar_colors[i % len(bar_colors)]
+        shapes.append({"shape": "rect", "x": bx, "y": by, "width": bar_w, "height": bh,
+                       "color": color, "animation_stage": i + 1})
+        # value label above bar
+        shapes.append({"shape": "text", "x": bx + bar_w // 2, "y": by - 6,
+                       "value": str(int(val) if val == int(val) else round(val, 1)),
+                       "color": color, "bold": True, "animation_stage": i + 1})
+        # x-axis label below bar
+        shapes.append({"shape": "text", "x": bx + bar_w // 2, "y": OY + 14,
+                       "value": _escape(lbl[:10]), "color": "dim", "animation_stage": i + 1})
+
+    return shapes
+
+
 def _render_flow(data: dict) -> list:
     """
     Visual journey layout — numbered circles connected by arrows.

@@ -1,4 +1,4 @@
-=== BB_SVG_BUILDER | 2026-04-28 05:05:15 | session=none ===
+=== BB_SVG_BUILDER | 2026-04-28 16:50:50 | session=none ===
 
 === SYSTEM ===
 You are an SVG diagram artist for an educational app. Draw accurate diagrams as raw SVG.
@@ -31,64 +31,14 @@ DRAW REAL STRUCTURES (never flowcharts with boxes/arrows):
 Draw this educational diagram as SVG:
 
   Diagram type : custom
-  Topic/title  : Real-World Applications
-  Context      : Imagine a ladder against a wall. The wall, the ground, and the ladder form a perfect right-angled triangle.
+  Topic/title  : Finding Remaining Factors
+  Context      : Chudandi, mana factors anni 2, 2, 5, and 7. Ee prathi number prime eh!
   Data hints   : none
-  Visual layout: A ladder leaning against a vertical wall on flat ground.
+  Visual layout: The final leaves of the factor tree showing 2, 2, 5, 7
   Follow this layout exactly — positions, arrows, and labels as described above.
 
-Draw "Real-World Applications" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
+Draw "Finding Remaining Factors" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
 Animate each part appearing sequentially.  Output ONLY the <svg> element.
 
 === RESPONSE ===
-<svg viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg">
-  <rect width="400" height="300" fill="#1A2B1A"/>
-  
-  <!-- Title -->
-  <text x="200" y="25" font-family="serif" fill="#F0EDD0" font-size="13" font-weight="bold" text-anchor="middle" opacity="0">
-    <animate attributeName="opacity" from="0" to="1" dur="0.35s" fill="freeze" begin="0s"/>
-    Real-World Applications
-  </text>
-
-  <!-- Wall -->
-  <path d="M 80 240 L 80 60" stroke="#8BAB8B" stroke-width="4" stroke-dasharray="180" stroke-dashoffset="180">
-    <animate attributeName="stroke-dashoffset" from="180" to="0" dur="0.6s" fill="freeze" begin="0.3s"/>
-  </path>
-  <text x="65" y="150" font-family="serif" fill="#F0EDD0" font-size="11" opacity="0" transform="rotate(-90 65 150)">
-    <animate attributeName="opacity" from="0" to="1" dur="0.35s" fill="freeze" begin="0.3s"/>
-    Wall
-  </text>
-
-  <!-- Ground -->
-  <path d="M 80 240 L 320 240" stroke="#8BAB8B" stroke-width="4" stroke-dasharray="240" stroke-dashoffset="240">
-    <animate attributeName="stroke-dashoffset" from="240" to="0" dur="0.6s" fill="freeze" begin="0.6s"/>
-  </path>
-  <text x="200" y="265" font-family="serif" fill="#F0EDD0" font-size="11" opacity="0">
-    <animate attributeName="opacity" from="0" to="1" dur="0.35s" fill="freeze" begin="0.6s"/>
-    Ground
-  </text>
-
-  <!-- Ladder -->
-  <g stroke="#FFB74D" stroke-width="3" fill="none">
-    <path d="M 85 235 L 280 70" stroke-dasharray="250" stroke-dashoffset="250">
-      <animate attributeName="stroke-dashoffset" from="250" to="0" dur="0.6s" fill="freeze" begin="0.9s"/>
-    </path>
-    <!-- Ladder rungs -->
-    <path d="M 120 205 L 135 192 M 160 172 L 175 160 M 200 140 L 215 128 M 240 108 L 255 95" stroke-dasharray="20" stroke-dashoffset="20">
-      <animate attributeName="stroke-dashoffset" from="20" to="0" dur="0.6s" fill="freeze" begin="1.2s"/>
-    </path>
-  </g>
-  <text x="210" y="180" font-family="serif" fill="#F0EDD0" font-size="11" opacity="0">
-    <animate attributeName="opacity" from="0" to="1" dur="0.35s" fill="freeze" begin="0.9s"/>
-    Ladder
-  </text>
-
-  <!-- Right Angle Symbol -->
-  <path d="M 80 220 L 100 220 L 100 240" stroke="#4FC3F7" stroke-width="2" fill="none" stroke-dasharray="40" stroke-dashoffset="40">
-    <animate attributeName="stroke-dashoffset" from="40" to="0" dur="0.6s" fill="freeze" begin="1.5s"/>
-  </path>
-  <text x="105" y="235" font-family="serif" fill="#F0EDD0" font-size="11" opacity="0">
-    <animate attributeName="opacity" from="0" to="1" dur="0.35s" fill="freeze" begin="1.5s"/>
-    90°
-  </text>
-</svg>
+<svg viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#1A2B1A"/><text x="200" y="30" font-family="serif" fill="#F0EDD0" font-size="13" font-weight="bold" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0s"/>Finding Remaining Factors</text><path d="M200 60 L140 120" stroke="#8BAB8B" stroke-width="2" stroke-dasharray="85" stroke-dashoffset="85"><animate attributeName="stroke-dashoffset" values="85;0" dur="0.6s" fill="freeze" begin="0.3s"/></path><path d="M200 60 L260 120" stroke="#8BAB8B" stroke-width="2" stroke-dasharray="85" stroke-dashoffset="85"><animate attributeName="stroke-dashoffset" values="85;0" dur="0.6s" fill="freeze" begin="0.6s"/></path><path d="M140 120 L110 180" stroke="#8BAB8B" stroke-width="2" stroke-dasharray="70" stroke-dashoffset="70"><animate attributeName="stroke-dashoffset" values="70;0" dur="0.6s" fill="freeze" begin="0.9s"/></path><path d="M140 120 L170 180" stroke="#8BAB8B" stroke-width="2" stroke-dasharray="70" stroke-dashoffset="70"><animate attributeName="stroke-dashoffset" values="70;0" dur="0.6s" fill="freeze" begin="1.2s"/></path><path d="M260 120 L230 180" stroke="#8BAB8B" stroke-width="2" stroke-dasharray="70" stroke-dashoffset="70"><animate attributeName="stroke-dashoffset" values="70;0" dur="0.6s" fill="freeze" begin="1.5s"/></path><path d="M260 120 L290 180" stroke="#8BAB8B" stroke-width="2" stroke-dasharray="70" stroke-dashoffset="70"><animate attributeName="stroke-dashoffset" values="70;0" dur="0.6s" fill="freeze" begin="1.8s"/></path><circle cx="110" cy="210" r="20" fill="#4FC3F7" fill-opacity="0.25" stroke="#4FC3F7" stroke-width="2" stroke-dasharray="126" stroke-dashoffset="126"><animate attributeName="stroke-dashoffset" values="126;0" dur="0.6s" fill="freeze" begin="2.1s"/></circle><text x="110" y="214" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="2.1s"/>2</text><circle cx="170" cy="210" r="20" fill="#FF6B6B" fill-opacity="0.25" stroke="#FF6B6B" stroke-width="2" stroke-dasharray="126" stroke-dashoffset="126"><animate attributeName="stroke-dashoffset" values="126;0" dur="0.6s" fill="freeze" begin="2.4s"/></circle><text x="170" y="214" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="2.4s"/>2</text><circle cx="230" cy="210" r="20" fill="#81C784" fill-opacity="0.25" stroke="#81C784" stroke-width="2" stroke-dasharray="126" stroke-dashoffset="126"><animate attributeName="stroke-dashoffset" values="126;0" dur="0.6s" fill="freeze" begin="2.7s"/></circle><text x="230" y="214" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="2.7s"/>5</text><circle cx="290" cy="210" r="20" fill="#FFB74D" fill-opacity="0.25" stroke="#FFB74D" stroke-width="2" stroke-dasharray="126" stroke-dashoffset="126"><animate attributeName="stroke-dashoffset" values="126;0" dur="0.6s" fill="freeze" begin="3.0s"/></circle><text x="290" y="214" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="3.0s"/>7</text><text x="200" y="270" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="3.3s"/>Factors: 2, 2, 5, 7 (All Prime)</text></svg>

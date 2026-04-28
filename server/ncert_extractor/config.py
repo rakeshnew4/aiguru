@@ -18,8 +18,9 @@ EMBED_MODEL_NAME: str = getattr(settings, "YT_EMBED_MODEL_NAME", "text-embedding
 EMBED_DIMS: int       = 768
 
 # ── Chunking ──────────────────────────────────────────────────────────────────
-CHUNK_SIZE: int    = 1200   # characters per chunk
+CHUNK_SIZE: int    = 1200   # characters per chunk (char-level fallback)
 CHUNK_OVERLAP: int = 150    # overlap between consecutive chunks
+PAGES_PER_CHUNK: int = 2    # PDF pages grouped into one ES doc
 
 # ── Retrieval ─────────────────────────────────────────────────────────────────
 RETRIEVAL_K: int        = 4     # chunks to retrieve per query

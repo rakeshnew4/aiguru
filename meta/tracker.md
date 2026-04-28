@@ -785,3 +785,73 @@ Run to start seeding:
   docker compose -f server/youtube_extractor/docker-compose.yml up -d
   cd server && python seed_ncert_es.py --subject science_10th   # test one subject first
   python seed_ncert_es.py  # all 454 chapters (~60-90 min)
+
+2026-04-28 | NCERT ES seeder: page-level chunking | Files:
+  server/ncert_extractor/config.py: added PAGES_PER_CHUNK=2
+  server/ncert_extractor/indexer.py: added page_start/page_end fields to MAPPING; added chunk_pages(pages, pages_per_chunk) helper — groups N pages per ES doc, merges thin pages (<80 chars) into next group, returns List[tuple(page_start, page_end, text)]
+  server/seed_ncert_es.py: _extract_pdf_text → _extract_pdf_pages (returns List[str] per page); _index_chapter now takes pages: list[str] instead of text: str; indexes page_start/page_end alongside chunk_index; logs "N pages extracted" and "N page-chunks indexed"
+
+2026-04-28 | NCERT seeder running + quick wins fixed | Files:
+  server/seed_ncert_es.py: fixed docstring encoding (em-dash caused SyntaxError); fixed _SA_PATH to use _HERE (was dirname(_HERE)); fixed python → python3; seeder running as PID 1606595 → /tmp/ncert_seed.log
+  server/ncert_extractor/config.py: added PAGES_PER_CHUNK=2
+  server/ncert_extractor/indexer.py: added page_start/page_end to MAPPING; added chunk_pages() helper
+  server/app/core/config.py: POWER_MODEL_ID + MODEL_ID changed from gemini-3.1-flash-lite-preview → gemini-2.5-flash (stable)
+  server/app/utils/svg_renderers.py: added _render_bar_chart() — vertical bars with value labels and x-axis labels; uses bar_colors cycling
+  server/app/utils/svg_builder.py: imported _render_bar_chart; registered "bar_chart" in _RENDERERS
+  Status: English class 10/Hindi class 9 have bad Firestore PDF URLs (404); English class 8 + Math + Science working fine
+
+2026-04-28 | Razorpay double-credit race fix | Files:
+  server/app/services/user_service.py:
+    - Added import: firestore_transactional from google.cloud.firestore
+    - activate_plan() rewritten to use a Firestore transaction (@firestore_transactional):
+      reads plan_activated_at + planId from users_table/{uid} inside transaction,
+      sets plan_activated_at=now only on first call (or if outside 120s grace window),
+      returns should_award bool to caller — credits awarded only when True
+    - Fallback: if transaction fails, does plain merge write (logs warning), awards credits
+    - plan_activated_at field now stored in users_table/{uid} for every activation
+    Logic: race window = 120s. /verify + webhook both firing → first writer sets plan_activated_at, second sees it within 120s and skips _award_activation_credits. Monthly re-buy (>120s after last activation) correctly awards again.
+
+2026-04-28 | Remove Groq/Bedrock dead code + Google native fallback | Files:
+  server/app/services/llm_service.py: FULL REWRITE
+    - Removed: boto3, groq imports; _init_groq, _init_bedrock, _groq_client, _bedrock_client
+    - Removed: _images_to_bedrock_content, _call_groq, _call_bedrock (~300 lines deleted)
+    - Kept: google.genai client as fallback; _images_to_gemini_parts; _call_gemini (added system_prompt param)
+    - Updated generate_response: tries LiteLLM first; on failure falls back to _call_gemini (Google native); only returns error if both fail
+  server/app/services/litellm_service.py:
+    - Removed hardcoded auth_key overrides (lines 223, 269 — was "sk-O9b3-..." leaking a real key)
+    - Fixed call_litellm and stream_litellm: now use `model` param instead of hardcoded "gemini-3.1-flash-lite-preview"
+    - Fixed create_user_api_key models list: removed "gemini-3.1-flash-lite-preview", added "power"
+  server/app/core/config.py:
+    - Removed: GROQ_API_KEY, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, AWS_BEARER_TOKEN_BEDROCK
+    - Fixed: supports_images for power tier changed from ["bedrock"] to ["gemini"] (was always False for gemini — bug)
+    - Fixed: supports_images for cheaper/faster: removed "bedrock"
+
+2026-04-28 | TTS language voice fix (Telugu + other regional languages) | Files:
+  server/app/api/tts.py:
+    - Added tts_engine field to TtsSynthesizeRequest (default "google")
+    - tts_engine="android" → returns HTTP 204 immediately (client uses device TTS)
+    - Non-English languages (te-IN, hi-IN, etc.) no longer fall through to ElevenLabs/OpenAI;
+      those providers only speak English — using them for Telugu produces English accent. 
+      Returns HTTP 503 if Google TTS fails for non-English. English still falls through.
+  app/.../utils/TextToSpeechManager.kt:
+    - setLocale() now returns Boolean (true=supported, false=not installed)
+    - When language not available: no longer falls back to Locale.US silently.
+      Keeps current locale and returns false (caller handles it).
+  app/.../BlackboardActivity.kt (line ~477):
+    - On startup: if tts.setLocale() returns false for non-English, shows a Toast:
+      "⚠️ TE voice not installed. Go to Settings → Accessibility → Text-to-speech."
+  Root cause: device without Telugu TTS pack → setLocale fell back to Locale.US → 
+    English voice spoke Telugu content → "English man trying to say in Telugu"
+  NCERT seeder finished: 85 chapters indexed, 655 page-chunks, 128 failed (bad Firestore URLs)
+
+2026-04-28 | NCERT seeder: parallel subjects + async download + Chrome UA | Files:
+  server/seed_ncert_es.py:
+    - Replaced `import requests` with `import httpx` (async, connection reuse)
+    - _get_pdf() now async using httpx.AsyncClient passed from caller
+    - Chrome User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36"
+    - Extracted _seed_subject() coroutine — processes one subject's chapters sequentially
+    - seed() groups all docs by subject_id, runs subjects in parallel under asyncio.Semaphore(parallel)
+    - Single shared httpx.AsyncClient across all parallel workers (connection pool)
+    - Added --parallel N CLI flag (default 3); use --parallel 5 for faster runs
+  Usage: python3 seed_ncert_es.py --parallel 5 --from-cache-only  (if PDFs already cached)
+         python3 seed_ncert_es.py --parallel 3                     (fresh download + index)

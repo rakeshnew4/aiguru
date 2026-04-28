@@ -21,7 +21,7 @@ from __future__ import annotations
 import time
 from datetime import datetime, timezone
 
-from google.cloud.firestore import Increment
+from google.cloud.firestore import Increment, transactional as firestore_transactional
 
 from app.core.logger import get_logger
 
@@ -200,7 +200,10 @@ def activate_plan(
 
     Looks up plans/{plan_id} in Firestore to get feature limits automatically.
     Resets daily question counters so the user gets a fresh daily quota immediately.
-    Safe to call multiple times (merge=True keeps all other fields intact).
+
+    Race-safe: uses a Firestore transaction to set plan_activated_at exactly once.
+    If /verify and the Razorpay webhook both call this within a 120-second window for
+    the same plan, only the first writer awards activation credits.
     """
     if not uid:
         return
@@ -211,36 +214,61 @@ def activate_plan(
 
     limits = _lookup_plan_limits(db, plan_id)
     now = _now_ms()
+    _CREDIT_GRACE_MS = 120_000  # 2 minutes — race window between /verify and webhook
 
-    db.collection("users_table").document(uid).set({
-        # ── Plan identity ─────────────────────────────────────────────────────
-        "planId": plan_id,
-        "planName": plan_name,
-        "plan_start_date": plan_start_date,
-        "plan_expiry_date": plan_expiry_date,
-        # ── Flat limit fields (read by Android UserMetadata) ──────────────────
-        # 0 = unlimited.  Falls back to admin_config/global defaults if 0.
-        "plan_daily_chat_limit": limits.get("daily_chat_questions", 0),
-        "plan_daily_bb_limit": limits.get("daily_bb_sessions", 0),
-        "plan_tts_enabled": limits.get("tts_enabled", True),
-        "plan_ai_tts_enabled": limits.get("ai_tts_enabled", False),
-        "plan_blackboard_enabled": limits.get("blackboard_enabled", True),
-        "plan_image_enabled": limits.get("image_upload_enabled", False),
-        # ── Reset daily question counters on plan change ──────────────────────
-        "chat_questions_today": 0,
-        "bb_sessions_today": 0,
-        "questions_updated_at": now,
-        "updated_at": now,
-    }, merge=True)
+    user_ref = db.collection("users_table").document(uid)
 
-    # Award activation credits from plan definition
+    @firestore_transactional
+    def _activate_txn(transaction):
+        snap = user_ref.get(transaction=transaction)
+        existing = (snap.to_dict() or {}) if snap.exists else {}
+
+        prev_activated_at = existing.get("plan_activated_at")
+        already_activated = (
+            prev_activated_at is not None
+            and existing.get("planId") == plan_id
+            and (now - int(prev_activated_at)) < _CREDIT_GRACE_MS
+        )
+
+        transaction.set(user_ref, {
+            "planId":                  plan_id,
+            "planName":                plan_name,
+            "plan_start_date":         plan_start_date,
+            "plan_expiry_date":        plan_expiry_date,
+            "plan_activated_at":       prev_activated_at if already_activated else now,
+            "plan_daily_chat_limit":   limits.get("daily_chat_questions", 0),
+            "plan_daily_bb_limit":     limits.get("daily_bb_sessions", 0),
+            "plan_tts_enabled":        limits.get("tts_enabled", True),
+            "plan_ai_tts_enabled":     limits.get("ai_tts_enabled", False),
+            "plan_blackboard_enabled": limits.get("blackboard_enabled", True),
+            "plan_image_enabled":      limits.get("image_upload_enabled", False),
+            "chat_questions_today":    0,
+            "bb_sessions_today":       0,
+            "questions_updated_at":    now,
+            "updated_at":              now,
+        }, merge=True)
+        return not already_activated  # True = first activation, award credits
+
+    try:
+        should_award = _activate_txn(db.transaction())
+    except Exception as exc:
+        logger.warning("activate_plan: transaction failed, falling back to direct write: %s", exc)
+        # Fallback: plain merge write (safe in isolation, not race-safe)
+        user_ref.set({
+            "planId": plan_id, "planName": plan_name,
+            "plan_start_date": plan_start_date, "plan_expiry_date": plan_expiry_date,
+            "chat_questions_today": 0, "bb_sessions_today": 0,
+            "questions_updated_at": now, "updated_at": now,
+        }, merge=True)
+        should_award = True
+
     activation_credits = int(limits.get("credits_on_activation", 0))
-    if activation_credits > 0:
+    if should_award and activation_credits > 0:
         _award_activation_credits(db, uid, activation_credits, plan_id, plan_name)
 
     logger.info(
-        "activate_plan: uid=%s plan_id=%s expiry=%d limits=%s credits=%d",
-        uid, plan_id, plan_expiry_date, limits, activation_credits,
+        "activate_plan: uid=%s plan_id=%s expiry=%d credits_awarded=%s",
+        uid, plan_id, plan_expiry_date, should_award and activation_credits > 0,
     )
 
 

@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-04-28 05:07:30 | session=RFQp1HbS_77e60e5f ===
+=== BB_MAIN | 2026-04-28 16:50:32 | session=KkhkqOQI_880f2ec6 ===
 
 === SYSTEM ===
 You are a visual AI tutor. Return ONLY valid JSON — no text outside JSON.
@@ -47,190 +47,235 @@ TTS every frame: first frame→android/teacher; concept/memory/diagram→gemini/
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: What if the angle isn't 90 degrees?
+Student's EXACT question: Topic: Great choice! Let's break down **Question 1**, which asks us to express numbers as a product of their **prime factors**. 
 
-[Speech context from previous lesson: A right-angled triangle is special because it always has one perfect 90-degree corner, like the corner of a square. Look for the small square symbol in the corner. That marks the ninety-degree angle. Not every triangle has this corner. Can you spot one in your room right now? The Pythagoras theorem formula is a squared plus b squared equals c squared. It connects the lengths of all three sides. This formula helps us find any missing side if we know the other two. But wait, which side is which? Let's label them to make sure we use the formula correctly. The longest side is called the hypotenuse. It is always directly across from the ninety-degree angle. The two shorter sides that touch the right angle are just called the legs. The hypotenuse is always the side that doesn't touch the square corner. Can you find it? If a is three and b is four, their squares add up to twenty-five. Since five squared is twenty-five, side c must be five. Three squared is nine, four squared is sixteen. Nine plus sixteen equals twenty-five. Now that we can solve for sides, where might we actually use this in the real world? Engineers and architects use this to make sure walls are straight and roofs are an]
-Lesson title: What if the angle isn't 90 degrees?
+Think of **prime factors** like the 'building blocks' of a number. Just like you can build a LEGO set using specific bricks, every whole number can be built by multiplying together prime numbers (numbers that can only be divided by 1 and themselves, like 2, 3, 5, 7, 11...). 
 
-[Speech context from pr
-Category: general
+Let's solve **part (i): 140**.
+
+To find the prime factors, we use a **factor tree** approach. We keep dividing by the smallest prime number possible until we reach 1.
+
+**Step-by-step calculation:**
+1. Start with 140. It's even, so divide by 2: $$140 \div 2 = 70$$
+2. 70 is also even, so divide by 2 again: $$70 \div 2 = 35$$
+3. 35 isn't divisible by 2 or 3. Let's try 5: $$35 \div 5 = 7$$
+4. 7 is a prime number, so we divide by 7: $$7 \div 7 = 1$$
+
+Now, collect all the numbers you divided by: 2, 2, 5, and 7.
+
+So, the prime factorization of 140 is:
+$$140 = 2 \times 2 \times 5 \times 7$$
+
+We can write this more neatly using exponents:
+$$\boxed{140 = 2^2 \times 5 \times 7}$$
+
+**Real-world tip:** This is exactly how computers encrypt secret messages! They use huge numbers and their prime factors to create codes that are super hard to break.
+
+Prime factorization is the first step to understanding how numbers are built! It helps us find the HCF (Highest Common Factor) and LCM (Least Common Multiple) later on.
+Lesson title: Prime Factorization: Numbers Building Blocks
+Category: math
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
-Generate EXACTLY 0 steps with APPROXIMATELY 4 frames each.
+Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
+- Prime Numbers ante enti? (Understanding the building blocks)
+- Factor Tree method ni use chesi 140 ni divide cheyadam
+- Smallest prime numbers (2, 3, 5) tho step-by-step division
+- Factors anni collect chesi product form lo rayadam
+- Exponents use chesi final answer ni represent cheyadam
 
-
+This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants to understand how triangles are classified when they do not contain a 90-degree angle.
-Question type: conceptual
+
+IMPORTANT: Teach using Telugu mixed with English — explain reasoning in Telugu, but use English for technical terms, formulas, and subject-specific vocabulary.
+What the student specifically wants: The student wants to learn how to break down a composite number into its prime factors using the factor tree method.
+Question type: how_to
 Student level: Class 5
-Topic type: math_geometry | Scope: medium
-What student already knows (DO NOT repeat this): The student understands that a right-angled triangle has one 90-degree angle marked by a small square symbol.
-Key concepts to cover (ALL of these): acute triangle, obtuse triangle, triangle classification by angles
-Generate EXACTLY 4 steps — no more, no less.
+Topic type: math_formula | Scope: medium
+Key concepts to cover (ALL of these): prime numbers, composite numbers, factor trees, prime factorization
+Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-DIAGRAM RECOMMENDATION: This topic likely needs a "triangle" diagram (confidence 97%). Use diagram_type="triangle" for your diagram frame(s).
-
-SUBJECT GUIDANCE (Math — Geometry):
-• Use diagram_type triangle, polygon, circle_geometry, angle, or coordinate_plane.
-• Show labelled measurements in the diagram data (a_val, b_val, show_angles, etc.).
-• Concept frames: state property → prove/derive → example with numbers.
-• End with a summary frame of key properties.
+SUBJECT GUIDANCE (Math — Formula/Algebra):
+• Lead with the formula in a concept frame. Show what each variable means.
+• Dedicate 2 concept frames to worked substitution (step-by-step numbers).
+• Prefer diagram_type: graph_function, fraction_bar, number_line, or pythagoras.
+• End with a summary frame recapping key takeaways.
 
 ---END LESSON BRIEF---
 
-OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" fields in the language for tag "en-US" (hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.). Board "text" field stays in English (formulas/keywords only).
+
+IMPORTANT: Teach using Telugu mixed with English — explain reasoning in Telugu, but use English for technical terms, formulas, and subject-specific vocabulary.
+OUTPUT LANGUAGE: Set ALL step "lang" fields to "te-IN". Write ALL "speech" fields in the language for tag "te-IN" (hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.). Board "text" field stays in English (formulas/keywords only).
 
 === RESPONSE ===
 {
   "steps": [
     {
-      "title": "Beyond Right Angles",
-      "lang": "en-US",
-      "image_description": "acute obtuse and right triangle classification diagram",
-      "image_show_confidencescore": 0.95,
+      "title": "Introduction to Prime Numbers",
+      "lang": "te-IN",
+      "image_description": "prime numbers number line visualization",
+      "image_show_confidencescore": 0.7,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "Not all triangles have a **90° angle**.",
-          "speech": "Not every triangle has a perfect ninety-degree corner. When a triangle lacks that square corner, we classify it based on whether its angles are smaller or larger than ninety degrees.",
+          "text": "**Prime Numbers** are the building blocks.",
+          "speech": "Numbers, okate table lo vasthayi—adi 1 and ade number. Ee 'building blocks' ni Prime Numbers antaru. For example, 2, 3, 5, 7.",
           "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
           "frame_type": "concept",
-          "text": "The **Right Angle** (90°)",
-          "speech": "Remember, a right-angled triangle is the specific case where one corner is exactly ninety degrees. Everything else falls into two other special groups.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
-        {
-          "frame_type": "diagram",
-          "text": "Triangle Comparison",
-          "speech": "Imagine tilting the sides of a right triangle. If you push the sides inward, the corner gets smaller. If you pull them out, the corner gets wider.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500,
-          "diagram_type": "triangle",
-          "diagram_data": {
-            "intent": "Show a right triangle next to an acute and an obtuse one for visual comparison"
-          }
-        },
-        {
-          "frame_type": "concept",
-          "text": "Ready to explore **Acute** vs **Obtuse**?",
-          "speech": "Are you ready to see what happens when those angles get smaller or larger than that square corner?",
+          "text": "**Composite Numbers**",
+          "speech": "Composite numbers ante prime numbers ni multiply chesi form chesina numbers. 140 is a composite number.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2000
+        },
+        {
+          "frame_type": "concept",
+          "text": "**Why factorize?**",
+          "speech": "Mari ee composite numbers ni prime factors ga ela break cheyalo chuddama?",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 1500
         }
       ]
     },
     {
-      "title": "The Acute Triangle",
-      "lang": "en-US",
-      "image_description": "acute triangle with all angles less than 90 degrees",
-      "image_show_confidencescore": 0.9,
-      "frames": [
-        {
-          "frame_type": "concept",
-          "text": "**Acute Triangle** (<90°)",
-          "speech": "An acute triangle is one where all three angles are smaller than ninety degrees. Think of them as sharp, pointy triangles.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
-        {
-          "frame_type": "diagram",
-          "text": "Sharp Corners",
-          "speech": "If you look at the corners, they are all 'acute', or sharp, like the tip of a pencil. None of them are wide or square.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500,
-          "diagram_type": "triangle",
-          "diagram_data": {
-            "intent": "Display a triangle with all angles measuring 60 degrees"
-          }
-        },
-        {
-          "frame_type": "concept",
-          "text": "Real-world **Acute**",
-          "speech": "You can find acute triangles in the structure of roof trusses or the shape of a slice of pizza that has been cut very narrowly.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
-        {
-          "frame_type": "concept",
-          "text": "What about **wide** angles?",
-          "speech": "But what happens if we pull one corner outward until it's wider than a square corner? That's our next type.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2000
-        }
-      ]
-    },
-    {
-      "title": "The Obtuse Triangle",
-      "lang": "en-US",
-      "image_description": "obtuse triangle with one angle greater than 90 degrees",
-      "image_show_confidencescore": 0.9,
-      "frames": [
-        {
-          "frame_type": "concept",
-          "text": "**Obtuse Triangle** (>90°)",
-          "speech": "An obtuse triangle has one angle that is wider than ninety degrees. It looks like it's stretching out or leaning back.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
-        {
-          "frame_type": "diagram",
-          "text": "One Wide Corner",
-          "speech": "Notice how one of the angles opens up much wider than a square. The other two angles must stay small to keep the triangle closed.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500,
-          "diagram_type": "triangle",
-          "diagram_data": {
-            "intent": "Show a triangle with one angle at 120 degrees"
-          }
-        },
-        {
-          "frame_type": "concept",
-          "text": "Real-world **Obtuse**",
-          "speech": "Think of a boomerang or a wide-open laptop screen. Those shapes often form an obtuse angle at the hinge or the curve.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
-        {
-          "frame_type": "concept",
-          "text": "Ready to **summarize**?",
-          "speech": "We have seen the three main types. Shall we put it all together to keep it organized in your mind?",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2000
-        }
-      ]
-    },
-    {
-      "title": "Summary of Triangles",
-      "lang": "en-US",
-      "image_description": "summary chart of acute right and obtuse triangles",
+      "title": "Starting Factor Tree",
+      "lang": "te-IN",
+      "image_description": "factor tree diagram",
       "image_show_confidencescore": 0.85,
       "frames": [
         {
+          "frame_type": "concept",
+          "text": "**Factor Tree Method**",
+          "speech": "Factor tree method use chesi 140 ni divide cheddam. First, smallest prime number 2 tho start cheddam.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000
+        },
+        {
+          "frame_type": "diagram",
+          "text": "$$140 \\div 2 = 70$$",
+          "speech": "140, 2 table lo pothundi. So, 140 divided by 2 is 70.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000,
+          "diagram_type": "custom",
+          "diagram_data": {
+            "intent": "Show 140 branching into 2 and 70"
+          },
+          "visual_description": "A tree diagram starting with 140 branching into 2 and 70"
+        },
+        {
+          "frame_type": "concept",
+          "text": "**Next step?**",
+          "speech": "Ippudu 70 ni malli divide cheyali, ready ah?",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 1500
+        }
+      ]
+    },
+    {
+      "title": "Dividing Further",
+      "lang": "te-IN",
+      "image_description": "math factor tree division diagram",
+      "image_show_confidencescore": 0.85,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "**Continue Division**",
+          "speech": "70 kuda even number, so malli 2 tho divide cheddam.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 1500
+        },
+        {
+          "frame_type": "diagram",
+          "text": "$$70 \\div 2 = 35$$",
+          "speech": "70 divided by 2 gives us 35. Tree ippudu 2, 2, and 35 ga vundi.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000,
+          "diagram_type": "custom",
+          "diagram_data": {
+            "intent": "Show 70 branching into 2 and 35"
+          },
+          "visual_description": "Factor tree showing 70 branching into 2 and 35"
+        },
+        {
+          "frame_type": "concept",
+          "text": "**What about 35?**",
+          "speech": "35 ni 2 or 3 tho divide cheyalem. So next prime number 5 try cheddama?",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000
+        }
+      ]
+    },
+    {
+      "title": "Finding Remaining Factors",
+      "lang": "te-IN",
+      "image_description": "prime factorization steps diagram",
+      "image_show_confidencescore": 0.8,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "$$35 \\div 5 = 7$$",
+          "speech": "35 divided by 5 is 7. Ikkada 7 kuda prime number eh, so ikkaditho apestunnam.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000
+        },
+        {
+          "frame_type": "diagram",
+          "text": "**Factors: 2, 2, 5, 7**",
+          "speech": "Chudandi, mana factors anni 2, 2, 5, and 7. Ee prathi number prime eh!",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000,
+          "diagram_type": "custom",
+          "diagram_data": {
+            "intent": "Show the leaves of the factor tree: 2, 2, 5, 7"
+          },
+          "visual_description": "The final leaves of the factor tree showing 2, 2, 5, 7"
+        }
+      ]
+    },
+    {
+      "title": "Final Representation",
+      "lang": "te-IN",
+      "image_description": "prime factorization summary chart",
+      "image_show_confidencescore": 0.8,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "$$140 = 2 \\times 2 \\times 5 \\times 7$$",
+          "speech": "Ippudu motham factors ni product form lo rasthunnam. 2 times 2 times 5 times 7.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000
+        },
+        {
+          "frame_type": "concept",
+          "text": "$$140 = 2^2 \\times 5 \\times 7$$",
+          "speech": "Exponents use chesi, 2 squared times 5 times 7 ani neat ga rayochu.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000
+        },
+        {
           "frame_type": "summary",
-          "text": "**Classification**:\n1. Acute: <90°\n2. Right: =90°\n3. Obtuse: >90°",
-          "speech": "To summarize, we classify triangles by their largest angle. Acute triangles have all small angles. Right triangles have one square corner. Obtuse triangles have one wide, open angle.",
+          "text": "**Summary: Prime Factorization**",
+          "speech": "Summary: Prime factorization ante composite number ni prime numbers product ga rayadam. Factor tree method simple ga help chesthundi.",
           "tts_engine": "google",
           "voice_role": "assistant",
           "duration_ms": 3000
@@ -238,24 +283,24 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ],
       "followup_questions": [
         {
-          "question": "Can a triangle have two obtuse angles?",
-          "speech": "Could a triangle ever have two obtuse angles? Try sketching it and see what happens!"
+          "question": "Can every number be prime factored?",
+          "speech": "Can every single number be broken down into prime factors like this?"
         },
         {
-          "question": "What is an equilateral triangle's type?",
-          "speech": "If all sides are equal, what kind of triangle is it? Is it acute, right, or obtuse?"
+          "question": "Is 1 a prime number?",
+          "speech": "Wait, is the number 1 considered a prime number in this method?"
         },
         {
-          "question": "How do angles add up?",
-          "speech": "Do you know what all three angles of any triangle always add up to?"
+          "question": "How to find LCM using factors?",
+          "speech": "How does this help us find the LCM of two different numbers?"
         }
       ]
     }
   ],
-  "session_theme": "Classifying triangles by angles",
-  "video_search_query": "classifying triangles by angles for kids",
+  "session_theme": "Prime Factorization using Factor Tree",
+  "video_search_query": "prime factorization factor tree method explained",
   "preferred_channels": [
-    "Khan Academy",
-    "Math Antics"
+    "Khan Academy India",
+    "Physics Wallah"
   ]
 }

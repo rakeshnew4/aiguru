@@ -22,7 +22,7 @@ class ModelConfig:
 class Settings(BaseSettings):
     # ── Legacy settings (for backward compatibility) ──────────────────────────
     GEMINI_API_KEY: str = ""
-    MODEL_ID: str = "gemini-3.1-flash-lite-preview"
+    MODEL_ID: str = "gemini-2.5-flash"
     TEMPERATURE: float = 0.7
     REDIS_URL: str = "redis://localhost:6379"
     USE_AGENT: bool = False
@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     
     # ── Model Tier Configuration ──────────────────────────────────────────────
     #
-    # POWER  → gemini-3.1-flash-lite-preview  (reasoning / teaching responses)
+    # POWER  → gemini-2.5-flash  (reasoning / teaching responses)
     #   Used for: main chat (pro users), BB main generation, image analysis
     #
     # CHEAPER → gemini-2.5-flash-lite          (structured output tasks)
@@ -42,7 +42,7 @@ class Settings(BaseSettings):
 
     # POWER: Deep-reasoning model for high-quality teaching responses
     POWER_PROVIDER: str = "gemini"
-    POWER_MODEL_ID: str = "gemini-3.1-flash-lite-preview"
+    POWER_MODEL_ID: str = "gemini-2.5-flash"
     POWER_TEMPERATURE: float = 0.7
     POWER_MAX_TOKENS: int = 16384
 
@@ -58,15 +58,6 @@ class Settings(BaseSettings):
     FASTER_TEMPERATURE: float = 0.3
     FASTER_MAX_TOKENS: int = 20000
     
-    # ── Provider API Keys ──────────────────────────────────────────────────────
-    GROQ_API_KEY: str = ""
-
-    # AWS Bedrock Configuration
-    AWS_ACCESS_KEY_ID: str = ""
-    AWS_SECRET_ACCESS_KEY: str = ""
-    AWS_REGION: str = "us-east-1"
-    AWS_BEARER_TOKEN_BEDROCK: str = ""  # Alternative auth method (if not using access keys)
-
     # ── Payments Configuration ────────────────────────────────────────────────
     RAZORPAY_KEY_ID: str = ""
     RAZORPAY_KEY_SECRET: str = ""
@@ -119,7 +110,7 @@ class Settings(BaseSettings):
                 model_id=self.POWER_MODEL_ID,
                 temperature=self.POWER_TEMPERATURE,
                 max_tokens=self.POWER_MAX_TOKENS,
-                supports_images=self.POWER_PROVIDER in [ "bedrock"],
+                supports_images=self.POWER_PROVIDER in ["gemini"],
             )
         elif tier == "cheaper":
             return ModelConfig(
@@ -127,7 +118,7 @@ class Settings(BaseSettings):
                 model_id=self.CHEAPER_MODEL_ID,
                 temperature=self.CHEAPER_TEMPERATURE,
                 max_tokens=self.CHEAPER_MAX_TOKENS,
-                supports_images=self.CHEAPER_PROVIDER in ["gemini", "bedrock"],
+                supports_images=self.CHEAPER_PROVIDER in ["gemini"],
             )
         else:  # faster
             return ModelConfig(
@@ -135,7 +126,7 @@ class Settings(BaseSettings):
                 model_id=self.FASTER_MODEL_ID,
                 temperature=self.FASTER_TEMPERATURE,
                 max_tokens=self.FASTER_MAX_TOKENS,
-                supports_images=self.FASTER_PROVIDER in ["gemini", "bedrock"],
+                supports_images=self.FASTER_PROVIDER in ["gemini"],
             )
 
 

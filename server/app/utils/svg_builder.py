@@ -35,6 +35,7 @@ from app.utils.svg_renderers import (
     _render_circle_radius,
     _render_rectangle_area,
     _render_line_graph,
+    _render_bar_chart,
     _render_flow,
     _render_comparison,
     _render_cycle,
@@ -67,6 +68,7 @@ _RENDERERS = {
     "circle_geometry": _render_circle_radius,  # basic circle until dedicated renderer added
     # Graphs / data
     "line_graph":      _render_line_graph,
+    "bar_chart":       _render_bar_chart,
     "graph_function":  _render_graph_function,
     "function_plot":   _render_graph_function,
     "parabola":        _render_graph_function,
