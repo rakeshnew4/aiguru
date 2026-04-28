@@ -22,6 +22,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -198,7 +199,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
     // ── Activity Result Launchers ─────────────────────────────────────────────
     private val pickImageLauncher =
-        registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri: Uri? ->
             if (uri != null) launchCrop(uri, isPdf = false)
             else saveNextPickedImageToChapter = false
         }
@@ -1132,7 +1133,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             .setItems(arrayOf("📷  Take Photo", "🖼️  Choose from Gallery")) { _, which ->
                 when (which) {
                     0 -> openCamera()
-                    1 -> pickImageLauncher.launch("image/*")
+                    1 -> pickImageLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 }
             }
             .show()

@@ -173,13 +173,18 @@ async def spend_credits(
 @router.get("/quota-status")
 async def quota_status(auth: AuthUser = Depends(require_auth)):
     """
-    Single call that returns everything the home screen needs to display quota:
-      - free_bb_today      : BB sessions used today
-      - free_bb_limit      : daily BB session allowance (0 = unlimited)
-      - free_chat_today    : chat questions used today
-      - free_chat_limit    : daily chat question allowance (0 = unlimited)
-      - credit_balance     : current credit balance (1 credit = 100 tokens)
-      - is_new_day         : whether the quota counters just reset (UTC rollover)
+    Single call that returns everything the home screen needs to display quota.
+    Also proactively resets free_bb_remaining / free_chat_remaining in Firestore
+    when a UTC day rollover is detected (so the first app open of the day is accurate
+    even before any session starts).
+
+    Response fields:
+      free_bb_remaining   : BB sessions left today (authoritative remaining count)
+      free_bb_limit       : daily BB session allowance (0 = unlimited)
+      free_chat_remaining : chat questions left today
+      free_chat_limit     : daily chat question allowance (0 = unlimited)
+      credit_balance      : current credit balance (1 credit = 100 tokens)
+      is_new_day          : whether quota counters just reset (UTC rollover)
     """
     from datetime import datetime, timezone as _tz
     db = get_firestore_db()
@@ -195,8 +200,12 @@ async def quota_status(auth: AuthUser = Depends(require_auth)):
         logger.warning("quota_status uid=%s: %s", uid, exc)
         raise HTTPException(500, "Failed to fetch quota status")
 
-    user_data = user_doc.to_dict() if user_doc.exists else {}
+    user_data   = user_doc.to_dict()   if user_doc.exists   else {}
     credit_data = credit_doc.to_dict() if credit_doc.exists else {}
+
+    bb_limit   = int(user_data.get("plan_daily_bb_limit")   or 2)
+    chat_limit = int(user_data.get("plan_daily_chat_limit") or 12)
+    balance    = int(credit_data.get("balance") or 0)
 
     # Detect UTC day rollover
     questions_updated_at = int(user_data.get("questions_updated_at") or 0)
@@ -208,17 +217,34 @@ async def quota_status(auth: AuthUser = Depends(require_auth)):
         except Exception:
             pass
 
-    bb_today   = 0 if is_new_day else int(user_data.get("bb_sessions_today") or 0)
-    chat_today = 0 if is_new_day else int(user_data.get("chat_questions_today") or 0)
-    bb_limit   = int(user_data.get("plan_daily_bb_limit") or 2)
-    chat_limit = int(user_data.get("plan_daily_chat_limit") or 12)
-    balance    = int(credit_data.get("balance") or 0)
+    if is_new_day:
+        # Proactively reset remaining counts so the app sees fresh values immediately
+        try:
+            user_ref.update({
+                "free_bb_remaining":   bb_limit,
+                "free_chat_remaining": chat_limit,
+                "bb_sessions_today":   0,
+                "chat_questions_today": 0,
+                "questions_updated_at": _now_ms(),
+            })
+        except Exception as exc:
+            logger.warning("quota_status: day-reset write failed uid=%s: %s", uid, exc)
+        bb_remaining   = bb_limit
+        chat_remaining = chat_limit
+    else:
+        # Read explicit remaining fields; fall back to computing from used counter
+        raw_bb   = user_data.get("free_bb_remaining")
+        raw_chat = user_data.get("free_chat_remaining")
+        bb_today   = int(user_data.get("bb_sessions_today")   or 0)
+        chat_today = int(user_data.get("chat_questions_today") or 0)
+        bb_remaining   = int(raw_bb)   if raw_bb   is not None else max(0, bb_limit   - bb_today)
+        chat_remaining = int(raw_chat) if raw_chat is not None else max(0, chat_limit - chat_today)
 
     return {
-        "free_bb_today":   bb_today,
-        "free_bb_limit":   bb_limit,
-        "free_chat_today": chat_today,
-        "free_chat_limit": chat_limit,
-        "credit_balance":  balance,
-        "is_new_day":      is_new_day,
+        "free_bb_remaining":   bb_remaining,
+        "free_bb_limit":       bb_limit,
+        "free_chat_remaining": chat_remaining,
+        "free_chat_limit":     chat_limit,
+        "credit_balance":      balance,
+        "is_new_day":          is_new_day,
     }

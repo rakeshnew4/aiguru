@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-04-27 16:37:28 | session=QZCFBBGJ_94d9ab90 ===
+=== BB_MAIN | 2026-04-28 05:07:30 | session=RFQp1HbS_77e60e5f ===
 
 === SYSTEM ===
 You are a visual AI tutor. Return ONLY valid JSON — no text outside JSON.
@@ -47,40 +47,40 @@ TTS every frame: first frame→android/teacher; concept/memory/diagram→gemini/
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: Photosynthesis
-Lesson title: Unlocking Photosynthesis: How Plants Eat Light
-Category: science
+Student's EXACT question: Topic: What if the angle isn't 90 degrees?
+
+[Speech context from previous lesson: A right-angled triangle is special because it always has one perfect 90-degree corner, like the corner of a square. Look for the small square symbol in the corner. That marks the ninety-degree angle. Not every triangle has this corner. Can you spot one in your room right now? The Pythagoras theorem formula is a squared plus b squared equals c squared. It connects the lengths of all three sides. This formula helps us find any missing side if we know the other two. But wait, which side is which? Let's label them to make sure we use the formula correctly. The longest side is called the hypotenuse. It is always directly across from the ninety-degree angle. The two shorter sides that touch the right angle are just called the legs. The hypotenuse is always the side that doesn't touch the square corner. Can you find it? If a is three and b is four, their squares add up to twenty-five. Since five squared is twenty-five, side c must be five. Three squared is nine, four squared is sixteen. Nine plus sixteen equals twenty-five. Now that we can solve for sides, where might we actually use this in the real world? Engineers and architects use this to make sure walls are straight and roofs are an]
+Lesson title: What if the angle isn't 90 degrees?
+
+[Speech context from pr
+Category: general
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
-Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
+Generate EXACTLY 0 steps with APPROXIMATELY 4 frames each.
 Steps to generate in this batch:
-- The Ingredients: Sunlight, Water, and CO2
-- Inside the Leaf: Chloroplasts and Chlorophyll
-- The Light-Dependent Reactions
-- The Calvin Cycle: Making Sugar
-- The Big Picture: Why Oxygen Matters
 
-This topic benefits from SVG diagrams — use at least one diagram frame per step.
+
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants an engaging introduction to photosynthesis, focusing on the basic ingredients plants need to create energy.
+What the student specifically wants: The student wants to understand how triangles are classified when they do not contain a 90-degree angle.
 Question type: conceptual
 Student level: Class 5
-Topic type: science_biology | Scope: simple
-Key concepts to cover (ALL of these): Photosynthesis definition, Sunlight as energy, Carbon dioxide and water, Glucose production
-Generate EXACTLY 5 steps — no more, no less.
+Topic type: math_geometry | Scope: medium
+What student already knows (DO NOT repeat this): The student understands that a right-angled triangle has one 90-degree angle marked by a small square symbol.
+Key concepts to cover (ALL of these): acute triangle, obtuse triangle, triangle classification by angles
+Generate EXACTLY 4 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-DIAGRAM RECOMMENDATION: This topic likely needs a "leaf_anatomy" diagram (confidence 98%). Use diagram_type="leaf_anatomy" for your diagram frame(s).
+DIAGRAM RECOMMENDATION: This topic likely needs a "triangle" diagram (confidence 97%). Use diagram_type="triangle" for your diagram frame(s).
 
-SUBJECT GUIDANCE (Science — Biology):
-• Use cycle for life cycles/processes (mitosis, water cycle, photosynthesis).
-• Use PATH 2 (diagram_type=custom) for anatomy cross-sections (heart, leaf, kidney).
-• Concept frames: function → structure → real-body example.
-• End with a summary frame.
+SUBJECT GUIDANCE (Math — Geometry):
+• Use diagram_type triangle, polygon, circle_geometry, angle, or coordinate_plane.
+• Show labelled measurements in the diagram data (a_val, b_val, show_angles, etc.).
+• Concept frames: state property → prove/derive → example with numbers.
+• End with a summary frame of key properties.
 
 ---END LESSON BRIEF---
 
@@ -90,73 +90,43 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
 {
   "steps": [
     {
-      "title": "The Ingredients: Sunlight, Water, CO2",
+      "title": "Beyond Right Angles",
       "lang": "en-US",
-      "image_description": "photosynthesis chemical formula diagram sunlight water carbon dioxide",
-      "image_show_confidencescore": 0.9,
+      "image_description": "acute obtuse and right triangle classification diagram",
+      "image_show_confidencescore": 0.95,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "**Photosynthesis**:\n6CO2 + 6H2O + Light → C6H12O6 + 6O2",
-          "speech": "Photosynthesis is the process where plants transform sunlight, water, and carbon dioxide into glucose for energy. Think of it as a plant cooking its own food using light.",
+          "text": "Not all triangles have a **90° angle**.",
+          "speech": "Not every triangle has a perfect ninety-degree corner. When a triangle lacks that square corner, we classify it based on whether its angles are smaller or larger than ninety degrees.",
           "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
-          "frame_type": "diagram",
-          "text": "**Inputs**:\nSunlight, Water, CO2",
-          "speech": "Plants act like tiny factories. They soak up water through their roots, breathe in carbon dioxide from the air, and capture energy from the sun.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500,
-          "diagram_type": "custom",
-          "diagram_data": {
-            "intent": "Show a plant with arrows pointing inward for Sun, Water, and CO2"
-          },
-          "visual_description": "simple plant diagram with arrows for inputs"
-        },
-        {
           "frame_type": "concept",
-          "text": "**Real-world**:\nSolar panels vs leaves",
-          "speech": "Just like solar panels on a house roof collect energy from the sun, leaves collect energy to power the plant's growth.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        }
-      ]
-    },
-    {
-      "title": "Inside the Leaf: Chloroplasts",
-      "lang": "en-US",
-      "image_description": "plant cell chloroplast diagram biology",
-      "image_show_confidencescore": 0.95,
-      "frames": [
-        {
-          "frame_type": "concept",
-          "text": "**Chloroplasts**:\nThe plant's kitchen",
-          "speech": "Inside every leaf are tiny structures called chloroplasts. These are the specific kitchen areas where the food-making magic actually happens.",
+          "text": "The **Right Angle** (90°)",
+          "speech": "Remember, a right-angled triangle is the specific case where one corner is exactly ninety degrees. Everything else falls into two other special groups.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
           "frame_type": "diagram",
-          "text": "**Chlorophyll**:\nGreen pigment",
-          "speech": "Inside the chloroplasts, a green pigment called chlorophyll acts like a solar collector. It grabs the light energy needed to start the reaction.",
+          "text": "Triangle Comparison",
+          "speech": "Imagine tilting the sides of a right triangle. If you push the sides inward, the corner gets smaller. If you pull them out, the corner gets wider.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500,
-          "diagram_type": "custom",
+          "diagram_type": "triangle",
           "diagram_data": {
-            "intent": "Cross-section of a leaf showing cells and chloroplasts"
-          },
-          "visual_description": "microscopic view of leaf cells with green chloroplasts"
+            "intent": "Show a right triangle next to an acute and an obtuse one for visual comparison"
+          }
         },
         {
           "frame_type": "concept",
-          "text": "**Next step**:\nHow does light start the reaction?",
-          "speech": "Now that we have the ingredients and the kitchen ready, how does the light actually start the process? Let's explore the light reactions.",
+          "text": "Ready to explore **Acute** vs **Obtuse**?",
+          "speech": "Are you ready to see what happens when those angles get smaller or larger than that square corner?",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2000
@@ -164,97 +134,103 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ]
     },
     {
-      "title": "The Light-Dependent Reactions",
+      "title": "The Acute Triangle",
       "lang": "en-US",
-      "image_description": "light dependent reaction photosynthesis cycle diagram",
+      "image_description": "acute triangle with all angles less than 90 degrees",
+      "image_show_confidencescore": 0.9,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "**Acute Triangle** (<90°)",
+          "speech": "An acute triangle is one where all three angles are smaller than ninety degrees. Think of them as sharp, pointy triangles.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
+          "frame_type": "diagram",
+          "text": "Sharp Corners",
+          "speech": "If you look at the corners, they are all 'acute', or sharp, like the tip of a pencil. None of them are wide or square.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500,
+          "diagram_type": "triangle",
+          "diagram_data": {
+            "intent": "Display a triangle with all angles measuring 60 degrees"
+          }
+        },
+        {
+          "frame_type": "concept",
+          "text": "Real-world **Acute**",
+          "speech": "You can find acute triangles in the structure of roof trusses or the shape of a slice of pizza that has been cut very narrowly.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
+          "frame_type": "concept",
+          "text": "What about **wide** angles?",
+          "speech": "But what happens if we pull one corner outward until it's wider than a square corner? That's our next type.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000
+        }
+      ]
+    },
+    {
+      "title": "The Obtuse Triangle",
+      "lang": "en-US",
+      "image_description": "obtuse triangle with one angle greater than 90 degrees",
+      "image_show_confidencescore": 0.9,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "**Obtuse Triangle** (>90°)",
+          "speech": "An obtuse triangle has one angle that is wider than ninety degrees. It looks like it's stretching out or leaning back.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
+          "frame_type": "diagram",
+          "text": "One Wide Corner",
+          "speech": "Notice how one of the angles opens up much wider than a square. The other two angles must stay small to keep the triangle closed.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500,
+          "diagram_type": "triangle",
+          "diagram_data": {
+            "intent": "Show a triangle with one angle at 120 degrees"
+          }
+        },
+        {
+          "frame_type": "concept",
+          "text": "Real-world **Obtuse**",
+          "speech": "Think of a boomerang or a wide-open laptop screen. Those shapes often form an obtuse angle at the hinge or the curve.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
+          "frame_type": "concept",
+          "text": "Ready to **summarize**?",
+          "speech": "We have seen the three main types. Shall we put it all together to keep it organized in your mind?",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000
+        }
+      ]
+    },
+    {
+      "title": "Summary of Triangles",
+      "lang": "en-US",
+      "image_description": "summary chart of acute right and obtuse triangles",
       "image_show_confidencescore": 0.85,
       "frames": [
-        {
-          "frame_type": "concept",
-          "text": "**Light-Dependent**:\nSplitting water",
-          "speech": "In the first stage, sunlight hits the chlorophyll and splits water molecules apart. This releases oxygen as a byproduct and stores energy.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
-        {
-          "frame_type": "diagram",
-          "text": "**Energy storage**:\nATP and NADPH",
-          "speech": "The energy captured from sunlight is converted into chemical batteries called ATP and NADPH, which power the next stage.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500,
-          "diagram_type": "cycle",
-          "diagram_data": {
-            "intent": "Cycle diagram showing light and water entering, oxygen leaving"
-          },
-          "visual_description": "cycle showing water and light entering, oxygen exiting"
-        },
-        {
-          "frame_type": "concept",
-          "text": "**Curiosity**:\nWhere does the sugar come from?",
-          "speech": "We have energy, but we don't have food yet. How do we turn that energy into sugar? That happens in the Calvin Cycle.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2000
-        }
-      ]
-    },
-    {
-      "title": "The Calvin Cycle: Making Sugar",
-      "lang": "en-US",
-      "image_description": "calvin cycle photosynthesis diagram",
-      "image_show_confidencescore": 0.85,
-      "frames": [
-        {
-          "frame_type": "concept",
-          "text": "**Calvin Cycle**:\nFixing Carbon",
-          "speech": "The Calvin Cycle doesn't need light directly. It uses the energy we just made to grab carbon dioxide and stitch it into glucose molecules.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
-        {
-          "frame_type": "diagram",
-          "text": "**Glucose**:\nPlant food",
-          "speech": "Glucose is the sugar plants use to build stems, leaves, and fruit. It is essentially stored energy for the plant to use later.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500,
-          "diagram_type": "cycle",
-          "diagram_data": {
-            "intent": "Cycle showing CO2 entering and Glucose leaving"
-          },
-          "visual_description": "Calvin cycle diagram showing sugar production"
-        },
-        {
-          "frame_type": "concept",
-          "text": "**Real-life**:\nEating veggies",
-          "speech": "When you eat a vegetable, you are actually eating the stored energy that the plant made during this cycle. Isn't that wild?",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2000
-        }
-      ]
-    },
-    {
-      "title": "The Big Picture: Why Oxygen Matters",
-      "lang": "en-US",
-      "image_description": "photosynthesis oxygen cycle earth diagram",
-      "image_show_confidencescore": 0.8,
-      "frames": [
-        {
-          "frame_type": "concept",
-          "text": "**Oxygen**:\nOur byproduct",
-          "speech": "Remember that oxygen released during the light reactions? That is what humans and animals breathe. Plants clean our air while making their food.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
         {
           "frame_type": "summary",
-          "text": "**Summary**:\n1. Sun/Water/CO2 in\n2. Chloroplasts work\n3. Oxygen released\n4. Glucose created",
-          "speech": "In summary, photosynthesis uses light energy to turn water and carbon dioxide into glucose for the plant, while releasing life-giving oxygen for us.",
+          "text": "**Classification**:\n1. Acute: <90°\n2. Right: =90°\n3. Obtuse: >90°",
+          "speech": "To summarize, we classify triangles by their largest angle. Acute triangles have all small angles. Right triangles have one square corner. Obtuse triangles have one wide, open angle.",
           "tts_engine": "google",
           "voice_role": "assistant",
           "duration_ms": 3000
@@ -262,24 +238,24 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ],
       "followup_questions": [
         {
-          "question": "What happens to plants at night?",
-          "speech": "What do plants do at night when there is no sunlight for photosynthesis?"
+          "question": "Can a triangle have two obtuse angles?",
+          "speech": "Could a triangle ever have two obtuse angles? Try sketching it and see what happens!"
         },
         {
-          "question": "Do all plants have green leaves?",
-          "speech": "Do plants that aren't green still perform photosynthesis? How?"
+          "question": "What is an equilateral triangle's type?",
+          "speech": "If all sides are equal, what kind of triangle is it? Is it acute, right, or obtuse?"
         },
         {
-          "question": "Could we live without photosynthesis?",
-          "speech": "What would happen to the Earth's atmosphere if all plants suddenly stopped photosynthesizing?"
+          "question": "How do angles add up?",
+          "speech": "Do you know what all three angles of any triangle always add up to?"
         }
       ]
     }
   ],
-  "session_theme": "Photosynthesis process and energy production",
-  "video_search_query": "photosynthesis explained for kids simple",
+  "session_theme": "Classifying triangles by angles",
+  "video_search_query": "classifying triangles by angles for kids",
   "preferred_channels": [
-    "Khan Academy India",
-    "Physics Wallah"
+    "Khan Academy",
+    "Math Antics"
   ]
 }

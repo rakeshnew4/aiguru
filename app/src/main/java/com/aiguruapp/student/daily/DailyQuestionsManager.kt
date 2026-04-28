@@ -258,15 +258,17 @@ object DailyQuestionsManager {
             val body = resp.body?.string() ?: return null
             if (!resp.isSuccessful) return null
             val j = JSONObject(body)
-            val bbToday   = j.optInt("free_bb_today", 0)
-            val bbLimit   = j.optInt("free_bb_limit", 2)
-            val chatToday = j.optInt("free_chat_today", 0)
-            val chatLimit = j.optInt("free_chat_limit", 12)
-            val balance   = j.optInt("credit_balance", 0)
+            // free_bb_remaining / free_chat_remaining are the authoritative remaining counts.
+            // Server resets them at UTC midnight or on first app open of the day.
+            val bbRemaining   = j.optInt("free_bb_remaining",   0)
+            val bbLimit       = j.optInt("free_bb_limit",       2)
+            val chatRemaining = j.optInt("free_chat_remaining", 0)
+            val chatLimit     = j.optInt("free_chat_limit",    12)
+            val balance       = j.optInt("credit_balance",      0)
             QuotaStatus(
-                freeBbLeft    = (bbLimit - bbToday).coerceAtLeast(0),
+                freeBbLeft    = bbRemaining,
                 freeBbLimit   = bbLimit,
-                freeChatLeft  = (chatLimit - chatToday).coerceAtLeast(0),
+                freeChatLeft  = chatRemaining,
                 freeChatLimit = chatLimit,
                 creditBalance = balance,
             )

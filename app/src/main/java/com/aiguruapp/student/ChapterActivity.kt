@@ -11,6 +11,7 @@ import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
 import android.widget.*
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -112,7 +113,7 @@ class ChapterActivity : BaseActivity() {
     }
 
     private val pickImageLauncher =
-        registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri: Uri? ->
             uri?.let { savePage(it.toString()) }
         }
 
@@ -1019,7 +1020,7 @@ class ChapterActivity : BaseActivity() {
             .setItems(arrayOf("📷  Take Photo", "🖼️  Choose from Gallery")) { _, which ->
                 when (which) {
                     0 -> openCamera()
-                    1 -> pickImageLauncher.launch("image/*")
+                    1 -> pickImageLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 }
             }.show()
     }

@@ -1,11 +1,11 @@
-=== DAILY_QUESTION_GEN | 2026-04-27 08:25:58 | session=none ===
+=== DAILY_QUESTION_GEN | 2026-04-28 05:03:52 | session=none ===
 
 === PROMPT ===
 Generate exactly 3 engaging daily learning questions for a student.
 
-Student's top subjects: Science, Math, History
-Recent topics studied: basic concepts
-Topics already used today (AVOID these): none
+Student's top subjects: General
+Recent topics studied: Explain Heart Pumping, Photosynthesis, Acids & Bases, Water Cycle, Newton's Laws of Motion
+Topics already used today (AVOID these): Light and Shadows, Early Civilizations, Number Systems
 
 Rules:
 - Each question must be thought-provoking and curiosity-driven (not "what is X")
@@ -27,24 +27,24 @@ hook: one-line real-world curiosity fact related to the question (under 12 words
 === RESPONSE ===
 [
   {
-    "question": "Why do shadows change length throughout the day?",
-    "subject": "Science",
-    "topic": "Light and Shadows",
+    "question": "Why does your heart beat faster when you exercise?",
+    "subject": "Biology",
+    "topic": "Heart Pumping",
     "difficulty": 1,
-    "hook": "Shadows are longest when the sun is lowest in the sky."
+    "hook": "Your heart beats 100,000 times every single day."
   },
   {
-    "question": "How would our number system change without the number zero?",
-    "subject": "Math",
-    "topic": "Number Systems",
+    "question": "How would plants survive if the sun suddenly dimmed?",
+    "subject": "Biology",
+    "topic": "Photosynthesis",
     "difficulty": 2,
-    "hook": "Ancient Romans did not have a symbol for zero."
+    "hook": "Photosynthesis creates nearly all the oxygen we breathe."
   },
   {
-    "question": "What if ancient civilizations never discovered how to write things down?",
-    "subject": "History",
-    "topic": "Early Civilizations",
+    "question": "Why do heavy objects fall at the same speed as light ones?",
+    "subject": "Physics",
+    "topic": "Newton's Laws of Motion",
     "difficulty": 3,
-    "hook": "Writing was invented independently in at least four different places."
+    "hook": "Galileo famously dropped objects from the Leaning Tower of Pisa."
   }
 ]

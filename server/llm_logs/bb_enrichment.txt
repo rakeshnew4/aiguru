@@ -1,45 +1,64 @@
-=== BB_ENRICHMENT | 2026-04-27 16:37:31 | session=none ===
+=== BB_ENRICHMENT | 2026-04-28 05:07:35 | session=none ===
 
 === SYSTEM ===
 You are a diagram data generator for an educational app. Output ONLY a valid JSON object — no text, no markdown, no explanation.
 
 === PROMPT ===
-Topic: "The Calvin Cycle: Making Sugar"
-Teaching content: "Glucose is the sugar plants use to build stems, leaves, and fruit. It is essentially stored energy for the plant to use later."
-Diagram type: cycle
+Topic: "The Acute Triangle"
+Teaching content: "If you look at the corners, they are all 'acute', or sharp, like the tip of a pencil. None of them are wide or square."
+Diagram type: triangle
 Color keys: primary (chalk white), label (yellow), secondary (sky blue), highlight (red), teal, orange, green, pink, purple, gold, coral, mint
-Schema: {"title":"Cycle Name","steps":["Stage 1","Stage 2","Stage 3","Stage 4"]}
-Hint: 3-6 stages arranged cyclically. Each stage 1-4 words. Last stage naturally leads back to first.
+Schema: {"labels":["A","B","C"],"show_height":false,"show_incircle":false,"show_circumcircle":false}
+Hint: show_height: true when Pythagoras or altitude is being taught. Labels can be angle names or side lengths. show_incircle/circumcircle: true only when explicitly relevant.
 Existing data (improve/complete this): {}
 
 Generate the BEST data JSON for this diagram. Fill ALL keys. Be accurate to the topic. Reply with ONLY the JSON object.
 
 === RESPONSE ===
 {
-  "title": "The Calvin Cycle",
-  "steps": [
-    "Carbon Fixation",
-    "Reduction Phase",
-    "Glucose Production",
-    "Regeneration of RuBP"
+  "triangle_type": "acute",
+  "vertices": [
+    {
+      "id": "A",
+      "coordinates": [50, 10],
+      "color": "chalk white"
+    },
+    {
+      "id": "B",
+      "coordinates": [10, 90],
+      "color": "chalk white"
+    },
+    {
+      "id": "C",
+      "coordinates": [90, 90],
+      "color": "chalk white"
+    }
   ],
-  "colors": {
-    "primary": "chalk white",
-    "label": "yellow",
-    "secondary": "sky blue",
-    "highlight": "red",
-    "stage_1_color": "teal",
-    "stage_2_color": "orange",
-    "stage_3_color": "green",
-    "stage_4_color": "purple",
-    "glucose_node": "gold",
-    "energy_input": "coral",
-    "byproduct_output": "mint"
-  },
-  "descriptions": {
-    "Carbon Fixation": "CO2 attaches to RuBP.",
-    "Reduction Phase": "ATP and NADPH convert molecules.",
-    "Glucose Production": "G3P leaves to form glucose.",
-    "Regeneration of RuBP": "RuBP is recycled for cycle."
-  }
+  "angles": [
+    {
+      "vertex": "A",
+      "label": "∠A",
+      "color": "red",
+      "value": "< 90°"
+    },
+    {
+      "vertex": "B",
+      "label": "∠B",
+      "color": "red",
+      "value": "< 90°"
+    },
+    {
+      "vertex": "C",
+      "label": "∠C",
+      "color": "red",
+      "value": "< 90°"
+    }
+  ],
+  "labels": ["A", "B", "C"],
+  "label_color": "yellow",
+  "fill_color": "sky blue",
+  "show_height": false,
+  "show_incircle": false,
+  "show_circumcircle": false,
+  "description": "An acute triangle where all three interior angles are less than 90 degrees."
 }

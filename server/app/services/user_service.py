@@ -119,6 +119,11 @@ def create_user_if_missing(
         "chat_questions_today": 0,
         "bb_sessions_today": 0,
         "questions_updated_at": now,
+        # ── Free session remaining counts (server manages; resets daily) ──────
+        # These are the authoritative "how many free sessions left today" fields.
+        # Decremented on each free session; reset to daily limit at UTC midnight.
+        "free_bb_remaining": 2,
+        "free_chat_remaining": 12,
         # ── Token counters (server increments these) ─────────────────────────
         "tokens_today": 0,
         "input_tokens_today": 0,
@@ -442,21 +447,15 @@ def check_and_record_quota(uid: str, request_type: str) -> tuple[bool, str, bool
     """
     Authoritative server-side quota gate.
 
-    Reads the live Firestore counter for the user, checks it against their plan
-    limit, and atomically increments it if the request is allowed.
-
-    Args:
-        uid:          Firebase Auth UID.
-        request_type: "chat" or "blackboard".
+    Uses `free_bb_remaining` / `free_chat_remaining` as the explicit remaining-count
+    source of truth.  These fields reset to the daily limit on UTC day rollover.
 
     Returns:
         (allowed: bool, reason: str, credit_mode: bool)
-        credit_mode=True means the session is running on paid credits (free quota
-        exhausted). credit_mode=False means the session is within the free daily
-        allowance — LLM costs for this session should NOT deduct from credits.
+        credit_mode=False — within free daily allowance (no credit deduction).
+        credit_mode=True  — free quota exhausted, session runs on paid credits.
 
-    Fails open (returns True, "", False) on Firestore/infrastructure errors so
-    users are never blocked due to backend issues.
+    Fails open (returns True, "", False) on infrastructure errors.
     """
     if not uid or uid == "guest_user":
         return True, "", False
@@ -475,24 +474,22 @@ def check_and_record_quota(uid: str, request_type: str) -> tuple[bool, str, bool
 
         data = doc.to_dict() or {}
         is_bb = request_type == "blackboard"
-        field = "bb_sessions_today" if is_bb else "chat_questions_today"
+        label       = "Blackboard" if is_bb else "Chat"
+        rem_field   = "free_bb_remaining"   if is_bb else "free_chat_remaining"
+        used_field  = "bb_sessions_today"   if is_bb else "chat_questions_today"
         limit_field = "plan_daily_bb_limit" if is_bb else "plan_daily_chat_limit"
-        label = "Blackboard" if is_bb else "Chat"
 
-        # Read plan limit from user doc (written by server on plan activation)
         raw_limit = data.get(limit_field)
         limit = int(raw_limit) if raw_limit is not None else (2 if is_bb else 12)
 
-        # Enforce free-tier limits if plan has expired
+        # Enforce free-tier limits if plan expired
         plan_expiry = int(data.get("plan_expiry_date") or 0)
         if plan_expiry > 0 and plan_expiry < _now_ms():
             limit = 2 if is_bb else 12
             logger.info("check_and_record_quota: plan expired for uid=%s — reverting to free limits", uid)
 
-        # UTC day rollover: if the last counter update was a previous calendar day
-        # the effective usage count resets to 0 (fresh daily allowance).
+        # Detect UTC day rollover
         questions_updated_at = int(data.get("questions_updated_at") or 0)
-        current_count = int(data.get(field) or 0)
         is_new_day = False
         if questions_updated_at > 0:
             try:
@@ -502,52 +499,68 @@ def check_and_record_quota(uid: str, request_type: str) -> tuple[bool, str, bool
             except (OSError, OverflowError, ValueError) as exc:
                 logger.warning("check_and_record_quota: timestamp parse error: %s", exc)
 
-        if is_new_day:
-            current_count = 0
-
-        # Block if limit exceeded (0 = unlimited) — but allow credit fallback first
-        if limit > 0 and current_count >= limit:
-            # Check if user has credits to spend as a fallback
-            credit_balance = 0
-            try:
-                credit_doc = db.collection("user_credits").document(uid).get()
-                if credit_doc.exists:
-                    credit_balance = int((credit_doc.to_dict() or {}).get("balance", 0))
-            except Exception as exc:
-                logger.warning("check_and_record_quota: credit read failed uid=%s: %s", uid, exc)
-
-            if credit_balance > 0:
-                # Free quota exhausted but user has credits — allow in credit_mode.
-                # record_tokens() will deduct from balance (1 credit per 100 tokens).
-                logger.info(
-                    "check_and_record_quota: CREDIT_MODE uid=%s type=%s "
-                    "count=%d/%d credit_balance=%d — running on credits",
-                    uid, request_type, current_count, limit, credit_balance,
-                )
-                return True, "", True   # credit_mode=True
-
-            logger.info(
-                "check_and_record_quota: BLOCKED uid=%s type=%s count=%d/%d credits=0",
-                uid, request_type, current_count, limit,
-            )
-            return False, (
-                f"You've used all {limit} daily {label} sessions and have no credits left. "
-                f"Add credits or come back tomorrow to continue."
-            ), False
-
-        # Allowed within free tier — increment counter, credit_mode=False
         now = _now_ms()
-        if is_new_day:
-            # Day just rolled over — reset to 1 rather than incrementing a stale value
-            ref.update({field: 1, "questions_updated_at": now})
-        else:
-            ref.update({field: Increment(1), "questions_updated_at": now})
 
-        logger.debug(
-            "check_and_record_quota: FREE_TIER uid=%s type=%s count=%d→%d limit=%d",
-            uid, request_type, current_count, current_count + 1, limit,
+        if is_new_day:
+            # New UTC day — reset remaining to limit, consume 1 for this session
+            new_remaining = max(0, limit - 1)
+            ref.update({
+                rem_field:  new_remaining,
+                used_field: 1,
+                "questions_updated_at": now,
+            })
+            logger.info(
+                "check_and_record_quota: NEW_DAY FREE uid=%s type=%s reset limit=%d remaining→%d",
+                uid, request_type, limit, new_remaining,
+            )
+            return True, "", False  # free session
+
+        # Same day — read remaining directly
+        raw_remaining = data.get(rem_field)
+        if raw_remaining is None:
+            # Old account without the field — backfill from used counter
+            used = int(data.get(used_field) or 0)
+            raw_remaining = max(0, limit - used)
+
+        remaining = int(raw_remaining)
+
+        if remaining > 0:
+            # Free session — decrement remaining, increment used counter
+            ref.update({
+                rem_field:  Increment(-1),
+                used_field: Increment(1),
+                "questions_updated_at": now,
+            })
+            logger.debug(
+                "check_and_record_quota: FREE uid=%s type=%s remaining=%d→%d",
+                uid, request_type, remaining, remaining - 1,
+            )
+            return True, "", False  # free session, credit_mode=False
+
+        # remaining == 0 — check credit fallback
+        credit_balance = 0
+        try:
+            credit_doc = db.collection("user_credits").document(uid).get()
+            if credit_doc.exists:
+                credit_balance = int((credit_doc.to_dict() or {}).get("balance", 0))
+        except Exception as exc:
+            logger.warning("check_and_record_quota: credit read failed uid=%s: %s", uid, exc)
+
+        if credit_balance > 0:
+            logger.info(
+                "check_and_record_quota: CREDIT_MODE uid=%s type=%s remaining=0 balance=%d",
+                uid, request_type, credit_balance,
+            )
+            return True, "", True  # credit_mode=True
+
+        logger.info(
+            "check_and_record_quota: BLOCKED uid=%s type=%s remaining=0 credits=0",
+            uid, request_type,
         )
-        return True, "", False   # credit_mode=False — free session, don't charge credits
+        return False, (
+            f"You've used all your free daily {label} sessions and have no credits left. "
+            f"Add credits or come back tomorrow to continue."
+        ), False
 
     except Exception as exc:
         logger.error("check_and_record_quota: unexpected error uid=%s: %s", uid, exc)

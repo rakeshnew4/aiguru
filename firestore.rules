@@ -34,7 +34,7 @@ service cloud.firestore {
     match /users_table/{userId} {
       allow read: if isOwner(userId);
       // Client may only increment the daily-quota counter fields.
-      // All other fields (plan, tokens, expiry, etc.) remain server-only.
+      // free_bb_remaining, free_chat_remaining, plan fields — server-only.
       allow update: if isOwner(userId)
         && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['chat_questions_today', 'bb_sessions_today', 'questions_updated_at', 'ai_tts_chars_used_today', 'ai_tts_updated_at']);
