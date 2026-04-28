@@ -1466,6 +1466,8 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
             }.show()
     }
 
+
+
     /** Mirrors FullChatFragment.openCamera() */
     private fun openHomeCameraCapture() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
