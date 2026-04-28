@@ -5,7 +5,7 @@
     android:id="@+id/homeDrawerLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true">
+    >
 
 <!-- ═══════════════════════  MAIN CONTENT  ═══════════════════════ -->
 <LinearLayout
@@ -13,7 +13,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@color/colorBackground"
-    android:fitsSystemWindows="true">
+    >
 
     <!-- ── Compact top nav bar — always dark, never school-themed ── -->
     <LinearLayout
@@ -933,7 +933,7 @@
     android:layout_gravity="start"
     android:orientation="vertical"
     android:background="@color/colorSurface"
-    android:fitsSystemWindows="true">
+    >
 
     <!-- Drawer header -->
     <LinearLayout

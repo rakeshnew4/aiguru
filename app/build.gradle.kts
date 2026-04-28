@@ -22,8 +22,8 @@ android {
         applicationId = "com.aiguruapp.student"
         minSdk = 26
         targetSdk = 36
-        versionCode = 15
-        versionName = "1.3.0"
+        versionCode = 18
+        versionName = "1.3.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Server URL, Razorpay key, and payment URL are fetched from Firestore admin_config/global
         // at runtime via AdminConfigRepository — no compile-time keys needed.
@@ -126,7 +126,7 @@ dependencies {
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
     
     // Voice & Audio
-    implementation("androidx.camera:camera-core:1.3.4")
+    implementation("androidx.camera:camera-core:1.4.2")
     
     // Image handling
     implementation("com.squareup.picasso:picasso:2.8")

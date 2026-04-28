@@ -4,6 +4,8 @@ import android.os.Bundle
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.enableEdgeToEdge
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.aiguruapp.student.calculator.FloatingCalculatorView
 import com.aiguruapp.student.utils.SchoolTheme
 
@@ -33,6 +35,14 @@ open class BaseActivity : AppCompatActivity() {
      */
     override fun onPostCreate(savedInstanceState: Bundle?) {
         super.onPostCreate(savedInstanceState)
+        // Apply system bar insets to the content view so layouts don't go under the bars.
+        // This works together with enableEdgeToEdge() + removing fitsSystemWindows from roots.
+        val contentView = findViewById<ViewGroup>(android.R.id.content)
+        ViewCompat.setOnApplyWindowInsetsListener(contentView) { v, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            insets
+        }
         if (floatingCalc == null) {
             floatingCalc = FloatingCalculatorView(this)
             addContentView(

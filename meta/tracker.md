@@ -5,6 +5,24 @@
 
 ---
 
+## 2026-04-28 (session 5)
+
+**Asked:** Check 16KB page-size compliance of app-release.aab; run tests and fix.
+
+**Findings:**
+- `libimage_processing_util_jni.so` was 4KB-aligned (FAIL) — comes from `androidx.camera:camera-core`
+- `libdatastore_shared_counter.so` was already 16KB-aligned (OK) — comes from DataStore
+- Both `.so` files are in `base/lib/arm64-v8a/` and `base/lib/armeabi-v7a/` in the AAB (ABI filtering working)
+- `camera-core:1.3.4` ships 4KB-aligned .so; `camera-core:1.4.2+` ships 16KB-aligned .so
+- Root cause traced by reading ELF PT_LOAD alignment from the actual binary and its JNI function name prefix `Java_androidx_camera_core_ImageProcessingUtil_*`
+
+**Fix:**
+- `app/build.gradle.kts:129` — bumped `camera-core` from `1.3.4` → `1.4.2`
+- Rebuild needed: `./gradlew clean bundleRelease` (or Android Studio Clean + Build)
+- After rebuild, both .so files will be 16KB-aligned — Google Play 16KB page-size check will pass
+
+---
+
 ## 2026-04-28 (session 4)
 
 **Asked:** 3 issues: (1) animations still generate even when unchecked; (2) dialog Start/Cancel buttons invisible; (3) free sessions should be truly free — credits only consumed when free quota exhausted. Also clarify credit Firestore key.
@@ -697,3 +715,4 @@ Note: BbInteractivePopup.kt loaded into context by linter. Updating android meta
 - `app/.../HomeActivity.kt` — Fixed secondary bug: UCrop failure in `launchHomeCrop()` now falls back to `applyHomeCroppedImage(sourceUri)` (was silently dropping the image).
 
 **NCERT status:** Classes 8–12 are all present in `app/src/main/assets/ncert.json` (lines 203, 248, 298, 348, 438).
+2026-04-28 | Fix edge-to-edge black bars on Android 15 / Pixel 9 | app/src/main/java/com/aiguruapp/student/BaseActivity.kt:37-47 (added ViewCompat.setOnApplyWindowInsetsListener on android.R.id.content to apply systemBars insets); app/src/main/res/layout/activity_*.xml all 30 files (removed android:fitsSystemWindows=true from root views via sed)
