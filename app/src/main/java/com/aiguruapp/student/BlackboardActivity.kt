@@ -15,6 +15,8 @@ import android.util.Base64
 import androidx.activity.enableEdgeToEdge
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.yalantis.ucrop.UCrop
 import android.view.animation.AlphaAnimation
 import android.view.animation.AnimationSet
@@ -349,6 +351,15 @@ class BlackboardActivity : AppCompatActivity() {
         bbAskInput.setOnEditorActionListener { _, _, _ -> sendBbQuestion(); true }
         bbAskToggle.setOnClickListener { toggleAskBar() }   // ✕ inside ask bar
         bbChatFab.setOnClickListener { toggleAskBar() }     // 💬 floating FAB
+
+        // Keep ask bar above keyboard on API 35+ edge-to-edge
+        val bbAskBar = findViewById<android.widget.LinearLayout>(R.id.bbAskBar)
+        ViewCompat.setOnApplyWindowInsetsListener(bbAskBar) { v, insets ->
+            val imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            val navBottom = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, (12 * resources.displayMetrics.density).toInt() + maxOf(imeBottom, navBottom) - navBottom)
+            insets
+        }
         bbCameraBtn.setOnClickListener { launchBbCamera() }
         bbImgPreviewRemove.setOnClickListener { clearBbImage() }
         bbMicBtn.setOnClickListener {
@@ -1512,7 +1523,9 @@ class BlackboardActivity : AppCompatActivity() {
             frame.youtubeClip?.let { if (!collectedClips.any { c -> c.videoId == it.videoId }) collectedClips.add(it) }
             stepsScrollView.post { stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }
             if (!isPaused && frame.speech.isNotBlank()) {
-                contentText.postDelayed({ speakFrame(stepIdx, frameIdx) }, 400)
+                // Diagram frames: give 2.5s silent viewing window before TTS starts
+                showSubtitle("Take a look…  👀")
+                contentText.postDelayed({ speakFrame(stepIdx, frameIdx) }, 2500)
             }
             return
         }
@@ -1801,8 +1814,7 @@ class BlackboardActivity : AppCompatActivity() {
             var checked: Boolean,
         )
         val opts = listOf(
-            Opt("🎯", "Interactive quizzes",   "Currently not active",                               0,          cfg.quizEnabled),
-            Opt("🎬", "Show Related videos",         "~ 10 extra credits",0xFFF57F17.toInt(), cfg.videosEnabled),
+            Opt("", "Show Related videos",         "~ 10 extra credits",0xFFF57F17.toInt(), cfg.videosEnabled),
             Opt("🎨", "Generate Animated Visuals",      "~ 30 extra credits ", 0xFFE65100.toInt(), cfg.animationsEnabled),
             Opt("🖼️", "generate Topic images",           "~ 10 extra credits",    0xFF2E7D32.toInt(), cfg.imagesEnabled),
         )
@@ -1937,10 +1949,10 @@ class BlackboardActivity : AppCompatActivity() {
             .setView(scrollView)
             .setPositiveButton(if (isPreSession) "Start Lesson" else "Save") { _, _ ->
                 val newCfg = BBSessionConfig(
-                    checkBoxes[0].isChecked,
-                    checkBoxes[1].isChecked,
-                    checkBoxes[2].isChecked,
-                    checkBoxes[3].isChecked,
+                    quizEnabled       = false,
+                    videosEnabled     = checkBoxes[0].isChecked,
+                    animationsEnabled = checkBoxes[1].isChecked,
+                    imagesEnabled     = checkBoxes[2].isChecked,
                 )
                 sessionConfig = newCfg
                 BBSessionConfig.save(this, newCfg)
@@ -2243,10 +2255,19 @@ class BlackboardActivity : AppCompatActivity() {
             .show()
     }
 
+    private var ttsRateApplied = false
+
     private fun speakFrame(stepIdx: Int, frameIdx: Int) {
         if (currentStepIdx != stepIdx || currentFrameIdx != frameIdx) return
         val step  = steps.getOrNull(stepIdx) ?: return
         val frame = step.frames.getOrNull(frameIdx) ?: return
+
+        // Set grade-aware TTS speech rate on first speak (android TTS only; AI engine ignores setSpeechRate)
+        if (!ttsRateApplied) {
+            ttsRateApplied = true
+            val gradeNum = cachedMetadata.grade.filter { it.isDigit() }.toIntOrNull() ?: 9
+            tts.setSpeechRate(when { gradeNum <= 7 -> 0.85f; gradeNum <= 10 -> 0.92f; else -> 1.00f })
+        }
 
         // Determine effective TTS engine for this frame:
         //   - First frame of the whole lesson → android (zero-delay guaranteed start)
@@ -2981,6 +3002,20 @@ class BlackboardActivity : AppCompatActivity() {
         }
     }
 
+    /** Shows a small top-banner notification for 2s when lesson ends without quizzes. */
+    private fun showLessonCompleteNotif() {
+        val notif = findViewById<TextView>(R.id.bbLessonCompleteNotif) ?: return
+        notif.alpha = 0f
+        notif.visibility = View.VISIBLE
+        notif.animate().alpha(1f).setDuration(300).withEndAction {
+            notif.postDelayed({
+                notif.animate().alpha(0f).setDuration(300).withEndAction {
+                    notif.visibility = View.GONE
+                }.start()
+            }, 2000)
+        }.start()
+    }
+
     /** Show a summary score card at the end of the lesson when quizzes were played. */
     private fun showScoreCard() {
         showRelatedVideosSection()
@@ -3088,14 +3123,18 @@ class BlackboardActivity : AppCompatActivity() {
                         val isLastFrameOverall = stepIdx == steps.size - 1 &&
                             frameIdx == (steps.lastOrNull()?.frames?.size ?: 1) - 1
                         val isLastFrameOfStep = frameIdx == (step?.frames?.size ?: 1) - 1
-                        // 1s pause between steps, 2s for emphasis frames (apply/curiosity), else 300ms.
-                        val pauseMs: Long = when {
-                            isLastFrameOfStep && !isLastFrameOverall -> 1000L
-                            f?.frameType in setOf("apply", "curiosity", "hook") -> 2000L
-                            else -> 300L
-                        }
+                        // Use LLM-set duration_ms as post-TTS display time (300–5000ms).
+                        // For question frames, add pause_after_ms thinking time and show a cue.
+                        val postTtsWait = (f?.durationMs ?: 2000L).coerceIn(300L, 5000L)
+                        val thinkingWait: Long = if (f?.frameType == "question") {
+                            runOnUiThread { showSubtitle("🤔  take a moment…") }
+                            (f.pauseAfterMs).coerceAtLeast(2000L)
+                        } else 0L
+                        val pauseMs = postTtsWait + thinkingWait
                         if (isLastFrameOverall && quizTotal > 0) {
                             stepsScrollView.postDelayed({ showScoreCard() }, 600)
+                        } else if (isLastFrameOverall) {
+                            stepsScrollView.postDelayed({ showLessonCompleteNotif() }, 400)
                         } else {
                             stepsScrollView.postDelayed({ advanceFrame() }, pauseMs)
                         }

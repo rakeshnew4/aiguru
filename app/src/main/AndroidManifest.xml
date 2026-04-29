@@ -125,7 +125,8 @@
         <!-- Blackboard step-by-step audio-visual lesson mode -->
         <!-- singleTop: prevents multiple BB instances stacking up when back is pressed -->
         <activity android:name=".BlackboardActivity" android:exported="false"
-            android:launchMode="singleTop"/>
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize"/>
         <activity android:name=".BbSavedSessionsActivity" android:exported="false"/>
         <activity android:name=".TeacherChatReviewActivity" android:exported="false"
             android:windowSoftInputMode="adjustResize"/>

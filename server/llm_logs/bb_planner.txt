@@ -1,13 +1,19 @@
-=== BB_PLANNER | 2026-04-28 16:50:22 | session=KkhkqOQI_880f2ec6 ===
+=== BB_PLANNER | 2026-04-29 07:04:29 | session=v6LtCBtv_02e9767d ===
 
 === PROMPT ===
 You are a lesson analyst for a personal visual AI tutor responding to a student's SPECIFIC question.
 Analyze exactly what the student is asking and return a focused lesson plan.
 Output ONLY valid JSON — nothing else.
 
-Student question (answer THIS specifically): "Topic: Great choice! Let's break down **Question 1**, which asks us to express numbers as a product of their **prime factors**. 
+Student question (answer THIS specifically): "Topic: Photosynthesis
+Lesson title: Unlocking Photosynthesis: How Plants Eat Light
+Category: science
 
-Think of **prime factors** like the 'building blocks' of a number. Just like you can build a LEGO set using specific bricks, every whole number can be built by multiplyin"
+This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
+
+Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
+Steps to generate in this batch:
+- The Ingredien"
 Chapter context (excerpt): ""
 Recent conversation (last 3 turns):
   (No prior conversation — this is the student's first question)
@@ -42,22 +48,22 @@ Rules:
 
 === RESPONSE ===
 {
-  "topic_type": "math_formula",
-  "scope": "medium",
+  "topic_type": "science_biology",
+  "scope": "simple",
   "key_concepts": [
-    "prime numbers",
-    "composite numbers",
-    "factor trees",
-    "prime factorization"
+    "Photosynthesis",
+    "Sunlight energy",
+    "Carbon dioxide",
+    "Water"
   ],
   "steps_count": 5,
   "image_search_terms": [
-    "prime factorization factor tree example",
-    "prime numbers chart 1 to 100"
+    "photosynthesis diagram simple",
+    "plant absorbing sunlight water carbon dioxide"
   ],
-  "question_focus": "The student wants to learn how to break down a composite number into its prime factors using the factor tree method.",
-  "question_type": "how_to",
+  "question_focus": "The student wants an engaging introduction to photosynthesis focusing specifically on the raw ingredients plants need to create food.",
+  "question_type": "conceptual",
   "prior_knowledge": "",
-  "hook_question": "Did you know that every single number greater than 1 is either a prime number or can be built by multiplying prime numbers together?",
-  "continuation_topic": "Greatest Common Factors (GCF)"
+  "hook_question": "Have you ever wondered how a tree grows so big when it doesn't have a mouth to eat breakfast like you do?",
+  "continuation_topic": "How Chlorophyll Captures Sunlight"
 }

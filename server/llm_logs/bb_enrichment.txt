@@ -1,11 +1,11 @@
-=== BB_ENRICHMENT | 2026-04-28 16:46:17 | session=none ===
+=== BB_ENRICHMENT | 2026-04-29 07:04:40 | session=none ===
 
 === SYSTEM ===
 You are a diagram data generator for an educational app. Output ONLY a valid JSON object — no text, no markdown, no explanation.
 
 === PROMPT ===
-Topic: "Plants Food Factory"
-Teaching content: "Sunlight lo unna energy ni chemical energy ga marchadam ee process mukhyamaina uddesham."
+Topic: "The Calvin Cycle: Building Sugar"
+Teaching content: "This cycle doesn't need direct light. It's like the factory workers turning raw materials into a finished product: glucose."
 Diagram type: cycle
 Color keys: primary (chalk white), label (yellow), secondary (sky blue), highlight (red), teal, orange, green, pink, purple, gold, coral, mint
 Schema: {"title":"Cycle Name","steps":["Stage 1","Stage 2","Stage 3","Stage 4"]}
@@ -16,46 +16,43 @@ Generate the BEST data JSON for this diagram. Fill ALL keys. Be accurate to the 
 
 === RESPONSE ===
 {
-  "title": "Photosynthesis Cycle",
+  "title": "The Calvin Cycle",
   "steps": [
     {
-      "name": "Sunlight Absorption",
-      "description": "Leaves capture solar energy",
-      "color": "gold"
+      "name": "Carbon Fixation",
+      "description": "CO2 attaches to RuBP",
+      "color": "teal"
     },
     {
-      "name": "Water & CO2 Intake",
-      "description": "Roots absorb water, leaves CO2",
-      "color": "sky blue"
+      "name": "Reduction",
+      "description": "ATP and NADPH convert molecules",
+      "color": "orange"
     },
     {
-      "name": "Chemical Conversion",
-      "description": "Energy transforms into glucose",
+      "name": "Sugar Production",
+      "description": "G3P exits to form glucose",
+      "color": "highlight"
+    },
+    {
+      "name": "Regeneration",
+      "description": "RuBP is reformed",
       "color": "green"
-    },
-    {
-      "name": "Oxygen Release",
-      "description": "Oxygen released into atmosphere",
-      "color": "mint"
-    },
-    {
-      "name": "Growth & Energy",
-      "description": "Plant uses food for growth",
-      "color": "coral"
     }
   ],
-  "colors": {
+  "theme": {
     "primary": "chalk white",
     "label": "yellow",
     "secondary": "sky blue",
     "highlight": "red",
-    "teal": "teal",
-    "orange": "orange",
-    "green": "green",
-    "pink": "pink",
-    "purple": "purple",
-    "gold": "gold",
-    "coral": "coral",
-    "mint": "mint"
+    "accent_colors": [
+      "teal",
+      "orange",
+      "green",
+      "pink",
+      "purple",
+      "gold",
+      "coral",
+      "mint"
+    ]
   }
 }

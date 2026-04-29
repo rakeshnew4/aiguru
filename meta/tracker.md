@@ -946,6 +946,57 @@ Run to start seeding:
 
 ---
 
+## 2026-04-29 (session 11)
+
+**Asked:** 4 tasks: (1) Live-teacher pacing — BB feels like a live teacher with pauses, mid-lesson questions, reveals, humor. (2) System prompt isolation (static `blackboard_prompt` cacheable, grade/dynamic content in user content). (3) Remove quiz checkbox from pre-session settings dialog. (4) Implement 4 pacing layers: durationMs usage, diagram pre-pause, grade TTS rate, teacher persona prompt.
+
+**Fix 1 — Remove quiz checkbox:**
+- `BlackboardActivity.kt` `_showLessonSettingsDialog`: removed `Opt("🎯", "Interactive quizzes", ...)` from opts list (now 3 opts instead of 4); fixed `BBSessionConfig` constructor to hardcode `quizEnabled = false`, `checkBoxes[0-2]` → videos/animations/images respectively.
+
+**Fix 2 — Add `pauseAfterMs` field (Layer 1 prerequisite):**
+- `chat/BlackboardGenerator.kt` `BlackboardFrame` data class: added `val pauseAfterMs: Long = 0` after `durationMs`; updated frame type doc comment to include `question | reveal | joke`
+- `BlackboardGenerator.kt` parseDoc inline + `parseStepsArray` + `deserializeSteps`: added `pauseAfterMs = frameObj.optLong("pause_after_ms", 0)` in all 3 parse locations
+- `BlackboardGenerator.kt` `serializeSteps`: added `.put("pause_after_ms", frame.pauseAfterMs)`
+
+**Fix 3 — Layer 1: Use LLM's durationMs (replace hardcoded 300/1000/2000ms):**
+- `BlackboardActivity.kt` `makeTtsCallback.onComplete()` else branch: replaced hardcoded `pauseMs` with `postTtsWait = durationMs.coerceIn(300-5000)` + `thinkingWait` for `question` frames (uses `pauseAfterMs.coerceAtLeast(2000)` + shows "🤔 take a moment…" subtitle)
+
+**Fix 4 — Layer 2: Diagram pre-speech pause:**
+- `BlackboardActivity.kt` SVG/diagram render block (was `postDelayed(400ms)`): changed to `postDelayed(2500ms)` + calls `showSubtitle("Take a look… 👀")` during silent window before TTS starts
+
+**Fix 5 — Layer 3: Grade-aware TTS speech rate:**
+- `BlackboardActivity.kt`: added `private var ttsRateApplied = false` field; at top of `speakFrame()`, on first call extracts `cachedMetadata.grade` digits, maps grade ≤7 → 0.85f, ≤10 → 0.92f, else → 1.00f, calls `tts.setSpeechRate()`
+
+**Fix 6 — Layer 4: Rewrite `blackboard_prompt` with teacher persona:**
+- `server/app/services/prompt_service.py` `blackboard_prompt`: complete rewrite (~1600 tokens) — GURU teacher persona (warm, funny, builds suspense), new frame types (`question`, `reveal`, `joke`) with full specs, grade adaptation lookup table (static), speech guidelines, lesson flow arc, `pause_after_ms` field documentation, timing table
+
+**Fix 7 — Grade speech style in dynamic user content:**
+- `server/app/services/prompt_service.py` `build_blackboard_mode_user_content()`: added `_grade_style` dict after `Student level` injection — appends `GRADE SPEECH STYLE: ...` line matching level range (1-4, 5-7, 8-10, 11-13), keeping it in user content to preserve system prompt cache identity
+
+**Files changed:** BlackboardActivity.kt (~line 1862 opts list, ~line 1944 BBSessionConfig, ~lines 2257-2270 ttsRateApplied+speakFrame, ~line 1529 diagram delay, ~line 3120 pauseMs logic), chat/BlackboardGenerator.kt (~line 85 data class, ~lines 406+553+917 parse, ~line 626 serialize), server/app/services/prompt_service.py (~lines 203-310 blackboard_prompt rewrite, ~lines 884-897 grade style injection)
+
+---
+
+## 2026-04-29 (session 10)
+
+**Asked:** 3 issues: (1) BB mode ask bar keyboard hides input. (2) Lesson complete shows dialog covering blackboard — show non-blocking top notification instead. (3) Drawer credits stale.
+
+**Fix 1 — BB keyboard:**
+- `AndroidManifest.xml` BlackboardActivity: added `windowSoftInputMode="adjustResize"`
+- `BlackboardActivity.kt`: added `ViewCompat`+`WindowInsetsCompat` imports; added `setOnApplyWindowInsetsListener` on `bbAskBar` in onCreate — adjusts bottom padding when IME open
+
+**Fix 2 — Lesson complete notification:**
+- `activity_blackboard.xml`: added `@+id/bbLessonCompleteNotif` TextView overlay at top, `layout_gravity="top|center_horizontal"`, visibility=gone
+- `drawable/bg_lesson_complete_notif.xml`: new pill drawable (#F5E3A0, 24dp corners)
+- `BlackboardActivity.kt`: added `showLessonCompleteNotif()` — fade-in, 2s hold, fade-out; called when `isLastFrameOverall && quizTotal == 0` (no quizzes → no score card)
+
+**Fix 3 — Credits refresh:**
+- `HomeActivity.kt`: added `lastDrawerQuotaLoadMs` state var; added `DrawerLayout.SimpleDrawerListener` in `setupDrawer()` — calls `loadQuotaStrip()` on drawer open, debounced to 30s (2 Firestore reads per refresh max)
+
+**Files changed:** AndroidManifest.xml (line 127), BlackboardActivity.kt (~lines 16-17 imports, ~line 350 IME listener, ~line 2985 new fn, ~line 3098 else branch), activity_blackboard.xml (~line 554), drawable/bg_lesson_complete_notif.xml (new), HomeActivity.kt (line 127 new var, ~line 1843 DrawerListener)
+
+---
+
 ## 2026-04-29 (session 9)
 
 **Asked:** Chat keyboard focus bug — input bar hidden under keyboard, need to close keyboard to send.

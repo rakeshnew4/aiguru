@@ -125,6 +125,7 @@ class HomeActivity : BaseActivity() {
     private var drawerBbLimit: Int    = 0
     private var drawerVoiceLimit: Int = 0
     private var hasShownQuotaWarning  = false
+    private var lastDrawerQuotaLoadMs: Long = 0L
     /** Last fetched credit balance — used by BB pill + quota toast. */
     @Volatile private var lastKnownCreditBalance: Int = -1
 
@@ -1836,6 +1837,17 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
             drawerLayout.closeDrawer(GravityCompat.START)
             drawerLayout.postDelayed({ confirmLogout() }, 200)
         }
+
+        // Refresh quota/credits when drawer opens — debounced to 30s to limit Firestore reads
+        drawerLayout.addDrawerListener(object : DrawerLayout.SimpleDrawerListener() {
+            override fun onDrawerOpened(drawerView: android.view.View) {
+                val now = System.currentTimeMillis()
+                if (now - lastDrawerQuotaLoadMs > 30_000L) {
+                    lastDrawerQuotaLoadMs = now
+                    loadQuotaStrip()
+                }
+            }
+        })
     }
 
     /** Sync drawer header text from SessionManager. */

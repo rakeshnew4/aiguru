@@ -82,7 +82,8 @@ object BlackboardGenerator {
         val highlight: List<String> = emptyList(),
         val speech: String,
         val durationMs: Long = 2000,
-        // concept | memory | diagram | summary
+        val pauseAfterMs: Long = 0,   // silence AFTER TTS before advancing (used by question frames)
+        // concept | memory | diagram | summary | question | reveal | joke
         val frameType: String = "concept",
         // ── Voice Engine & Role ───────────────────────────────────────────────
         // ttsEngine: android | gemini | google
@@ -402,6 +403,7 @@ $svgNote$lastFrameNote$langInstruction"""
                                 highlight         = if (hlArr != null) (0 until hlArr.length()).map { hlArr.getString(it) } else emptyList(),
                                 speech            = frameObj.optString("speech", ""),
                                 durationMs        = frameObj.optLong("duration_ms", 2000),
+                                pauseAfterMs      = frameObj.optLong("pause_after_ms", 0),
                                 frameType         = fType,
                                 ttsEngine         = rawEngine.ifBlank { assignedEngine },
                                 voiceRole         = rawRole.ifBlank { assignedRole },
@@ -549,6 +551,7 @@ $svgNote$lastFrameNote$langInstruction"""
                     highlight        = hlArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
                     speech           = frameObj.optString("speech", ""),
                     durationMs       = frameObj.optLong("duration_ms", 2000),
+                    pauseAfterMs     = frameObj.optLong("pause_after_ms", 0),
                     frameType        = fType,
                     ttsEngine        = rawEng.ifBlank { aEng },
                     voiceRole        = rawRole.ifBlank { aRole },
@@ -621,6 +624,7 @@ $svgNote$lastFrameNote$langInstruction"""
                     .put("highlight", JSONArray(frame.highlight))
                     .put("speech", frame.speech)
                     .put("duration_ms", frame.durationMs)
+                    .put("pause_after_ms", frame.pauseAfterMs)
                     .put("frame_type", frame.frameType)
                     .put("tts_engine", frame.ttsEngine)
                     .put("voice_role", frame.voiceRole)
@@ -912,6 +916,7 @@ $svgNote$lastFrameNote$langInstruction"""
                                 highlight        = hlArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
                                 speech           = frameObj.optString("speech", ""),
                                 durationMs       = frameObj.optLong("duration_ms", 2000),
+                                pauseAfterMs     = frameObj.optLong("pause_after_ms", 0),
                                 frameType        = fType,
                                 ttsEngine        = rawEngine.ifBlank { aEngine },
                                 voiceRole        = rawRole.ifBlank { aRole },

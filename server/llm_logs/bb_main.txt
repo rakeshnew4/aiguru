@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-04-28 16:50:32 | session=KkhkqOQI_880f2ec6 ===
+=== BB_MAIN | 2026-04-29 07:04:36 | session=v6LtCBtv_02e9767d ===
 
 === SYSTEM ===
 You are a visual AI tutor. Return ONLY valid JSON — no text outside JSON.
@@ -47,174 +47,153 @@ TTS every frame: first frame→android/teacher; concept/memory/diagram→gemini/
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: Great choice! Let's break down **Question 1**, which asks us to express numbers as a product of their **prime factors**. 
-
-Think of **prime factors** like the 'building blocks' of a number. Just like you can build a LEGO set using specific bricks, every whole number can be built by multiplying together prime numbers (numbers that can only be divided by 1 and themselves, like 2, 3, 5, 7, 11...). 
-
-Let's solve **part (i): 140**.
-
-To find the prime factors, we use a **factor tree** approach. We keep dividing by the smallest prime number possible until we reach 1.
-
-**Step-by-step calculation:**
-1. Start with 140. It's even, so divide by 2: $$140 \div 2 = 70$$
-2. 70 is also even, so divide by 2 again: $$70 \div 2 = 35$$
-3. 35 isn't divisible by 2 or 3. Let's try 5: $$35 \div 5 = 7$$
-4. 7 is a prime number, so we divide by 7: $$7 \div 7 = 1$$
-
-Now, collect all the numbers you divided by: 2, 2, 5, and 7.
-
-So, the prime factorization of 140 is:
-$$140 = 2 \times 2 \times 5 \times 7$$
-
-We can write this more neatly using exponents:
-$$\boxed{140 = 2^2 \times 5 \times 7}$$
-
-**Real-world tip:** This is exactly how computers encrypt secret messages! They use huge numbers and their prime factors to create codes that are super hard to break.
-
-Prime factorization is the first step to understanding how numbers are built! It helps us find the HCF (Highest Common Factor) and LCM (Least Common Multiple) later on.
-Lesson title: Prime Factorization: Numbers Building Blocks
-Category: math
+Student's EXACT question: Topic: Photosynthesis
+Lesson title: Unlocking Photosynthesis: How Plants Eat Light
+Category: science
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
 Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- Prime Numbers ante enti? (Understanding the building blocks)
-- Factor Tree method ni use chesi 140 ni divide cheyadam
-- Smallest prime numbers (2, 3, 5) tho step-by-step division
-- Factors anni collect chesi product form lo rayadam
-- Exponents use chesi final answer ni represent cheyadam
+- The Ingredients: Sunlight, Water, and CO2
+- Chloroplasts: The Solar Power Plants
+- The Light-Dependent Reactions
+- The Calvin Cycle: Building Sugar
+- Why It Matters: Oxygen and Global Life
 
 This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-
-IMPORTANT: Teach using Telugu mixed with English — explain reasoning in Telugu, but use English for technical terms, formulas, and subject-specific vocabulary.
-What the student specifically wants: The student wants to learn how to break down a composite number into its prime factors using the factor tree method.
-Question type: how_to
+What the student specifically wants: The student wants an engaging introduction to photosynthesis focusing specifically on the raw ingredients plants need to create food.
+Question type: conceptual
 Student level: Class 5
-Topic type: math_formula | Scope: medium
-Key concepts to cover (ALL of these): prime numbers, composite numbers, factor trees, prime factorization
+Topic type: science_biology | Scope: simple
+Key concepts to cover (ALL of these): Photosynthesis, Sunlight energy, Carbon dioxide, Water
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-SUBJECT GUIDANCE (Math — Formula/Algebra):
-• Lead with the formula in a concept frame. Show what each variable means.
-• Dedicate 2 concept frames to worked substitution (step-by-step numbers).
-• Prefer diagram_type: graph_function, fraction_bar, number_line, or pythagoras.
-• End with a summary frame recapping key takeaways.
+DIAGRAM RECOMMENDATION: This topic likely needs a "leaf_anatomy" diagram (confidence 98%). Use diagram_type="leaf_anatomy" for your diagram frame(s).
+
+SUBJECT GUIDANCE (Science — Biology):
+• Use cycle for life cycles/processes (mitosis, water cycle, photosynthesis).
+• Use PATH 2 (diagram_type=custom) for anatomy cross-sections (heart, leaf, kidney).
+• Concept frames: function → structure → real-body example.
+• End with a summary frame.
 
 ---END LESSON BRIEF---
 
-
-IMPORTANT: Teach using Telugu mixed with English — explain reasoning in Telugu, but use English for technical terms, formulas, and subject-specific vocabulary.
-OUTPUT LANGUAGE: Set ALL step "lang" fields to "te-IN". Write ALL "speech" fields in the language for tag "te-IN" (hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.). Board "text" field stays in English (formulas/keywords only).
+OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" fields in the language for tag "en-US" (hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.). Board "text" field stays in English (formulas/keywords only).
 
 === RESPONSE ===
 {
   "steps": [
     {
-      "title": "Introduction to Prime Numbers",
-      "lang": "te-IN",
-      "image_description": "prime numbers number line visualization",
-      "image_show_confidencescore": 0.7,
+      "title": "The Ingredients of Photosynthesis",
+      "lang": "en-US",
+      "image_description": "photosynthesis equation formula diagram",
+      "image_show_confidencescore": 0.9,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "**Prime Numbers** are the building blocks.",
-          "speech": "Numbers, okate table lo vasthayi—adi 1 and ade number. Ee 'building blocks' ni Prime Numbers antaru. For example, 2, 3, 5, 7.",
+          "text": "**Photosynthesis** = Sunlight + Water + $$\\text{CO}_2$$",
+          "speech": "Plants make their own food using just sunlight, water from the soil, and carbon dioxide from the air.",
           "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
+          "frame_type": "diagram",
+          "text": "**Ingredients** Input",
+          "speech": "Imagine a leaf as a tiny kitchen. It takes in sunlight energy, water through its roots, and carbon dioxide through tiny pores.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500,
+          "diagram_type": "custom",
+          "diagram_data": {
+            "intent": "Show a plant absorbing sunlight, water from soil, and carbon dioxide from the air."
+          },
+          "visual_description": "A plant with arrows pointing sunlight, water, and CO2 towards the leaves."
+        },
+        {
           "frame_type": "concept",
-          "text": "**Composite Numbers**",
-          "speech": "Composite numbers ante prime numbers ni multiply chesi form chesina numbers. 140 is a composite number.",
+          "text": "**Real-World** Connection",
+          "speech": "Think of a solar panel on a house. Just like that panel captures sunlight to make electricity, a leaf captures sunlight to make sugar.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        }
+      ]
+    },
+    {
+      "title": "Chloroplasts: Solar Power Plants",
+      "lang": "en-US",
+      "image_description": "chloroplast cell structure diagram",
+      "image_show_confidencescore": 0.95,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "**Chloroplasts** inside cells",
+          "speech": "Inside every green leaf are tiny structures called chloroplasts. These act like miniature solar power plants for the plant.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2000
         },
         {
-          "frame_type": "concept",
-          "text": "**Why factorize?**",
-          "speech": "Mari ee composite numbers ni prime factors ga ela break cheyalo chuddama?",
+          "frame_type": "diagram",
+          "text": "**Leaf Anatomy** cross-section",
+          "speech": "If you looked at a leaf under a microscope, you'd see these green, oval-shaped chloroplasts packed inside the cells.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 1500
+          "duration_ms": 2500,
+          "diagram_type": "leaf_anatomy",
+          "diagram_data": {
+            "intent": "Cross-section of a leaf showing chloroplasts inside cells."
+          },
+          "visual_description": "A cross-section diagram of a leaf showing internal cell structures and chloroplasts."
+        },
+        {
+          "frame_type": "concept",
+          "text": "**Chlorophyll** captures light",
+          "speech": "Inside these chloroplasts is a green pigment called chlorophyll. It's the secret ingredient that grabs the sunlight energy.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000
         }
       ]
     },
     {
-      "title": "Starting Factor Tree",
-      "lang": "te-IN",
-      "image_description": "factor tree diagram",
+      "title": "Light-Dependent Reactions",
+      "lang": "en-US",
+      "image_description": "light dependent reactions diagram",
       "image_show_confidencescore": 0.85,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "**Factor Tree Method**",
-          "speech": "Factor tree method use chesi 140 ni divide cheddam. First, smallest prime number 2 tho start cheddam.",
+          "text": "**Phase 1**: Light Energy",
+          "speech": "The first step happens when sunlight hits the chlorophyll. This energy is used to split water molecules apart.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2000
         },
         {
           "frame_type": "diagram",
-          "text": "$$140 \\div 2 = 70$$",
-          "speech": "140, 2 table lo pothundi. So, 140 divided by 2 is 70.",
+          "text": "**Water** splits, **Oxygen** released",
+          "speech": "When water is split, it releases oxygen as a byproduct. This is the fresh air we breathe every single day!",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 2000,
-          "diagram_type": "custom",
+          "duration_ms": 2500,
+          "diagram_type": "cycle",
           "diagram_data": {
-            "intent": "Show 140 branching into 2 and 70"
+            "intent": "Cycle showing sunlight and water entering, oxygen exiting."
           },
-          "visual_description": "A tree diagram starting with 140 branching into 2 and 70"
+          "visual_description": "A cycle diagram showing light and water going in, and oxygen coming out."
         },
         {
           "frame_type": "concept",
-          "text": "**Next step?**",
-          "speech": "Ippudu 70 ni malli divide cheyali, ready ah?",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 1500
-        }
-      ]
-    },
-    {
-      "title": "Dividing Further",
-      "lang": "te-IN",
-      "image_description": "math factor tree division diagram",
-      "image_show_confidencescore": 0.85,
-      "frames": [
-        {
-          "frame_type": "concept",
-          "text": "**Continue Division**",
-          "speech": "70 kuda even number, so malli 2 tho divide cheddam.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 1500
-        },
-        {
-          "frame_type": "diagram",
-          "text": "$$70 \\div 2 = 35$$",
-          "speech": "70 divided by 2 gives us 35. Tree ippudu 2, 2, and 35 ga vundi.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2000,
-          "diagram_type": "custom",
-          "diagram_data": {
-            "intent": "Show 70 branching into 2 and 35"
-          },
-          "visual_description": "Factor tree showing 70 branching into 2 and 35"
-        },
-        {
-          "frame_type": "concept",
-          "text": "**What about 35?**",
-          "speech": "35 ni 2 or 3 tho divide cheyalem. So next prime number 5 try cheddama?",
+          "text": "**Ready** for next step",
+          "speech": "The plant stores the captured energy in temporary batteries. Ready to see how it turns that energy into food?",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2000
@@ -222,60 +201,73 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "te-IN". Write ALL "speech" field
       ]
     },
     {
-      "title": "Finding Remaining Factors",
-      "lang": "te-IN",
-      "image_description": "prime factorization steps diagram",
+      "title": "The Calvin Cycle: Building Sugar",
+      "lang": "en-US",
+      "image_description": "Calvin cycle photosynthesis diagram",
       "image_show_confidencescore": 0.8,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "$$35 \\div 5 = 7$$",
-          "speech": "35 divided by 5 is 7. Ikkada 7 kuda prime number eh, so ikkaditho apestunnam.",
+          "text": "**Phase 2**: Calvin Cycle",
+          "speech": "Now, the plant uses that stored energy to take carbon dioxide from the air and build sugar molecules.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2000
         },
         {
           "frame_type": "diagram",
-          "text": "**Factors: 2, 2, 5, 7**",
-          "speech": "Chudandi, mana factors anni 2, 2, 5, and 7. Ee prathi number prime eh!",
+          "text": "**$$CO_2$$** to **Sugar**",
+          "speech": "This cycle doesn't need direct light. It's like the factory workers turning raw materials into a finished product: glucose.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 2000,
-          "diagram_type": "custom",
+          "duration_ms": 2500,
+          "diagram_type": "cycle",
           "diagram_data": {
-            "intent": "Show the leaves of the factor tree: 2, 2, 5, 7"
+            "intent": "Cycle showing CO2 entering and glucose (sugar) being produced."
           },
-          "visual_description": "The final leaves of the factor tree showing 2, 2, 5, 7"
+          "visual_description": "A process diagram of the Calvin Cycle converting carbon dioxide into sugar."
+        },
+        {
+          "frame_type": "concept",
+          "text": "**Glucose** is food",
+          "speech": "That glucose is the plant's food, giving it the energy to grow taller, make flowers, and produce fruits.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000
         }
       ]
     },
     {
-      "title": "Final Representation",
-      "lang": "te-IN",
-      "image_description": "prime factorization summary chart",
-      "image_show_confidencescore": 0.8,
+      "title": "Why It Matters",
+      "lang": "en-US",
+      "image_description": "earth atmosphere oxygen cycle",
+      "image_show_confidencescore": 0.75,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "$$140 = 2 \\times 2 \\times 5 \\times 7$$",
-          "speech": "Ippudu motham factors ni product form lo rasthunnam. 2 times 2 times 5 times 7.",
+          "text": "**Oxygen** for Life",
+          "speech": "Without photosynthesis, there would be no oxygen for us to breathe. Plants are essential for our survival.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2000
         },
         {
-          "frame_type": "concept",
-          "text": "$$140 = 2^2 \\times 5 \\times 7$$",
-          "speech": "Exponents use chesi, 2 squared times 5 times 7 ani neat ga rayochu.",
+          "frame_type": "diagram",
+          "text": "**Global** Balance",
+          "speech": "Think of it as a global trade: we give plants carbon dioxide, and they give us oxygen and food.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 2000
+          "duration_ms": 2500,
+          "diagram_type": "comparison",
+          "diagram_data": {
+            "intent": "Comparison showing humans breathing out CO2 and plants producing oxygen."
+          },
+          "visual_description": "A diagram showing the exchange of gases between humans and plants."
         },
         {
           "frame_type": "summary",
-          "text": "**Summary: Prime Factorization**",
-          "speech": "Summary: Prime factorization ante composite number ni prime numbers product ga rayadam. Factor tree method simple ga help chesthundi.",
+          "text": "**Summary**: Photosynthesis",
+          "speech": "Plants use sunlight, water, and carbon dioxide to make sugar and oxygen. This process fuels plant growth and provides the air we breathe. It is nature's most important factory.",
           "tts_engine": "google",
           "voice_role": "assistant",
           "duration_ms": 3000
@@ -283,22 +275,22 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "te-IN". Write ALL "speech" field
       ],
       "followup_questions": [
         {
-          "question": "Can every number be prime factored?",
-          "speech": "Can every single number be broken down into prime factors like this?"
+          "question": "Do plants do photosynthesis at night?",
+          "speech": "Do plants still perform photosynthesis when the sun goes down?"
         },
         {
-          "question": "Is 1 a prime number?",
-          "speech": "Wait, is the number 1 considered a prime number in this method?"
+          "question": "What happens if a plant has no water?",
+          "speech": "What would happen to a plant if it could not get any water?"
         },
         {
-          "question": "How to find LCM using factors?",
-          "speech": "How does this help us find the LCM of two different numbers?"
+          "question": "Why are leaves usually green?",
+          "speech": "Have you ever wondered why almost all leaves are green?"
         }
       ]
     }
   ],
-  "session_theme": "Prime Factorization using Factor Tree",
-  "video_search_query": "prime factorization factor tree method explained",
+  "session_theme": "Photosynthesis: How Plants Create Energy",
+  "video_search_query": "photosynthesis explained for kids",
   "preferred_channels": [
     "Khan Academy India",
     "Physics Wallah"
