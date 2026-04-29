@@ -1,19 +1,19 @@
-=== BB_PLANNER | 2026-04-29 08:19:50 | session=v6LtCBtv_34c877e7 ===
+=== BB_PLANNER | 2026-04-29 17:08:29 | session=pe0ecQAQ_b50f2145 ===
 
 === PROMPT ===
 You are a lesson analyst for a personal visual AI tutor responding to a student's SPECIFIC question.
 Analyze exactly what the student is asking and return a focused lesson plan.
 Output ONLY valid JSON — nothing else.
 
-Student question (answer THIS specifically): "Topic: Pythagoras Theorem
-Lesson title: Unlocking the Pythagoras Theorem
-Category: math
+Student question (answer THIS specifically): "Topic: ఈశాన్యంలో బరువు ఉండొచ్చా
+Lesson title: Vastu Shastra: Northeast Corner Principles
+Category: general
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
 Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- Understanding Right-Angled"
+- Underst"
 Chapter context (excerpt): ""
 Recent conversation (last 3 turns):
   (No prior conversation — this is the student's first question)
@@ -48,21 +48,63 @@ Rules:
 
 === RESPONSE ===
 {
-  "topic_type": "math_geometry",
+  "topic_type": "other",
   "scope": "simple",
   "key_concepts": [
-    "Right-angled triangle",
-    "90-degree angle",
-    "Hypotenuse"
+    "Ishanaya (Northeast) significance",
+    "Vastu weight distribution",
+    "Energy flow in Vastu"
   ],
   "steps_count": 5,
   "image_search_terms": [
-    "right-angled triangle diagram",
-    "hypotenuse side triangle"
+    "Vastu Shastra compass diagram",
+    "Northeast corner Vastu illustration"
   ],
-  "question_focus": "The student wants to understand the foundational concept of a right-angled triangle as a prerequisite to learning the Pythagoras Theorem.",
-  "question_type": "conceptual",
+  "question_focus": "The student wants to know if placing heavy objects or furniture in the Northeast corner of a house is permissible according to Vastu Shastra principles.",
+  "question_type": "how_to",
   "prior_knowledge": "",
-  "hook_question": "Did you know that builders use a simple triangle trick to make sure corners of a house are perfectly square?",
-  "continuation_topic": "Introduction to Pythagoras Theorem Formula"
+  "hook_question": "Did you know that in Vastu Shastra, your home is believed to have a 'head' that needs to stay light and clear?",
+  "continuation_topic": "Importance of Southwest Corner Weight",
+  "steps": [
+    {
+      "step_title": "Understanding the Northeast (Ishanaya)",
+      "frames": [
+        "Introduce the concept of the Northeast corner as the 'Ishanaya' or the spiritual head of the house.",
+        "Explain that this direction is associated with water and divine energy.",
+        "Highlight why keeping this area clear is considered essential for positive flow."
+      ]
+    },
+    {
+      "step_title": "The Rule of Lightness",
+      "frames": [
+        "Explain the fundamental Vastu principle: the Northeast should always be kept light and open.",
+        "Define what 'light' means in this context (avoiding heavy furniture, storage, or clutter).",
+        "Contrast this with other directions where weight might be acceptable."
+      ]
+    },
+    {
+      "step_title": "Why Avoid Heavy Objects?",
+      "frames": [
+        "Discuss the belief that heavy objects 'block' the flow of positive energy entering from the Northeast.",
+        "Explain potential consequences like feeling stagnant or facing obstacles, according to traditional beliefs.",
+        "Use a simple metaphor of a clear path for energy to enter the home."
+      ]
+    },
+    {
+      "step_title": "Identifying 'Heavy' Items",
+      "frames": [
+        "List common items that should be avoided in the Northeast: heavy cupboards, storage boxes, or large appliances.",
+        "Explain that this also applies to structural weight like heavy pillars or walls if possible.",
+        "Provide examples of what is 'light' and acceptable, such as small plants or open space."
+      ]
+    },
+    {
+      "step_title": "Practical Tips for the Northeast",
+      "frames": [
+        "Suggest keeping this corner clean, tidy, and clutter-free as the best practice.",
+        "Recommend placing a small water element or a prayer area (Puja room) instead of storage.",
+        "Summarize the main takeaway: Keep it light, keep it bright, and keep it clear."
+      ]
+    }
+  ]
 }

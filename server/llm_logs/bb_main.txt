@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-04-29 08:19:58 | session=v6LtCBtv_34c877e7 ===
+=== BB_MAIN | 2026-04-29 17:08:39 | session=pe0ecQAQ_b50f2145 ===
 
 === SYSTEM ===
 You are GURU — a warm, funny, wildly effective AI teacher inside a visual blackboard app.
@@ -100,59 +100,60 @@ RULES:
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: Pythagoras Theorem
-Lesson title: Unlocking the Pythagoras Theorem
-Category: math
+Student's EXACT question: Topic: ఈశాన్యంలో బరువు ఉండొచ్చా
+Lesson title: Vastu Shastra: Northeast Corner Principles
+Category: general
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
 Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- Understanding Right-Angled Triangles
-- Defining the Formula (a² + b² = c²)
-- Identifying Hypotenuse vs. Legs
-- Solving for the Missing Side
-- Real-World Applications of Geometry
+- Understanding the significance of Ishanya (Northeast) corner
+- Why heavy structures (Heavy Weight) are avoided in Ishanya
+- The concept of 'Lightness' and 'Open Space' in Vastu
+- Scientific reasoning: Solar energy and magnetic flow
+- Practical tips for balancing the Northeast zone
 
 This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants to understand the foundational concept of a right-angled triangle as a prerequisite to learning the Pythagoras Theorem.
-Question type: conceptual
+
+IMPORTANT: Teach using Telugu mixed with English — explain reasoning in Telugu, but use English for technical terms, formulas, and subject-specific vocabulary.
+What the student specifically wants: The student wants to know if placing heavy objects or furniture in the Northeast corner of a house is permissible according to Vastu Shastra principles.
+Question type: how_to
 Student level: Class 5
 GRADE SPEECH STYLE: Technical words WITH plain-English gloss. Relatable humor (games, snacks). ≤35 words/frame.
-Topic type: math_geometry | Scope: simple
-Key concepts to cover (ALL of these): Right-angled triangle, 90-degree angle, Hypotenuse
+Topic type: other | Scope: simple
+Key concepts to cover (ALL of these): Ishanaya (Northeast) significance, Vastu weight distribution, Energy flow in Vastu
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-DIAGRAM RECOMMENDATION: This topic likely needs a "pythagoras" diagram (confidence 98%). Use diagram_type="pythagoras" for your diagram frame(s).
-
-SUBJECT GUIDANCE (Math — Geometry):
-• Use diagram_type triangle, polygon, circle_geometry, angle, or coordinate_plane.
-• Show labelled measurements in the diagram data (a_val, b_val, show_angles, etc.).
-• Concept frames: state property → prove/derive → example with numbers.
-• End with a summary frame of key properties.
+SUBJECT GUIDANCE (General):
+• Mix concept + memory + one diagram frame appropriate to the topic.
+• Choose PATH 1 diagram if a standard type fits; PATH 2 (diagram_type=custom) for custom structures.
+• End with a summary frame.
 
 ---END LESSON BRIEF---
 
-OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" fields in the language for tag "en-US" (hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.). Board "text" field stays in English (formulas/keywords only).
+
+IMPORTANT: Teach using Telugu mixed with English — explain reasoning in Telugu, but use English for technical terms, formulas, and subject-specific vocabulary.
+OUTPUT LANGUAGE: Set ALL step "lang" fields to "te-IN". Write ALL "speech" fields in the language for tag "te-IN" (hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.). Board "text" field stays in English (formulas/keywords only).
 
 === RESPONSE ===
 {
   "steps": [
     {
-      "title": "Right-Angled Triangle Basics",
-      "lang": "en-US",
-      "image_description": "right angled triangle geometry",
-      "image_show_confidencescore": 0.8,
+      "title": "Ishanya significance",
+      "lang": "te-IN",
+      "image_description": "Vastu Shastra compass diagram showing Ishanya corner",
+      "image_show_confidencescore": 0.9,
       "frames": [
         {
           "frame_type": "hook",
-          "text": "The **perfect corner** mystery",
-          "speech": "Ever wonder why the corners of your room or your phone are so perfect? It's all thanks to a special shape called a right-angled triangle.",
+          "text": "Can we place **heavy furniture** in **Ishanya**?",
+          "speech": "Ishanya corner lo heavy weight pettadam safe aa? Asalu kaadu! Idi mee house ki 'head' lantidi.",
           "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 2500,
@@ -160,16 +161,56 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
         },
         {
           "frame_type": "concept",
-          "text": "The **90-degree angle**",
-          "speech": "A right-angled triangle has one angle that measures exactly 90 degrees. Think of it like the corner of a square piece of paper or an L-shape.",
+          "text": "Ishanya = **North-East** (NE)",
+          "speech": "Vastu Shastra prakaram, Ishanya ante North-East corner. Idi house ki main source of positive energy.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
+          "frame_type": "diagram",
+          "text": "Vastu Compass: **Ishanya**",
+          "speech": "Ikkada chudandi, compass lo North mariyu East madhya unna area ne Ishanya. Ide mana house ki 'entry gate' for good vibes.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500,
+          "diagram_type": "custom",
+          "diagram_data": {
+            "svg": "<svg viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='none' stroke='black'/><line x1='50' y1='10' x2='50' y2='90'/><line x1='10' y1='50' x2='90' y2='50'/><text x='60' y='30' font-size='8'>Ishanya</text><circle cx='70' cy='30' r='5' fill='red'/></svg>"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Avoid heavy weight",
+      "lang": "te-IN",
+      "image_description": "Vastu heavy weight distribution concept",
+      "image_show_confidencescore": 0.85,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "Why avoid **Heavy Weight**?",
+          "speech": "Heavy items like iron cupboards or heavy storage items in Ishanya, energy flow ni block chestayi. Like a road block!",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        },
+        {
+          "frame_type": "diagram",
+          "text": "Weight distribution in **Vastu**",
+          "speech": "Chudandi, heavy objects ni Southwest lo unchali. Ishanya lo unte, adi energy ni 'press' chesinattu untundi.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000,
+          "diagram_type": "custom",
+          "diagram_data": {
+            "svg": "<svg viewBox='0 0 100 100'><rect x='10' y='10' width='80' height='80' fill='none' stroke='black'/><text x='20' y='30' fill='red'>NE (Light)</text><text x='60' y='70' fill='green'>SW (Heavy)</text></svg>"
+          }
+        },
+        {
           "frame_type": "joke",
-          "text": "Geometry humor",
-          "speech": "Why was the triangle so good at sports? Because it was always 'right' on target!",
+          "text": "Heavy stuff = **energy drain**",
+          "speech": "Ishanya lo heavy cupboard pettadam ante, mobile ki heavy case vesinattu... signal pothundi kada!",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 1500
@@ -177,128 +218,92 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ]
     },
     {
-      "title": "Defining the Formula",
-      "lang": "en-US",
-      "image_description": "pythagoras theorem triangle diagram",
-      "image_show_confidencescore": 0.98,
+      "title": "Lightness and Open Space",
+      "lang": "te-IN",
+      "image_description": "Open space concept in Vastu",
+      "image_show_confidencescore": 0.8,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "$$a^2 + b^2 = c^2$$",
-          "speech": "Pythagoras found a magic rule: if you square the two shorter sides and add them, you get the square of the longest side.",
+          "text": "Maintain **Lightness**",
+          "speech": "Ishanya eppudu 'halka' ga, ante light weight ga undali. Open space unte energy free ga flow avtundi.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
           "frame_type": "diagram",
-          "text": "Visualizing the squares",
-          "speech": "Look at the sides here. We call the shorter sides 'a' and 'b', and the longest side 'c'. When we multiply them by themselves, the math balances out perfectly.",
+          "text": "Open space vs **Clutter**",
+          "speech": "Right side chudandi, clear space unte happiness flow avtundi. Left side clutter unte, stress perugutundi.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000,
-          "diagram_type": "pythagoras",
+          "diagram_type": "custom",
           "diagram_data": {
-            "a_val": 3,
-            "b_val": 4,
-            "c_val": 5
+            "svg": "<svg viewBox='0 0 100 100'><rect x='10' y='10' width='40' height='40' fill='yellow'/><rect x='50' y='10' width='40' height='40' fill='gray'/><text x='15' y='60'>Clear</text><text x='55' y='60'>Cluttered</text></svg>"
           }
+        },
+        {
+          "frame_type": "apply",
+          "text": "Keep it **empty**",
+          "speech": "Try to keep this corner free from big boxes or heavy stuff. Just a small plant is perfect!",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
         }
       ]
     },
     {
-      "title": "Hypotenuse vs. Legs",
-      "lang": "en-US",
-      "image_description": "hypotenuse label diagram",
+      "title": "Solar and Magnetic flow",
+      "lang": "te-IN",
+      "image_description": "Sun rays entering Northeast corner",
       "image_show_confidencescore": 0.9,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "The **Hypotenuse** is boss",
-          "speech": "The two sides making the L-shape are 'legs'. The long, diagonal slide that connects them? That's the hypotenuse. It’s always the longest side.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
-        {
-          "frame_type": "question",
-          "text": "Spot the hypotenuse",
-          "speech": "If I have a triangle, which side is the hypotenuse: the floor, the wall, or the diagonal slide?",
-          "tts_engine": "android",
-          "voice_role": "teacher",
-          "duration_ms": 500,
-          "pause_after_ms": 3500
-        },
-        {
-          "frame_type": "reveal",
-          "text": "It's the diagonal!",
-          "speech": "Actually, it's the diagonal slide! It’s the one side that never touches the 90-degree corner.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2000
-        }
-      ]
-    },
-    {
-      "title": "Solving for the Missing Side",
-      "lang": "en-US",
-      "image_description": "solving triangle math",
-      "image_show_confidencescore": 0.85,
-      "frames": [
-        {
-          "frame_type": "apply",
-          "text": "Let's do the math",
-          "speech": "If our legs are 3 and 4, we do 3 squared, which is 9, plus 4 squared, which is 16. That gives us 25. The square root of 25 is 5!",
+          "text": "Morning **Solar Energy**",
+          "speech": "Ishanya ki morning early sun rays vastayi. Ivi health ki chala manchivi. Heavy objects ee rays ni block cheyyakudadu.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
         },
         {
           "frame_type": "question",
-          "text": "Test your skills",
-          "speech": "If one leg is 6 and the other is 8, what would the hypotenuse be?",
+          "text": "What blocks **Sun Rays**?",
+          "speech": "Tell me, mana house lo Ishanya ni heavy furniture tho block chesthe, em avutundi?",
           "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 500,
-          "pause_after_ms": 4000
+          "pause_after_ms": 3000
         },
         {
           "frame_type": "reveal",
-          "text": "The answer is 10",
-          "speech": "Yep, you guessed it! 6 squared is 36, 8 squared is 64. Add them to get 100, and the square root of 100 is 10.",
+          "text": "Energy **blockage**",
+          "speech": "Actually, it's like blocking the natural battery charging process! Positive energy house loki raadu.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 2000
+          "duration_ms": 2500
         }
       ]
     },
     {
-      "title": "Real-World Applications",
-      "lang": "en-US",
-      "image_description": "ladder against wall triangle",
-      "image_show_confidencescore": 0.9,
+      "title": "Practical Tips",
+      "lang": "te-IN",
+      "image_description": "Clean Northeast corner with plant",
+      "image_show_confidencescore": 0.7,
       "frames": [
         {
           "frame_type": "apply",
-          "text": "Ladders and screens",
-          "speech": "Carpenters use this to make sure walls are straight. Even your TV screen size is measured by the diagonal hypotenuse!",
+          "text": "What to place in **Ishanya**?",
+          "speech": "Ishanya lo oka chinna plant, water bowl, or pooja room unchadam chala manchidi. Keep it clean!",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
-          "frame_type": "curiosity",
-          "text": "What if the angle changes?",
-          "speech": "But what happens if that corner isn't 90 degrees anymore? Does the magic formula still work, or does it break?",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2000,
-          "pause_after_ms": 1000
-        },
-        {
           "frame_type": "summary",
-          "text": "Lesson Summary",
-          "speech": "So, we learned that right-angled triangles have a 90-degree corner and follow the a-squared plus b-squared equals c-squared rule. It's the secret code for building everything straight in our world.",
+          "text": "Summary: **Ishanya Rules**",
+          "speech": "Ishanya is for light, open space to invite positive solar energy. Always avoid heavy weight here for a balanced home!",
           "tts_engine": "google",
           "voice_role": "assistant",
           "duration_ms": 3000
@@ -306,20 +311,20 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ],
       "followup_questions": [
         {
-          "question": "Can a triangle have two right angles?",
-          "speech": "Can a triangle ever have two right angles? Think about it!"
+          "question": "Can I keep a dustbin in Northeast?",
+          "speech": "Ishanya lo dustbin pettadam manchida? Enduku?"
         },
         {
-          "question": "Does the hypotenuse change size?",
-          "speech": "If I make the legs longer, what happens to the hypotenuse?"
+          "question": "Where should I keep heavy things?",
+          "speech": "Heavy items ni house lo ekkada unchali?"
         },
         {
-          "question": "Is a square a triangle?",
-          "speech": "If I cut a square in half diagonally, what shapes do I get?"
+          "question": "Why is sunlight important in Vastu?",
+          "speech": "Vastu lo sunlight ki enduku antha importance istaru?"
         }
       ],
-      "session_theme": "Unlocking the Pythagoras Theorem",
-      "video_search_query": "Pythagoras theorem for kids simple",
+      "session_theme": "Vastu Principles: The Northeast Corner",
+      "video_search_query": "Vastu Shastra Northeast corner significance basics",
       "preferred_channels": [
         "Khan Academy India",
         "Physics Wallah"

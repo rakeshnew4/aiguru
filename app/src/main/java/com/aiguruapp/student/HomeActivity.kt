@@ -427,9 +427,9 @@ class HomeActivity : BaseActivity() {
             // Credits chip removed from home screen — balance is shown in drawer only.
             val label = when {
                 balance <= 0  -> "0 credits"
-                balance < 100 -> "$balance  \u2014 top up soon!"
-                balance < 500 -> "$balance  ready! \u2b50"
-                else          -> "$balance  \u2014 \ud83d\ude80"
+                balance < 100 -> "$balance  \u2014"
+                balance < 500 -> "$balance \u2b50"
+                else          -> "$balance   \u2014 \ud83d\ude80"
             }
             findViewById<TextView?>(R.id.drawerCreditsBalance)?.text = label
         }

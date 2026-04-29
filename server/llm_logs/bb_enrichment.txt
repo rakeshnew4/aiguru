@@ -1,58 +1,49 @@
-=== BB_ENRICHMENT | 2026-04-29 07:04:40 | session=none ===
+=== BB_ENRICHMENT | 2026-04-29 17:05:33 | session=none ===
 
 === SYSTEM ===
 You are a diagram data generator for an educational app. Output ONLY a valid JSON object — no text, no markdown, no explanation.
 
 === PROMPT ===
-Topic: "The Calvin Cycle: Building Sugar"
-Teaching content: "This cycle doesn't need direct light. It's like the factory workers turning raw materials into a finished product: glucose."
-Diagram type: cycle
+Topic: "Method 1: Factoring"
+Teaching content: "See how we split it? If two things multiply to zero, one of them MUST be zero. That's the zero product property."
+Diagram type: graph_function
 Color keys: primary (chalk white), label (yellow), secondary (sky blue), highlight (red), teal, orange, green, pink, purple, gold, coral, mint
-Schema: {"title":"Cycle Name","steps":["Stage 1","Stage 2","Stage 3","Stage 4"]}
-Hint: 3-6 stages arranged cyclically. Each stage 1-4 words. Last stage naturally leads back to first.
+Schema: {"function":"quadratic","a":1,"b":0,"c":0,"x_range":[-4,4],"label":"y = x²","color":"secondary"}
+Hint: function: quadratic|linear|cubic|sine|cosine|abs. a,b,c: real coefficients. x_range: [-N, N] centered at 0. label: LaTeX-free equation string.
 Existing data (improve/complete this): {}
 
 Generate the BEST data JSON for this diagram. Fill ALL keys. Be accurate to the topic. Reply with ONLY the JSON object.
 
 === RESPONSE ===
 {
-  "title": "The Calvin Cycle",
-  "steps": [
+  "function": "quadratic",
+  "a": 1,
+  "b": -2,
+  "c": -3,
+  "x_range": [-4, 4],
+  "label": "y = x² - 2x - 3",
+  "color": "secondary",
+  "annotations": [
     {
-      "name": "Carbon Fixation",
-      "description": "CO2 attaches to RuBP",
-      "color": "teal"
-    },
-    {
-      "name": "Reduction",
-      "description": "ATP and NADPH convert molecules",
-      "color": "orange"
-    },
-    {
-      "name": "Sugar Production",
-      "description": "G3P exits to form glucose",
+      "type": "point",
+      "x": -1,
+      "y": 0,
+      "label": "x = -1",
       "color": "highlight"
     },
     {
-      "name": "Regeneration",
-      "description": "RuBP is reformed",
-      "color": "green"
+      "type": "point",
+      "x": 3,
+      "y": 0,
+      "label": "x = 3",
+      "color": "highlight"
+    },
+    {
+      "type": "text",
+      "x": 0,
+      "y": 3,
+      "text": "(x + 1)(x - 3) = 0",
+      "color": "label"
     }
-  ],
-  "theme": {
-    "primary": "chalk white",
-    "label": "yellow",
-    "secondary": "sky blue",
-    "highlight": "red",
-    "accent_colors": [
-      "teal",
-      "orange",
-      "green",
-      "pink",
-      "purple",
-      "gold",
-      "coral",
-      "mint"
-    ]
-  }
+  ]
 }

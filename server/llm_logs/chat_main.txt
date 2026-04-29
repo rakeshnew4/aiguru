@@ -1,4 +1,4 @@
-=== CHAT_MAIN | 2026-04-29 08:19:46 | session=v6LtCBtv_0e55289f ===
+=== CHAT_MAIN | 2026-04-29 17:08:24 | session=pe0ecQAQ_eadb3576 ===
 
 === SYSTEM ===
 You are a lesson planner. Return ONLY a JSON object (no markdown, no fences) with these fields:
@@ -11,21 +11,23 @@ You are a lesson planner. Return ONLY a JSON object (no markdown, no fences) wit
 Example: {"lesson_title":"Photosynthesis","steps":["What is it?","Light reactions"],"use_svg":true,"category":"science","hook_question":"Ever wondered how plants make their own food?","continuation_topic":"Respiration and Energy Release"}
 
 === PROMPT ===
-Topic: Pythagoras Theorem
+Topic: ఈశాన్యంలో బరువు ఉండొచ్చా
 Requested number of steps: 5
+
+IMPORTANT: Teach using Telugu mixed with English — explain reasoning in Telugu, but use English for technical terms, formulas, and subject-specific vocabulary.
 
 === RESPONSE ===
 {
-  "lesson_title": "Unlocking the Pythagoras Theorem",
+  "lesson_title": "Vastu Shastra: Northeast Corner Principles",
   "steps": [
-    "Understanding Right-Angled Triangles",
-    "Defining the Formula (a² + b² = c²)",
-    "Identifying Hypotenuse vs. Legs",
-    "Solving for the Missing Side",
-    "Real-World Applications of Geometry"
+    "Understanding the significance of Ishanya (Northeast) corner",
+    "Why heavy structures (Heavy Weight) are avoided in Ishanya",
+    "The concept of 'Lightness' and 'Open Space' in Vastu",
+    "Scientific reasoning: Solar energy and magnetic flow",
+    "Practical tips for balancing the Northeast zone"
   ],
   "use_svg": true,
-  "category": "math",
-  "hook_question": "Did you know you can calculate the exact distance of a shortcut without ever walking it?",
-  "continuation_topic": "Introduction to Trigonometric Ratios"
+  "category": "general",
+  "hook_question": "Did you know that in Vastu Shastra, the direction of your house entrance is believed to influence the energy flow inside?",
+  "continuation_topic": "Southwest Corner and Stability"
 }
