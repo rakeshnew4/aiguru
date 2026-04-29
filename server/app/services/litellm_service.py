@@ -53,7 +53,6 @@ async def create_user_api_key(user_id: str, user_metadata: Optional[Dict[str, An
                 json={
                     "user_id": user_id,
                     "key_alias": user_name,
-                    "models": ["power", "cheaper", "faster"],
                     "duration": "365d",
                     "metadata": user_metadata or {}
                 }

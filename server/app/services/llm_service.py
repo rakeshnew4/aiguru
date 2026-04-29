@@ -34,7 +34,11 @@ def get_or_create_litellm_key(uid: str) -> Optional[str]:
                 resp = client.post(
                     f"{settings.LITELLM_PROXY_URL}/key/generate",
                     headers={"Authorization": f"Bearer {settings.LITELLM_MASTER_KEY}"},
-                    json={"user_id": uid, "key_alias": f"user-{uid[:8]}", "duration": "365d"},
+                    json={
+                        "user_id": uid,
+                        "key_alias": f"user-{uid[:8]}",
+                        "duration": "365d",
+                    },
                 )
                 resp.raise_for_status()
                 key = resp.json().get("key")
