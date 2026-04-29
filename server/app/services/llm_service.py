@@ -308,8 +308,9 @@ def generate_response(
             )
         except Exception as exc:
             last_error = exc
-            logger.warning("LiteLLM failed (tier=%s), falling back to Google native: %s",
-                           tier, exc)
+            logger.error("LiteLLM FAILED (tier=%s uid=%s call=%s): %s",
+                         tier, uid, call_name, exc)
+            logger.warning("Falling back to Google native SDK")
 
     # ── 2. Google native fallback ─────────────────────────────────────────────
     if result is None:

@@ -89,6 +89,16 @@ class HomeActivity : BaseActivity() {
     private var homeSheetThumb: ImageView? = null
     private var homeTopicInput: EditText? = null
     private var homeMicTile: LinearLayout? = null
+    private var homeMicEmojiView: TextView? = null
+    private var homeMicWaveContainer: LinearLayout? = null
+    private var homeMicBars: List<View>? = null
+    private var homeMicLabelView: TextView? = null
+    private var homeMicBg: GradientDrawable? = null
+    private var homeMicPulseAnim: android.animation.Animator? = null
+
+    // Daily challenge cycling state
+    private var dailyPendingQuestions: List<com.aiguruapp.student.daily.DailyQuestion> = emptyList()
+    private var dailyChallengeIndex = 0
 
     private val homeCameraLauncher =
         registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
@@ -137,6 +147,8 @@ class HomeActivity : BaseActivity() {
         setupGreeting()
         setupStudentInfo()
         userId = SessionManager.getFirestoreUserId(this)
+        // Ensure stats document exists ASAP; also recover anonymous auth if session was lost
+        ensureStatsProfile()
         setupRecyclerView()
         loadSubjects()
         // Offers are gated by usage stats: see loadSmartHomeContent() — first-time
@@ -387,10 +399,10 @@ class HomeActivity : BaseActivity() {
         if (aiTtsCharsLeft != 0) {
             voiceRow?.visibility = View.VISIBLE
             val voiceText = when {
-                aiTtsCharsLeft < 0    -> "Unlimited 🎉"
+                aiTtsCharsLeft <= 0    -> "Add more 🎉"
                 aiTtsCharsLeft == 0   -> "All used today"
                 aiTtsCharsLeft < 1000 -> "$aiTtsCharsLeft chars — keep listening! 🎙️"
-                else                  -> "${aiTtsCharsLeft / 1000}k chars ready! 🎙️"
+                else                  -> "${aiTtsCharsLeft / 1000}k! 🎙️"
             }
             val voiceColor = if (aiTtsCharsLeft in 0..1000) "#BF360C" else "#1E9B6B"
             findViewById<TextView?>(R.id.drawerVoiceLeft)?.apply {
@@ -414,9 +426,9 @@ class HomeActivity : BaseActivity() {
             // Credits chip removed from home screen — balance is shown in drawer only.
             val label = when {
                 balance <= 0  -> "0 credits"
-                balance < 100 -> "$balance credits \u2014 top up soon!"
-                balance < 500 -> "$balance credits ready! \u2b50"
-                else          -> "$balance credits \u2014 you're set! \ud83d\ude80"
+                balance < 100 -> "$balance  \u2014 top up soon!"
+                balance < 500 -> "$balance  ready! \u2b50"
+                else          -> "$balance  \u2014 \ud83d\ude80"
             }
             findViewById<TextView?>(R.id.drawerCreditsBalance)?.text = label
         }
@@ -494,9 +506,9 @@ class HomeActivity : BaseActivity() {
             bbRow?.visibility = View.VISIBLE
             val creditsMode = bbLeft == 0 && creditBalance > 0
             val label = when {
-                creditsMode  -> "⭐ use credits!"
-                bbLeft == 0  -> "All used — upgrade! 🚀"
-                bbLeft == 1  -> "1 free lesson left! 🎓"
+                creditsMode  -> "⭐ using credits!"
+                bbLeft == 0  -> "Free lessons completed 🚀"
+                bbLeft == 1  -> "1 more free lesson left today! 🎓"
                 bbLeft <= 3  -> "$bbLeft free lessons — learn more! 🎨"
                 else         -> "$bbLeft free lessons today! 🎓"
             }
@@ -841,6 +853,28 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
         loadDailyChallenge()
     }
 
+    private fun ensureStatsProfile() {
+        val uid = userId
+        if (uid.isBlank() || uid == "guest_user") return
+        // If Firebase Auth session is missing (e.g. anonymous auth failed at school login),
+        // attempt anonymous sign-in now so Firestore writes are allowed.
+        val fbUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+        if (fbUser == null) {
+            com.google.firebase.auth.FirebaseAuth.getInstance().signInAnonymously()
+                .addOnSuccessListener { result ->
+                    val newUid = result.user?.uid ?: return@addOnSuccessListener
+                    SessionManager.saveFirebaseUid(this, newUid)
+                    userId = newUid
+                    StudentStatsManager.ensureProfile(this, newUid)
+                }
+                .addOnFailureListener {
+                    // No auth → stats writes will fail silently, which is acceptable
+                }
+        } else {
+            StudentStatsManager.ensureProfile(this, uid)
+        }
+    }
+
     private fun loadDailyChallenge() {
         lifecycleScope.launch(Dispatchers.IO) {
             val questions    = DailyQuestionsManager.fetchFeed(this@HomeActivity)
@@ -864,45 +898,60 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
             }
             val pending = questions.filter { it.status == "pending" }
             runOnUiThread {
-                // Show or hide daily challenge card
                 val card = findViewById<android.view.ViewGroup?>(R.id.dailyChallengeCard) ?: return@runOnUiThread
                 if (pending.isEmpty()) {
                     card.visibility = View.GONE
                     return@runOnUiThread
                 }
-                val q = pending.first()
                 val wasHidden = card.visibility != View.VISIBLE
-                card.visibility = View.VISIBLE
-                card.findViewById<TextView?>(R.id.challengeHookText)?.text = q.hook
-                card.findViewById<TextView?>(R.id.challengeQuestionText)?.text = q.question
-                val diffLabel = when (q.difficulty) { 1 -> "Easy" 2 -> "Medium" else -> "Hard" }
-                card.findViewById<TextView?>(R.id.challengeDifficultyText)?.text = "$diffLabel · ${q.subject}"
-                card.findViewById<TextView?>(R.id.challengeCreditsText)?.text = "+${q.creditsReward} pts"
-                card.setOnClickListener {
-                    val uid = SessionManager.getFirestoreUserId(this@HomeActivity)
-                    val intent = Intent(this@HomeActivity, BlackboardActivity::class.java).apply {
-                        putExtra(BlackboardActivity.EXTRA_MESSAGE, q.question)
-                        putExtra(BlackboardActivity.EXTRA_SUBJECT, q.subject)
-                        if (uid.isNotBlank() && uid != "guest_user") {
-                            putExtra(BlackboardActivity.EXTRA_USER_ID, uid)
-                        }
-                        putExtra("daily_question_id", q.id)
-                    }
-                    startActivity(intent)
-                }
-                // Entrance + subtle pulse on the credits badge to draw attention
+                dailyPendingQuestions = pending
+                dailyChallengeIndex = 0
+                showDailyChallengeAt(card, 0)
                 if (wasHidden) {
                     card.alpha = 0f
                     card.translationY = 24f
                     card.animate().alpha(1f).translationY(0f).setDuration(1200).start()
                 }
-                card.findViewById<TextView?>(R.id.challengeCreditsText)?.let { badge ->
-                    badge.animate().scaleX(1.12f).scaleY(1.12f).setDuration(380)
-                        .withEndAction {
-                            badge.animate().scaleX(1f).scaleY(1f).setDuration(380).start()
-                        }.start()
-                }
             }
+        }
+    }
+
+    private fun showDailyChallengeAt(card: android.view.ViewGroup, index: Int) {
+        val pending = dailyPendingQuestions
+        if (index >= pending.size) return
+        val q = pending[index]
+        card.visibility = View.VISIBLE
+        card.findViewById<TextView?>(R.id.challengeHookText)?.text = q.hook
+        card.findViewById<TextView?>(R.id.challengeQuestionText)?.text = q.question
+        val diffLabel = when (q.difficulty) { 1 -> "Easy"; 2 -> "Medium"; else -> "Hard" }
+        card.findViewById<TextView?>(R.id.challengeDifficultyText)?.text = "$diffLabel · ${q.subject}"
+        card.findViewById<TextView?>(R.id.challengeCreditsText)?.let { badge ->
+            badge.text = "+${q.creditsReward} pts"
+            badge.animate().scaleX(1.12f).scaleY(1.12f).setDuration(300)
+                .withEndAction { badge.animate().scaleX(1f).scaleY(1f).setDuration(300).start() }.start()
+        }
+        // Show "Next →" only when more questions remain
+        val nextBtn = card.findViewById<TextView?>(R.id.challengeNextBtn)
+        if (pending.size > 1 && index < pending.size - 1) {
+            nextBtn?.visibility = View.VISIBLE
+            nextBtn?.setOnClickListener {
+                dailyChallengeIndex = (dailyChallengeIndex + 1) % pending.size
+                showDailyChallengeAt(card, dailyChallengeIndex)
+            }
+        } else {
+            nextBtn?.visibility = View.GONE
+        }
+        card.setOnClickListener {
+            val uid = SessionManager.getFirestoreUserId(this@HomeActivity)
+            val intent = Intent(this@HomeActivity, BlackboardActivity::class.java).apply {
+                putExtra(BlackboardActivity.EXTRA_MESSAGE, q.question)
+                putExtra(BlackboardActivity.EXTRA_SUBJECT, q.subject)
+                if (uid.isNotBlank() && uid != "guest_user") {
+                    putExtra(BlackboardActivity.EXTRA_USER_ID, uid)
+                }
+                putExtra("daily_question_id", q.id)
+            }
+            startActivity(intent)
         }
     }
 
@@ -1367,9 +1416,58 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
             }
 
         val homeCamTile = makeHomeTile("📷", "Photo", "#1A2040", "#3355AA")
-        val homeMicTileView = makeHomeTile(
-            if (homeIsListening) "⏹️" else "🎤", "Voice", "#1A2030", "#334466"
-        )
+        // Mic tile built separately — supports waveform bars + live state animation
+        val micEmoji = TextView(this).apply {
+            text = "🎤"; textSize = 28f; gravity = android.view.Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (4*dp).toInt() }
+        }
+        fun makeWaveBar(initH: Float) = View(this).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE; cornerRadius = 3*dp
+                setColor(Color.parseColor("#4FC3F7"))
+            }
+            layoutParams = LinearLayout.LayoutParams((4*dp).toInt(), (initH*dp).toInt()).apply {
+                marginStart = (3*dp).toInt(); marginEnd = (3*dp).toInt()
+            }
+        }
+        val wBar1 = makeWaveBar(6f); val wBar2 = makeWaveBar(12f); val wBar3 = makeWaveBar(8f)
+        val waveCont = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            visibility = View.GONE
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (4*dp).toInt() }
+            addView(wBar1); addView(wBar2); addView(wBar3)
+        }
+        val micLabel = TextView(this).apply {
+            text = "Tap to speak"; textSize = 10f; gravity = android.view.Gravity.CENTER
+            setTextColor(Color.parseColor("#AABBCC"))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        val micBg = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE; cornerRadius = 12*dp
+            setColor(Color.parseColor("#1A2030"))
+            setStroke((1*dp).toInt(), Color.parseColor("#334466"))
+        }
+        val homeMicTileView = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = android.view.Gravity.CENTER
+            background = micBg
+            setPadding((8*dp).toInt(), (14*dp).toInt(), (8*dp).toInt(), (12*dp).toInt())
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            isClickable = true; isFocusable = true
+            addView(micEmoji); addView(waveCont); addView(micLabel)
+        }
+        homeMicEmojiView = micEmoji
+        homeMicWaveContainer = waveCont
+        homeMicBars = listOf(wBar1, wBar2, wBar3)
+        homeMicLabelView = micLabel
+        homeMicBg = micBg
         (homeCamTile.layoutParams as LinearLayout.LayoutParams).marginEnd = (8*dp).toInt()
         homeMicTile = homeMicTileView
         homeTopicInput = topicInput
@@ -1447,6 +1545,13 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
             topicInput.requestFocus()
             val imm = getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
             imm.showSoftInput(topicInput, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+        }
+
+        sheet.setOnDismissListener {
+            if (homeIsListening) { homeVoiceManager.stopListening(); homeIsListening = false }
+            homeMicPulseAnim?.cancel(); homeMicPulseAnim = null
+            homeMicEmojiView = null; homeMicWaveContainer = null
+            homeMicBars = null; homeMicLabelView = null; homeMicBg = null
         }
 
         sheet.show()
@@ -1561,12 +1666,22 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
         homeStartVoiceInput()
     }
 
-    /** Mirrors FullChatFragment.startVoiceInput() */
     private fun homeStartVoiceInput() {
         if (!android.speech.SpeechRecognizer.isRecognitionAvailable(this)) {
             Toast.makeText(this, "Voice not available on this device", Toast.LENGTH_SHORT).show()
             return
         }
+        // Haptic: short click confirms tap registered
+        @Suppress("DEPRECATION")
+        val vibrator = getSystemService(android.content.Context.VIBRATOR_SERVICE) as android.os.Vibrator
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            vibrator.vibrate(android.os.VibrationEffect.createPredefined(android.os.VibrationEffect.EFFECT_CLICK))
+        } else {
+            vibrator.vibrate(android.os.VibrationEffect.createOneShot(30, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+        }
+        // Dismiss keyboard so the result text is visible immediately
+        val imm = getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+        homeTopicInput?.let { imm.hideSoftInputFromWindow(it.windowToken, 0) }
         homeIsListening = true
         updateHomeMicTile()
         homeVoiceManager.startListening(object : VoiceRecognitionCallback {
@@ -1586,8 +1701,33 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
                     homeTopicInput?.setSelection(text.length)
                 }
             }
+            override fun onRmsChanged(rms: Float) {
+                runOnUiThread {
+                    val bars = homeMicBars ?: return@runOnUiThread
+                    val norm = ((rms + 2f) / 12f).coerceIn(0f, 1f)
+                    val dp = resources.displayMetrics.density
+                    val minH = (4 * dp).toInt(); val maxH = (26 * dp).toInt()
+                    (bars[0].layoutParams as LinearLayout.LayoutParams).height =
+                        (minH + (maxH - minH) * norm * 0.7f).toInt()
+                    (bars[1].layoutParams as LinearLayout.LayoutParams).height =
+                        (minH + (maxH - minH) * norm).toInt()
+                    (bars[2].layoutParams as LinearLayout.LayoutParams).height =
+                        (minH + (maxH - minH) * norm * 0.6f).toInt()
+                    bars.forEach { it.requestLayout() }
+                }
+            }
             override fun onError(error: String) {
-                runOnUiThread { homeIsListening = false; updateHomeMicTile() }
+                runOnUiThread {
+                    homeIsListening = false
+                    updateHomeMicTile()
+                    val msg = when {
+                        "timeout" in error.lowercase() || "no match" in error.lowercase() ->
+                            "Couldn't hear you — tap mic to try again"
+                        "network" in error.lowercase() -> "No network — check connection and retry"
+                        else -> "Mic error — tap to retry"
+                    }
+                    Toast.makeText(this@HomeActivity, msg, Toast.LENGTH_SHORT).show()
+                }
             }
             override fun onListeningStarted() {}
             override fun onListeningFinished() {
@@ -1596,11 +1736,43 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
         }, SessionManager.getPreferredLang(this).ifBlank { "en-US" })
     }
 
-    /** Mirrors FullChatFragment.resetVoiceButton() — updates the mic tile emoji */
     private fun updateHomeMicTile() {
         val tile = homeMicTile ?: return
-        val emojiView = tile.getChildAt(0) as? TextView ?: return
-        emojiView.text = if (homeIsListening) "⏹️" else "🎤"
+        val dp = resources.displayMetrics.density
+        if (homeIsListening) {
+            homeMicEmojiView?.visibility = View.GONE
+            homeMicWaveContainer?.visibility = View.VISIBLE
+            homeMicLabelView?.text = "Listening…"
+            homeMicLabelView?.setTextColor(Color.parseColor("#4FC3F7"))
+            homeMicBg?.apply {
+                setColor(Color.parseColor("#3D0000"))
+                setStroke((2 * dp).toInt(), Color.parseColor("#FF5252"))
+            }
+            if (homeMicPulseAnim == null) {
+                homeMicPulseAnim = android.animation.ObjectAnimator.ofPropertyValuesHolder(
+                    tile,
+                    android.animation.PropertyValuesHolder.ofFloat("scaleX", 1f, 1.06f, 1f),
+                    android.animation.PropertyValuesHolder.ofFloat("scaleY", 1f, 1.06f, 1f)
+                ).apply {
+                    duration = 600
+                    repeatCount = android.animation.ValueAnimator.INFINITE
+                    repeatMode  = android.animation.ValueAnimator.REVERSE
+                    interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+                    start()
+                }
+            }
+        } else {
+            homeMicPulseAnim?.cancel(); homeMicPulseAnim = null
+            tile.scaleX = 1f; tile.scaleY = 1f
+            homeMicEmojiView?.visibility = View.VISIBLE
+            homeMicWaveContainer?.visibility = View.GONE
+            homeMicLabelView?.text = "Tap to speak"
+            homeMicLabelView?.setTextColor(Color.parseColor("#AABBCC"))
+            homeMicBg?.apply {
+                setColor(Color.parseColor("#1A2030"))
+                setStroke((1 * dp).toInt(), Color.parseColor("#334466"))
+            }
+        }
     }
 
     override fun onRequestPermissionsResult(

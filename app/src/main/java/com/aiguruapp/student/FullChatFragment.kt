@@ -971,6 +971,20 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         voiceButton.backgroundTintList =
             ColorStateList.valueOf(android.graphics.Color.parseColor("#E53935"))
         listeningIndicator.visibility = View.VISIBLE
+        // Haptic + keyboard dismiss
+        @Suppress("DEPRECATION")
+        val vib = requireContext().getSystemService(android.content.Context.VIBRATOR_SERVICE)
+                as android.os.Vibrator
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            vib.vibrate(android.os.VibrationEffect.createPredefined(android.os.VibrationEffect.EFFECT_CLICK))
+        } else {
+            vib.vibrate(android.os.VibrationEffect.createOneShot(30, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+        }
+        val imm = requireContext().getSystemService(android.content.Context.INPUT_METHOD_SERVICE)
+                as android.view.inputmethod.InputMethodManager
+        imm.hideSoftInputFromWindow(messageInput.windowToken, 0)
+        startMicPulse()
+        startWaveAnimation("#E53935")
         voiceManager.startListening(this, currentLang)
     }
 
@@ -980,6 +994,8 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         voiceButton.backgroundTintList =
             ColorStateList.valueOf(android.graphics.Color.parseColor("#E3F2FD"))
         listeningIndicator.visibility = View.GONE
+        stopMicPulse()
+        stopWaveAnimation()
     }
 
     private fun updateAutoExplainButton() {
@@ -1980,7 +1996,16 @@ After a Blackboard lesson, use the ask bar (💬 button) to ask follow-up questi
     override fun onError(error: String) {
         requireActivity().runOnUiThread {
             if (isVoiceModeActive) startVoiceLoopListening()
-            else resetVoiceButton()
+            else {
+                resetVoiceButton()
+                val msg = when {
+                    "timeout" in error.lowercase() || "no match" in error.lowercase() ->
+                        "Couldn't hear you — tap mic to try again"
+                    "network" in error.lowercase() -> "No network — check connection"
+                    else -> "Mic error — tap to retry"
+                }
+                Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

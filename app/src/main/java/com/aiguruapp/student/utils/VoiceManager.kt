@@ -15,6 +15,7 @@ interface VoiceRecognitionCallback {
     fun onListeningStarted()
     fun onListeningFinished()
     fun onBeginningOfSpeech() {}
+    fun onRmsChanged(rms: Float) {}
 }
 
 class VoiceManager(private val context: Context) {
@@ -119,7 +120,9 @@ class VoiceManager(private val context: Context) {
             callback?.onBeginningOfSpeech()
         }
 
-        override fun onRmsChanged(rmsdB: Float) {}
+        override fun onRmsChanged(rmsdB: Float) {
+            callback?.onRmsChanged(rmsdB)
+        }
 
         override fun onBufferReceived(buffer: ByteArray?) {}
 

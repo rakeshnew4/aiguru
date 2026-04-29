@@ -226,6 +226,7 @@ class BlackboardActivity : AppCompatActivity() {
     /** Image base64 resolved once in onCreate from companion store (HomeActivity) or Intent fallback. */
     private var intentImageBase64: String? = null
     private var bbIsListening = false
+    private var bbMicPulseAnim: android.animation.Animator? = null
     private lateinit var bbVoiceManager: VoiceManager
     private lateinit var bbMediaManager: MediaManager
     private lateinit var bbCameraBtn: TextView
@@ -3715,11 +3716,36 @@ class BlackboardActivity : AppCompatActivity() {
             ).show()
             return
         }
+        // Haptic feedback
+        @Suppress("DEPRECATION")
+        val vib = getSystemService(android.content.Context.VIBRATOR_SERVICE) as android.os.Vibrator
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            vib.vibrate(android.os.VibrationEffect.createPredefined(android.os.VibrationEffect.EFFECT_CLICK))
+        } else {
+            vib.vibrate(android.os.VibrationEffect.createOneShot(30, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+        }
+        // Dismiss keyboard so typed / spoken text is visible
+        val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE)
+                as android.view.inputmethod.InputMethodManager
+        imm.hideSoftInputFromWindow(bbAskInput.windowToken, 0)
         bbIsListening = true
         bbMicBtn.text = "⏹️"
         bbMicBtn.backgroundTintList =
             android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#E53935"))
         bbAskInput.hint = "Listening…"
+        // Pulse animation on the mic button
+        bbMicPulseAnim?.cancel()
+        bbMicPulseAnim = android.animation.ObjectAnimator.ofPropertyValuesHolder(
+            bbMicBtn,
+            android.animation.PropertyValuesHolder.ofFloat("scaleX", 1f, 1.15f, 1f),
+            android.animation.PropertyValuesHolder.ofFloat("scaleY", 1f, 1.15f, 1f)
+        ).apply {
+            duration = 600
+            repeatCount = android.animation.ValueAnimator.INFINITE
+            repeatMode  = android.animation.ValueAnimator.REVERSE
+            interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+            start()
+        }
         bbVoiceManager.startListening(object : VoiceRecognitionCallback {
             override fun onResults(text: String) {
                 runOnUiThread {
@@ -3733,7 +3759,18 @@ class BlackboardActivity : AppCompatActivity() {
             override fun onPartialResults(text: String) {
                 runOnUiThread { bbAskInput.setText(text); bbAskInput.setSelection(text.length) }
             }
-            override fun onError(error: String) { runOnUiThread { resetBbVoiceButton() } }
+            override fun onError(error: String) {
+                runOnUiThread {
+                    resetBbVoiceButton()
+                    val msg = when {
+                        "timeout" in error.lowercase() || "no match" in error.lowercase() ->
+                            "Couldn't hear you — tap mic to try again"
+                        "network" in error.lowercase() -> "No network — check connection"
+                        else -> "Mic error — tap to retry"
+                    }
+                    android.widget.Toast.makeText(this@BlackboardActivity, msg, android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
             override fun onListeningStarted() {}
             override fun onListeningFinished() { runOnUiThread { resetBbVoiceButton() } }
         }, preferredLanguageTag)
@@ -3742,6 +3779,8 @@ class BlackboardActivity : AppCompatActivity() {
     /** Mirrors FullChatFragment.resetVoiceButton(). */
     private fun resetBbVoiceButton() {
         bbIsListening = false
+        bbMicPulseAnim?.cancel(); bbMicPulseAnim = null
+        bbMicBtn.scaleX = 1f; bbMicBtn.scaleY = 1f
         bbMicBtn.text = "🎤"
         bbMicBtn.backgroundTintList =
             android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#1E1E38"))
@@ -3931,7 +3970,7 @@ class BlackboardActivity : AppCompatActivity() {
             }
 
         val camTile  = makeTile("📷", "Photo", "#1A2040", "#3355AA")
-        val micTile  = makeTile(if (bbIsListening) "🔴" else "🎤", "Voice", "#1A2030", "#334466")
+        val micTile  = makeTile(if (bbIsListening) "🔴" else "🎤", "Tap to speak", "#1A2030", "#334466")
         val fullTile = makeTile("⛶", "Expand", "#1A1A30", "#333355")
         // Remove right margin from last tile
         (fullTile.layoutParams as LinearLayout.LayoutParams).marginEnd = 0

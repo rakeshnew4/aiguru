@@ -339,7 +339,7 @@
 
                         <TextView
                             android:id="@+id/homeQuotaBbLeftText"
-                            android:layout_width="48dp"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:textSize="11sp"
                             android:textStyle="bold"
@@ -350,7 +350,7 @@
                             android:id="@+id/homeQuotaBbBar"
                             style="?android:attr/progressBarStyleHorizontal"
                             android:layout_width="0dp"
-                            android:layout_height="5dp"
+                            android:layout_height="0dp"
                             android:layout_weight="1"
                             android:layout_marginStart="8dp"
                             android:max="100"
@@ -693,7 +693,19 @@
                     android:textSize="11sp"
                     android:textColor="#80B8D4" />
 
-
+                <TextView
+                    android:id="@+id/challengeNextBtn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Next →"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="#4FC3F7"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="4dp"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp"
+                    android:visibility="gone" />
 
             </LinearLayout>
 
@@ -1039,7 +1051,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Credits will be consumed for features selectoins"
+                        android:text="More"
                         android:textSize="10sp"
                         android:textColor="@color/colorTextSecondary"
                         android:layout_marginTop="1dp" />

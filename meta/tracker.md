@@ -854,4 +854,92 @@ Run to start seeding:
     - Single shared httpx.AsyncClient across all parallel workers (connection pool)
     - Added --parallel N CLI flag (default 3); use --parallel 5 for faster runs
   Usage: python3 seed_ncert_es.py --parallel 5 --from-cache-only  (if PDFs already cached)
+
+2026-04-29 | Mic UX — propagated all improvements to FullChatFragment + BlackboardActivity | Files changed:
+  FullChatFragment.kt:
+    - startVoiceInput(): added haptic (EFFECT_CLICK / createOneShot fallback), keyboard dismiss
+      (imm.hideSoftInputFromWindow), startMicPulse() + startWaveAnimation("#E53935") calls —
+      pulse and wave bars were already implemented but never wired to regular tap-record
+    - resetVoiceButton(): added stopMicPulse() + stopWaveAnimation() (were missing)
+    - onError(): now shows contextual toast ("Couldn't hear you", "No network", "Mic error")
+      instead of silently resetting; toast only shown when NOT in voice mode (voice mode auto-restarts)
+  BlackboardActivity.kt:
+    - Added bbMicPulseAnim: android.animation.Animator? instance var (line ~229)
+    - startBbVoiceInput(): added haptic, keyboard dismiss, ObjectAnimator pulse on bbMicBtn
+      (600ms scale 1→1.15→1 loop), contextual error toasts
+    - resetBbVoiceButton(): cancels+nulls bbMicPulseAnim, resets bbMicBtn.scaleX/Y to 1f
+    - showAskBottomSheet micTile: label "Voice" → "Tap to speak" (discoverability)
+  Skipped: BbInteractivePopup — uses inline SpeechRecognizer (not VoiceManager), already has
+    color feedback; would need deeper refactor. Lower priority (quiz-answer flow, not topic input).
+
+2026-04-29 | Mic UI — full UX overhaul (all 8 improvements implemented) | Files changed:
+  AndroidManifest.xml: added android.permission.VIBRATE
+  VoiceManager.kt (lines 17, 122):
+    - Added onRmsChanged(rms: Float) default method to VoiceRecognitionCallback interface
+    - RecognitionListenerImpl.onRmsChanged() now calls callback?.onRmsChanged(rmsdB)
+  HomeActivity.kt:
+    - Added 6 new instance vars (lines ~91): homeMicEmojiView, homeMicWaveContainer,
+      homeMicBars: List<View>, homeMicLabelView, homeMicBg: GradientDrawable, homeMicPulseAnim: Animator
+    - showBbTopicDialog(): replaced makeHomeTile() for mic with a hand-built tile containing:
+        * 28f 🎤 emoji (hides when listening)
+        * 3 animated waveform bars (wBar1/2/3, heights 6/12/8dp initial, bounce via onRmsChanged)
+        * "Tap to speak" / "Listening…" label (10f)
+        * GradientDrawable micBg stored for live color mutation
+    - Added sheet.setOnDismissListener: stops recording, cancels pulse, nulls all mic refs
+    - updateHomeMicTile() (complete rewrite):
+        Listening state: hide emoji, show wave container, label→"Listening…" (#4FC3F7),
+          tile bg→#3D0000, stroke→2dp #FF5252, start 600ms looping scale pulse (1→1.06→1)
+        Idle state: cancel pulse, reset scale 1f, show emoji, hide waves,
+          label→"Tap to speak" (#AABBCC), tile bg→#1A2030, stroke→1dp #334466
+    - homeStartVoiceInput() upgrades:
+        * Haptic: VibrationEffect.EFFECT_CLICK (API 29+) / createOneShot(30ms) fallback
+        * Keyboard dismiss before recording starts (imm.hideSoftInputFromWindow)
+        * onRmsChanged: normalises RMS to 0–1, animates 3 bar heights (4–26dp range)
+        * onError: context-aware toast ("Couldn't hear you", "No network", "Mic error")
+
+2026-04-29 | Mic UI analysis — read + rate + improvement plan (no code changes) | Files read:
+  HomeActivity.kt (lines 83–84, 91, 116, 133, 1341–1452, 1552–1614):
+    - Mic tile in showBbTopicDialog() bottom sheet: makeHomeTile("🎤"/"⏹️", "Voice", "#1A2030", "#334466")
+    - homeIsListening flag drives only emoji swap (🎤 ↔ ⏹️); no animation, no color change, no label change
+    - homeStartVoiceInput(): partial results update topicInput in real time (good)
+    - onRmsChanged in VoiceManager is empty — no amplitude feedback
+    - updateHomeMicTile(): only swaps emojiView.text
+  BbInteractivePopup.kt (lines 392–521):
+    - Better mic: 44f emoji, color change green→red on listening, alpha 0.4 on processing
+    - Still no pulse/scale animation; onRmsChanged also empty
+  HomeActivity.kt (lines 984–994):
+    - ObjectAnimator pulse infrastructure already used for credits badge (scale X/Y PropertyValuesHolder)
+  VoiceManager.kt (lines 122, 175): onRmsChanged stubs exist but unused
          python3 seed_ncert_es.py --parallel 3                     (fresh download + index)
+
+---
+
+## 2026-04-29 (session 8)
+
+**Asked:** (1) Progress Dashboard shows empty despite chatting. (2) Add "Next" button to daily challenge card. (3) Check notes generation quality for Firestore sync decision.
+
+**Progress Dashboard diagnosis:**
+- Root cause: `populateFromStats` bails on `stats.subjects.isEmpty()` even if doc exists; for school users whose Firebase anonymous auth fails at login, stats writes silently denied by Firestore rules (PERMISSION_DENIED — rule requires auth.uid == docId but school user has no Firebase auth UID)
+- Also: `ensureProfile()` never called at app start — document may not exist yet
+- Flow verified: `recordMessage` called at FullChatFragment:1533; `recordBbSession` at BlackboardActivity:850 (inside if recordSession && !userId.isNullOrBlank())
+- School login (`SchoolLoginActivity:126`): calls `signInAnonymously()` — if it FAILS, `navigateNext()` called without saving Firebase UID → fallback userId = schoolId_studentId → Firestore rules reject writes
+
+**Changes — Progress Dashboard:**
+- `HomeActivity.kt`: Added `ensureStatsProfile()` call after userId init on line 146; added `ensureStatsProfile()` function (~line 878) that: (a) attempts anonymous Firebase sign-in if no current auth user, (b) calls `StudentStatsManager.ensureProfile()` with recovered UID
+- `ProgressDashboardActivity.kt`: 
+  - `populateFromStats()`: moved top stats population (streak/mastery/time) BEFORE subjects check
+  - If `stats == null` → showEmpty as before
+  - If `stats.subjects.isEmpty()`: calls `showEmpty(hasActivity = totalMessages>0 || bbSessions>0)` then returns
+  - `showEmpty()`: added `hasActivity` param; shows "Great start! 🎉" message when hasActivity=true
+  - `displayData()`: added `emptyLayout.visibility = GONE` when data loads (prevents overlap)
+- Files: HomeActivity.kt (~lines 98–100: new state vars, ~line 146: ensureStatsProfile call, ~line 878: new ensureStatsProfile function), ProgressDashboardActivity.kt (lines 63–88, 279–292, 129–132)
+
+**Changes — Daily Questions Next button:**
+- `activity_home.xml`: Added `challengeNextBtn` TextView to footer row inside dailyChallengeCard (visibility=gone by default, "Next →" text, #4FC3F7 color)
+- `HomeActivity.kt`: Added `dailyPendingQuestions` + `dailyChallengeIndex` state vars; extracted `showDailyChallengeAt(card, index)` function; `loadDailyChallenge()` calls `showDailyChallengeAt(card, 0)`; Next button shown only when pending.size > 1 and index < last; click increments index modulo pending.size
+
+**Notes quality assessment:**
+- `NotesRepository.save()` in `chat/NotesRepository.kt` saves raw AI response text (no LLM call, no formatting)
+- `saveLastAIMessageAsNotes()` at FullChatFragment:1828 → `TutorController.extractAnswerForDisplay(lastAi.content)` → save
+- Quality is "acceptable but conversational" — not structured bullet notes
+- Decision: **skip Firestore sync for notes** — current quality doesn't justify cloud storage; would need a dedicated notes-generation LLM call to produce clean structured notes (extra token cost per save)

@@ -61,13 +61,19 @@ class ProgressDashboardActivity : BaseActivity() {
     }
 
     private fun populateFromStats(stats: StudentStats?) {
-        if (stats == null || stats.subjects.isEmpty()) { showEmpty(isGuest = false); return }
+        if (stats == null) { showEmpty(isGuest = false); return }
 
-        // ── Top stat cards ──────────────────────────────────────────────────────
+        // ── Top stat cards (always shown when doc exists) ───────────────────────
         findViewById<TextView>(R.id.totalChaptersCount).text = stats.streakDays.toString()
         val acc = stats.quizAccuracy
         findViewById<TextView>(R.id.avgMasteryScore).text = if (acc >= 0) "$acc%" else "—"
         findViewById<TextView>(R.id.totalTimeText).text = stats.appTimeFormatted
+
+        if (stats.subjects.isEmpty()) {
+            // Document exists but no per-subject tracking yet — show encouraging message
+            showEmpty(isGuest = false, hasActivity = stats.totalMessages > 0 || stats.totalBbSessions > 0)
+            return
+        }
 
         // ── Flatten subjects → chapters → ChapterSummary ────────────────────────
         val summaries = stats.subjects.values.flatMap { subj ->
@@ -125,8 +131,9 @@ class ProgressDashboardActivity : BaseActivity() {
             sparklineCard.visibility = View.VISIBLE
         }
 
-        // Show list
+        // Show list, hide empty/loading states
         findViewById<View>(R.id.loadingLayout).visibility = View.GONE
+        findViewById<LinearLayout>(R.id.emptyLayout).visibility = View.GONE
         val scroll = findViewById<ScrollView>(R.id.chapterScrollView)
         scroll.visibility = View.VISIBLE
     }
@@ -276,17 +283,16 @@ class ProgressDashboardActivity : BaseActivity() {
         return card
     }
 
-    private fun showEmpty(isGuest: Boolean = false) {
+    private fun showEmpty(isGuest: Boolean = false, hasActivity: Boolean = false) {
         runOnUiThread {
             findViewById<View>(R.id.loadingLayout).visibility = View.GONE
             val emptyLayout = findViewById<LinearLayout>(R.id.emptyLayout)
             emptyLayout.visibility = View.VISIBLE
-            // Update message based on why there's no data
             val msg = emptyLayout.getChildAt(0) as? TextView
-            msg?.text = if (isGuest) {
-                "Sign in to track your progress 📊\n\nYour streaks, quiz scores and study time\nwill appear here after you create an account."
-            } else {
-                "No progress yet 📚\n\nStart chatting with AI or try a blackboard lesson.\nYour learning data will appear here!"
+            msg?.text = when {
+                isGuest -> "Sign in to track your progress 📊\n\nYour streaks, quiz scores and study time\nwill appear here after you create an account."
+                hasActivity -> "Great start! 🎉\n\nWe're tracking your activity. Your detailed chapter progress will appear here after your next chat or lesson."
+                else -> "No progress yet 📚\n\nStart chatting with AI or try a blackboard lesson.\nYour learning data will appear here!"
             }
         }
     }
