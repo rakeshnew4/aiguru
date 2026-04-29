@@ -943,3 +943,17 @@ Run to start seeding:
 - `saveLastAIMessageAsNotes()` at FullChatFragment:1828 → `TutorController.extractAnswerForDisplay(lastAi.content)` → save
 - Quality is "acceptable but conversational" — not structured bullet notes
 - Decision: **skip Firestore sync for notes** — current quality doesn't justify cloud storage; would need a dedicated notes-generation LLM call to produce clean structured notes (extra token cost per save)
+
+---
+
+## 2026-04-29 (session 9)
+
+**Asked:** Chat keyboard focus bug — input bar hidden under keyboard, need to close keyboard to send.
+
+**Root cause:** targetSdk=36, Android 15+ enforces edge-to-edge. `adjustResize` no longer resizes window when IME opens. Input row + send button got covered by keyboard.
+
+**Fix:**
+- `activity_chat.xml` line 11: added `android:id="@+id/chatMainContent"` to main content LinearLayout (DrawerLayout child)
+- `FullChatFragment.kt`: added imports `ViewCompat`, `WindowInsetsCompat`; added `setOnApplyWindowInsetsListener` on `chatMainContent` in `onViewCreated` after `initializeUI` — sets bottom padding = max(imeInsets.bottom, navBarInsets.bottom)
+- No keyboard dismiss on send — that only happens for voice button (correct behavior)
+- Files changed: `app/src/main/res/layout/activity_chat.xml` (~line 11), `FullChatFragment.kt` (~lines 30-31 imports, ~line 425 insets listener)

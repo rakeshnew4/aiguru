@@ -28,6 +28,8 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.view.GravityCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -391,6 +393,15 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
         initializeUI(view)
         initializeChapterWorkspaceDrawer()
+
+        // Keep input bar above keyboard (API 35+ edge-to-edge: adjustResize no longer works)
+        val chatMainContent = view.findViewById<android.widget.LinearLayout>(R.id.chatMainContent)
+        ViewCompat.setOnApplyWindowInsetsListener(chatMainContent) { v, insets ->
+            val imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+            val navBottom = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            v.setPadding(0, 0, 0, maxOf(imeBottom, navBottom))
+            insets
+        }
 
         // Blackboard preference is remembered across sessions (default ON).
 

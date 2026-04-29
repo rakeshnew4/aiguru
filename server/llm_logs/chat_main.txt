@@ -1,57 +1,73 @@
-=== CHAT_MAIN | 2026-04-28 16:50:19 | session=KkhkqOQI_aab0afeb ===
+=== CHAT_MAIN | 2026-04-29 06:40:12 | session=v6LtCBtv_176b75e5 ===
 
 === SYSTEM ===
-You are a lesson planner. Return ONLY a JSON object (no markdown, no fences) with these fields:
-  "lesson_title": short engaging title,
-  "steps": array of step titles (match the requested count),
-  "use_svg": true if the topic needs diagrams (math/science/charts), else false,
-  "category": one of "math","science","history","language","general",
-  "hook_question": one short real-world curiosity question to open the lesson (e.g. "Ever wondered why the sky is blue?"),
-  "continuation_topic": the single most logical next topic to learn after this one (3-6 words, e.g. "Condensation and Cloud Formation")
-Example: {"lesson_title":"Photosynthesis","steps":["What is it?","Light reactions"],"use_svg":true,"category":"science","hook_question":"Ever wondered how plants make their own food?","continuation_topic":"Respiration and Energy Release"}
+You are an expert, engaging AI tutor for school students (Class 1-12) in an educational app.
+You teach like a smart, patient friend — direct, clear, and genuinely interesting.
+
+MANDATORY OUTPUT FORMAT:
+Return ONLY valid JSON — no markdown code fences, no extra text:
+{"user_question":"<short restatement>","answer":"<full answer>","user_attachment_transcription":"<ALL text from image if any>","extra_details_or_summary":"<optional bonus info>","suggest_blackboard":<true|false>}
+
+MATH FORMATTING (CRITICAL):
+• ALL math uses $$...$$ — inline: $$x=5$$ or $$a^2+b^2=c^2$$
+• NEVER plain text math. NEVER code blocks for math.
+• LaTeX inside $$...$$: $$\frac{dy}{dx}$$, $$\sqrt{x}$$, $$\pi r^2$$
+
+ANSWER QUALITY:
+• Use context FIRST, knowledge second — never contradict the textbook context.
+• Bold (**term**) every key concept on first use.
+• Include ONE concrete worked example or real-world application.
+• For complex topics: hook (surprising / punchy opening) → explanation → example → tip.
+• For calculations: show every step clearly. NEVER skip steps. Box the final answer.
+• For definitions: precise 1-2 sentence definition + 1 concrete example.
+• For follow-ups: build directly on the previous explanation — never restart from basics.
+
+SUGGEST_BLACKBOARD RULE:
+• Set suggest_blackboard=true when the topic genuinely benefits from a step-by-step visual lesson:
+  multi-step processes (photosynthesis, digestion), complex derivations, structural diagrams (cell, atom)
+• Set suggest_blackboard=false for: greetings, simple definitions, single-step calculations,
+  conversational follow-ups, practice problem requests.
+
+IMAGE TRANSCRIPTION (when image attached):
+• Transcribe EVERY visible word, number, formula, heading, and label — word-for-word.
+• Describe all diagrams, figures, arrows with their labels.
+• Put ALL of this in user_attachment_transcription (it becomes context for future questions).
+
+OUTPUT STRICTNESS:
+• Return EXACTLY one JSON object — no text before, no text after, no ```json wrapper.
+• All five JSON fields must be present; use '' for unused string fields, false for suggest_blackboard.
+• answer field: **bold** key terms, $$...$$ for ALL math — never plain text math.
+
+
 
 === PROMPT ===
-Topic: Great choice! Let's break down **Question 1**, which asks us to express numbers as a product of their **prime factors**. 
+Student class level: Class 5
 
-Think of **prime factors** like the 'building blocks' of a number. Just like you can build a LEGO set using specific bricks, every whole number can be built by multiplying together prime numbers (numbers that can only be divided by 1 and themselves, like 2, 3, 5, 7, 11...). 
+CONTEXT (chapter notes):
+(No context provided)
 
-Let's solve **part (i): 140**.
+CONVERSATION HISTORY:
+assistant: 👋 Hi! I'm your AI Tutor for **Mathematics — Chapter 1** (Mathematics (Class 10)).
 
-To find the prime factors, we use a **factor tree** approach. We keep dividing by the smallest prime number possible until we reach 1.
+🎯 **Let's learn this together!**
 
-**Step-by-step calculation:**
-1. Start with 140. It's even, so divide by 2: $$140 \div 2 = 70$$
-2. 70 is also even, so divide by 2 again: $$70 \div 2 = 35$$
-3. 35 isn't divisible by 2 or 3. Let's try 5: $$35 \div 5 = 7$$
-4. 7 is a prime number, so we divide by 7: $$7 \div 7 = 1$$
+• Ask me any doubt — I'll guide you step by step
+• Use your 🎤 voice to ask (I'll reply out loud!)
+• **Quiz Me** to test yourself
+• 
 
-Now, collect all the numbers you divided by: 2, 2, 5, and 7.
+What would you like to understand first? 😊
 
-So, the prime factorization of 140 is:
-$$140 = 2 \times 2 \times 5 \times 7$$
+STUDENT QUESTION: Hi
 
-We can write this more neatly using exponents:
-$$\boxed{140 = 2^2 \times 5 \times 7}$$
+ANSWER GUIDANCE: Respond warmly in 1-2 sentences and invite a question.
 
-**Real-world tip:** This is exactly how computers encrypt secret messages! They use huge numbers and their prime factors to create codes that are super hard to break.
-
-Prime factorization is the first step to understanding how numbers are built! It helps us find the HCF (Highest Common Factor) and LCM (Least Common Multiple) later on.
-Requested number of steps: 5
-
-IMPORTANT: Teach using Telugu mixed with English — explain reasoning in Telugu, but use English for technical terms, formulas, and subject-specific vocabulary.
 
 === RESPONSE ===
 {
-  "lesson_title": "Prime Factorization: Numbers Building Blocks",
-  "steps": [
-    "Prime Numbers ante enti? (Understanding the building blocks)",
-    "Factor Tree method ni use chesi 140 ni divide cheyadam",
-    "Smallest prime numbers (2, 3, 5) tho step-by-step division",
-    "Factors anni collect chesi product form lo rayadam",
-    "Exponents use chesi final answer ni represent cheyadam"
-  ],
-  "use_svg": true,
-  "category": "math",
-  "hook_question": "Did you know that every number has a secret 'DNA' made of prime numbers?",
-  "continuation_topic": "Finding HCF and LCM"
+"user_question": "Greeting",
+"answer": "Hello there! It's great to meet you. I'm here to help you make sense of any math topic you're working on, so feel free to ask me anything you're curious about!",
+"user_attachment_transcription": "",
+"extra_details_or_summary": "I am ready to help with any Class 5 math topics like fractions, decimals, geometry, or word problems.",
+"suggest_blackboard": false
 }
