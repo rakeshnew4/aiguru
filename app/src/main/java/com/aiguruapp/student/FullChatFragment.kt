@@ -161,6 +161,9 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     private var pendingDisplayUri: Uri? = null
     private var isListening = false
 
+    // ── AI TTS Engine (shared with BB — wraps ttsManager for server-side TTS playback) ─
+    private lateinit var chatAiTtsEngine: com.aiguruapp.student.tts.BbAiTtsEngine
+
     // ── Page Analysis ─────────────────────────────────────────────────────────
     private var currentPageContent: PageContent? = null
 
@@ -388,6 +391,8 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             requireContext(), userId, subjectName, chapterName)
         voiceManager = VoiceManager(requireActivity())
         ttsManager = TextToSpeechManager(requireContext())
+        chatAiTtsEngine = com.aiguruapp.student.tts.BbAiTtsEngine(requireContext(), ttsManager)
+        chatAiTtsEngine.selfHostedUrl = com.aiguruapp.student.config.AdminConfigRepository.ttsSelfHostedUrl()
         mediaManager = MediaManager(requireContext())
         metricsTracker = ChapterMetricsTracker(subjectName, chapterName)
 
@@ -500,7 +505,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
     override fun onStop() {
         super.onStop()
-        ttsManager.stop()
+        chatAiTtsEngine.stop()
         context?.let { metricsTracker.endSession(it, 0) }
     }
 
@@ -508,6 +513,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         super.onDestroyView()
         if (isListening) voiceManager.stopListening()
         voiceManager.stopInterruptListening()
+        chatAiTtsEngine.destroy()
         ttsManager.destroy()
     }
 
@@ -1580,19 +1586,23 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                                 outputTokens = outputTok.takeIf { it > 0 })
                             messagesRecyclerView.scrollToPosition(messageAdapter.itemCount - 1)
 
-                            if ((lastInputWasVoice || isVoiceModeActive) && !isAutoExplainActive) {
+                            if (lastInputWasVoice || isVoiceModeActive) {
                                 lastInputWasVoice = false
                                 val voiceText = TutorController.prepareSpeechText(reply.response)
                                 if (isVoiceModeActive) {
                                     currentTTSText = voiceText
                                     setVoiceModeStatus("🔊 AI is speaking…", "#1565C0")
                                 }
-                                ttsManager.setLocale(Locale.forLanguageTag(currentLang))
-                                ttsManager.speak(voiceText, object : TTSCallback {
+                                chatAiTtsEngine.languageCode = currentLang
+                                chatAiTtsEngine.selfHostedUrl = com.aiguruapp.student.config.AdminConfigRepository.ttsSelfHostedUrl()
+                                chatAiTtsEngine.play(
+                                    text      = voiceText,
+                                    langTag   = currentLang,
+                                    callback  = object : TTSCallback {
                                     override fun onStart() {
                                         if (isVoiceModeActive) {
                                             Handler(Looper.getMainLooper()).postDelayed({
-                                                if (isVoiceModeActive && ttsManager.isSpeaking()) {
+                                                if (isVoiceModeActive && chatAiTtsEngine.isSpeaking()) {
                                                     voiceManager.startInterruptListening(
                                                         interruptCallback, currentLang
                                                     )
@@ -1615,7 +1625,10 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                                             if (isVoiceModeActive) startVoiceLoopListening()
                                         }
                                     }
-                                })
+                                },
+                                    ttsEngine = "google",
+                                    onUsedAi  = { _ -> }
+                                )
                             }
                             if (autoSaveNotes && saveNotesType != null) {
                                 notesRepo.save(reply.response, saveNotesType!!)

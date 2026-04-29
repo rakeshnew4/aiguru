@@ -1,19 +1,19 @@
-=== BB_PLANNER | 2026-04-29 07:04:29 | session=v6LtCBtv_02e9767d ===
+=== BB_PLANNER | 2026-04-29 08:19:50 | session=v6LtCBtv_34c877e7 ===
 
 === PROMPT ===
 You are a lesson analyst for a personal visual AI tutor responding to a student's SPECIFIC question.
 Analyze exactly what the student is asking and return a focused lesson plan.
 Output ONLY valid JSON — nothing else.
 
-Student question (answer THIS specifically): "Topic: Photosynthesis
-Lesson title: Unlocking Photosynthesis: How Plants Eat Light
-Category: science
+Student question (answer THIS specifically): "Topic: Pythagoras Theorem
+Lesson title: Unlocking the Pythagoras Theorem
+Category: math
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
 Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- The Ingredien"
+- Understanding Right-Angled"
 Chapter context (excerpt): ""
 Recent conversation (last 3 turns):
   (No prior conversation — this is the student's first question)
@@ -48,22 +48,21 @@ Rules:
 
 === RESPONSE ===
 {
-  "topic_type": "science_biology",
+  "topic_type": "math_geometry",
   "scope": "simple",
   "key_concepts": [
-    "Photosynthesis",
-    "Sunlight energy",
-    "Carbon dioxide",
-    "Water"
+    "Right-angled triangle",
+    "90-degree angle",
+    "Hypotenuse"
   ],
   "steps_count": 5,
   "image_search_terms": [
-    "photosynthesis diagram simple",
-    "plant absorbing sunlight water carbon dioxide"
+    "right-angled triangle diagram",
+    "hypotenuse side triangle"
   ],
-  "question_focus": "The student wants an engaging introduction to photosynthesis focusing specifically on the raw ingredients plants need to create food.",
+  "question_focus": "The student wants to understand the foundational concept of a right-angled triangle as a prerequisite to learning the Pythagoras Theorem.",
   "question_type": "conceptual",
   "prior_knowledge": "",
-  "hook_question": "Have you ever wondered how a tree grows so big when it doesn't have a mouth to eat breakfast like you do?",
-  "continuation_topic": "How Chlorophyll Captures Sunlight"
+  "hook_question": "Did you know that builders use a simple triangle trick to make sure corners of a house are perfectly square?",
+  "continuation_topic": "Introduction to Pythagoras Theorem Formula"
 }

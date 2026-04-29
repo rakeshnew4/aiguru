@@ -117,14 +117,29 @@ class BbAiTtsEngine(
             onUsedAi(true)
             playFile(cachedPath, langTag, text, callback)
         } else {
-            // Not ready — immediately use Android TTS so the student isn't kept waiting
-            Log.d(TAG, "✗✗✗ AI audio not ready (MISS): key=$key engine=$ttsEngine; FALLBACK to Android TTS")
-            onUsedAi(false)
-            preload(text, ttsEngine)   // cache it for next session
-            androidTts.setLocale(java.util.Locale.forLanguageTag(langTag))
-            androidTts.speak(text, callback)
+            // Cache miss — start preload if not already in-flight, then wait up to 8s before
+            // deciding to fall back. This is the fix for "200 OK but still Android TTS":
+            // the preload WAS completing, just too late because we fell back immediately.
+            Log.d(TAG, "✗ AI audio MISS: key=$key engine=$ttsEngine — waiting for preload…")
+            preload(text, ttsEngine)
+            scope.launch {
+                val path = waitForKey(key, timeoutMs = 8_000L)
+                if (path != null) {
+                    Log.d(TAG, "✓ Preload ready in time — playing AI audio: key=$key")
+                    onUsedAi(true)
+                    playFile(path, langTag, text, callback)
+                } else {
+                    Log.w(TAG, "✗ Preload timed out (8s) — fallback to Android TTS: key=$key")
+                    onUsedAi(false)
+                    androidTts.setLocale(java.util.Locale.forLanguageTag(langTag))
+                    androidTts.speak(text, callback)
+                }
+            }
         }
     }
+
+    /** True if AI MediaPlayer or Android TTS is currently speaking. */
+    fun isSpeaking(): Boolean = (mediaPlayer?.isPlaying == true) || androidTts.isSpeaking()
 
     /** Stop any currently playing audio (AI or Android TTS). */
     fun stop() {
@@ -153,6 +168,21 @@ class BbAiTtsEngine(
     fun cacheSize(): Int = cacheDir.listFiles()?.size ?: 0
 
     // ── Private ────────────────────────────────────────────────────────────────
+
+    /**
+     * Polls until [key] is no longer in [pendingKeys] (generation finished) or [timeoutMs] elapses.
+     * Returns the cached file path on success, null on timeout/failure.
+     */
+    private suspend fun waitForKey(key: String, timeoutMs: Long): String? {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            val path = resolveCache(key)
+            if (path != null) return path
+            if (!pendingKeys.contains(key)) break   // generation finished (failed case)
+            kotlinx.coroutines.delay(100)
+        }
+        return resolveCache(key)   // one final check after loop exits
+    }
 
     private fun resolveCache(key: String): String? {
         audioCache[key]?.let { 

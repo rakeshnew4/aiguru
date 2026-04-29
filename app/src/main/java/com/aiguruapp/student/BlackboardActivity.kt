@@ -2113,11 +2113,12 @@ class BlackboardActivity : AppCompatActivity() {
         lifecycleScope.launch {
             // Server now stores the direct image URL in image_description.
             // If it already starts with https:// use it directly — no re-query needed.
-            // Legacy fallback: if it's a title/description, search Wikimedia for it.
+            // Otherwise search Wikimedia using searchWithConfidence (top-10 candidates,
+            // best keyword-match wins) rather than blindly taking the first result.
             val url: String? = if (query.startsWith("https://", ignoreCase = true)) {
                 query
             } else {
-                WikimediaUtils.firstImageUrl(query)
+                WikimediaUtils.searchWithConfidence(query)?.first
             }
             if (url == null) return@launch
             val dp = resources.displayMetrics.density

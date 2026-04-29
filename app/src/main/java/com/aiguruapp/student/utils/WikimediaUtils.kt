@@ -63,12 +63,12 @@ object WikimediaUtils {
 
     /**
      * Returns the best-scoring (url, confidence 0–10f) pair for [query], or null if no image found.
-     * Fetches up to 5 results and picks the one with the highest keyword overlap with the query.
+     * Fetches up to 10 results and picks the one with the highest keyword overlap with the query.
      *
      * Confidence = (matching query words in image title / total query words) × 10
      */
     suspend fun searchWithConfidence(query: String): Pair<String, Float>? {
-        val results = searchImages(query, limit = 5)
+        val results = searchImages(query, limit = 10)
         if (results.isEmpty()) return null
 
         val queryWords = query.lowercase()
@@ -89,19 +89,29 @@ object WikimediaUtils {
             val overlap = queryWords.count { qw ->
                 titleWords.any { tw -> tw.contains(qw) || qw.contains(tw) }
             }
-            val score = (overlap.toFloat() / queryWords.size) * 2f
+            // Require at least 1 keyword match; unmatched results score 0
+            if (overlap == 0) return@forEach
+            val score = (overlap.toFloat() / queryWords.size) * 10f
             if (score > bestScore) {
                 bestScore = score
                 bestUrl   = url
             }
         }
-        return if (bestUrl.isNotBlank()) bestUrl to bestScore else null
+        // If no result had any keyword match, fall back to first result with low confidence
+        if (bestUrl.isBlank()) {
+            bestUrl   = results.values.first()
+            bestScore = 1f
+        }
+        return bestUrl to bestScore
     }
 
     // ── Internals ──────────────────────────────────────────────────────────────
 
     private fun buildUrl(query: String, limit: Int): String {
-        val encoded = URLEncoder.encode(query, "UTF-8")
+        // Prepend "filetype:bitmap" to bias Wikimedia search toward raster images
+        // and away from audio/video/PDF files that can appear in generic searches.
+        val safeQuery = "filetype:bitmap $query"
+        val encoded = URLEncoder.encode(safeQuery, "UTF-8")
         return "$API_URL" +
                "?action=query" +
                "&format=json" +
@@ -111,7 +121,7 @@ object WikimediaUtils {
                "&gsrlimit=$limit" +
                "&prop=imageinfo" +
                "&iiprop=url" +
-               "&iiurlwidth=600"
+               "&iiurlwidth=800"
     }
 
     private fun parseImages(json: String): Map<String, String> = try {
