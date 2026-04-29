@@ -46,13 +46,13 @@ async def create_user_api_key(user_id: str, user_metadata: Optional[Dict[str, An
     """
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            user_email = user_metadata.get("email", "Unknown") if user_metadata else "Unknown"
+            user_name = user_metadata.get("name", "Unknown") if user_metadata else "Unknown"
             response = await client.post(
                 f"{LITELLM_PROXY_URL}/key/generate",
                 headers={"Authorization": f"Bearer {LITELLM_MASTER_KEY}"},
                 json={
                     "user_id": user_id,
-                    "key_alias": f"{user_email}",
+                    "key_alias": user_name,
                     "models": ["power", "cheaper", "faster"],
                     "duration": "365d",
                     "metadata": user_metadata or {}
