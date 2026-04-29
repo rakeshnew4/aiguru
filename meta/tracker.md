@@ -5,6 +5,16 @@
 
 ---
 
+## 2026-04-29
+
+**Asked:** Fix Kotlin compile error in `FullChatFragment.kt` about conflicting local declarations for `chatMainContent`.
+**Root cause:** `onViewCreated()` declared `val chatMainContent` twice in the same scope: once for the global-layout keyboard padding listener and again for the window-insets listener.
+**Changed:**
+- `app/src/main/java/com/aiguruapp/student/FullChatFragment.kt:414` — removed the second `val chatMainContent = ...` declaration and reused the earlier local for `ViewCompat.setOnApplyWindowInsetsListener(...)`.
+- `meta/android_index.md` — added `onViewCreated()` slice for `FullChatFragment.kt` (`341–417`) to reflect the setup/keyboard handling block that was read and touched.
+**Validation:**
+- VS Code Kotlin diagnostics for `FullChatFragment.kt` now show no errors.
+
 ## 2026-04-26 (prod readiness audit session)
 
 **Asked:** Read CLAUDE.md + rules.md + do a full prod readiness analysis of the entire app. Then update relevant meta files with everything read.

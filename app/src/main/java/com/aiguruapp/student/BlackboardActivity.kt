@@ -3124,12 +3124,12 @@ class BlackboardActivity : AppCompatActivity() {
                         val isLastFrameOverall = stepIdx == steps.size - 1 &&
                             frameIdx == (steps.lastOrNull()?.frames?.size ?: 1) - 1
                         val isLastFrameOfStep = frameIdx == (step?.frames?.size ?: 1) - 1
-                        // Use LLM-set duration_ms as post-TTS display time (300–5000ms).
+                        // Use LLM-set duration_ms as post-TTS display time. No hardcoded defaults.
                         // For question frames, add pause_after_ms thinking time and show a cue.
-                        val postTtsWait = (f?.durationMs ?: 2000L).coerceIn(300L, 5000L)
+                        val postTtsWait = f?.durationMs ?: 0L
                         val thinkingWait: Long = if (f?.frameType == "question") {
                             runOnUiThread { showSubtitle("🤔  take a moment…") }
-                            (f.pauseAfterMs).coerceAtLeast(2000L)
+                            f.pauseAfterMs ?: 0L
                         } else 0L
                         val pauseMs = postTtsWait + thinkingWait
                         if (isLastFrameOverall && quizTotal > 0) {

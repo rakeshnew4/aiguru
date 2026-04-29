@@ -340,7 +340,18 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
+        // DrawerLayout root breaks adjustResize — handle keyboard manually so input bar
+        // stays visible when soft keyboard opens.
+        val chatMainContent = view.findViewById<LinearLayout>(R.id.chatMainContent)
+        if (chatMainContent != null) {
+            view.viewTreeObserver.addOnGlobalLayoutListener {
+                val rect = android.graphics.Rect()
+                view.getWindowVisibleDisplayFrame(rect)
+                val imeHeight = (view.rootView.height - rect.bottom).coerceAtLeast(0)
+                val minKeyboard = (120 * resources.displayMetrics.density).toInt()
+                chatMainContent.setPadding(0, 0, 0, if (imeHeight > minKeyboard) imeHeight else 0)
+            }
+        }
         pdfPageManager = PdfPageManager(requireContext())
 
         isAutoExplainActive = requireContext()
@@ -400,7 +411,6 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         initializeChapterWorkspaceDrawer()
 
         // Keep input bar above keyboard (API 35+ edge-to-edge: adjustResize no longer works)
-        val chatMainContent = view.findViewById<android.widget.LinearLayout>(R.id.chatMainContent)
         ViewCompat.setOnApplyWindowInsetsListener(chatMainContent) { v, insets ->
             val imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
             val navBottom = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom

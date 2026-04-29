@@ -326,7 +326,7 @@ class HomeActivity : BaseActivity() {
             chatLeft in 1..2 ->
                 "$chatLeft free question${if (chatLeft == 1) "" else "s"} left today — make them count! 💡"
             bbLeft == 0 && credits <= 0 ->
-                "Today's free lessons are done! ⭐ Add credits to keep learning."
+                "Today's free lessons are done! ⭐ Keep Going"
             bbLeft == 0 && credits > 0 ->
                 "Free lessons used — ⭐ credits will power your next session!"
             else -> return

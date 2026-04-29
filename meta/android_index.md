@@ -66,6 +66,7 @@
 
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
+| `onViewCreated()` | 341–417 | Fragment view setup; loads BB preference, binds keyboard/insets handling, initializes managers and history load |
 | `isAutoExplainActive` | 342 | Loaded from `user_prefs/blackboard_mode_on`; if true, nudges toward BB after response |
 | Image fields | 157–180 | `cameraImageUri`, `pendingImageBase64`, `pendingImagePath`, `imageEncodeJob`, `selectedImageUri` |
 | `initializeUI()` | ~503–580 | Binds RecyclerView, adapter, imageButton, imagePreviewStrip, message input |
