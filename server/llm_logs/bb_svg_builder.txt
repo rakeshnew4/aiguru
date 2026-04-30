@@ -1,4 +1,4 @@
-=== BB_SVG_BUILDER | 2026-04-29 17:08:53 | session=none ===
+=== BB_SVG_BUILDER | 2026-04-30 07:19:14 | session=none ===
 
 === SYSTEM ===
 You are an SVG diagram artist for an educational app. Draw accurate diagrams as raw SVG.
@@ -31,41 +31,14 @@ DRAW REAL STRUCTURES (never flowcharts with boxes/arrows):
 Draw this educational diagram as SVG:
 
   Diagram type : custom
-  Topic/title  : Lightness and Open Space
-  Context      : Right side chudandi, clear space unte happiness flow avtundi. Left side clutter unte, stress perugutundi.
+  Topic/title  : Real-world Examples
+  Context      : కారు బ్రేక్ వేయగానే మీరు ముందుకు వంగడం కూడా **Inertia** వల్లే జరుగుతుంది.
   Data hints   : none
-  Visual layout: Lightness and Open Space
+  Visual layout: Real-world Examples
   Follow this layout exactly — positions, arrows, and labels as described above.
 
-Draw "Lightness and Open Space" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
+Draw "Real-world Examples" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
 Animate each part appearing sequentially.  Output ONLY the <svg> element.
 
 === RESPONSE ===
-<svg viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg">
-<rect width="400" height="300" fill="#1A2B1A"/>
-
-<text x="200" y="25" text-anchor="middle" font-family="serif" font-size="13" font-weight="bold" fill="#F0EDD0" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0s"/>Lightness and Open Space</text>
-
-<!-- Left Side: Clutter/Stress -->
-<g stroke="#FF6B6B" stroke-width="2" fill="#FF6B6B" fill-opacity="0.25">
-  <path d="M40 100 L60 100 L60 120 L40 120 Z" stroke-dasharray="80" stroke-dashoffset="80"><animate attributeName="stroke-dashoffset" values="80;0" dur="0.6s" fill="freeze" begin="0.3s"/></path>
-  <path d="M70 90 L90 90 L90 110 L70 110 Z" stroke-dasharray="80" stroke-dashoffset="80"><animate attributeName="stroke-dashoffset" values="80;0" dur="0.6s" fill="freeze" begin="0.6s"/></path>
-  <path d="M50 130 L70 130 L70 150 L50 150 Z" stroke-dasharray="80" stroke-dashoffset="80"><animate attributeName="stroke-dashoffset" values="80;0" dur="0.6s" fill="freeze" begin="0.9s"/></path>
-  <path d="M80 120 L100 120 L100 140 L80 140 Z" stroke-dasharray="80" stroke-dashoffset="80"><animate attributeName="stroke-dashoffset" values="80;0" dur="0.6s" fill="freeze" begin="1.2s"/></path>
-</g>
-<text x="70" y="175" text-anchor="middle" font-family="serif" font-size="11" fill="#FF6B6B" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.5s"/>Clutter = Stress</text>
-
-<!-- Right Side: Open Space/Happiness -->
-<g stroke="#81C784" stroke-width="2" fill="#81C784" fill-opacity="0.25">
-  <ellipse cx="300" cy="120" rx="40" ry="40" stroke-dasharray="251" stroke-dashoffset="251"><animate attributeName="stroke-dashoffset" values="251;0" dur="0.6s" fill="freeze" begin="1.8s"/></ellipse>
-</g>
-<text x="300" y="175" text-anchor="middle" font-family="serif" font-size="11" fill="#81C784" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="2.1s"/>Open = Happiness</text>
-
-<!-- Divider -->
-<line x1="200" y1="60" x2="200" y2="240" stroke="#8BAB8B" stroke-width="1" stroke-dasharray="4 4"/>
-
-<!-- Arrows -->
-<path d="M120 120 L160 120 M150 110 L160 120 L150 130" stroke="#F0EDD0" fill="none" stroke-width="2" stroke-dasharray="50" stroke-dashoffset="50"><animate attributeName="stroke-dashoffset" values="50;0" dur="0.6s" fill="freeze" begin="2.4s"/></path>
-<path d="M240 120 L280 120 M270 110 L280 120 L270 130" stroke="#F0EDD0" fill="none" stroke-width="2" stroke-dasharray="50" stroke-dashoffset="50"><animate attributeName="stroke-dashoffset" values="50;0" dur="0.6s" fill="freeze" begin="2.7s"/></path>
-
-</svg>
+<svg viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#1A2B1A"/><text x="200" y="25" font-family="serif" fill="#F0EDD0" font-size="13" font-weight="bold" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0s"/>Real-world Examples</text><g stroke="#4FC3F7" stroke-width="2" fill="none" stroke-linecap="round"><path d="M50 220 L350 220 L340 180 L280 180 L250 140 L100 140 Z" fill="#4FC3F7" fill-opacity="0.25" stroke-dasharray="800" stroke-dashoffset="800"><animate attributeName="stroke-dashoffset" values="800;0" dur="0.6s" fill="freeze" begin="0.3s"/></path><circle cx="120" cy="220" r="25" fill="#8BAB8B" fill-opacity="0.25" stroke-dasharray="160" stroke-dashoffset="160"><animate attributeName="stroke-dashoffset" values="160;0" dur="0.6s" fill="freeze" begin="0.6s"/></circle><circle cx="300" cy="220" r="25" fill="#8BAB8B" fill-opacity="0.25" stroke-dasharray="160" stroke-dashoffset="160"><animate attributeName="stroke-dashoffset" values="160;0" dur="0.6s" fill="freeze" begin="0.9s"/></circle><path d="M180 140 L180 80 L220 100 L200 140" fill="#FF6B6B" fill-opacity="0.25" stroke-dasharray="200" stroke-dashoffset="200"><animate attributeName="stroke-dashoffset" values="200;0" dur="0.6s" fill="freeze" begin="1.2s"/></path></g><text x="120" y="225" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0.6s"/>Wheel</text><text x="300" y="225" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0.9s"/>Wheel</text><text x="200" y="90" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.2s"/>Passenger</text><path d="M230 110 L270 110" stroke="#F0EDD0" stroke-width="2" marker-end="url(#arrowhead)" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.5s"/></path><defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#F0EDD0"/></marker></defs><text x="250" y="105" font-family="serif" fill="#F0EDD0" font-size="11" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.5s"/>Inertia</text></svg>

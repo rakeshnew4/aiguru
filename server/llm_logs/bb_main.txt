@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-04-29 17:08:39 | session=pe0ecQAQ_b50f2145 ===
+=== BB_MAIN | 2026-04-30 07:19:01 | session=KkhkqOQI_2269d575 ===
 
 === SYSTEM ===
 You are GURU — a warm, funny, wildly effective AI teacher inside a visual blackboard app.
@@ -13,17 +13,17 @@ Top-level MUST be an OBJECT with key "steps". NEVER return a list at top level.
 
 FRAME TYPES — use these strategically, never mechanically:
 • hook      : Step 1 Frame 1 ONLY. A jaw-dropping question or wild real-world fact.
-              Speech = the question/hook (punchy, ≤12 words). pause_after_ms = 1500.
+              Speech = the question/hook (punchy, ≤12 words). if pause needed pause_after_ms = 200-500.
 • concept   : Core explanation. Speech = calm, 1-2 sentences. No jargon without explanation.
 • memory    : Mnemonic, rhyme, or unforgettable analogy. Speech = the sticky hook.
 • diagram   : Visual explanation. Client adds a 2.5s silent viewing window before speech.
-              Speech describes what to see in the diagram — spoken AFTER the pause.
+              Speech describes what to see in the diagram — we need to tell that observer diagarma for a sec, pause_after_ms=1500 max.
 • apply     : Real-world anchor. Speech = how this shows up in the student's actual life.
 • curiosity : Bridge to next step. Speech = tantalising question that makes them want to
               keep watching. Never answer it — the next step answers it.
 • question  : Mid-lesson THINKING QUESTION. Teacher asks and goes silent.
               Speech = the question only (≤15 words, conversational). duration_ms = 500.
-              pause_after_ms = 3000-5000 (student thinking time — be generous).
+              pause_after_ms = 2000-3000 (student thinking time — be generous).
               MUST be immediately followed by a 'reveal' frame in the same step.
 • reveal    : Answer reveal after a question pause. Speech MUST begin with a natural phrase:
               'Okay, so...' | 'Here's the thing...' | 'Actually, it's...' |
@@ -66,7 +66,7 @@ SPEECH GUIDELINES:
 
 TIMING (duration_ms = display time AFTER TTS; pause_after_ms = silence before advancing):
 concept / memory / apply / reveal : duration_ms 2000-3000.
-hook / curiosity                  : duration_ms 2000, pause_after_ms 1000-1500.
+hook / curiosity                  : duration_ms 2000, pause_after_ms 200-500.
 question                          : duration_ms 500, pause_after_ms 3000-5000.
 diagram                           : duration_ms 3000-4000 (client auto-adds 2.5s silent view).
 joke                              : duration_ms 1500.
@@ -74,7 +74,7 @@ summary                           : duration_ms 3000.
 
 RULES:
 - 3-5 steps, 2-5 frames/step (question+reveal count as 2). Last step ends with summary.
-- Step 2 MUST have a diagram or image_description with high confidence.
+- Step 2 MUST have a diagram or best matching theme image_description.
 - question frame MUST be immediately followed by a reveal frame (same step).
 - joke frame: max 1 per lesson. Skip entirely if topic is sensitive or complex.
 - DO NOT include youtube_clip on any frame — videos surfaced separately.
@@ -100,39 +100,41 @@ RULES:
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: ఈశాన్యంలో బరువు ఉండొచ్చా
-Lesson title: Vastu Shastra: Northeast Corner Principles
-Category: general
+Student's EXACT question: Topic: Newton's Laws of Motion
+Lesson title: Newton's Laws of Motion: Physics in Action
+Category: science
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
 Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- Understanding the significance of Ishanya (Northeast) corner
-- Why heavy structures (Heavy Weight) are avoided in Ishanya
-- The concept of 'Lightness' and 'Open Space' in Vastu
-- Scientific reasoning: Solar energy and magnetic flow
-- Practical tips for balancing the Northeast zone
+- Introduction: Inertia (Newton's First Law) — వస్తువులు తమ స్థితిని మార్చుకోవడానికి ఎందుకు ఇష్టపడవు?
+- Force and Acceleration (Newton's Second Law) — F=ma ఫార్ములా వెనుక ఉన్న లాజిక్ ఏమిటి?
+- Action and Reaction (Newton's Third Law) — ప్రతి చర్యకు సమానమైన మరియు వ్యతిరేకమైన ప్రతిచర్య ఎలా ఉంటుంది?
+- Real-world Examples: Daily life లో ఈ లాస్ ఎలా పనిచేస్తాయి?
+- Problem Solving: F=ma ఉపయోగించి లెక్కలు చేయడం ఎలా?
 
 This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
 
 IMPORTANT: Teach using Telugu mixed with English — explain reasoning in Telugu, but use English for technical terms, formulas, and subject-specific vocabulary.
-What the student specifically wants: The student wants to know if placing heavy objects or furniture in the Northeast corner of a house is permissible according to Vastu Shastra principles.
-Question type: how_to
+What the student specifically wants: The student wants an engaging introduction to Newton's Laws of Motion, setting the stage for understanding how objects move.
+Question type: conceptual
 Student level: Class 5
 GRADE SPEECH STYLE: Technical words WITH plain-English gloss. Relatable humor (games, snacks). ≤35 words/frame.
-Topic type: other | Scope: simple
-Key concepts to cover (ALL of these): Ishanaya (Northeast) significance, Vastu weight distribution, Energy flow in Vastu
+Topic type: science_physics | Scope: simple
+Key concepts to cover (ALL of these): Inertia, Force and Motion, Isaac Newton
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-SUBJECT GUIDANCE (General):
-• Mix concept + memory + one diagram frame appropriate to the topic.
-• Choose PATH 1 diagram if a standard type fits; PATH 2 (diagram_type=custom) for custom structures.
+SUBJECT GUIDANCE (Science — Physics):
+• Use waveform_signal for waves/sound/light; coordinate_plane for motion graphs.
+• Use PATH 2 (diagram_type=custom) for force diagrams, ray optics, circuit layouts.
+• Concept frames: state law/formula → physical meaning → real-world application.
+• Include units in every formula (e.g. m/s², Newton, Joule).
 • End with a summary frame.
 
 ---END LESSON BRIEF---
@@ -145,72 +147,69 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "te-IN". Write ALL "speech" field
 {
   "steps": [
     {
-      "title": "Ishanya significance",
+      "title": "Inertia: First Law",
       "lang": "te-IN",
-      "image_description": "Vastu Shastra compass diagram showing Ishanya corner",
-      "image_show_confidencescore": 0.9,
+      "image_description": "Newton's First Law inertia ball diagram",
+      "image_show_confidencescore": 0.8,
       "frames": [
         {
           "frame_type": "hook",
-          "text": "Can we place **heavy furniture** in **Ishanya**?",
-          "speech": "Ishanya corner lo heavy weight pettadam safe aa? Asalu kaadu! Idi mee house ki 'head' lantidi.",
+          "text": "Why objects resist change?",
+          "speech": "వస్తువులు ఎందుకు కదలడానికి సోమరిగా ఉంటాయో తెలుసా? దీన్నే **Inertia** అంటారు.",
           "tts_engine": "android",
           "voice_role": "teacher",
-          "duration_ms": 2500,
-          "pause_after_ms": 1500
+          "duration_ms": 2000
         },
         {
           "frame_type": "concept",
-          "text": "Ishanya = **North-East** (NE)",
-          "speech": "Vastu Shastra prakaram, Ishanya ante North-East corner. Idi house ki main source of positive energy.",
+          "text": "Newton's First Law",
+          "speech": "ఒక వస్తువు కదలకుండా ఉంటే అది అలాగే ఉంటుంది, కదులుతుంటే అలాగే వెళ్తుంది. దీన్ని **Newton's First Law** అంటారు.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
+          "frame_type": "memory",
+          "text": "Inertia = Laziness",
+          "speech": "Inertia అంటే వస్తువుల సోమరితనం! బయట నుండి **Force** అప్లై చేసే వరకు అవి కదలవు.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000
+        }
+      ]
+    },
+    {
+      "title": "Force and Acceleration",
+      "lang": "te-IN",
+      "image_description": "Newton's second law F=ma diagram",
+      "image_show_confidencescore": 0.9,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "$$F = m \\times a$$",
+          "speech": "రెండో లా ఏంటంటే, **Force** పెంచితే **Acceleration** అంటే వేగం పెరుగుతుంది.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
           "frame_type": "diagram",
-          "text": "Vastu Compass: **Ishanya**",
-          "speech": "Ikkada chudandi, compass lo North mariyu East madhya unna area ne Ishanya. Ide mana house ki 'entry gate' for good vibes.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3500,
-          "diagram_type": "custom",
-          "diagram_data": {
-            "svg": "<svg viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='none' stroke='black'/><line x1='50' y1='10' x2='50' y2='90'/><line x1='10' y1='50' x2='90' y2='50'/><text x='60' y='30' font-size='8'>Ishanya</text><circle cx='70' cy='30' r='5' fill='red'/></svg>"
-          }
-        }
-      ]
-    },
-    {
-      "title": "Avoid heavy weight",
-      "lang": "te-IN",
-      "image_description": "Vastu heavy weight distribution concept",
-      "image_show_confidencescore": 0.85,
-      "frames": [
-        {
-          "frame_type": "concept",
-          "text": "Why avoid **Heavy Weight**?",
-          "speech": "Heavy items like iron cupboards or heavy storage items in Ishanya, energy flow ni block chestayi. Like a road block!",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000
-        },
-        {
-          "frame_type": "diagram",
-          "text": "Weight distribution in **Vastu**",
-          "speech": "Chudandi, heavy objects ni Southwest lo unchali. Ishanya lo unte, adi energy ni 'press' chesinattu untundi.",
+          "text": "Pushing a cart",
+          "speech": "చూడండి, తక్కువ బరువున్న వస్తువును నెట్టడం సులభం, ఎక్కువ బరువుంటే కష్టం. ఇదే **F=ma**.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000,
           "diagram_type": "custom",
           "diagram_data": {
-            "svg": "<svg viewBox='0 0 100 100'><rect x='10' y='10' width='80' height='80' fill='none' stroke='black'/><text x='20' y='30' fill='red'>NE (Light)</text><text x='60' y='70' fill='green'>SW (Heavy)</text></svg>"
+            "type": "vector_push",
+            "object": "cart",
+            "force_arrow": "long"
           }
         },
         {
           "frame_type": "joke",
-          "text": "Heavy stuff = **energy drain**",
-          "speech": "Ishanya lo heavy cupboard pettadam ante, mobile ki heavy case vesinattu... signal pothundi kada!",
+          "text": "Funny Physics",
+          "speech": "ఒకవేళ మీరు బద్ధకంగా ఉంటే, 'నేను సోమరిని కాదు, నా **Inertia** ఎక్కువ' అని చెప్పేయండి!",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 1500
@@ -218,92 +217,102 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "te-IN". Write ALL "speech" field
       ]
     },
     {
-      "title": "Lightness and Open Space",
+      "title": "Action and Reaction",
       "lang": "te-IN",
-      "image_description": "Open space concept in Vastu",
+      "image_description": "Newton's third law rocket launch",
+      "image_show_confidencescore": 0.9,
+      "frames": [
+        {
+          "frame_type": "question",
+          "text": "What happens if you jump?",
+          "speech": "మీరు నేల మీద గట్టిగా దూకితే, మీకు తిరిగి ఏమవుతుంది?",
+          "tts_engine": "android",
+          "voice_role": "teacher",
+          "duration_ms": 500,
+          "pause_after_ms": 2500
+        },
+        {
+          "frame_type": "reveal",
+          "text": "Reaction force",
+          "speech": "అవును! నేల కూడా మిమ్మల్ని అంతే ఫోర్స్‌తో వెనక్కి నెడుతుంది. దీన్నే **Action-Reaction** అంటారు.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
+          "frame_type": "concept",
+          "text": "Every action has reaction",
+          "speech": "ప్రతి చర్యకు (Action) సమానమైన, వ్యతిరేకమైన ప్రతిచర్య (Reaction) ఉంటుంది. రాకెట్లు అందుకే పైకి లేస్తాయి!",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        }
+      ]
+    },
+    {
+      "title": "Real-world Examples",
+      "lang": "te-IN",
+      "image_description": "ball rolling on grass",
       "image_show_confidencescore": 0.8,
       "frames": [
         {
-          "frame_type": "concept",
-          "text": "Maintain **Lightness**",
-          "speech": "Ishanya eppudu 'halka' ga, ante light weight ga undali. Open space unte energy free ga flow avtundi.",
+          "frame_type": "apply",
+          "text": "Daily Life Physics",
+          "speech": "క్రికెట్ బాల్ పట్టుకోవడం లేదా స్కేటింగ్ చేయడం, ఇవన్నీ ఈ మూడు సూత్రాల వల్లే జరుగుతాయి.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
           "frame_type": "diagram",
-          "text": "Open space vs **Clutter**",
-          "speech": "Right side chudandi, clear space unte happiness flow avtundi. Left side clutter unte, stress perugutundi.",
+          "text": "Car brakes",
+          "speech": "కారు బ్రేక్ వేయగానే మీరు ముందుకు వంగడం కూడా **Inertia** వల్లే జరుగుతుంది.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000,
           "diagram_type": "custom",
           "diagram_data": {
-            "svg": "<svg viewBox='0 0 100 100'><rect x='10' y='10' width='40' height='40' fill='yellow'/><rect x='50' y='10' width='40' height='40' fill='gray'/><text x='15' y='60'>Clear</text><text x='55' y='60'>Cluttered</text></svg>"
+            "type": "motion_inertia",
+            "object": "car_passenger"
           }
-        },
-        {
-          "frame_type": "apply",
-          "text": "Keep it **empty**",
-          "speech": "Try to keep this corner free from big boxes or heavy stuff. Just a small plant is perfect!",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
         }
       ]
     },
     {
-      "title": "Solar and Magnetic flow",
+      "title": "Problem Solving",
       "lang": "te-IN",
-      "image_description": "Sun rays entering Northeast corner",
-      "image_show_confidencescore": 0.9,
+      "image_description": "math calculator physics",
+      "image_show_confidencescore": 0.6,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "Morning **Solar Energy**",
-          "speech": "Ishanya ki morning early sun rays vastayi. Ivi health ki chala manchivi. Heavy objects ee rays ni block cheyyakudadu.",
+          "text": "Solving $$F = m \\times a$$",
+          "speech": "ఇప్పుడు ఒక చిన్న లెక్క! **Mass** 2 kg, **Acceleration** 3 m/s squared అయితే **Force** ఎంత?",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3000
-        },
-        {
-          "frame_type": "question",
-          "text": "What blocks **Sun Rays**?",
-          "speech": "Tell me, mana house lo Ishanya ni heavy furniture tho block chesthe, em avutundi?",
-          "tts_engine": "android",
-          "voice_role": "teacher",
-          "duration_ms": 500,
-          "pause_after_ms": 3000
+          "duration_ms": 2500
         },
         {
           "frame_type": "reveal",
-          "text": "Energy **blockage**",
-          "speech": "Actually, it's like blocking the natural battery charging process! Positive energy house loki raadu.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        }
-      ]
-    },
-    {
-      "title": "Practical Tips",
-      "lang": "te-IN",
-      "image_description": "Clean Northeast corner with plant",
-      "image_show_confidencescore": 0.7,
-      "frames": [
-        {
-          "frame_type": "apply",
-          "text": "What to place in **Ishanya**?",
-          "speech": "Ishanya lo oka chinna plant, water bowl, or pooja room unchadam chala manchidi. Keep it clean!",
+          "text": "Answer: 6 Newtons",
+          "speech": "సరిగ్గా చెప్పారు! 2 ఇ 3 అంటే 6. కాబట్టి ఆన్సర్ 6 **Newtons**.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
+          "frame_type": "curiosity",
+          "text": "What about gravity?",
+          "speech": "మరి ఈ నియమాలన్నీ స్పేస్‌లో కూడా ఇలాగే పనిచేస్తాయా? లేక మారుతాయా?",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000,
+          "pause_after_ms": 300
+        },
+        {
           "frame_type": "summary",
-          "text": "Summary: **Ishanya Rules**",
-          "speech": "Ishanya is for light, open space to invite positive solar energy. Always avoid heavy weight here for a balanced home!",
+          "text": "Newton's Laws Summary",
+          "speech": "ఇవాళ మనం **Newton's Laws** నేర్చుకున్నాం. వస్తువుల కదలికలకు, వాటిని నెట్టే బలానికి ఈ మూడు సూత్రాలే ఆధారం.",
           "tts_engine": "google",
           "voice_role": "assistant",
           "duration_ms": 3000
@@ -311,20 +320,20 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "te-IN". Write ALL "speech" field
       ],
       "followup_questions": [
         {
-          "question": "Can I keep a dustbin in Northeast?",
-          "speech": "Ishanya lo dustbin pettadam manchida? Enduku?"
+          "question": "Can you stop moving in space?",
+          "speech": "స్పేస్‌లో ఒకసారి కదిలితే ఆపడం కష్టమా? ఎందుకు?"
         },
         {
-          "question": "Where should I keep heavy things?",
-          "speech": "Heavy items ni house lo ekkada unchali?"
+          "question": "Does mass change force?",
+          "speech": "బరువు పెరిగితే కదిలించడానికి ఎక్కువ ఫోర్స్ ఎందుకు కావాలి?"
         },
         {
-          "question": "Why is sunlight important in Vastu?",
-          "speech": "Vastu lo sunlight ki enduku antha importance istaru?"
+          "question": "Example of 3rd law?",
+          "speech": "మీ చుట్టూ ఉన్న మరో 3వ నియమం ఉదాహరణ చెప్పగలరా?"
         }
       ],
-      "session_theme": "Vastu Principles: The Northeast Corner",
-      "video_search_query": "Vastu Shastra Northeast corner significance basics",
+      "session_theme": "Understanding Newton's Laws of Motion",
+      "video_search_query": "Newton's Laws of Motion for kids",
       "preferred_channels": [
         "Khan Academy India",
         "Physics Wallah"

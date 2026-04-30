@@ -872,6 +872,32 @@ def _status_frame(message: str, progress: int) -> str:
     return f"data: {json.dumps({'status': message, 'progress': progress})}\n\n"
 
 
+def _try_extract_first_step(text: str) -> Optional[dict]:
+    """
+    Try to extract the first step object from a raw BB LLM response.
+    Used to emit step 1 immediately to the client (before slow image-matching).
+    Returns the step dict, or None if parsing fails.
+    """
+    try:
+        t = text.strip()
+        # Strip markdown code fences if present
+        if t.startswith("```"):
+            t = t[t.find("\n") + 1:]
+        if t.endswith("```"):
+            t = t[:t.rfind("```")]
+        start = t.find("{")
+        end = t.rfind("}")
+        if start < 0 or end <= start:
+            return None
+        obj = json.loads(t[start : end + 1])
+        steps = obj.get("steps")
+        if not isinstance(steps, list) or not steps:
+            return None
+        return steps[0]
+    except Exception:
+        return None
+
+
 def _attach_video_clips(text_content: str, yt_clips: list) -> str:
     """Attach session-level YouTube clips only to frames in the final BB step."""
     if not yt_clips:
@@ -986,7 +1012,7 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
 
             # ── First status: let the user know we received their request ──────
             if req.mode == "blackboard":
-                yield _status_frame("📖 Reading your question...", 12)
+                yield _status_frame("📖 Reading your input...", 12)
             else:
                 yield _status_frame("🤔 Understanding your question...", 20)
 
@@ -1198,6 +1224,17 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
             
             # BB post-processing: image title matching (LLM-powered + pre-fetched Wikimedia)
             if req.mode == "blackboard":
+                # ── Early first-step emission ──────────────────────────────────────────
+                # Emit step 1 immediately (no image-matching yet) so Android can start
+                # playing the lesson while we run the slower Wikimedia/LLM image pipeline.
+                try:
+                    first_step = _try_extract_first_step(result.get("text", ""))
+                    if first_step is not None:
+                        yield f"data: {json.dumps({'first_step': first_step})}\n\n"
+                        logger.info("BB first_step frame emitted early")
+                except Exception as _e:
+                    logger.debug("first_step early emit failed: %s", _e)
+
                 yield _status_frame("🖼️ Matching visuals to your lesson...", 87)
                 try:
                     # wiki_task is None when bb_images_enabled=False

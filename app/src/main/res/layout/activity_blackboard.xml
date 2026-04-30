@@ -223,8 +223,8 @@
     <!-- ── TOP-LEFT: Sessions left chip ─────────────────────────────────── -->
     <TextView
         android:id="@+id/bbQuotaChip"
-        android:layout_width="wrap_content"
-        android:layout_height="28dp"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:layout_gravity="top|start"
         android:layout_marginStart="14dp"
         android:layout_marginTop="34dp"
@@ -293,16 +293,16 @@
     <!-- Sits low, just above the media controls — doesn't cover board text -->
     <TextView
         android:id="@+id/bbSubtitleTv"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:layout_gravity="bottom|center_horizontal"
         android:layout_marginStart="6dp"
         android:layout_marginEnd="6dp"
         android:layout_marginBottom="72dp"
-        android:background="@android:color/transparent"
+        android:background="@android:color/black"
         android:gravity="center"
         android:lineSpacingExtra="3dp"
-        android:maxLines="1"
+        android:maxLines="0"
 
         android:paddingStart="14dp"
         android:paddingEnd="14dp"

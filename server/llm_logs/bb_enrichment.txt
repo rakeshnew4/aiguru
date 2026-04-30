@@ -1,49 +1,62 @@
-=== BB_ENRICHMENT | 2026-04-29 17:05:33 | session=none ===
+=== BB_ENRICHMENT | 2026-04-30 06:05:58 | session=none ===
 
 === SYSTEM ===
 You are a diagram data generator for an educational app. Output ONLY a valid JSON object — no text, no markdown, no explanation.
 
 === PROMPT ===
-Topic: "Method 1: Factoring"
-Teaching content: "See how we split it? If two things multiply to zero, one of them MUST be zero. That's the zero product property."
-Diagram type: graph_function
+Topic: "Isolating the Constant"
+Teaching content: "Chudandi, $-3$ and $+3$ cancel ayyi $0$ ayyayi. Ippudu equation simple ga $2x = x + 5$ la maarindi."
+Diagram type: number_line
 Color keys: primary (chalk white), label (yellow), secondary (sky blue), highlight (red), teal, orange, green, pink, purple, gold, coral, mint
-Schema: {"function":"quadratic","a":1,"b":0,"c":0,"x_range":[-4,4],"label":"y = x²","color":"secondary"}
-Hint: function: quadratic|linear|cubic|sine|cosine|abs. a,b,c: real coefficients. x_range: [-N, N] centered at 0. label: LaTeX-free equation string.
+Schema: {"start":-5,"end":5,"marked_points":[0],"highlight_range":[],"label":"Number Line"}
+Hint: start/end: integers. marked_points: numbers to highlight with dots. highlight_range: [lo, hi] to shade; omit if not needed.
 Existing data (improve/complete this): {}
 
 Generate the BEST data JSON for this diagram. Fill ALL keys. Be accurate to the topic. Reply with ONLY the JSON object.
 
 === RESPONSE ===
 {
-  "function": "quadratic",
-  "a": 1,
-  "b": -2,
-  "c": -3,
-  "x_range": [-4, 4],
-  "label": "y = x² - 2x - 3",
-  "color": "secondary",
+  "start": -5,
+  "end": 5,
+  "marked_points": [
+    -3,
+    0,
+    3
+  ],
+  "highlight_range": [
+    -3,
+    3
+  ],
+  "label": "Number Line: Canceling -3 and +3 to reach 0",
+  "colors": {
+    "primary": "#FFFFFF",
+    "label": "#FFD700",
+    "secondary": "#87CEEB",
+    "highlight": "#FF0000",
+    "teal": "#008080",
+    "orange": "#FFA500",
+    "green": "#008000",
+    "pink": "#FFC0CB",
+    "purple": "#800080",
+    "gold": "#FFD700",
+    "coral": "#FF7F50",
+    "mint": "#98FF98"
+  },
   "annotations": [
     {
-      "type": "point",
-      "x": -1,
-      "y": 0,
-      "label": "x = -1",
-      "color": "highlight"
+      "point": -3,
+      "text": "-3",
+      "color": "coral"
     },
     {
-      "type": "point",
-      "x": 3,
-      "y": 0,
-      "label": "x = 3",
-      "color": "highlight"
+      "point": 0,
+      "text": "0",
+      "color": "mint"
     },
     {
-      "type": "text",
-      "x": 0,
-      "y": 3,
-      "text": "(x + 1)(x - 3) = 0",
-      "color": "label"
+      "point": 3,
+      "text": "+3",
+      "color": "orange"
     }
   ]
 }

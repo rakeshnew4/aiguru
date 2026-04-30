@@ -473,13 +473,13 @@ Note: llm_service.py was modified externally by user/linter — full file now vi
 **Asked:** Server stuck after YouTube extraction — LLM not responding.
 **Root cause:** `gemini-3.1-flash-lite-preview` has thinking enabled by default (117+ reasoning tokens even for "Say hi"). For BB lessons, this consumed all max_tokens on reasoning, returning `content: null` and causing extreme slowness.
 **Changed:**
-- `server/app/core/config.py` — all 3 tiers switched from `gemini-3.1-flash-lite-preview` → `gemini-2.5-flash-lite`
-- `gemini-2.5-flash-lite` confirmed: no reasoning tokens, direct text, fast
+- `server/app/core/config.py` — all 3 tiers switched from `gemini-3.1-flash-lite-preview` → `gemini-3.1-flash-lite-preview`
+- `gemini-3.1-flash-lite-preview` confirmed: no reasoning tokens, direct text, fast
 - Pushed commit 4c6abc3
 **Key facts:**
 - gemini-3.1-flash-lite-preview: thinking ON by default → avoid
-- gemini-2.5-flash-lite: no thinking → use this
-- Available proxy models: gemini-2.5-flash-lite, gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-flash-lite-preview, nvidia/nemotron-nano-12b-v2-vl:free
+- gemini-3.1-flash-lite-preview: no thinking → use this
+- Available proxy models: gemini-3.1-flash-lite-preview, gemini-2.5-pro, gemini-2.5-flash, gemini-3.1-flash-lite-preview, nvidia/nemotron-nano-12b-v2-vl:free
 
 ---
 
@@ -494,10 +494,10 @@ Note: llm_service.py was modified externally by user/linter — full file now vi
 ---
 
 **Date:** 2026-04-26
-**Asked:** Still calling Claude model — why? Fix to use gemini-2.5-flash-lite only.
+**Asked:** Still calling Claude model — why? Fix to use gemini-3.1-flash-lite-preview only.
 **Root cause:** `.env` overrides config.py defaults. `POWER_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0` was hardcoded in `.env`.
 **Changed:**
-- `server/.env` — POWER_PROVIDER→gemini, POWER_MODEL_ID→gemini-2.5-flash-lite, CHEAPER_MODEL_ID→gemini-2.5-flash-lite, FASTER_MODEL_ID→gemini-2.5-flash-lite
+- `server/.env` — POWER_PROVIDER→gemini, POWER_MODEL_ID→gemini-3.1-flash-lite-preview, CHEAPER_MODEL_ID→gemini-3.1-flash-lite-preview, FASTER_MODEL_ID→gemini-3.1-flash-lite-preview
 - Server restart required for .env changes to take effect
 
 ---
@@ -766,7 +766,7 @@ Note: BbInteractivePopup.kt loaded into context by linter. Updating android meta
 2026-04-28 | Fix edge-to-edge black bars on Android 15 / Pixel 9 | app/src/main/java/com/aiguruapp/student/BaseActivity.kt:37-47 (added ViewCompat.setOnApplyWindowInsetsListener on android.R.id.content to apply systemBars insets); app/src/main/res/layout/activity_*.xml all 30 files (removed android:fitsSystemWindows=true from root views via sed)
 
 2026-04-28 | LLM model tier optimization + quota enforcer rebuild | Files:
-  server/app/core/config.py: POWER_MODEL_ID changed from gemini-2.5-flash-lite to gemini-3.1-flash-lite-preview (lines 23-50); CHEAPER/FASTER stay gemini-2.5-flash-lite
+  server/app/core/config.py: POWER_MODEL_ID changed from gemini-3.1-flash-lite-preview to gemini-3.1-flash-lite-preview (lines 23-50); CHEAPER/FASTER stay gemini-3.1-flash-lite-preview
   server/app/api/users.py: added GET /users/quota/status endpoint (lines 212-350); returns free_chat_remaining, free_bb_remaining, free_tts_chars_remaining, credit_balance, chat_mode/bb_mode/tts_mode (free|ai_credit|blocked), using_ai_credits_for_tts, maintenance_mode
   app/src/main/java/com/aiguruapp/student/config/QuotaManager.kt: NEW FILE — server-only quota enforcement object; enum CreditType {CHAT, LESSON, TTS}; enum Mode {FREE, AI_CREDIT, BLOCKED}; fetchStatus() calls /users/quota/status; check() is a simple gate (fail-open on network error)
   app/src/main/java/com/aiguruapp/student/BlackboardActivity.kt: useAiTts default changed from false to true (prefs.getBoolean("use_ai_tts", true)); added lifecycleScope.launch(IO) QuotaManager.fetchStatus to show "Using AI Credits" banner; toggle click also shows credit-aware toast
@@ -1018,3 +1018,37 @@ Run to start seeding:
 - `FullChatFragment.kt`: added imports `ViewCompat`, `WindowInsetsCompat`; added `setOnApplyWindowInsetsListener` on `chatMainContent` in `onViewCreated` after `initializeUI` — sets bottom padding = max(imeInsets.bottom, navBarInsets.bottom)
 - No keyboard dismiss on send — that only happens for voice button (correct behavior)
 - Files changed: `app/src/main/res/layout/activity_chat.xml` (~line 11), `FullChatFragment.kt` (~lines 30-31 imports, ~line 425 insets listener)
+
+---
+
+## 2026-04-30
+
+**Asked:** Remove default pause in blackboard mode — annoying while listening to lesson.
+
+**Root cause:** Two pauses existed:
+1. Post-TTS pause: `postTtsWait = f?.durationMs ?: 0L` used LLM's `duration_ms` field as hold time after each frame's speech; accumulated with `thinkingWait` → `pauseMs` → `postDelayed(advanceFrame, pauseMs)`.
+2. Diagram pre-speech pause: `postDelayed(speakFrame, 2500ms)` + `showSubtitle("Take a look… 👀")` gave 2.5s silent window before diagram TTS.
+
+**Fix:**
+- `BlackboardActivity.kt` line ~3129: changed `postTtsWait = f?.durationMs ?: 0L` → `postTtsWait = 0L` — frames now advance immediately after TTS ends (no LLM-driven hold).
+- `BlackboardActivity.kt` line ~1528: changed `postDelayed(2500)` → `postDelayed(200)` for diagram frames; removed `showSubtitle("Take a look… 👀")` — 200ms is just enough for render, not an intentional pause.
+- `thinkingWait` for `question` frames (pause_after_ms) kept intact — intentional thinking time.
+
+**Files changed:** `BlackboardActivity.kt` (~line 3127-3129 postTtsWait, ~line 1526-1528 diagram delay)
+
+---
+
+## 2026-04-30 (session 2)
+
+**Asked:** Android TTS sounds like English person speaking Telugu — check how language is passed, fix. Also check if JSON needs anything extra for android.
+
+**Root cause:** `question` frames get `tts_engine: "android"` from both the prompt and `smartAssignTts()`. Android device TTS requires the regional language pack to be installed; if not installed, it silently falls back to English voice. Also first frame is always forced to "android" engine. Followup question speak didn't re-set locale.
+
+**JSON is fine** — `lang: "te-IN"` at step level is correctly parsed into `step.languageTag` and used. No extra fields needed in the JSON.
+
+**Fix:**
+- `BlackboardActivity.kt` `speakFrame()` ~line 2287: compute `isNonEnglish = !step.languageTag.startsWith("en")` + `finalEngine = if (effectiveEngine == "android" && isNonEnglish && useAiTts) "google" else effectiveEngine` — upgrades android-assigned frames to Google server TTS for non-English lessons when AI TTS is enabled.
+- `BlackboardActivity.kt` `preloadUpcoming()` ~line 760: same language-aware upgrade (`rawEngine → "google"` for non-English) so preload covers frames that previously skipped as "android".
+- `BlackboardActivity.kt` followup question speak ~line 4622: added `tts.setLocale(Locale.forLanguageTag(preferredLanguageTag))` before `tts.speak()` to ensure correct locale.
+
+**Files changed:** `BlackboardActivity.kt` (~lines 2283-2290 finalEngine logic, ~lines 760-766 preloadUpcoming, ~line 4622 followup locale)

@@ -291,7 +291,7 @@ def generate_response(
     Fallback path : Google native SDK (google-genai) — used when LiteLLM is
                     unavailable or returns an error.
 
-    Both paths use the same model IDs (gemini-2.5-flash / gemini-2.5-flash-lite)
+    Both paths use the same model IDs (gemini-2.5-flash / gemini-3.1-flash-lite-preview)
     so behaviour is identical regardless of which path is taken.
     """
     logger.info("generate_response | tier=%s | images=%d | system=%s",

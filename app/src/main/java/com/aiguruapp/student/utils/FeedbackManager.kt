@@ -2,6 +2,8 @@ package com.aiguruapp.student.utils
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import android.view.View
 import android.widget.TextView
@@ -47,11 +49,11 @@ object FeedbackManager {
     // ── Called directly (e.g. "Give Feedback" button tap) ────────────────────
 
     /**
-     * Unconditionally show the feedback sheet (ignores cooldown).
-     * Use for explicit button taps.
+     * Unconditionally open the Play Store rating page.
+     * Use for explicit "Give Feedback" button taps.
      */
     fun showNow(activity: Activity) {
-        show(activity, source = "home_button")
+        openPlayStore(activity)
     }
 
     // ── Called by HomeActivity.onResume() ─────────────────────────────────────
@@ -121,8 +123,12 @@ object FeedbackManager {
                 text     = text,
                 source   = source,
                 onDone   = {
-                    Toast.makeText(activity, "Thank you for your feedback! 🙏", Toast.LENGTH_SHORT).show()
                     sheet.dismiss()
+                    if (selectedRating >= 4) {
+                        openPlayStore(activity)
+                    } else {
+                        Toast.makeText(activity, "Thank you for your feedback! 🙏", Toast.LENGTH_SHORT).show()
+                    }
                 }
             )
             // Record show time so we don't prompt again for SHOW_INTERVAL_MS
@@ -138,6 +144,25 @@ object FeedbackManager {
         }
 
         sheet.show()
+    }
+
+    // ── Play Store helper ─────────────────────────────────────────────────────
+
+    private fun openPlayStore(activity: Activity) {
+        if (activity.isFinishing || activity.isDestroyed) return
+        val pkg = activity.packageName
+        try {
+            activity.startActivity(
+                Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$pkg"))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        } catch (_: android.content.ActivityNotFoundException) {
+            activity.startActivity(
+                Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://play.google.com/store/apps/details?id=$pkg"))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }
     }
 
     // ── Firestore write ───────────────────────────────────────────────────────
