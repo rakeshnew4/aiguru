@@ -22,8 +22,8 @@ android {
         applicationId = "com.aiguruapp.student"
         minSdk = 26
         targetSdk = 36
-        versionCode = 18
-        versionName = "1.3.2"
+        versionCode = 19
+        versionName = "1.3.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         // Server URL, Razorpay key, and payment URL are fetched from Firestore admin_config/global
         // at runtime via AdminConfigRepository — no compile-time keys needed.

@@ -340,18 +340,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        // DrawerLayout root breaks adjustResize — handle keyboard manually so input bar
-        // stays visible when soft keyboard opens.
         val chatMainContent = view.findViewById<LinearLayout>(R.id.chatMainContent)
-        if (chatMainContent != null) {
-            view.viewTreeObserver.addOnGlobalLayoutListener {
-                val rect = android.graphics.Rect()
-                view.getWindowVisibleDisplayFrame(rect)
-                val imeHeight = (view.rootView.height - rect.bottom).coerceAtLeast(0)
-                val minKeyboard = (120 * resources.displayMetrics.density).toInt()
-                chatMainContent.setPadding(0, 0, 0, if (imeHeight > minKeyboard) imeHeight else 0)
-            }
-        }
         pdfPageManager = PdfPageManager(requireContext())
 
         isAutoExplainActive = requireContext()
@@ -1682,7 +1671,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                                 emptyMap(),
                                 { transcript -> serverPageTranscript = transcript },
                                 { bb -> serverSuggestBlackboard = bb },
-                                onStatus, onToken, onDone, onError)
+                                onStatus, null, onToken, onDone, onError)
                         } else {
                             if (b64 != null) client.streamWithImage(sysPrompt, ctxMessage, b64,
                                 onToken, onDone, onError)
@@ -1696,7 +1685,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                                 emptyMap(),
                                 { transcript -> serverPageTranscript = transcript },
                                 { bb -> serverSuggestBlackboard = bb },
-                                onStatus, onToken, onDone, onError)
+                                onStatus, null, onToken, onDone, onError)
                         else
                             client.streamWithImage(sysPrompt, ctxMessage, capturedPdfBase64,
                                 onToken, onDone, onError)
@@ -1707,7 +1696,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                                 emptyMap(),
                                 { transcript -> serverPageTranscript = transcript },
                                 { bb -> serverSuggestBlackboard = bb },
-                                onStatus, onToken, onDone, onError)
+                                onStatus, null, onToken, onDone, onError)
                         else
                             client.streamText(sysPrompt, ctxMessage, onToken, onDone, onError)
                 }
