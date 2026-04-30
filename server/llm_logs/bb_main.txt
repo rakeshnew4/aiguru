@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-04-30 09:55:50 | session=KkhkqOQI_c6dd5d61 ===
+=== BB_MAIN | 2026-04-30 10:31:15 | session=v6LtCBtv_d8452972 ===
 
 === SYSTEM ===
 You are GURU — a warm, funny, wildly effective AI teacher inside a visual blackboard app.
@@ -22,8 +22,7 @@ FRAME TYPES — use these strategically, never mechanically:
 • curiosity : Bridge to next step. Speech = tantalising question that makes them want to
               keep watching. Never answer it — the next step answers it.
 • question  : Mid-lesson THINKING QUESTION. Teacher asks and goes silent.
-              Speech = the question only (≤15 words, conversational). duration_ms = 500.
-              pause_after_ms = 2000-3000 (student thinking time — be generous).
+              Speech = the question only (≤15 words, conversational).
               MUST be immediately followed by a 'reveal' frame in the same step.
 • reveal    : Answer reveal after a question pause. Speech MUST begin with a natural phrase:
               'Okay, so...' | 'Here's the thing...' | 'Actually, it's...' |
@@ -68,11 +67,11 @@ SPEECH GUIDELINES:
 • TTS-safe: say 'squared' not '^2', 'divided by' not '/', 'pi' not 'π'.
 • Language matches lang field: hi-IN → Hindi, te-IN → Telugu, en-US → English.
 
-TIMING (duration_ms = display time AFTER TTS;:
+TIMING (duration_ms = display time AFTER TTS):
 concept / memory / apply / reveal : duration_ms 2000-3000.
-hook / curiosity                  : duration_ms 2000,
-question                          : duration_ms 500, pause_after_ms 3000-5000.
-diagram                           : duration_ms 3000-4000 (client auto-adds 2.5s silent view).
+hook / curiosity                  : duration_ms 2000.
+question                          : duration_ms 500.
+diagram                           : duration_ms 3000-4000.
 joke                              : duration_ms 1500.
 summary                           : duration_ms 3000.
 
@@ -84,7 +83,6 @@ RULES:
 - DO NOT include youtube_clip on any frame — videos surfaced separately.
 - Use ONE lesson-level video_search_query, never per-step.
 - text field: **bold** key words only, $$math$$, max 2 lines, always English.
-- pause_after_ms REQUIRED on question frames.
 - image_description: specific Wikimedia phrase — MUST include topic name.
   GOOD: 'mitosis cell division diagram'. BAD: 'diagram', 'biology'.
   image_show_confidencescore: 0.85-0.95 concrete visuals, 0.6-0.8 named concepts,
@@ -104,41 +102,50 @@ RULES:
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: Why do some animals evolve to be transparent instead of camouflaged?
-Lesson title: The Science of Invisibility: Biological Transparency
-Category: science
+Student's EXACT question: Topic: Explain how to solve quadratic equations ax² + bx + c = 0 step by step. Show 2 clear examples: one using the quadratic formula and one using factoring. Include a tip on when to use each method.
+Lesson title: Mastering Quadratic Equations
+Category: math
 
-This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
-Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
+CONTINUATION — DO NOT repeat anything already taught.
+Student's original question: Explain how to solve quadratic equations ax² + bx + c = 0 step by step. Show 2 clear examples: one using the quadratic formula and one using factoring. Include a tip on when to use each method.
+
+Steps ALREADY TAUGHT (do NOT repeat or reintroduce these):
+  1. Standard Form Explained — "Ever wonder how to find where a curve hits the ground? That is the power of a quadratic eq"
+
+Total steps covered so far: 1 / 5
+Continue from step 2. Build on what was taught — go deeper, give examples, advance the lesson.
+
+Now continue teaching the NEXT steps listed below. Build on what was already covered — go deeper, add detail, advance the lesson. Do NOT reintroduce or re-explain concepts from the above steps.
+
+Generate EXACTLY 4 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- Defining Transparency vs. Camouflage
-- The Physics of Light and Refraction
-- Evolutionary Advantages in Open Water
-- Challenges of Maintaining Clear Tissues
-- Case Studies: From Jellyfish to Glass Frogs
+- Method 1: Solving by Factoring (Example)
+- Method 2: Using the Quadratic Formula (Example)
+- Choosing the Right Tool: Factoring vs. Formula
+- Practice and Verification
 
 This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants to understand the evolutionary advantages of transparency compared to traditional camouflage in animals.
-Question type: conceptual
+What the student specifically wants: The student wants a step-by-step guide to solving quadratic equations using both the quadratic formula and factoring, along with guidance on when to choose each method.
+Question type: how_to
 Student level: Class 5
 GRADE SPEECH STYLE: Technical words WITH plain-English gloss. Relatable humor (games, snacks). ≤35 words/frame.
-Topic type: science_biology | Scope: medium
-Key concepts to cover (ALL of these): transparency vs. camouflage, predator avoidance, refractive index, evolutionary adaptation
+Topic type: math_formula | Scope: medium
+Key concepts to cover (ALL of these): quadratic formula, factoring quadratics, discriminant analysis
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-DIAGRAM RECOMMENDATION: This topic likely needs a "labeled_diagram" diagram (confidence 98%). Use diagram_type="labeled_diagram" for your diagram frame(s).
+DIAGRAM RECOMMENDATION: This topic likely needs a "graph_function" diagram (confidence 98%). Use diagram_type="graph_function" for your diagram frame(s).
 
-SUBJECT GUIDANCE (Science — Biology):
-• Use cycle for life cycles/processes (mitosis, water cycle, photosynthesis).
-• Use PATH 2 (diagram_type=custom) for anatomy cross-sections (heart, leaf, kidney).
-• Concept frames: function → structure → real-body example.
-• End with a summary frame.
+SUBJECT GUIDANCE (Math — Formula/Algebra):
+• Lead with the formula in a concept frame. Show what each variable means.
+• Dedicate 2 concept frames to worked substitution (step-by-step numbers).
+• Prefer diagram_type: graph_function, fraction_bar, number_line, or pythagoras.
+• End with a summary frame recapping key takeaways.
 
 ---END LESSON BRIEF---
 
@@ -148,77 +155,36 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
 {
   "steps": [
     {
-      "title": "Transparency vs Camouflage",
+      "title": "Solving by Factoring",
       "lang": "en-US",
-      "image_description": "animal camouflage vs transparency comparison",
-      "image_show_confidencescore": 0.8,
-      "frames": [
-        {
-          "frame_type": "hook",
-          "text": "Invisible Ghost Animals",
-          "speech": "Imagine playing hide and seek, but instead of hiding behind a couch, you just disappear. That is the superpower of transparency.",
-          "tts_engine": "android",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
-        {
-          "frame_type": "concept",
-          "text": "Camouflage vs Transparency",
-          "speech": "Camouflage is like wearing a green shirt to hide in the grass. Transparency, though, is like being a clear window that lets light pass right through you.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000
-        },
-        {
-          "frame_type": "memory",
-          "text": "Costume vs Window",
-          "speech": "Remember this, camouflage is a disguise, but transparency is a disappearing act.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        }
-      ],
-      "session_theme": "The Science of Biological Transparency",
-      "video_search_query": "how do transparent animals work",
-      "preferred_channels": [
-        "Khan Academy Kids",
-        "SciShow Kids"
-      ]
-    },
-    {
-      "title": "Physics of Light",
-      "lang": "en-US",
-      "image_description": "refraction of light through water and glass",
-      "image_show_confidencescore": 0.95,
+      "image_description": "factoring quadratic equation diagram",
+      "image_show_confidencescore": 0.85,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "Refraction: Bending Light",
-          "speech": "To be invisible, light must pass through you without bouncing off. If light hits you and bounces, that is called reflection, and it makes you visible.",
+          "text": "x² + 5x + 6 = 0",
+          "speech": "To factor, we look for two numbers that multiply to the last number, 6, and add up to the middle number, 5.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
         },
         {
           "frame_type": "diagram",
-          "text": "Light Refraction Diagram",
-          "speech": "Look here. See how light rays pass straight through the clear object? That happens because the object has a similar refractive index, or light-bending speed, to the water around it.",
+          "text": "(x + 2)(x + 3) = 0",
+          "speech": "See how 2 and 3 fit perfectly? We write it as x plus 2 times x plus 3 equals zero.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 4000,
-          "diagram_type": "labeled_diagram",
+          "duration_ms": 3000,
+          "diagram_type": "graph_function",
           "diagram_data": {
-            "labels": [
-              "Light Ray",
-              "Transparent Object",
-              "Refractive Index"
-            ]
+            "equation": "x^2 + 5x + 6",
+            "points": [[-2, 0], [-3, 0]]
           }
         },
         {
           "frame_type": "apply",
-          "text": "The Straw Trick",
-          "speech": "Ever put a straw in a glass of water and it looks broken? That is refraction, and it is exactly what transparent animals try to avoid.",
+          "text": "x = -2, x = -3",
+          "speech": "Now, just set each part to zero. So x is either negative 2 or negative 3. Easy, right?",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
@@ -226,63 +192,99 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ]
     },
     {
-      "title": "Why Evolve Transparency?",
+      "title": "The Quadratic Formula",
       "lang": "en-US",
-      "image_description": "jellyfish in open ocean",
+      "image_description": "quadratic formula written out",
       "image_show_confidencescore": 0.9,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "Open Ocean Survival",
-          "speech": "In the open ocean, there are no trees or rocks to hide behind. If you have nowhere to run, being invisible is the best way to avoid hungry predators.",
+          "text": "x = (-b ± √(b² - 4ac)) / 2a",
+          "speech": "When numbers are messy, we use the big formula. It works for every single quadratic equation, no exceptions.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        },
+        {
+          "frame_type": "diagram",
+          "text": "x² - 4x + 1 = 0",
+          "speech": "Let's solve x squared minus 4x plus 1 equals zero. Here, a is 1, b is negative 4, and c is 1.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500,
+          "diagram_type": "graph_function",
+          "diagram_data": {
+            "equation": "x^2 - 4x + 1"
+          }
+        },
+        {
+          "frame_type": "apply",
+          "text": "x = (4 ± √12) / 2",
+          "speech": "Plug those numbers in, and you get 4 plus or minus the square root of 12, all divided by 2.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        }
+      ]
+    },
+    {
+      "title": "Choosing the Right Tool",
+      "lang": "en-US",
+      "image_description": "discriminant analysis flow chart",
+      "image_show_confidencescore": 0.75,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "Discriminant: b² - 4ac",
+          "speech": "Check the part under the square root, called the discriminant. It tells you if you can factor it easily or not.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
         },
         {
           "frame_type": "question",
-          "text": "Predator Problem",
-          "speech": "If you were a tiny fish in the middle of the huge, empty ocean, would you rather be super fast or totally invisible?",
+          "text": "Factor or Formula?",
+          "speech": "If the discriminant is a perfect square, like 9 or 16, should you factor or use the formula?",
           "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 500
         },
         {
           "frame_type": "reveal",
-          "text": "The Best Defense",
-          "speech": "Actually, it is invisibility. Speed is great, but you cannot be chased if the predator never even sees you in the first place.",
+          "text": "Factoring is faster!",
+          "speech": "Actually, it is way faster to factor! If it is not a perfect square, use the formula to save your brain some headache.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 2500
+          "duration_ms": 3000
         }
       ]
     },
     {
-      "title": "The Cost of Clarity",
+      "title": "Practice and Verification",
       "lang": "en-US",
-      "image_description": "complex internal organs of a glass frog",
-      "image_show_confidencescore": 0.85,
+      "image_description": "checking math solution",
+      "image_show_confidencescore": 0.6,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "Hard to Stay Clear",
-          "speech": "It is really hard to be transparent because you still need guts, bones, and a brain. Those things are usually colorful and opaque, meaning they block light.",
+          "text": "Check: Plug x back in!",
+          "speech": "Always check your answer by plugging it back into the original equation. If it equals zero, you nailed it.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
         },
         {
           "frame_type": "joke",
-          "text": "Transparent Problems",
-          "speech": "Being transparent is cool until you eat a sandwich and everyone can see it floating inside you like a snack-shaped ghost.",
+          "text": "Math is like pizza.",
+          "speech": "Math is like pizza. Even if you mess up the toppings, it is still pretty good practice for your brain!",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 1500
         },
         {
           "frame_type": "apply",
-          "text": "Nature's Hacks",
-          "speech": "To fix this, some animals like glass frogs hide their organs under reflective skin or just keep them really, really small.",
+          "text": "Verify every time.",
+          "speech": "Think of verification like checking if your game save loaded correctly. It keeps you from losing all your progress.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
@@ -290,31 +292,15 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ]
     },
     {
-      "title": "Nature's Invisible Creatures",
+      "title": "Summary",
       "lang": "en-US",
-      "image_description": "glass frog and moon jellyfish",
-      "image_show_confidencescore": 0.9,
+      "image_description": "math summary icons",
+      "image_show_confidencescore": 0.5,
       "frames": [
         {
-          "frame_type": "concept",
-          "text": "Jellyfish and Glass Frogs",
-          "speech": "Jellyfish use water to stay clear, while glass frogs use special skin to hide their organs. They have evolved to master the art of blending in.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000
-        },
-        {
-          "frame_type": "curiosity",
-          "text": "What about the eyes?",
-          "speech": "But wait, if their whole body is clear, how do they hide their eyes, which have to be dark to see?",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2000
-        },
-        {
           "frame_type": "summary",
-          "text": "Summary: Transparency Wins",
-          "speech": "To wrap up, transparency is a survival hack used when there is nowhere to hide. It uses light physics to make animals invisible, even if keeping your organs hidden is a tricky evolutionary challenge.",
+          "text": "Factoring vs Formula",
+          "speech": "Factoring is your quick win for simple numbers, while the quadratic formula is your reliable backup for everything else. Master both, and you can solve any quadratic equation in the book.",
           "tts_engine": "google",
           "voice_role": "assistant",
           "duration_ms": 3000
@@ -322,17 +308,23 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ],
       "followup_questions": [
         {
-          "question": "Why don't all animals evolve to be invisible?",
-          "speech": "Why don't all animals evolve to be invisible?"
+          "question": "What if b squared minus 4ac is negative?",
+          "speech": "What happens if the number inside the square root is negative?"
         },
         {
-          "question": "Can a transparent animal still get a sunburn?",
-          "speech": "Can a transparent animal still get a sunburn?"
+          "question": "Can every quadratic be factored?",
+          "speech": "Is it possible to factor every single quadratic equation you see?"
         },
         {
-          "question": "How would being invisible change how you hunt?",
-          "speech": "How would being invisible change how you hunt?"
+          "question": "Why do we use 'plus or minus'?",
+          "speech": "Why does the quadratic formula have that plus or minus symbol in it?"
         }
+      ],
+      "session_theme": "Mastering Quadratic Equations",
+      "video_search_query": "how to solve quadratic equations for beginners",
+      "preferred_channels": [
+        "Khan Academy India",
+        "Physics Wallah"
       ]
     }
   ]

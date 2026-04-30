@@ -1153,3 +1153,17 @@ Books with ALL 404 (English/SS for Class 6/9) kept as-is — likely IP-blocked f
 - `activation_credits` assignment (~line 292): wrapped in `try/except (TypeError, ValueError)`.
 - Added `logger.info("activate_plan: should_award=%s activation_credits=%d ...")` before award block.
 **Files changed:** `server/app/services/user_service.py` (~lines 54-87, 291-299)
+
+## 2026-04-30 (session 7)
+
+**Asked:** BB lesson is stopping after each frame; check and fix with minimal changes.
+
+**Root cause:** `makeTtsCallback()` in `BlackboardActivity.kt` advanced frames only in `onComplete()`. On `onError()`, it only logged/hid subtitle and never advanced. Any TTS failure (Android/AI TTS fallback path) caused playback to stall on that frame.
+
+**Fix:**
+- `BlackboardActivity.kt` (`makeTtsCallback`, ~3139+): extracted shared `continueAfterSpeech()` flow and invoked it from both `onComplete()` and `onError()`.
+- Preserved quiz behavior: legacy reveal button and interactive quiz routing still handled.
+- Result: frame progression continues even when TTS errors occur.
+
+**Files read:** `CLAUDE.md:1-70`, `meta/tracker.md:1110-1165`, `BlackboardActivity.kt` slices around playback/callback paths (`604-675`, `920-995`, `1000-1128`, `1328-1438`, `1568-1738`, `2290-2475`, `3132-3205`)
+**Files changed:** `app/src/main/java/com/aiguruapp/student/BlackboardActivity.kt` (~3139-3186)

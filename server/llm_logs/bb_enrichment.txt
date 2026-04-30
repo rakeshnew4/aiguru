@@ -1,48 +1,54 @@
-=== BB_ENRICHMENT | 2026-04-30 09:56:15 | session=none ===
+=== BB_ENRICHMENT | 2026-04-30 10:31:18 | session=none ===
 
 === SYSTEM ===
 You are a diagram data generator for an educational app. Output ONLY a valid JSON object — no text, no markdown, no explanation.
 
 === PROMPT ===
-Topic: "Physics of Light"
-Teaching content: "Look here. See how light rays pass straight through the clear object? That happens because the object has a similar refractive index, or light-bending"
-Diagram type: labeled_diagram
+Topic: "Solving by Factoring"
+Teaching content: "See how 2 and 3 fit perfectly? We write it as x plus 2 times x plus 3 equals zero."
+Diagram type: graph_function
 Color keys: primary (chalk white), label (yellow), secondary (sky blue), highlight (red), teal, orange, green, pink, purple, gold, coral, mint
-Schema: {"center":"Central Structure","center_shape":"circle","parts":["Part1","Part2","Part3","Part4","Part5"]}
-Hint: center: the main structure name. parts: 3-7 component labels, clockwise from top. center_shape: circle (biology cells), rect (mechanical parts).
+Schema: {"function":"quadratic","a":1,"b":0,"c":0,"x_range":[-4,4],"label":"y = x²","color":"secondary"}
+Hint: function: quadratic|linear|cubic|sine|cosine|abs. a,b,c: real coefficients. x_range: [-N, N] centered at 0. label: LaTeX-free equation string.
 Existing data (improve/complete this): {}
 
 Generate the BEST data JSON for this diagram. Fill ALL keys. Be accurate to the topic. Reply with ONLY the JSON object.
 
 === RESPONSE ===
 {
-  "center": "Transparent Object",
-  "center_shape": "circle",
-  "parts": [
+  "function": "quadratic",
+  "a": 1,
+  "b": 5,
+  "c": 6,
+  "x_range": [
+    -6,
+    1
+  ],
+  "label": "y = x² + 5x + 6",
+  "color": "primary",
+  "highlights": [
     {
-      "label": "Incident Light Ray",
-      "color": "sky blue",
-      "description": "Incoming light wave approaching the object."
-    },
-    {
-      "label": "Refractive Index Match",
-      "color": "gold",
-      "description": "Boundary where light enters without bending."
-    },
-    {
-      "label": "Transmitted Light Ray",
-      "color": "sky blue",
-      "description": "Light passing straight through the medium."
-    },
-    {
-      "label": "Internal Path",
-      "color": "mint",
-      "description": "The straight trajectory inside the object."
-    },
-    {
-      "label": "Emergent Ray",
+      "type": "point",
+      "x": -2,
+      "y": 0,
       "color": "highlight",
-      "description": "Light exiting the object along the original path."
+      "label": "(-2, 0)"
+    },
+    {
+      "type": "point",
+      "x": -3,
+      "y": 0,
+      "color": "highlight",
+      "label": "(-3, 0)"
+    }
+  ],
+  "annotations": [
+    {
+      "type": "text",
+      "text": "(x + 2)(x + 3) = 0",
+      "x": -2.5,
+      "y": 2,
+      "color": "yellow"
     }
   ]
 }

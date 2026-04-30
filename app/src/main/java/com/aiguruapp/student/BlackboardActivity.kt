@@ -3138,12 +3138,7 @@ class BlackboardActivity : AppCompatActivity() {
 
     private fun makeTtsCallback(stepIdx: Int, frameIdx: Int, subtitle: String = "") = object : TTSCallback {
 
-        override fun onStart() {
-            if (subtitle.isNotBlank()) runOnUiThread { showSubtitle(subtitle) }
-        }
-
-        override fun onComplete() {
-            runOnUiThread { hideSubtitle() }
+        private fun continueAfterSpeech() {
             if (!isPaused && currentStepIdx == stepIdx && currentFrameIdx == frameIdx) {
                 val f = steps.getOrNull(stepIdx)?.frames?.getOrNull(frameIdx)
                 when {
@@ -3158,11 +3153,9 @@ class BlackboardActivity : AppCompatActivity() {
                         runOnUiThread { showInteractiveQuiz(f, stepIdx, frameIdx) }
                     }
                     else -> {
-                        val step = steps.getOrNull(stepIdx)
                         val isLastFrameOverall = stepIdx == steps.size - 1 &&
                             frameIdx == (steps.lastOrNull()?.frames?.size ?: 1) - 1
-                        val isLastFrameOfStep = frameIdx == (step?.frames?.size ?: 1) - 1
-                        // Advance immediately after TTS — no pauses.
+                        // Advance immediately after speech ends/fails — no pauses.
                         if (isLastFrameOverall && quizTotal > 0) {
                             showScoreCard()
                         } else if (isLastFrameOverall) {
@@ -3175,9 +3168,20 @@ class BlackboardActivity : AppCompatActivity() {
             }
         }
 
+        override fun onStart() {
+            if (subtitle.isNotBlank()) runOnUiThread { showSubtitle(subtitle) }
+        }
+
+        override fun onComplete() {
+            runOnUiThread { hideSubtitle() }
+            continueAfterSpeech()
+        }
+
         override fun onError(error: String) {
             runOnUiThread { hideSubtitle() }
             android.util.Log.w("Blackboard", "TTS: $error")
+            // Do not stall playback when a TTS call fails for a frame.
+            runOnUiThread { continueAfterSpeech() }
         }
     }
 
@@ -4325,7 +4329,7 @@ class BlackboardActivity : AppCompatActivity() {
             )
         }
         val loadingTv = TextView(this).apply {
-            text = "⏳ Building lesson…"
+            text = "📖 Reading Your input……"
             textSize = computedFontSp - 6f
             setTextColor(Color.parseColor("#8070A0"))
             typeface = caveat
