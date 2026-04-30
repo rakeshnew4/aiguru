@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-04-29 08:19:58 | session=v6LtCBtv_34c877e7 ===
+=== BB_MAIN | 2026-04-30 07:19:01 | session=KkhkqOQI_2269d575 ===
 
 === SYSTEM ===
 You are GURU — a warm, funny, wildly effective AI teacher inside a visual blackboard app.
@@ -13,17 +13,17 @@ Top-level MUST be an OBJECT with key "steps". NEVER return a list at top level.
 
 FRAME TYPES — use these strategically, never mechanically:
 • hook      : Step 1 Frame 1 ONLY. A jaw-dropping question or wild real-world fact.
-              Speech = the question/hook (punchy, ≤12 words). pause_after_ms = 1500.
+              Speech = the question/hook (punchy, ≤12 words). if pause needed pause_after_ms = 200-500.
 • concept   : Core explanation. Speech = calm, 1-2 sentences. No jargon without explanation.
 • memory    : Mnemonic, rhyme, or unforgettable analogy. Speech = the sticky hook.
 • diagram   : Visual explanation. Client adds a 2.5s silent viewing window before speech.
-              Speech describes what to see in the diagram — spoken AFTER the pause.
+              Speech describes what to see in the diagram — we need to tell that observer diagarma for a sec, pause_after_ms=1500 max.
 • apply     : Real-world anchor. Speech = how this shows up in the student's actual life.
 • curiosity : Bridge to next step. Speech = tantalising question that makes them want to
               keep watching. Never answer it — the next step answers it.
 • question  : Mid-lesson THINKING QUESTION. Teacher asks and goes silent.
               Speech = the question only (≤15 words, conversational). duration_ms = 500.
-              pause_after_ms = 3000-5000 (student thinking time — be generous).
+              pause_after_ms = 2000-3000 (student thinking time — be generous).
               MUST be immediately followed by a 'reveal' frame in the same step.
 • reveal    : Answer reveal after a question pause. Speech MUST begin with a natural phrase:
               'Okay, so...' | 'Here's the thing...' | 'Actually, it's...' |
@@ -66,7 +66,7 @@ SPEECH GUIDELINES:
 
 TIMING (duration_ms = display time AFTER TTS; pause_after_ms = silence before advancing):
 concept / memory / apply / reveal : duration_ms 2000-3000.
-hook / curiosity                  : duration_ms 2000, pause_after_ms 1000-1500.
+hook / curiosity                  : duration_ms 2000, pause_after_ms 200-500.
 question                          : duration_ms 500, pause_after_ms 3000-5000.
 diagram                           : duration_ms 3000-4000 (client auto-adds 2.5s silent view).
 joke                              : duration_ms 1500.
@@ -74,7 +74,7 @@ summary                           : duration_ms 3000.
 
 RULES:
 - 3-5 steps, 2-5 frames/step (question+reveal count as 2). Last step ends with summary.
-- Step 2 MUST have a diagram or image_description with high confidence.
+- Step 2 MUST have a diagram or best matching theme image_description.
 - question frame MUST be immediately followed by a reveal frame (same step).
 - joke frame: max 1 per lesson. Skip entirely if topic is sensitive or complex.
 - DO NOT include youtube_clip on any frame — videos surfaced separately.
@@ -100,76 +100,116 @@ RULES:
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: Pythagoras Theorem
-Lesson title: Unlocking the Pythagoras Theorem
-Category: math
+Student's EXACT question: Topic: Newton's Laws of Motion
+Lesson title: Newton's Laws of Motion: Physics in Action
+Category: science
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
 Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- Understanding Right-Angled Triangles
-- Defining the Formula (a² + b² = c²)
-- Identifying Hypotenuse vs. Legs
-- Solving for the Missing Side
-- Real-World Applications of Geometry
+- Introduction: Inertia (Newton's First Law) — వస్తువులు తమ స్థితిని మార్చుకోవడానికి ఎందుకు ఇష్టపడవు?
+- Force and Acceleration (Newton's Second Law) — F=ma ఫార్ములా వెనుక ఉన్న లాజిక్ ఏమిటి?
+- Action and Reaction (Newton's Third Law) — ప్రతి చర్యకు సమానమైన మరియు వ్యతిరేకమైన ప్రతిచర్య ఎలా ఉంటుంది?
+- Real-world Examples: Daily life లో ఈ లాస్ ఎలా పనిచేస్తాయి?
+- Problem Solving: F=ma ఉపయోగించి లెక్కలు చేయడం ఎలా?
 
 This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants to understand the foundational concept of a right-angled triangle as a prerequisite to learning the Pythagoras Theorem.
+
+IMPORTANT: Teach using Telugu mixed with English — explain reasoning in Telugu, but use English for technical terms, formulas, and subject-specific vocabulary.
+What the student specifically wants: The student wants an engaging introduction to Newton's Laws of Motion, setting the stage for understanding how objects move.
 Question type: conceptual
 Student level: Class 5
 GRADE SPEECH STYLE: Technical words WITH plain-English gloss. Relatable humor (games, snacks). ≤35 words/frame.
-Topic type: math_geometry | Scope: simple
-Key concepts to cover (ALL of these): Right-angled triangle, 90-degree angle, Hypotenuse
+Topic type: science_physics | Scope: simple
+Key concepts to cover (ALL of these): Inertia, Force and Motion, Isaac Newton
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-DIAGRAM RECOMMENDATION: This topic likely needs a "pythagoras" diagram (confidence 98%). Use diagram_type="pythagoras" for your diagram frame(s).
-
-SUBJECT GUIDANCE (Math — Geometry):
-• Use diagram_type triangle, polygon, circle_geometry, angle, or coordinate_plane.
-• Show labelled measurements in the diagram data (a_val, b_val, show_angles, etc.).
-• Concept frames: state property → prove/derive → example with numbers.
-• End with a summary frame of key properties.
+SUBJECT GUIDANCE (Science — Physics):
+• Use waveform_signal for waves/sound/light; coordinate_plane for motion graphs.
+• Use PATH 2 (diagram_type=custom) for force diagrams, ray optics, circuit layouts.
+• Concept frames: state law/formula → physical meaning → real-world application.
+• Include units in every formula (e.g. m/s², Newton, Joule).
+• End with a summary frame.
 
 ---END LESSON BRIEF---
 
-OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" fields in the language for tag "en-US" (hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.). Board "text" field stays in English (formulas/keywords only).
+
+IMPORTANT: Teach using Telugu mixed with English — explain reasoning in Telugu, but use English for technical terms, formulas, and subject-specific vocabulary.
+OUTPUT LANGUAGE: Set ALL step "lang" fields to "te-IN". Write ALL "speech" fields in the language for tag "te-IN" (hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.). Board "text" field stays in English (formulas/keywords only).
 
 === RESPONSE ===
 {
   "steps": [
     {
-      "title": "Right-Angled Triangle Basics",
-      "lang": "en-US",
-      "image_description": "right angled triangle geometry",
+      "title": "Inertia: First Law",
+      "lang": "te-IN",
+      "image_description": "Newton's First Law inertia ball diagram",
       "image_show_confidencescore": 0.8,
       "frames": [
         {
           "frame_type": "hook",
-          "text": "The **perfect corner** mystery",
-          "speech": "Ever wonder why the corners of your room or your phone are so perfect? It's all thanks to a special shape called a right-angled triangle.",
+          "text": "Why objects resist change?",
+          "speech": "వస్తువులు ఎందుకు కదలడానికి సోమరిగా ఉంటాయో తెలుసా? దీన్నే **Inertia** అంటారు.",
           "tts_engine": "android",
           "voice_role": "teacher",
-          "duration_ms": 2500,
-          "pause_after_ms": 1500
+          "duration_ms": 2000
         },
         {
           "frame_type": "concept",
-          "text": "The **90-degree angle**",
-          "speech": "A right-angled triangle has one angle that measures exactly 90 degrees. Think of it like the corner of a square piece of paper or an L-shape.",
+          "text": "Newton's First Law",
+          "speech": "ఒక వస్తువు కదలకుండా ఉంటే అది అలాగే ఉంటుంది, కదులుతుంటే అలాగే వెళ్తుంది. దీన్ని **Newton's First Law** అంటారు.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
+          "frame_type": "memory",
+          "text": "Inertia = Laziness",
+          "speech": "Inertia అంటే వస్తువుల సోమరితనం! బయట నుండి **Force** అప్లై చేసే వరకు అవి కదలవు.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000
+        }
+      ]
+    },
+    {
+      "title": "Force and Acceleration",
+      "lang": "te-IN",
+      "image_description": "Newton's second law F=ma diagram",
+      "image_show_confidencescore": 0.9,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "$$F = m \\times a$$",
+          "speech": "రెండో లా ఏంటంటే, **Force** పెంచితే **Acceleration** అంటే వేగం పెరుగుతుంది.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
+          "frame_type": "diagram",
+          "text": "Pushing a cart",
+          "speech": "చూడండి, తక్కువ బరువున్న వస్తువును నెట్టడం సులభం, ఎక్కువ బరువుంటే కష్టం. ఇదే **F=ma**.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000,
+          "diagram_type": "custom",
+          "diagram_data": {
+            "type": "vector_push",
+            "object": "cart",
+            "force_arrow": "long"
+          }
+        },
+        {
           "frame_type": "joke",
-          "text": "Geometry humor",
-          "speech": "Why was the triangle so good at sports? Because it was always 'right' on target!",
+          "text": "Funny Physics",
+          "speech": "ఒకవేళ మీరు బద్ధకంగా ఉంటే, 'నేను సోమరిని కాదు, నా **Inertia** ఎక్కువ' అని చెప్పేయండి!",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 1500
@@ -177,128 +217,102 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ]
     },
     {
-      "title": "Defining the Formula",
-      "lang": "en-US",
-      "image_description": "pythagoras theorem triangle diagram",
-      "image_show_confidencescore": 0.98,
+      "title": "Action and Reaction",
+      "lang": "te-IN",
+      "image_description": "Newton's third law rocket launch",
+      "image_show_confidencescore": 0.9,
       "frames": [
         {
+          "frame_type": "question",
+          "text": "What happens if you jump?",
+          "speech": "మీరు నేల మీద గట్టిగా దూకితే, మీకు తిరిగి ఏమవుతుంది?",
+          "tts_engine": "android",
+          "voice_role": "teacher",
+          "duration_ms": 500,
+          "pause_after_ms": 2500
+        },
+        {
+          "frame_type": "reveal",
+          "text": "Reaction force",
+          "speech": "అవును! నేల కూడా మిమ్మల్ని అంతే ఫోర్స్‌తో వెనక్కి నెడుతుంది. దీన్నే **Action-Reaction** అంటారు.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
           "frame_type": "concept",
-          "text": "$$a^2 + b^2 = c^2$$",
-          "speech": "Pythagoras found a magic rule: if you square the two shorter sides and add them, you get the square of the longest side.",
+          "text": "Every action has reaction",
+          "speech": "ప్రతి చర్యకు (Action) సమానమైన, వ్యతిరేకమైన ప్రతిచర్య (Reaction) ఉంటుంది. రాకెట్లు అందుకే పైకి లేస్తాయి!",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        }
+      ]
+    },
+    {
+      "title": "Real-world Examples",
+      "lang": "te-IN",
+      "image_description": "ball rolling on grass",
+      "image_show_confidencescore": 0.8,
+      "frames": [
+        {
+          "frame_type": "apply",
+          "text": "Daily Life Physics",
+          "speech": "క్రికెట్ బాల్ పట్టుకోవడం లేదా స్కేటింగ్ చేయడం, ఇవన్నీ ఈ మూడు సూత్రాల వల్లే జరుగుతాయి.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
           "frame_type": "diagram",
-          "text": "Visualizing the squares",
-          "speech": "Look at the sides here. We call the shorter sides 'a' and 'b', and the longest side 'c'. When we multiply them by themselves, the math balances out perfectly.",
+          "text": "Car brakes",
+          "speech": "కారు బ్రేక్ వేయగానే మీరు ముందుకు వంగడం కూడా **Inertia** వల్లే జరుగుతుంది.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000,
-          "diagram_type": "pythagoras",
+          "diagram_type": "custom",
           "diagram_data": {
-            "a_val": 3,
-            "b_val": 4,
-            "c_val": 5
+            "type": "motion_inertia",
+            "object": "car_passenger"
           }
         }
       ]
     },
     {
-      "title": "Hypotenuse vs. Legs",
-      "lang": "en-US",
-      "image_description": "hypotenuse label diagram",
-      "image_show_confidencescore": 0.9,
+      "title": "Problem Solving",
+      "lang": "te-IN",
+      "image_description": "math calculator physics",
+      "image_show_confidencescore": 0.6,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "The **Hypotenuse** is boss",
-          "speech": "The two sides making the L-shape are 'legs'. The long, diagonal slide that connects them? That's the hypotenuse. It’s always the longest side.",
+          "text": "Solving $$F = m \\times a$$",
+          "speech": "ఇప్పుడు ఒక చిన్న లెక్క! **Mass** 2 kg, **Acceleration** 3 m/s squared అయితే **Force** ఎంత?",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
-          "frame_type": "question",
-          "text": "Spot the hypotenuse",
-          "speech": "If I have a triangle, which side is the hypotenuse: the floor, the wall, or the diagonal slide?",
-          "tts_engine": "android",
-          "voice_role": "teacher",
-          "duration_ms": 500,
-          "pause_after_ms": 3500
-        },
-        {
           "frame_type": "reveal",
-          "text": "It's the diagonal!",
-          "speech": "Actually, it's the diagonal slide! It’s the one side that never touches the 90-degree corner.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2000
-        }
-      ]
-    },
-    {
-      "title": "Solving for the Missing Side",
-      "lang": "en-US",
-      "image_description": "solving triangle math",
-      "image_show_confidencescore": 0.85,
-      "frames": [
-        {
-          "frame_type": "apply",
-          "text": "Let's do the math",
-          "speech": "If our legs are 3 and 4, we do 3 squared, which is 9, plus 4 squared, which is 16. That gives us 25. The square root of 25 is 5!",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000
-        },
-        {
-          "frame_type": "question",
-          "text": "Test your skills",
-          "speech": "If one leg is 6 and the other is 8, what would the hypotenuse be?",
-          "tts_engine": "android",
-          "voice_role": "teacher",
-          "duration_ms": 500,
-          "pause_after_ms": 4000
-        },
-        {
-          "frame_type": "reveal",
-          "text": "The answer is 10",
-          "speech": "Yep, you guessed it! 6 squared is 36, 8 squared is 64. Add them to get 100, and the square root of 100 is 10.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2000
-        }
-      ]
-    },
-    {
-      "title": "Real-World Applications",
-      "lang": "en-US",
-      "image_description": "ladder against wall triangle",
-      "image_show_confidencescore": 0.9,
-      "frames": [
-        {
-          "frame_type": "apply",
-          "text": "Ladders and screens",
-          "speech": "Carpenters use this to make sure walls are straight. Even your TV screen size is measured by the diagonal hypotenuse!",
+          "text": "Answer: 6 Newtons",
+          "speech": "సరిగ్గా చెప్పారు! 2 ఇ 3 అంటే 6. కాబట్టి ఆన్సర్ 6 **Newtons**.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
           "frame_type": "curiosity",
-          "text": "What if the angle changes?",
-          "speech": "But what happens if that corner isn't 90 degrees anymore? Does the magic formula still work, or does it break?",
+          "text": "What about gravity?",
+          "speech": "మరి ఈ నియమాలన్నీ స్పేస్‌లో కూడా ఇలాగే పనిచేస్తాయా? లేక మారుతాయా?",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2000,
-          "pause_after_ms": 1000
+          "pause_after_ms": 300
         },
         {
           "frame_type": "summary",
-          "text": "Lesson Summary",
-          "speech": "So, we learned that right-angled triangles have a 90-degree corner and follow the a-squared plus b-squared equals c-squared rule. It's the secret code for building everything straight in our world.",
+          "text": "Newton's Laws Summary",
+          "speech": "ఇవాళ మనం **Newton's Laws** నేర్చుకున్నాం. వస్తువుల కదలికలకు, వాటిని నెట్టే బలానికి ఈ మూడు సూత్రాలే ఆధారం.",
           "tts_engine": "google",
           "voice_role": "assistant",
           "duration_ms": 3000
@@ -306,20 +320,20 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ],
       "followup_questions": [
         {
-          "question": "Can a triangle have two right angles?",
-          "speech": "Can a triangle ever have two right angles? Think about it!"
+          "question": "Can you stop moving in space?",
+          "speech": "స్పేస్‌లో ఒకసారి కదిలితే ఆపడం కష్టమా? ఎందుకు?"
         },
         {
-          "question": "Does the hypotenuse change size?",
-          "speech": "If I make the legs longer, what happens to the hypotenuse?"
+          "question": "Does mass change force?",
+          "speech": "బరువు పెరిగితే కదిలించడానికి ఎక్కువ ఫోర్స్ ఎందుకు కావాలి?"
         },
         {
-          "question": "Is a square a triangle?",
-          "speech": "If I cut a square in half diagonally, what shapes do I get?"
+          "question": "Example of 3rd law?",
+          "speech": "మీ చుట్టూ ఉన్న మరో 3వ నియమం ఉదాహరణ చెప్పగలరా?"
         }
       ],
-      "session_theme": "Unlocking the Pythagoras Theorem",
-      "video_search_query": "Pythagoras theorem for kids simple",
+      "session_theme": "Understanding Newton's Laws of Motion",
+      "video_search_query": "Newton's Laws of Motion for kids",
       "preferred_channels": [
         "Khan Academy India",
         "Physics Wallah"

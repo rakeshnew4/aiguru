@@ -33,10 +33,10 @@ class Settings(BaseSettings):
     # POWER  → gemini-2.5-flash  (reasoning / teaching responses)
     #   Used for: main chat (pro users), BB main generation, image analysis
     #
-    # CHEAPER → gemini-2.5-flash-lite          (structured output tasks)
+    # CHEAPER → gemini-3.1-flash-lite-preview          (structured output tasks)
     #   Used for: quiz generation, quiz evaluation, free-tier chat
     #
-    # FASTER  → gemini-2.5-flash-lite          (lightweight / classification)
+    # FASTER  → gemini-3.1-flash-lite-preview          (lightweight / classification)
     #   Used for: intent classifier, BB planner, image picker, enrichment,
     #             BB grading, daily question gen, diagram generation
 
@@ -48,13 +48,13 @@ class Settings(BaseSettings):
 
     # CHEAPER: Balanced cost/performance — structured JSON tasks, free-tier chat
     CHEAPER_PROVIDER: str = "gemini"
-    CHEAPER_MODEL_ID: str = "gemini-2.5-flash-lite"
+    CHEAPER_MODEL_ID: str = "gemini-3.1-flash-lite-preview"
     CHEAPER_TEMPERATURE: float = 0.7
     CHEAPER_MAX_TOKENS: int = 14096
 
     # FASTER: Lightweight — intent classification, short structured calls
     FASTER_PROVIDER: str = "gemini"
-    FASTER_MODEL_ID: str = "gemini-2.5-flash-lite"
+    FASTER_MODEL_ID: str = "gemini-3.1-flash-lite-preview"
     FASTER_TEMPERATURE: float = 0.3
     FASTER_MAX_TOKENS: int = 20000
     

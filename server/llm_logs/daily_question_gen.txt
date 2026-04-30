@@ -1,11 +1,11 @@
-=== DAILY_QUESTION_GEN | 2026-04-28 05:03:52 | session=none ===
+=== DAILY_QUESTION_GEN | 2026-04-30 04:45:56 | session=none ===
 
 === PROMPT ===
 Generate exactly 3 engaging daily learning questions for a student.
 
-Student's top subjects: General
-Recent topics studied: Explain Heart Pumping, Photosynthesis, Acids & Bases, Water Cycle, Newton's Laws of Motion
-Topics already used today (AVOID these): Light and Shadows, Early Civilizations, Number Systems
+Student's top subjects: General, Biology, Neuroscience
+Recent topics studied: Bioluminescence, Cognitive Science, Photosynthesis, Explain Heart Pumping, Water Cycle, Atom, DNA, Why do some deep-sea creatures create their own light in total darkness?, How do our brains distinguish between a real memory and a vivid dream?, Newton's Laws of Motion
+Topics already used today (AVOID these): Botany, Sensory Systems, Earth Science, Chemistry, Neuroplasticity, Cardiology, Nuclear Physics, Chronobiology, Electromagnetism, Animal Behavior
 
 Rules:
 - Each question must be thought-provoking and curiosity-driven (not "what is X")
@@ -27,24 +27,24 @@ hook: one-line real-world curiosity fact related to the question (under 12 words
 === RESPONSE ===
 [
   {
-    "question": "Why does your heart beat faster when you exercise?",
+    "question": "Why do some animals evolve to be transparent instead of camouflaged?",
     "subject": "Biology",
-    "topic": "Heart Pumping",
+    "topic": "Evolutionary Adaptation",
     "difficulty": 1,
-    "hook": "Your heart beats 100,000 times every single day."
+    "hook": "Glass frogs are so transparent you can see their beating hearts."
   },
   {
-    "question": "How would plants survive if the sun suddenly dimmed?",
-    "subject": "Biology",
-    "topic": "Photosynthesis",
+    "question": "How does the brain decide which memories are worth keeping forever?",
+    "subject": "Neuroscience",
+    "topic": "Memory Consolidation",
     "difficulty": 2,
-    "hook": "Photosynthesis creates nearly all the oxygen we breathe."
+    "hook": "Your hippocampus acts like a librarian for your life experiences."
   },
   {
-    "question": "Why do heavy objects fall at the same speed as light ones?",
-    "subject": "Physics",
-    "topic": "Newton's Laws of Motion",
+    "question": "What would happen to human metabolism if we could perform photosynthesis?",
+    "subject": "General Science",
+    "topic": "Bioenergetics",
     "difficulty": 3,
-    "hook": "Galileo famously dropped objects from the Leaning Tower of Pisa."
+    "hook": "Some sea slugs can actually steal chloroplasts to survive on sunlight."
   }
 ]

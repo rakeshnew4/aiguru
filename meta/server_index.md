@@ -183,7 +183,7 @@
 |--------|-------|--------------|
 | `Settings` class | ? | Pydantic settings: GEMINI_API_KEY, LITELLM_MASTER_KEY, USE_LITELLM_PROXY, POWER/CHEAPER/FASTER model IDs |
 | `settings` singleton | ? | Global config instance |
-| Active models (Apr 2026) | ? | All 3 tiers → `gemini-2.5-flash-lite` |
+| Active models (Apr 2026) | ? | All 3 tiers → `gemini-3.1-flash-lite-preview` |
 
 ---
 
@@ -466,8 +466,8 @@
 | `ModelConfig` class | 6–18 | Simple config DTO: provider, model_id, temperature, max_tokens, supports_images |
 | `Settings` class | 22–141 | Pydantic settings; reads from `.env`; `extra="ignore"` |
 | POWER tier config | 43–47 | `gemini-3.1-flash-lite-preview`, temp=0.7, max_tokens=16384 |
-| CHEAPER tier config | 49–53 | `gemini-2.5-flash-lite`, temp=0.7, max_tokens=14096 |
-| FASTER tier config | 55–59 | `gemini-2.5-flash-lite`, temp=0.3, max_tokens=20000 |
+| CHEAPER tier config | 49–53 | `gemini-3.1-flash-lite-preview`, temp=0.7, max_tokens=14096 |
+| FASTER tier config | 55–59 | `gemini-3.1-flash-lite-preview`, temp=0.3, max_tokens=20000 |
 | AUTH_REQUIRED | 101 | `bool = True` — must stay True in prod |
 | LiteLLM proxy URL | 91 | `http://localhost:8005` default |
 | LiteLLM master key default | 92 | `sk-1234567890abcdefghijklmnopqrstuvwxyz` — insecure default, MUST override in `.env` |
@@ -525,7 +525,7 @@
 ## Key Server Architecture Facts
 - **Entry point:** `server/app/main.py` (FastAPI, 13 routers mounted)
 - **All LLM calls:** `generate_response()` → `_call_litellm_proxy()` in `llm_service.py`
-- **Active LLM:** POWER=`gemini-3.1-flash-lite-preview` (16384 tokens), CHEAPER/FASTER=`gemini-2.5-flash-lite`; all via LiteLLM proxy on localhost:8005
+- **Active LLM:** POWER=`gemini-3.1-flash-lite-preview` (16384 tokens), CHEAPER/FASTER=`gemini-3.1-flash-lite-preview`; all via LiteLLM proxy on localhost:8005
 - **⚠️ gemini-3.1-flash-lite-preview:** preview model — has thinking ON by default; may be deprecated by Google without warning
 - **Per-user LLM keys:** stored in `users_table/{uid}.litellm_key`, cached in `_user_key_cache` dict
 - **BB pipeline:** `api/chat.py` → BB planner LLM → main BB LLM → `image_search_titles.get_titles()` → enrichment + SVG + wikimedia

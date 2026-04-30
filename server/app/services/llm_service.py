@@ -34,7 +34,11 @@ def get_or_create_litellm_key(uid: str) -> Optional[str]:
                 resp = client.post(
                     f"{settings.LITELLM_PROXY_URL}/key/generate",
                     headers={"Authorization": f"Bearer {settings.LITELLM_MASTER_KEY}"},
-                    json={"user_id": uid, "key_alias": f"user-{uid[:8]}", "duration": "365d"},
+                    json={
+                        "user_id": uid,
+                        "key_alias": f"user-{uid[:8]}",
+                        "duration": "365d",
+                    },
                 )
                 resp.raise_for_status()
                 key = resp.json().get("key")
@@ -287,7 +291,7 @@ def generate_response(
     Fallback path : Google native SDK (google-genai) — used when LiteLLM is
                     unavailable or returns an error.
 
-    Both paths use the same model IDs (gemini-2.5-flash / gemini-2.5-flash-lite)
+    Both paths use the same model IDs (gemini-2.5-flash / gemini-3.1-flash-lite-preview)
     so behaviour is identical regardless of which path is taken.
     """
     logger.info("generate_response | tier=%s | images=%d | system=%s",

@@ -34,6 +34,8 @@
 | `BlackboardActivity` class | 88 | Full-screen BB lesson activity |
 | Key extras (consts) | 63–103 | EXTRA_MESSAGE, EXTRA_USER_ID, EXTRA_SUBJECT, EXTRA_CHAPTER, EXTRA_DURATION, EXTRA_BB_CACHE_ID, EXTRA_TTS_KEYS |
 | TTS fields | 179–200 | `tts: TextToSpeechManager`, `aiTtsEngine: BbAiTtsEngine`, `isPaused`, `useAiTts` |
+| Post-TTS advance logic | ~3122–3141 | `onComplete` else branch: `postTtsWait=0L` (no hold), `thinkingWait` only for `question` frames (`pauseAfterMs`), `pauseMs=postTtsWait+thinkingWait` → `postDelayed(advanceFrame, pauseMs)` |
+| Diagram pre-speech delay | ~1525–1529 | `postDelayed(speakFrame, 200ms)` — minimal render delay, no subtitle; was 2500ms+showSubtitle (removed 2026-04-30) |
 | BB ask-bar fields | 207–216 | `bbAskInput`, `bbAskSendBtn`, `bbCameraImageUri`, `bbPendingImageUri/Base64` |
 | Launcher registrations | 227–250 | `bbCameraLauncher`, `bbGalleryLauncher`, `bbCropLauncher` |
 | `onCreate()` | 291–430 | Binds full BB UI; TTS init at 375; AI TTS toggle at 392; lang set at 427 |

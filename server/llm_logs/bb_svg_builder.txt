@@ -1,4 +1,4 @@
-=== BB_SVG_BUILDER | 2026-04-29 07:04:47 | session=none ===
+=== BB_SVG_BUILDER | 2026-04-30 07:19:14 | session=none ===
 
 === SYSTEM ===
 You are an SVG diagram artist for an educational app. Draw accurate diagrams as raw SVG.
@@ -30,48 +30,15 @@ DRAW REAL STRUCTURES (never flowcharts with boxes/arrows):
 === PROMPT ===
 Draw this educational diagram as SVG:
 
-  Diagram type : leaf_anatomy
-  Topic/title  : Chloroplasts: Solar Power Plants
-  Context      : If you looked at a leaf under a microscope, you'd see these green, oval-shaped chloroplasts packed inside the cells.
+  Diagram type : custom
+  Topic/title  : Real-world Examples
+  Context      : కారు బ్రేక్ వేయగానే మీరు ముందుకు వంగడం కూడా **Inertia** వల్లే జరుగుతుంది.
   Data hints   : none
-  Visual layout: A cross-section diagram of a leaf showing internal cell structures and chloroplasts.
+  Visual layout: Real-world Examples
   Follow this layout exactly — positions, arrows, and labels as described above.
 
-Draw "Chloroplasts: Solar Power Plants" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
+Draw "Real-world Examples" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
 Animate each part appearing sequentially.  Output ONLY the <svg> element.
 
 === RESPONSE ===
-<svg viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg">
-  <rect width="400" height="300" fill="#1A2B1A"/>
-  <text x="200" y="25" font-family="serif" fill="#F0EDD0" font-size="13" font-weight="bold" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0s"/>Chloroplasts: Solar Power Plants</text>
-
-  <!-- Leaf Cell Wall -->
-  <path d="M50 60 Q 50 250 200 250 T 350 60 T 50 60" fill="#81C784" fill-opacity="0.25" stroke="#81C784" stroke-width="3" stroke-dasharray="800" stroke-dashoffset="800">
-    <animate attributeName="stroke-dashoffset" values="800;0" dur="0.6s" fill="freeze" begin="0.3s"/>
-  </path>
-
-  <!-- Chloroplast 1 -->
-  <ellipse cx="120" cy="120" rx="40" ry="25" fill="#81C784" fill-opacity="0.4" stroke="#81C784" stroke-width="2" stroke-dasharray="250" stroke-dashoffset="250">
-    <animate attributeName="stroke-dashoffset" values="250;0" dur="0.6s" fill="freeze" begin="0.6s"/>
-  </ellipse>
-  <rect x="105" y="110" width="30" height="4" fill="#1A2B1A" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0.9s"/></rect>
-  <rect x="105" y="120" width="30" height="4" fill="#1A2B1A" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0.9s"/></rect>
-
-  <!-- Chloroplast 2 -->
-  <ellipse cx="280" cy="150" rx="40" ry="25" fill="#81C784" fill-opacity="0.4" stroke="#81C784" stroke-width="2" stroke-dasharray="250" stroke-dashoffset="250">
-    <animate attributeName="stroke-dashoffset" values="250;0" dur="0.6s" fill="freeze" begin="0.9s"/>
-  </ellipse>
-  <rect x="265" y="140" width="30" height="4" fill="#1A2B1A" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.2s"/></rect>
-  <rect x="265" y="150" width="30" height="4" fill="#1A2B1A" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.2s"/></rect>
-
-  <!-- Nucleus -->
-  <circle cx="200" cy="180" r="20" fill="#CE93D8" fill-opacity="0.3" stroke="#CE93D8" stroke-width="2" stroke-dasharray="130" stroke-dashoffset="130">
-    <animate attributeName="stroke-dashoffset" values="130;0" dur="0.6s" fill="freeze" begin="1.2s"/>
-  </circle>
-
-  <!-- Labels -->
-  <text x="120" y="165" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.5s"/>Chloroplast</text>
-  <text x="280" y="195" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.5s"/>Chloroplast</text>
-  <text x="200" y="215" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.5s"/>Nucleus</text>
-  <text x="200" y="265" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.5s"/>Cell Wall</text>
-</svg>
+<svg viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#1A2B1A"/><text x="200" y="25" font-family="serif" fill="#F0EDD0" font-size="13" font-weight="bold" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0s"/>Real-world Examples</text><g stroke="#4FC3F7" stroke-width="2" fill="none" stroke-linecap="round"><path d="M50 220 L350 220 L340 180 L280 180 L250 140 L100 140 Z" fill="#4FC3F7" fill-opacity="0.25" stroke-dasharray="800" stroke-dashoffset="800"><animate attributeName="stroke-dashoffset" values="800;0" dur="0.6s" fill="freeze" begin="0.3s"/></path><circle cx="120" cy="220" r="25" fill="#8BAB8B" fill-opacity="0.25" stroke-dasharray="160" stroke-dashoffset="160"><animate attributeName="stroke-dashoffset" values="160;0" dur="0.6s" fill="freeze" begin="0.6s"/></circle><circle cx="300" cy="220" r="25" fill="#8BAB8B" fill-opacity="0.25" stroke-dasharray="160" stroke-dashoffset="160"><animate attributeName="stroke-dashoffset" values="160;0" dur="0.6s" fill="freeze" begin="0.9s"/></circle><path d="M180 140 L180 80 L220 100 L200 140" fill="#FF6B6B" fill-opacity="0.25" stroke-dasharray="200" stroke-dashoffset="200"><animate attributeName="stroke-dashoffset" values="200;0" dur="0.6s" fill="freeze" begin="1.2s"/></path></g><text x="120" y="225" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0.6s"/>Wheel</text><text x="300" y="225" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0.9s"/>Wheel</text><text x="200" y="90" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.2s"/>Passenger</text><path d="M230 110 L270 110" stroke="#F0EDD0" stroke-width="2" marker-end="url(#arrowhead)" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.5s"/></path><defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#F0EDD0"/></marker></defs><text x="250" y="105" font-family="serif" fill="#F0EDD0" font-size="11" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.5s"/>Inertia</text></svg>
