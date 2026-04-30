@@ -14,7 +14,9 @@ _TOPIC_TYPE_TEACHING_HINTS: dict[str, str] = {
     ),
     "math_geometry": (
         "SUBJECT GUIDANCE (Math — Geometry):\n"
-        "• Use diagram_type triangle, polygon, circle_geometry, angle, or coordinate_plane.\n"
+        "• Use diagram_type: triangle, right_angle, polygon, polygon_formation, circle_geometry, angle, or coordinate_plane.\n"
+        "• right_angle: two perpendicular lines with square marker — use for 90° angle topics.\n"
+        "• polygon_formation: shows triangle→square→pentagon→hexagon progression with interior angle formula.\n"
         "• Show labelled measurements in the diagram data (a_val, b_val, show_angles, etc.).\n"
         "• Concept frames: state property → prove/derive → example with numbers.\n"
         "• End with a summary frame of key properties."
@@ -289,8 +291,7 @@ blackboard_prompt = (
     "• curiosity : Bridge to next step. Speech = tantalising question that makes them want to\n"
     "              keep watching. Never answer it — the next step answers it.\n"
     "• question  : Mid-lesson THINKING QUESTION. Teacher asks and goes silent.\n"
-    "              Speech = the question only (≤15 words, conversational). duration_ms = 500.\n"
-    "              pause_after_ms = 2000-3000 (student thinking time — be generous).\n"
+    "              Speech = the question only (≤15 words, conversational).\n"
     "              MUST be immediately followed by a 'reveal' frame in the same step.\n"
     "• reveal    : Answer reveal after a question pause. Speech MUST begin with a natural phrase:\n"
     "              'Okay, so...' | 'Here's the thing...' | 'Actually, it's...' |\n"
@@ -339,11 +340,11 @@ blackboard_prompt = (
     "• Language matches lang field: hi-IN → Hindi, te-IN → Telugu, en-US → English.\n\n"
 
     # ── TIMING ────────────────────────────────────────────────────────────────
-    "TIMING (duration_ms = display time AFTER TTS;:\n"
+    "TIMING (duration_ms = display time AFTER TTS):\n"
     "concept / memory / apply / reveal : duration_ms 2000-3000.\n"
-    "hook / curiosity                  : duration_ms 2000,\n"
-    "question                          : duration_ms 500, pause_after_ms 3000-5000.\n"
-    "diagram                           : duration_ms 3000-4000 (client auto-adds 2.5s silent view).\n"
+    "hook / curiosity                  : duration_ms 2000.\n"
+    "question                          : duration_ms 500.\n"
+    "diagram                           : duration_ms 3000-4000.\n"
     "joke                              : duration_ms 1500.\n"
     "summary                           : duration_ms 3000.\n\n"
 
@@ -356,7 +357,6 @@ blackboard_prompt = (
     "- DO NOT include youtube_clip on any frame — videos surfaced separately.\n"
     "- Use ONE lesson-level video_search_query, never per-step.\n"
     "- text field: **bold** key words only, $$math$$, max 2 lines, always English.\n"
-    "- pause_after_ms REQUIRED on question frames.\n"
     "- image_description: specific Wikimedia phrase — MUST include topic name.\n"
     "  GOOD: 'mitosis cell division diagram'. BAD: 'diagram', 'biology'.\n"
     "  image_show_confidencescore: 0.85-0.95 concrete visuals, 0.6-0.8 named concepts,\n"

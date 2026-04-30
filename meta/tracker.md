@@ -1116,6 +1116,40 @@ Run to start seeding:
 Books with ALL 404 (English/SS for Class 6/9) kept as-is — likely IP-blocked from cloud server, may work from residential IPs.
 
 **Files changed:** `app/src/main/assets/ncert.json` (18 chapter range fixes)
-=======
-**Files changed:** `FullChatFragment.kt` (removed lines 343-354)
->>>>>>> eb239613ed46a0458102f8159e9db91585a897ed
+
+## 2026-04-30 (session 5)
+
+**Asked:** (1) Why credits not added when updating the "basic" plan in Firestore. (2) Image search titles not giving good images — fix.
+
+**Credits investigation (read-only, no code change):**
+- Flow: Android pays → `/payments/razorpay/verify` → `user_service.activate_plan()` → reads `plans/{plan_id}.limits.credits_on_activation` → calls `_award_activation_credits()` which does `user_credits/{uid}.balance += amount`.
+- `student_basic` plan in seed: `credits_on_activation = 100`. `student_pro` = 500. `free` = 0.
+- `already_activated` guard: only blocks re-award if SAME plan activated within 120 seconds (race window). Renewals (30+ days later) always get credits.
+- **Root causes diagnosed:**
+  - A) If planId changed manually in Firestore console, `activate_plan()` is never called → no credits. Fix: manually increment `user_credits/{uid}.balance` + add `credit_transactions` doc.
+  - B) If `plans/student_basic` doc in Firestore missing `limits.credits_on_activation` field (not seeded, or manually overwritten) → `activation_credits=0` → nothing awarded. Fix: check Firestore `plans/student_basic` doc has `limits.credits_on_activation = 100`.
+- No code change needed — logic is correct. Firestore data issue.
+**Files read:** `server/app/services/user_service.py:1-720`, `server/app/api/payments.py:1-310`, `server/seed_firestore.py:290-410`, `server/app/api/credits.py:1-100`
+
+**Image search titles fix:**
+- **Root cause:** Production code was using `_pick_by_word_overlap()` (50% threshold) instead of LLM picker. Word-overlap too strict — Wikimedia titles rarely match enough description words → many steps get no image.
+- `_pick_titles_sync()` (LLM picker) existed but was commented out as "kept for reference".
+- **Changes:**
+  - `image_search_titles.py` `get_titles()` (~line 667): Replaced `_pick_by_word_overlap(...)` with `await loop.run_in_executor(None, _pick_titles_sync, ...)` — LLM picker is now primary; it has built-in word-overlap fallback on exception.
+  - `image_search_titles.py` `_best_title_match()` (~line 111): Lowered accept threshold `0.5 → 0.3` — word-overlap fallback now catches more valid partial matches.
+**Files changed:** `server/app/api/image_search_titles.py` (2 lines)
+
+## 2026-04-30 (session 6)
+
+**Asked:** Credits still not added after basic plan payment even though credits_on_activation=200 set in Firestore.
+
+**Root cause:** `_lookup_plan_limits()` only reads the `limits` sub-map (`doc.get("limits", {})`). If `credits_on_activation` was manually added at root level of the Firestore plan doc (not inside `limits` map), server reads `{}`, gets `activation_credits=0`, silently skips `_award_activation_credits()`. Plan activates (Android shows success) but no credits added.
+
+**Secondary bug:** `int(limits.get("credits_on_activation", 0))` had no guard — a null Firestore value would raise TypeError crashing `activate_plan` entirely.
+
+**Fix (`server/app/services/user_service.py`):**
+- `_lookup_plan_limits()` (~line 54): now reads `limits` sub-map first, then falls back to root-level fields for `credits_on_activation`, `daily_chat_questions`, `daily_bb_sessions`, etc.
+- Added `logger.info` to log what credits value was found — visible in server logs for debugging.
+- `activation_credits` assignment (~line 292): wrapped in `try/except (TypeError, ValueError)`.
+- Added `logger.info("activate_plan: should_award=%s activation_credits=%d ...")` before award block.
+**Files changed:** `server/app/services/user_service.py` (~lines 54-87, 291-299)

@@ -2820,6 +2820,153 @@ const Diagrams = (() => {
     return angleGeometry(engine, svg, data);
   }
 
+  // ── rightAngle ───────────────────────────────────────────────────────────────
+  // Dedicated 90° angle diagram with square marker.
+  // data: { labels, label_a, label_b, label_o, title, show_arms, arm_length }
+  function rightAngle(engine, svg, data) {
+    var labels  = data.labels || ['A', 'O', 'B'];
+    var lA      = data.label_a || labels[0] || 'A';
+    var lO      = data.label_o || labels[1] || 'O';
+    var lB      = data.label_b || labels[2] || 'B';
+    var title   = data.title   || 'Right Angle — 90°';
+    var armLen  = Math.min(+data.arm_length || 110, 130);
+    var OX = 160, OY = 210;
+
+    append(svg, Shapes.text(200, 18, title,
+      { color: 'label', size: 13, weight: 'bold' }));
+
+    var vdot = Shapes.circle(OX, OY, 5,
+      { color: 'label', fill: 'label', opacity: 0 });
+    append(svg, vdot);
+    engine.addPhase([vdot], 0, -1);
+
+    var hArm = Shapes.line(OX, OY, OX + armLen, OY,
+      { color: 'stroke', sw: 2.5, opacity: 0 });
+    append(svg, hArm);
+    engine.addPhase([hArm], 200, -1);
+
+    var vArm = Shapes.line(OX, OY, OX, OY - armLen,
+      { color: 'highlight', sw: 2.5, opacity: 0 });
+    append(svg, vArm);
+    engine.addPhase([vArm], 500, -1);
+
+    var sqSize = 18;
+    var sq = Shapes.rect(OX, OY - sqSize, sqSize, sqSize,
+      { color: 'secondary', sw: 1.8, opacity: 0 });
+    append(svg, sq);
+    engine.addPhase([sq], 800, -1);
+
+    var degLbl = Shapes.text(OX + sqSize + 14, OY - sqSize / 2,
+      '90°', { color: 'secondary', size: 13, weight: 'bold', opacity: 0 });
+    append(svg, degLbl);
+    engine.addPhase([degLbl], 1000, -1);
+
+    var oLbl = Shapes.text(OX - 18, OY + 16, lO,
+      { color: 'label', size: 13, weight: 'bold', opacity: 0 });
+    append(svg, oLbl);
+    engine.addPhase([oLbl], 1100, -1);
+
+    var bLbl = Shapes.text(OX + armLen + 12, OY, lB,
+      { color: 'stroke', size: 13, opacity: 0 });
+    var aLbl = Shapes.text(OX - 14, OY - armLen - 16, lA,
+      { color: 'highlight', size: 13, opacity: 0 });
+    append(svg, bLbl, aLbl);
+    engine.addPhase([bLbl, aLbl], 1300, -1);
+
+    if (data.show_arms !== false) {
+      var tick1 = Shapes.line(OX + armLen * 0.5 - 4, OY - 5,
+                              OX + armLen * 0.5 + 4, OY + 5,
+                              { color: 'dim', sw: 1.2, opacity: 0 });
+      var tick2 = Shapes.line(OX - 5, OY - armLen * 0.5 - 4,
+                              OX + 5, OY - armLen * 0.5 + 4,
+                              { color: 'dim', sw: 1.2, opacity: 0 });
+      append(svg, tick1, tick2);
+      engine.addPhase([tick1, tick2], 1500, -1);
+    }
+
+    var subLbl = Shapes.text(200, 280, 'Perpendicular lines meet at 90°',
+      { color: 'dim', size: 10, opacity: 0 });
+    append(svg, subLbl);
+    engine.addPhase([subLbl], 1800, -1);
+  }
+
+  // ── polygonFormation ─────────────────────────────────────────────────────────
+  // Shows progression of regular polygons with interior angle formula.
+  // data: { from_sides, to_sides, show_formula, color, title }
+  function polygonFormation(engine, svg, data) {
+    var fromN   = Math.max(3, Math.min(8, +data.from_sides || 3));
+    var toN     = Math.max(fromN + 1, Math.min(8, +data.to_sides || 6));
+    var count   = toN - fromN + 1;
+    var color   = data.color || 'secondary';
+    var title   = data.title || 'Polygon Family';
+    var showFml = data.show_formula !== false;
+
+    append(svg, Shapes.text(200, 18, title,
+      { color: 'label', size: 13, weight: 'bold' }));
+
+    var R = count <= 4 ? 44 : 32;
+    var spacing = Math.min(380 / count, 95);
+    var startX  = 200 - (count - 1) * spacing / 2;
+    var CY2 = 140;
+
+    for (var idx = 0; idx < count; idx++) {
+      var n     = fromN + idx;
+      var cx    = startX + idx * spacing;
+      var delay = idx * 600;
+      var pts   = [];
+      for (var vi = 0; vi < n; vi++) {
+        var ang = (vi / n) * 2 * Math.PI - Math.PI / 2;
+        pts.push([cx + R * Math.cos(ang), CY2 + R * Math.sin(ang)]);
+      }
+
+      (function(pts2, n2, cx2, delay2) {
+        pts2.forEach(function(P, si) {
+          var Q  = pts2[(si + 1) % n2];
+          var sl = Shapes.line(P[0], P[1], Q[0], Q[1],
+            { color: color, sw: si === 0 ? 2.2 : 1.8, opacity: 0 });
+          append(svg, sl);
+          engine.addPhase([sl], delay2 + si * (300 / n2), -1);
+        });
+
+        var nameLbl = Shapes.text(cx2, CY2 + R + 18, _polyName(n2),
+          { color: 'label', size: 9, weight: 'bold', opacity: 0 });
+        var sideLbl = Shapes.text(cx2, CY2 + R + 30, n2 + ' sides',
+          { color: 'dim', size: 8, opacity: 0 });
+        append(svg, nameLbl, sideLbl);
+        engine.addPhase([nameLbl, sideLbl], delay2 + 450, -1);
+
+        var intAng = ((n2 - 2) * 180 / n2).toFixed(0);
+        var angLbl = Shapes.text(cx2, CY2 + R + 42, intAng + '° each',
+          { color: 'orange', size: 8, opacity: 0 });
+        append(svg, angLbl);
+        engine.addPhase([angLbl], delay2 + 600, -1);
+      })(pts, n, cx, delay);
+
+      if (idx < count - 1) {
+        var ax = cx + spacing * 0.5;
+        var arrEl = Shapes.text(ax, CY2, '→',
+          { color: 'dim', size: 14, opacity: 0 });
+        append(svg, arrEl);
+        engine.addPhase([arrEl], delay + 400, -1);
+      }
+    }
+
+    if (showFml) {
+      var fmla = Shapes.text(200, 265,
+        'Interior angle = (n − 2) × 180° ÷ n',
+        { color: 'gold', size: 11, weight: 'bold', opacity: 0 });
+      append(svg, fmla);
+      engine.addPhase([fmla], count * 600 + 200, -1);
+      engine.addMotion(Motion.pulse(fmla, 200, 265, 0.93, 1.07, 1400));
+    }
+
+    var note = Shapes.text(200, 282,
+      'More sides → larger interior angle → closer to circle',
+      { color: 'dim', size: 9, opacity: 0 });
+    append(svg, note);
+    engine.addPhase([note], count * 600 + 600, -1);
+  }
+
   // ── Public API ───────────────────────────────────────────────────────────────
   return {
     atom, solarSystem, wave, sun, plant, flowArrow, cycle, labeled, comparison, custom,
@@ -2829,6 +2976,7 @@ const Diagrams = (() => {
     triangle, regularPolygon, circleGeometry,
     coordinatePlane, vennDiagram, barChart, pieChart,
     angleGeometry, geometryAngles, lineGraph, pythagorasTheorem,
+    rightAngle, polygonFormation,
   };
 })();
 

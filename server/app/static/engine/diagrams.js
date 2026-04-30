@@ -2424,6 +2424,175 @@ const Diagrams = (() => {
     return angleGeometry(engine, svg, data);
   }
 
+  // ── rightAngle ───────────────────────────────────────────────────────────────
+  // Dedicated 90° angle diagram with square marker.
+  // data: { labels, label_a, label_b, label_o, title, show_arms, arm_length }
+  //   labels     — [arm-end-A, vertex-O, arm-end-B] defaults ['A','O','B']
+  //   show_arms  — true (default) draws arm ticks to show equal length
+  //   arm_length — override arm length (default 110)
+  function rightAngle(engine, svg, data) {
+    var labels  = data.labels || ['A', 'O', 'B'];
+    var lA      = data.label_a || labels[0] || 'A';
+    var lO      = data.label_o || labels[1] || 'O';
+    var lB      = data.label_b || labels[2] || 'B';
+    var title   = data.title   || 'Right Angle — 90°';
+    var armLen  = Math.min(+data.arm_length || 110, 130);
+    var OX = 160, OY = 210;
+
+    append(svg, Shapes.text(200, 18, title,
+      { color: 'label', size: 13, weight: 'bold' }));
+
+    // Vertex dot
+    var vdot = Shapes.circle(OX, OY, 5,
+      { color: 'label', fill: 'label', opacity: 0 });
+    append(svg, vdot);
+    engine.addPhase([vdot], 0, -1);
+
+    // Horizontal arm (→ right)
+    var hArm = Shapes.line(OX, OY, OX + armLen, OY,
+      { color: 'stroke', sw: 2.5, opacity: 0 });
+    append(svg, hArm);
+    engine.addPhase([hArm], 200, -1);
+
+    // Vertical arm (↑ up)
+    var vArm = Shapes.line(OX, OY, OX, OY - armLen,
+      { color: 'highlight', sw: 2.5, opacity: 0 });
+    append(svg, vArm);
+    engine.addPhase([vArm], 500, -1);
+
+    // Square marker (10×10 at vertex)
+    var sqSize = 18;
+    var sq = Shapes.rect(OX, OY - sqSize, sqSize, sqSize,
+      { color: 'secondary', sw: 1.8, opacity: 0 });
+    append(svg, sq);
+    engine.addPhase([sq], 800, -1);
+
+    // "90°" label near the square marker
+    var degLbl = Shapes.text(OX + sqSize + 14, OY - sqSize / 2,
+      '90°', { color: 'secondary', size: 13, weight: 'bold', opacity: 0 });
+    append(svg, degLbl);
+    engine.addPhase([degLbl], 1000, -1);
+
+    // Vertex label
+    var oLbl = Shapes.text(OX - 18, OY + 16, lO,
+      { color: 'label', size: 13, weight: 'bold', opacity: 0 });
+    append(svg, oLbl);
+    engine.addPhase([oLbl], 1100, -1);
+
+    // Arm end labels
+    var bLbl = Shapes.text(OX + armLen + 12, OY, lB,
+      { color: 'stroke', size: 13, opacity: 0 });
+    var aLbl = Shapes.text(OX - 14, OY - armLen - 16, lA,
+      { color: 'highlight', size: 13, opacity: 0 });
+    append(svg, bLbl, aLbl);
+    engine.addPhase([bLbl, aLbl], 1300, -1);
+
+    // Equal-arm tick marks (show arms are reference length)
+    if (data.show_arms !== false) {
+      var tick1 = Shapes.line(OX + armLen * 0.5 - 4, OY - 5,
+                              OX + armLen * 0.5 + 4, OY + 5,
+                              { color: 'dim', sw: 1.2, opacity: 0 });
+      var tick2 = Shapes.line(OX - 5, OY - armLen * 0.5 - 4,
+                              OX + 5, OY - armLen * 0.5 + 4,
+                              { color: 'dim', sw: 1.2, opacity: 0 });
+      append(svg, tick1, tick2);
+      engine.addPhase([tick1, tick2], 1500, -1);
+    }
+
+    // "Perpendicular lines" sub-label
+    var subLbl = Shapes.text(200, 280, 'Perpendicular lines meet at 90°',
+      { color: 'dim', size: 10, opacity: 0 });
+    append(svg, subLbl);
+    engine.addPhase([subLbl], 1800, -1);
+  }
+
+  // ── polygonFormation ─────────────────────────────────────────────────────────
+  // Shows a progression of regular polygons (triangle → square → pentagon → hexagon → octagon)
+  // with animated side-by-side comparison and interior angle formula.
+  // data: { from_sides, to_sides, show_formula, color, title }
+  //   from_sides — start polygon (default 3 = triangle)
+  //   to_sides   — end polygon (default 6 = hexagon)
+  //   show_formula — show (n-2)×180 / n formula (default true)
+  function polygonFormation(engine, svg, data) {
+    var fromN   = Math.max(3, Math.min(8, +data.from_sides || 3));
+    var toN     = Math.max(fromN + 1, Math.min(8, +data.to_sides || 6));
+    var count   = toN - fromN + 1;
+    var color   = data.color || 'secondary';
+    var title   = data.title || 'Polygon Family';
+    var showFml = data.show_formula !== false;
+
+    append(svg, Shapes.text(200, 18, title,
+      { color: 'label', size: 13, weight: 'bold' }));
+
+    // Layout: distribute polygons across width
+    var R = count <= 4 ? 44 : 32;
+    var spacing = Math.min(380 / count, 95);
+    var startX  = 200 - (count - 1) * spacing / 2;
+    var CY2 = 140;
+
+    for (var idx = 0; idx < count; idx++) {
+      var n     = fromN + idx;
+      var cx    = startX + idx * spacing;
+      var delay = idx * 600;
+      var pts   = [];
+      for (var vi = 0; vi < n; vi++) {
+        var ang = (vi / n) * 2 * Math.PI - Math.PI / 2;
+        pts.push([cx + R * Math.cos(ang), CY2 + R * Math.sin(ang)]);
+      }
+
+      // Draw sides one-by-one within the stagger
+      pts.forEach(function(P, si) {
+        var Q   = pts[(si + 1) % n];
+        var sl  = Shapes.line(P[0], P[1], Q[0], Q[1],
+          { color: color, sw: si === 0 ? 2.2 : 1.8, opacity: 0 });
+        append(svg, sl);
+        engine.addPhase([sl], delay + si * (300 / n), -1);
+      }.bind(null));  // capture pts snapshot
+
+      // Polygon name label
+      var nameLbl = Shapes.text(cx, CY2 + R + 18, _polyName(n),
+        { color: 'label', size: 9, weight: 'bold', opacity: 0 });
+      // Side count badge
+      var sideLbl = Shapes.text(cx, CY2 + R + 30, n + ' sides',
+        { color: 'dim', size: 8, opacity: 0 });
+      append(svg, nameLbl, sideLbl);
+      engine.addPhase([nameLbl, sideLbl], delay + 450, -1);
+
+      // Interior angle value
+      var intAng = ((n - 2) * 180 / n).toFixed(0);
+      var angLbl = Shapes.text(cx, CY2 + R + 42, intAng + '° each',
+        { color: 'orange', size: 8, opacity: 0 });
+      append(svg, angLbl);
+      engine.addPhase([angLbl], delay + 600, -1);
+
+      // Arrow between polygons
+      if (idx < count - 1) {
+        var ax = cx + spacing * 0.5;
+        var arrEl = Shapes.text(ax, CY2, '→',
+          { color: 'dim', size: 14, opacity: 0 });
+        append(svg, arrEl);
+        engine.addPhase([arrEl], delay + 400, -1);
+      }
+    }
+
+    // Formula footer
+    if (showFml) {
+      var fmla = Shapes.text(200, 265,
+        'Interior angle = (n − 2) × 180° ÷ n',
+        { color: 'gold', size: 11, weight: 'bold', opacity: 0 });
+      append(svg, fmla);
+      engine.addPhase([fmla], count * 600 + 200, -1);
+      engine.addMotion(Motion.pulse(fmla, 200, 265, 0.93, 1.07, 1400));
+    }
+
+    // Observation note
+    var note = Shapes.text(200, 282,
+      'More sides → larger interior angle → closer to circle',
+      { color: 'dim', size: 9, opacity: 0 });
+    append(svg, note);
+    engine.addPhase([note], count * 600 + 600, -1);
+  }
+
   // ── Public API ───────────────────────────────────────────────────────────────
   return {
     atom, solarSystem, wave, sun, plant, flowArrow, cycle, labeled, comparison, custom,
@@ -2433,6 +2602,7 @@ const Diagrams = (() => {
     triangle, regularPolygon, circleGeometry,
     coordinatePlane, vennDiagram, barChart, pieChart,
     angleGeometry, geometryAngles, lineGraph, pythagorasTheorem,
+    rightAngle, polygonFormation,
   };
 })();
 

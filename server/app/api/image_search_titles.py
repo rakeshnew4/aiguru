@@ -108,7 +108,7 @@ def _best_title_match(description: str, titles: List[str]) -> Optional[str]:
 
     # Require at least 50% content-word match to avoid false positives
     # (e.g. "rational system" should NOT match "Hack Computer CPU Block Diagram")
-    return best_title if best_score >= 0.5 else None
+    return best_title if best_score >= 0.3 else None
 
 
 def extract_json_safe(text: str) -> Dict:
@@ -664,9 +664,10 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, a
             for item in all_candidates
             if isinstance(item, dict) and item.get("url")
         }
-        # Word-overlap matching — no LLM call, saves ~1 call/session.
-        # _pick_titles_sync (LLM path) kept for reference but not called here.
-        picks = _pick_by_word_overlap(data["steps"], all_candidates)
+        # LLM-based image picker (more accurate). Falls back to word-overlap internally.
+        picks = await loop.run_in_executor(
+            None, _pick_titles_sync, data["steps"], all_candidates
+        )
 
         for i, step in enumerate(data["steps"]):
             if not isinstance(step, dict):

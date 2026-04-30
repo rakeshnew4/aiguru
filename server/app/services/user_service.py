@@ -52,11 +52,35 @@ def _now_ms() -> int:
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 def _lookup_plan_limits(db, plan_id: str) -> dict:
-    """Return the 'limits' sub-dict from plans/{plan_id}, or {} on failure."""
+    """
+    Return the limits dict for plans/{plan_id}.
+    Checks the 'limits' sub-map first; falls back to root-level fields so that
+    manually-edited Firestore docs (where credits_on_activation is at root) still work.
+    """
     try:
         doc = db.collection("plans").document(plan_id).get()
-        if doc.exists:
-            return (doc.to_dict() or {}).get("limits", {})
+        if not doc.exists:
+            logger.warning("_lookup_plan_limits: plans/%s not found in Firestore", plan_id)
+            return {}
+        raw = doc.to_dict() or {}
+        limits = raw.get("limits") or {}
+        if not isinstance(limits, dict):
+            limits = {}
+        # Fallback: if key fields are missing from the limits sub-map, check root level.
+        # This handles manually-created Firestore docs where credits_on_activation is at root.
+        for fallback_key in ("credits_on_activation", "daily_chat_questions", "daily_bb_sessions",
+                             "tts_enabled", "ai_tts_enabled", "blackboard_enabled",
+                             "image_upload_enabled"):
+            if fallback_key not in limits and fallback_key in raw:
+                limits[fallback_key] = raw[fallback_key]
+        logger.info(
+            "_lookup_plan_limits: plan=%s credits_on_activation=%s daily_chat=%s daily_bb=%s",
+            plan_id,
+            limits.get("credits_on_activation", 0),
+            limits.get("daily_chat_questions", "?"),
+            limits.get("daily_bb_sessions", "?"),
+        )
+        return limits
     except Exception as exc:
         logger.warning("_lookup_plan_limits: could not fetch plan %s: %s", plan_id, exc)
     return {}
@@ -264,7 +288,14 @@ def activate_plan(
         }, merge=True)
         should_award = True
 
-    activation_credits = int(limits.get("credits_on_activation", 0))
+    try:
+        activation_credits = int(limits.get("credits_on_activation") or 0)
+    except (TypeError, ValueError):
+        activation_credits = 0
+        logger.warning("activate_plan: invalid credits_on_activation value in plan %s: %r",
+                       plan_id, limits.get("credits_on_activation"))
+    logger.info("activate_plan: should_award=%s activation_credits=%d plan=%s uid=%s",
+                should_award, activation_credits, plan_id, uid)
     if should_award and activation_credits > 0:
         _award_activation_credits(db, uid, activation_credits, plan_id, plan_name)
 

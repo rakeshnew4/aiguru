@@ -1,16 +1,17 @@
-=== BB_PLANNER | 2026-04-30 07:43:10 | session=KkhkqOQI_7a5646e7 ===
+=== BB_PLANNER | 2026-04-30 09:55:41 | session=KkhkqOQI_c6dd5d61 ===
 
 === PROMPT ===
 You are a lesson analyst for a personal visual AI tutor responding to a student's SPECIFIC question.
 Analyze exactly what the student is asking and return a focused lesson plan.
 Output ONLY valid JSON — nothing else.
 
-Student question (answer THIS specifically): "Topic: Explain how to solve quadratic equations ax² + bx + c = 0 step by step. Show 2 clear examples: one using the quadratic formula and one using factoring. Include a tip on when to use each method.
-Lesson title: Mastering Quadratic Equations
-Category: math
+Student question (answer THIS specifically): "Topic: Why do some animals evolve to be transparent instead of camouflaged?
+Lesson title: The Science of Invisibility: Biological Transparency
+Category: science
 
+This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
-CONTINUATION — DO NOT repeat anything "
+Generate EXACTLY 5 steps with APPROXIMATELY 3 f"
 Chapter context (excerpt): ""
 Recent conversation (last 3 turns):
   (No prior conversation — this is the student's first question)
@@ -45,22 +46,23 @@ Rules:
 
 === RESPONSE ===
 {
-  "topic_type": "math_formula",
+  "topic_type": "science_biology",
   "scope": "medium",
   "key_concepts": [
-    "quadratic formula",
-    "factoring quadratics",
-    "discriminant",
-    "zero product property"
+    "transparency vs. camouflage",
+    "predator avoidance",
+    "refractive index",
+    "evolutionary adaptation"
   ],
   "steps_count": 5,
   "image_search_terms": [
-    "quadratic formula",
-    "factoring quadratic equation diagram"
+    "glass frog",
+    "transparent marine animals",
+    "bioluminescence camouflage"
   ],
-  "question_focus": "The student wants a step-by-step guide to solving quadratic equations using both the quadratic formula and factoring, along with a strategy for choosing the best method.",
-  "question_type": "how_to",
+  "question_focus": "The student wants to understand the evolutionary advantages of transparency compared to traditional camouflage in animals.",
+  "question_type": "conceptual",
   "prior_knowledge": "",
-  "hook_question": "Did you know that quadratic equations are used to calculate the path of a basketball shot or a rocket launch?",
-  "continuation_topic": "Graphing Quadratic Functions and Parabolas"
+  "hook_question": "Have you ever looked right through an animal and seen the ocean floor behind it?",
+  "continuation_topic": "Bioluminescence and Deep Sea Adaptations"
 }

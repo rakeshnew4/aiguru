@@ -129,6 +129,14 @@ SUPPORTED_TYPES: dict[str, str] = {
     "pythagoras_theorem":   "pythagorasTheorem",
     "pythagorean_theorem":  "pythagorasTheorem",
     "right_angle_theorem":  "pythagorasTheorem",
+    # ── New geometry types ───────────────────────────────────────────────
+    "right_angle":          "rightAngle",
+    "perpendicular":        "rightAngle",
+    "90_degree":            "rightAngle",
+    "polygon_formation":    "polygonFormation",
+    "polygon_family":       "polygonFormation",
+    "polygons":             "polygonFormation",
+    "polygon_progression":  "polygonFormation",
 }
 
 

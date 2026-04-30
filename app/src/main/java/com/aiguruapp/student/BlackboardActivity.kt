@@ -1558,9 +1558,7 @@ class BlackboardActivity : AppCompatActivity() {
             frame.youtubeClip?.let { if (!collectedClips.any { c -> c.videoId == it.videoId }) collectedClips.add(it) }
             stepsScrollView.post { stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }
             if (!isPaused && frame.speech.isNotBlank()) {
-                // Brief render delay before TTS (no intentional pause)
-                showSubtitle("Take a look…  👀")
-                contentText.postDelayed({ speakFrame(stepIdx, frameIdx) }, 1000)
+                speakFrame(stepIdx, frameIdx)
             }
             return
         }
@@ -1612,10 +1610,10 @@ class BlackboardActivity : AppCompatActivity() {
                     tts.speak(frame.quizAnswer, object : TTSCallback {
                         override fun onStart() {}
                         override fun onComplete() {
-                            stepsScrollView.postDelayed({ advanceFrame() }, 600)
+                            advanceFrame()
                         }
                         override fun onError(error: String) {
-                            stepsScrollView.postDelayed({ advanceFrame() }, 600)
+                            advanceFrame()
                         }
                     })
                 }
@@ -1640,7 +1638,7 @@ class BlackboardActivity : AppCompatActivity() {
                 contentText.text = baseSsb
             }
             if (!isPaused && frame.speech.isNotBlank()) {
-                contentText.postDelayed({ speakFrame(stepIdx, frameIdx) }, 200)
+                speakFrame(stepIdx, frameIdx)
             }
             return
         }
@@ -1653,7 +1651,7 @@ class BlackboardActivity : AppCompatActivity() {
             contentText.setLineSpacing(0f, 1.6f)
             stepsScrollView.post { stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }
             if (!isPaused && frame.speech.isNotBlank()) {
-                contentText.postDelayed({ speakFrame(stepIdx, frameIdx) }, 200)
+                speakFrame(stepIdx, frameIdx)
             }
             return
         }
@@ -1712,9 +1710,9 @@ class BlackboardActivity : AppCompatActivity() {
             })
             start()
         }
-        // Start speech in parallel with the writing animation (after a short lead-in delay)
+        // Start speech immediately with the writing animation
         if (!isPaused && frame.speech.isNotBlank()) {
-            handWriter.postDelayed({ speakFrame(stepIdx, frameIdx) }, 600)
+            speakFrame(stepIdx, frameIdx)
         }
     }
 
@@ -3164,21 +3162,13 @@ class BlackboardActivity : AppCompatActivity() {
                         val isLastFrameOverall = stepIdx == steps.size - 1 &&
                             frameIdx == (steps.lastOrNull()?.frames?.size ?: 1) - 1
                         val isLastFrameOfStep = frameIdx == (step?.frames?.size ?: 1) - 1
-                        // No post-TTS hold — advance immediately after speech ends.
-                        // Only question frames get a thinking pause (pause_after_ms).
-                        val postTtsWait = f?.durationMs ?: 0L
-    
-                        val thinkingWait: Long = if (f?.frameType == "question") {
-                            runOnUiThread { showSubtitle("🤔  take a moment…") }
-                            f.pauseAfterMs ?: 0L
-                        } else 0L
-                        val pauseMs = postTtsWait + thinkingWait
+                        // Advance immediately after TTS — no pauses.
                         if (isLastFrameOverall && quizTotal > 0) {
-                            stepsScrollView.postDelayed({ showScoreCard() }, 600)
+                            showScoreCard()
                         } else if (isLastFrameOverall) {
-                            stepsScrollView.postDelayed({ showLessonCompleteNotif() }, 400)
+                            showLessonCompleteNotif()
                         } else {
-                            stepsScrollView.postDelayed({ advanceFrame() }, pauseMs)
+                            advanceFrame()
                         }
                     }
                 }
