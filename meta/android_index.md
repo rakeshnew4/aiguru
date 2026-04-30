@@ -47,6 +47,7 @@
 | `pauseBtn` | 169 | lateinit TextView; text "▶"/"⏸" |
 | `fetchAndShowStepImage()` | ~1840–1935 | Wikimedia image fetch; `serverScore≥0.7` → inline img; caption hidden for raw URLs (fixed Apr 2026); `FIT_CENTER`+`maxHeight=280dp` (fixed Apr 2026) |
 | `showImageDialog()` | 1936–1975 | AlertDialog with ImageView (FIT_CENTER, 300dp) or WebView for SVG |
+| Silent-frame auto advance | ~1623–1720, ~2375–2410 | `showFrame()` now auto-continues frames with blank `speech` after direct render or typewriter end via `continueAfterFrame()` |
 | `sendBbChat()` | 3906–4060 | Captures `bbPendingImageBase64`; builds question+response cards; streams `mode="normal"` with `imageBase64`; adds "▶ Explain in Blackboard Mode" button on done |
 | `requestInlineBbLesson()` | 4072–4163 | Appends inline BB lesson to board; calls `BlackboardGenerator.generate()` with NO image |
 | `buildChatCard()` | 4165–4217 | Creates card view; decodes raw base64 image thumbnail if present (try/catch safe) |
@@ -92,6 +93,7 @@
 | `BlackboardIntent` data class | 55 | Structured lesson plan: `lessonTitle`, `stepTitles`, `useSvg`, `category`, `hookQuestion`, `continuationTopic` |
 | `callIntent()` | 145–208 | Fast BB planner: sends topic + `imageBase64` to server with `mode="blackboard_intent"`; parses JSON → `BlackboardIntent`; fallback outline on parse failure |
 | `generateChunk()` | 224–312 | Generates N steps for one chunk; takes `imageBase64`, `bbFeatures`, `previousContext`; sends `mode="blackboard"` to server; parses JSON steps array |
+| `generateChunk()` result clamp | ~314–318 | After parsing `steps`, clamps to `chunkStepTitles.size` so over-returned model output cannot exceed requested 5-step batch |
 | `generate()` | 323–510 | Cache-aware single-topic generation (teacher tasks / inline BB); checks Firestore cache first; falls back to `generateChunk()` with no image; saves result to Firestore |
 | `CHUNK_SIZE` constant | ~30 | How many steps to generate per chunk (used by BlackboardActivity) |
 | ⚠️ `generate()` no-image | 486–510 | `generate()` → `generateChunk()` called with NO `imageBase64` — inline BB lessons from ask-bar don't use the attached image |

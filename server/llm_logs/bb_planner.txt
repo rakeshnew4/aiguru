@@ -1,16 +1,20 @@
-=== BB_PLANNER | 2026-04-30 10:31:08 | session=v6LtCBtv_d8452972 ===
+=== BB_PLANNER | 2026-04-30 10:38:57 | session=v6LtCBtv_15aaa4fd ===
 
 === PROMPT ===
 You are a lesson analyst for a personal visual AI tutor responding to a student's SPECIFIC question.
 Analyze exactly what the student is asking and return a focused lesson plan.
 Output ONLY valid JSON — nothing else.
 
-Student question (answer THIS specifically): "Topic: Explain how to solve quadratic equations ax² + bx + c = 0 step by step. Show 2 clear examples: one using the quadratic formula and one using factoring. Include a tip on when to use each method.
-Lesson title: Mastering Quadratic Equations
-Category: math
+Student question (answer THIS specifically): "Topic: Newton's Laws of Motion
+Lesson title: Newton's Laws of Motion
+Category: science
 
 
-CONTINUATION — DO NOT repeat anything "
+CONTINUATION — DO NOT repeat anything already taught.
+Student's original question: Newton's Laws of Motion
+
+Steps ALREADY TAUGHT (do NOT repeat or reintroduce these):
+  1. Inertia: First Law — "Ever wonder why y"
 Chapter context (excerpt): ""
 Recent conversation (last 3 turns):
   (No prior conversation — this is the student's first question)
@@ -45,21 +49,21 @@ Rules:
 
 === RESPONSE ===
 {
-  "topic_type": "math_formula",
+  "topic_type": "science_physics",
   "scope": "medium",
   "key_concepts": [
-    "quadratic formula",
-    "factoring quadratics",
-    "discriminant analysis"
+    "Newton's Second Law",
+    "Force equals mass times acceleration",
+    "Relationship between force and motion"
   ],
   "steps_count": 5,
   "image_search_terms": [
-    "quadratic formula equation",
-    "factoring quadratic equation example"
+    "Newton second law diagram",
+    "force mass acceleration formula"
   ],
-  "question_focus": "The student wants a step-by-step guide to solving quadratic equations using both the quadratic formula and factoring, along with guidance on when to choose each method.",
-  "question_type": "how_to",
-  "prior_knowledge": "",
-  "hook_question": "Did you know that quadratic equations are used to calculate the path of a basketball thrown into a hoop?",
-  "continuation_topic": "Graphing Quadratic Functions"
+  "question_focus": "The student wants to understand Newton's Second Law of Motion and how force, mass, and acceleration relate to each other.",
+  "question_type": "conceptual",
+  "prior_knowledge": "The student has already learned about Newton's First Law (Inertia).",
+  "hook_question": "Why is it much harder to push a loaded shopping cart than an empty one?",
+  "continuation_topic": "Newton's Third Law of Motion"
 }

@@ -1,4 +1,4 @@
-=== IMAGE_PICKER | 2026-04-30 10:31:20 | session=none ===
+=== IMAGE_PICKER | 2026-04-30 10:39:11 | session=none ===
 
 === PROMPT ===
 You are selecting the best matching Wikimedia Commons image for each blackboard lesson step.
@@ -8,37 +8,34 @@ When a Visual layout is provided, prefer images that match the described visual 
 Output ONLY valid JSON mapping step index (string key) to the EXACT title string or null.
 
 Steps needing images:
-[0] Step "Solving by Factoring" — topic: "factoring quadratic equation diagram"
-[1] Step "The Quadratic Formula" — topic: "quadratic formula written out"
-[2] Step "Choosing the Right Tool" — topic: "discriminant analysis flow chart"
-[3] Step "Practice and Verification" — topic: "checking math solution"
-[4] Step "Summary" — topic: "math summary icons"
+[0] Step "Newton's Second Law" — topic: "force equals mass times acceleration diagram"
+[1] Step "The Third Law" — topic: "action and reaction forces diagram"
+[2] Step "Real-world Examples" — topic: "person on skateboard pushing wall"
+[3] Step "Calculating Force" — topic: "math equation F equals ma"
+[4] Step "Summary" — topic: "Newton's laws summary visual"
 
 Available Wikimedia titles:
-- Green math icon.png
-- Math-icon-rounded.svg
-- Tabler-icons math-avg.svg
-- Tabler-icons math-greater.svg
-- Tabler-icons math-not.svg
-- Tabler-icons math-off.svg
-- Tabler-icons math-symbols.svg
-- Tabler-icons math-xy.svg
-- Completing the Square for the Quadratic Equation.jpg
-- Henry Heaton Quadratic equation.png
-- Quadratic Equation Solution Cases (Discriminant & Quadratic Formula).jpg
-- Quadratic Formula.jpg
-- Quadratic equation.gif
-- Quadratic formula.svg
-- Quadratic formula via completing the square.png
-- Quadratic function graph complex roots.svg
+- AASHTOSSD.png
+- Forces 2 carts connected by string.svg
+- Reaction support avec et sans adherence.svg
+- Rescue from Above -- intro for Alaska paracargo (22552415147).jpg
+- A peep into Brest with a navel review! - drawn & etch'd by R. Newton. LCCN2003675459.jpg
+- La Raqueta y el Polvo.jpg
+- Bloque en plano inclinado con roce.svg
+- Bloque en plano inclinado con roce amarrado a bloque colgante.svg
+- Carrito de montaña rusa.svg
+- Container en plano inclinado con roce tirado por dos fuerzas.svg
+- Newton's second law 3F=2ma.png
+- Newton's third law 1D.png
+- On the Theory of Relativity - Mass, Force and Energy (Robert Daniel Carmichael).djvu
 
 Output example: {"0": "Photosynthesis diagram.svg", "3": null, "5": "Newton laws.png"}
 
 === RESPONSE ===
 {
-  "0": "Quadratic equation.gif",
-  "1": "Quadratic formula.svg",
-  "2": "Quadratic Equation Solution Cases (Discriminant & Quadratic Formula).jpg",
+  "0": "Newton's second law 3F=2ma.png",
+  "1": "Newton's third law 1D.png",
+  "2": null,
   "3": null,
-  "4": "Tabler-icons math-symbols.svg"
+  "4": null
 }

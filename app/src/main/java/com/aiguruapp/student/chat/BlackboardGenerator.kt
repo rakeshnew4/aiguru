@@ -312,7 +312,9 @@ $svgNote$lastFrameNote$langInstruction"""
             val end   = response.lastIndexOf('}')
             if (start < 0 || end <= start) { onError("Invalid response format"); return }
             val arr = JSONObject(response.substring(start, end + 1)).getJSONArray("steps")
-            val result = parseStepsArray(arr, preferredLanguageTag)
+            val result = parseStepsArray(arr, preferredLanguageTag).let { parsed ->
+                if (chunkStepTitles.isNotEmpty()) parsed.take(chunkStepTitles.size) else parsed
+            }
             if (result.isEmpty()) { onError("No steps were generated"); return }
             onSuccess(result)
         } catch (e: Exception) {

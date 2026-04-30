@@ -1,54 +1,39 @@
-=== BB_ENRICHMENT | 2026-04-30 10:31:18 | session=none ===
+=== BB_ENRICHMENT | 2026-04-30 10:39:09 | session=none ===
 
 === SYSTEM ===
 You are a diagram data generator for an educational app. Output ONLY a valid JSON object — no text, no markdown, no explanation.
 
 === PROMPT ===
-Topic: "Solving by Factoring"
-Teaching content: "See how 2 and 3 fit perfectly? We write it as x plus 2 times x plus 3 equals zero."
-Diagram type: graph_function
+Topic: "Newton's Second Law"
+Teaching content: "Imagine pushing an empty shopping cart versus one full of groceries. The full one has more mass, so you need more force to speed it up."
+Diagram type: labeled_diagram
 Color keys: primary (chalk white), label (yellow), secondary (sky blue), highlight (red), teal, orange, green, pink, purple, gold, coral, mint
-Schema: {"function":"quadratic","a":1,"b":0,"c":0,"x_range":[-4,4],"label":"y = x²","color":"secondary"}
-Hint: function: quadratic|linear|cubic|sine|cosine|abs. a,b,c: real coefficients. x_range: [-N, N] centered at 0. label: LaTeX-free equation string.
+Schema: {"center":"Central Structure","center_shape":"circle","parts":["Part1","Part2","Part3","Part4","Part5"]}
+Hint: center: the main structure name. parts: 3-7 component labels, clockwise from top. center_shape: circle (biology cells), rect (mechanical parts).
 Existing data (improve/complete this): {}
 
 Generate the BEST data JSON for this diagram. Fill ALL keys. Be accurate to the topic. Reply with ONLY the JSON object.
 
 === RESPONSE ===
 {
-  "function": "quadratic",
-  "a": 1,
-  "b": 5,
-  "c": 6,
-  "x_range": [
-    -6,
-    1
+  "center": "Newton's Second Law (F=ma)",
+  "center_shape": "circle",
+  "parts": [
+    "Force (F): Push applied",
+    "Mass (m): Full cart",
+    "Acceleration (a): Speed change",
+    "Mass (m): Empty cart",
+    "Force (F): Resistance"
   ],
-  "label": "y = x² + 5x + 6",
-  "color": "primary",
-  "highlights": [
-    {
-      "type": "point",
-      "x": -2,
-      "y": 0,
-      "color": "highlight",
-      "label": "(-2, 0)"
-    },
-    {
-      "type": "point",
-      "x": -3,
-      "y": 0,
-      "color": "highlight",
-      "label": "(-3, 0)"
-    }
-  ],
-  "annotations": [
-    {
-      "type": "text",
-      "text": "(x + 2)(x + 3) = 0",
-      "x": -2.5,
-      "y": 2,
-      "color": "yellow"
-    }
-  ]
+  "colors": {
+    "center": "primary",
+    "parts": [
+      "highlight",
+      "secondary",
+      "teal",
+      "orange",
+      "green"
+    ],
+    "labels": "label"
+  }
 }

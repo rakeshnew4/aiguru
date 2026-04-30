@@ -836,7 +836,7 @@ class BlackboardActivity : AppCompatActivity() {
                     // ── Step 2: Generate first chunk ───────────────────────
                     val firstTitles = intent_.stepTitles.take(BlackboardGenerator.CHUNK_SIZE)
                     val isOnlyChunk = totalStepsTarget <= BlackboardGenerator.CHUNK_SIZE
-                    runOnUiThread { loadingText.text = "Building lesson…" }
+                    runOnUiThread { loadingText.text = "Readin your input…" }
                     BlackboardGenerator.generateChunk(
                         topic            = message,
                         intent           = intent_,
@@ -1639,6 +1639,8 @@ class BlackboardActivity : AppCompatActivity() {
             }
             if (!isPaused && frame.speech.isNotBlank()) {
                 speakFrame(stepIdx, frameIdx)
+            } else if (!isPaused) {
+                continueAfterFrame(stepIdx, frameIdx)
             }
             return
         }
@@ -1652,6 +1654,8 @@ class BlackboardActivity : AppCompatActivity() {
             stepsScrollView.post { stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }
             if (!isPaused && frame.speech.isNotBlank()) {
                 speakFrame(stepIdx, frameIdx)
+            } else if (!isPaused) {
+                continueAfterFrame(stepIdx, frameIdx)
             }
             return
         }
@@ -1705,6 +1709,9 @@ class BlackboardActivity : AppCompatActivity() {
                         blackboardMarkwon.setMarkdown(contentText, preprocessLatex(frame.text))
                         contentText.typeface = kalam
                         contentText.setLineSpacing(0f, 1.6f)
+                    }
+                    if (!isPaused && frame.speech.isBlank()) {
+                        continueAfterFrame(stepIdx, frameIdx)
                     }
                 }
             })
@@ -2382,6 +2389,31 @@ class BlackboardActivity : AppCompatActivity() {
         // Any remaining stray $
         s = s.replace("$", "")
         return s
+    }
+
+    private fun continueAfterFrame(stepIdx: Int, frameIdx: Int) {
+        if (isPaused || currentStepIdx != stepIdx || currentFrameIdx != frameIdx) return
+
+        val frame = steps.getOrNull(stepIdx)?.frames?.getOrNull(frameIdx)
+        when {
+            frame?.frameType == "quiz" && frame.quizAnswer.isNotBlank() -> {
+                quizRevealBtn?.animate()?.alpha(1f)?.setDuration(400)?.start()
+            }
+            frame?.frameType in setOf("quiz_mcq", "quiz_typed", "quiz_voice", "quiz_fill", "quiz_order") && frame != null -> {
+                showInteractiveQuiz(frame, stepIdx, frameIdx)
+            }
+            else -> {
+                val isLastFrameOverall = stepIdx == steps.size - 1 &&
+                    frameIdx == (steps.lastOrNull()?.frames?.size ?: 1) - 1
+                if (isLastFrameOverall && quizTotal > 0) {
+                    showScoreCard()
+                } else if (isLastFrameOverall) {
+                    showLessonCompleteNotif()
+                } else {
+                    advanceFrame()
+                }
+            }
+        }
     }
 
     /** Advance to next frame in current step, or first frame of next step. */

@@ -1167,3 +1167,22 @@ Books with ALL 404 (English/SS for Class 6/9) kept as-is — likely IP-blocked f
 
 **Files read:** `CLAUDE.md:1-70`, `meta/tracker.md:1110-1165`, `BlackboardActivity.kt` slices around playback/callback paths (`604-675`, `920-995`, `1000-1128`, `1328-1438`, `1568-1738`, `2290-2475`, `3132-3205`)
 **Files changed:** `app/src/main/java/com/aiguruapp/student/BlackboardActivity.kt` (~3139-3186)
+
+## 2026-04-30 (session 8)
+
+**Asked:** BB still pauses unless user presses Next; also lesson should stay at 5 steps but generates more.
+
+**Root causes:**
+- Silent frames stalled: `showFrame()` only progressed automatically via TTS completion. Frames with blank `speech` rendered text/typewriter and then stopped.
+- Over-generated steps were accepted: `BlackboardGenerator.generateChunk()` told the model to return exactly N steps, but Android accepted the full parsed array even if the model returned more than the requested batch.
+
+**Fixes:**
+- `BlackboardActivity.kt` (`showFrame`, `continueAfterFrame`, ~1623-1720 and ~2375-2410):
+  - `textLen == 0` branch now auto-continues when `speech` is blank.
+  - direct LaTeX-render branch now auto-continues when `speech` is blank.
+  - typewriter `onAnimationEnd()` now auto-continues when `speech` is blank.
+  - extracted shared `continueAfterFrame(stepIdx, frameIdx)` so silent frames and TTS-complete/error use the same progression logic.
+- `chat/BlackboardGenerator.kt` (`generateChunk`, ~314-318): clamp parsed results with `take(chunkStepTitles.size)` so a 5-step chunk cannot append more than 5 steps even if the model over-returns.
+
+**Files read:** `BlackboardActivity.kt:490-515, 1548-1735, 2370-2448`; `chat/BlackboardGenerator.kt:1-55, 228-330`
+**Files changed:** `app/src/main/java/com/aiguruapp/student/BlackboardActivity.kt`, `app/src/main/java/com/aiguruapp/student/chat/BlackboardGenerator.kt`

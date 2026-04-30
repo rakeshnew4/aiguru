@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-04-30 10:31:15 | session=v6LtCBtv_d8452972 ===
+=== BB_MAIN | 2026-04-30 10:39:05 | session=v6LtCBtv_15aaa4fd ===
 
 === SYSTEM ===
 You are GURU — a warm, funny, wildly effective AI teacher inside a visual blackboard app.
@@ -102,16 +102,16 @@ RULES:
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: Explain how to solve quadratic equations ax² + bx + c = 0 step by step. Show 2 clear examples: one using the quadratic formula and one using factoring. Include a tip on when to use each method.
-Lesson title: Mastering Quadratic Equations
-Category: math
+Student's EXACT question: Topic: Newton's Laws of Motion
+Lesson title: Newton's Laws of Motion
+Category: science
 
 
 CONTINUATION — DO NOT repeat anything already taught.
-Student's original question: Explain how to solve quadratic equations ax² + bx + c = 0 step by step. Show 2 clear examples: one using the quadratic formula and one using factoring. Include a tip on when to use each method.
+Student's original question: Newton's Laws of Motion
 
 Steps ALREADY TAUGHT (do NOT repeat or reintroduce these):
-  1. Standard Form Explained — "Ever wonder how to find where a curve hits the ground? That is the power of a quadratic eq"
+  1. Inertia: First Law — "Ever wonder why you jerk forward when a bus stops suddenly?"
 
 Total steps covered so far: 1 / 5
 Continue from step 2. Build on what was taught — go deeper, give examples, advance the lesson.
@@ -120,32 +120,34 @@ Now continue teaching the NEXT steps listed below. Build on what was already cov
 
 Generate EXACTLY 4 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- Method 1: Solving by Factoring (Example)
-- Method 2: Using the Quadratic Formula (Example)
-- Choosing the Right Tool: Factoring vs. Formula
-- Practice and Verification
+- Force and Acceleration: The Second Law
+- Action and Reaction: The Third Law
+- Real-world Examples and Applications
+- Calculating Force: F=ma Practice
 
 This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants a step-by-step guide to solving quadratic equations using both the quadratic formula and factoring, along with guidance on when to choose each method.
-Question type: how_to
+What the student specifically wants: The student wants to understand Newton's Second Law of Motion and how force, mass, and acceleration relate to each other.
+Question type: conceptual
 Student level: Class 5
 GRADE SPEECH STYLE: Technical words WITH plain-English gloss. Relatable humor (games, snacks). ≤35 words/frame.
-Topic type: math_formula | Scope: medium
-Key concepts to cover (ALL of these): quadratic formula, factoring quadratics, discriminant analysis
+Topic type: science_physics | Scope: medium
+What student already knows (DO NOT repeat this): The student has already learned about Newton's First Law (Inertia).
+Key concepts to cover (ALL of these): Newton's Second Law, Force equals mass times acceleration, Relationship between force and motion
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-DIAGRAM RECOMMENDATION: This topic likely needs a "graph_function" diagram (confidence 98%). Use diagram_type="graph_function" for your diagram frame(s).
+DIAGRAM RECOMMENDATION: This topic likely needs a "labeled_diagram" diagram (confidence 98%). Use diagram_type="labeled_diagram" for your diagram frame(s).
 
-SUBJECT GUIDANCE (Math — Formula/Algebra):
-• Lead with the formula in a concept frame. Show what each variable means.
-• Dedicate 2 concept frames to worked substitution (step-by-step numbers).
-• Prefer diagram_type: graph_function, fraction_bar, number_line, or pythagoras.
-• End with a summary frame recapping key takeaways.
+SUBJECT GUIDANCE (Science — Physics):
+• Use waveform_signal for waves/sound/light; coordinate_plane for motion graphs.
+• Use PATH 2 (diagram_type=custom) for force diagrams, ray optics, circuit layouts.
+• Concept frames: state law/formula → physical meaning → real-world application.
+• Include units in every formula (e.g. m/s², Newton, Joule).
+• End with a summary frame.
 
 ---END LESSON BRIEF---
 
@@ -155,36 +157,39 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
 {
   "steps": [
     {
-      "title": "Solving by Factoring",
+      "title": "Newton's Second Law",
       "lang": "en-US",
-      "image_description": "factoring quadratic equation diagram",
-      "image_show_confidencescore": 0.85,
+      "image_description": "force equals mass times acceleration diagram",
+      "image_show_confidencescore": 0.9,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "x² + 5x + 6 = 0",
-          "speech": "To factor, we look for two numbers that multiply to the last number, 6, and add up to the middle number, 5.",
+          "text": "Force = **mass** x **acceleration**",
+          "speech": "Newton's second law says force equals mass times acceleration. Basically, the heavier something is, the more force you need to push it fast.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
         },
         {
           "frame_type": "diagram",
-          "text": "(x + 2)(x + 3) = 0",
-          "speech": "See how 2 and 3 fit perfectly? We write it as x plus 2 times x plus 3 equals zero.",
+          "text": "Pushing a **heavy** vs **light** cart",
+          "speech": "Imagine pushing an empty shopping cart versus one full of groceries. The full one has more mass, so you need more force to speed it up.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3000,
-          "diagram_type": "graph_function",
+          "duration_ms": 3500,
+          "diagram_type": "labeled_diagram",
           "diagram_data": {
-            "equation": "x^2 + 5x + 6",
-            "points": [[-2, 0], [-3, 0]]
+            "labels": [
+              "Force",
+              "Mass",
+              "Acceleration"
+            ]
           }
         },
         {
           "frame_type": "apply",
-          "text": "x = -2, x = -3",
-          "speech": "Now, just set each part to zero. So x is either negative 2 or negative 3. Easy, right?",
+          "text": "Pushing a **heavy box**",
+          "speech": "If you try to push a giant box of toys, you have to push really hard. That's force at work, overcoming the mass to get it moving.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
@@ -192,99 +197,70 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ]
     },
     {
-      "title": "The Quadratic Formula",
+      "title": "The Third Law",
       "lang": "en-US",
-      "image_description": "quadratic formula written out",
-      "image_show_confidencescore": 0.9,
+      "image_description": "action and reaction forces diagram",
+      "image_show_confidencescore": 0.95,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "x = (-b ± √(b² - 4ac)) / 2a",
-          "speech": "When numbers are messy, we use the big formula. It works for every single quadratic equation, no exceptions.",
+          "text": "For every **action**, there is an **equal and opposite reaction**.",
+          "speech": "The third law is simple: for every action, there is an equal and opposite reaction. If you push something, it pushes back just as hard.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
         },
         {
           "frame_type": "diagram",
-          "text": "x² - 4x + 1 = 0",
-          "speech": "Let's solve x squared minus 4x plus 1 equals zero. Here, a is 1, b is negative 4, and c is 1.",
+          "text": "Rocket **launch** diagram",
+          "speech": "Think of a rocket. The engine pushes gas down, which is the action. The gas pushes the rocket up, which is the reaction.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3500,
-          "diagram_type": "graph_function",
+          "diagram_type": "labeled_diagram",
           "diagram_data": {
-            "equation": "x^2 - 4x + 1"
+            "labels": [
+              "Action (Gas Down)",
+              "Reaction (Rocket Up)"
+            ]
           }
         },
         {
-          "frame_type": "apply",
-          "text": "x = (4 ± √12) / 2",
-          "speech": "Plug those numbers in, and you get 4 plus or minus the square root of 12, all divided by 2.",
+          "frame_type": "joke",
+          "text": "Action and Reaction",
+          "speech": "Why did the physics student break up with the wall? Because every time they tried to get close, the wall pushed them away with equal force!",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3000
+          "duration_ms": 1500
         }
       ]
     },
     {
-      "title": "Choosing the Right Tool",
+      "title": "Real-world Examples",
       "lang": "en-US",
-      "image_description": "discriminant analysis flow chart",
-      "image_show_confidencescore": 0.75,
+      "image_description": "person on skateboard pushing wall",
+      "image_show_confidencescore": 0.8,
       "frames": [
         {
-          "frame_type": "concept",
-          "text": "Discriminant: b² - 4ac",
-          "speech": "Check the part under the square root, called the discriminant. It tells you if you can factor it easily or not.",
+          "frame_type": "apply",
+          "text": "Skateboarding physics",
+          "speech": "Have you ever been on a skateboard and pushed off a wall? You move forward because the wall pushes you back. That is pure third law magic.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
         },
         {
           "frame_type": "question",
-          "text": "Factor or Formula?",
-          "speech": "If the discriminant is a perfect square, like 9 or 16, should you factor or use the formula?",
+          "text": "Does the Earth pull on you?",
+          "speech": "If the Earth pulls you down with gravity, do you pull back on the Earth?",
           "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 500
         },
         {
           "frame_type": "reveal",
-          "text": "Factoring is faster!",
-          "speech": "Actually, it is way faster to factor! If it is not a perfect square, use the formula to save your brain some headache.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000
-        }
-      ]
-    },
-    {
-      "title": "Practice and Verification",
-      "lang": "en-US",
-      "image_description": "checking math solution",
-      "image_show_confidencescore": 0.6,
-      "frames": [
-        {
-          "frame_type": "concept",
-          "text": "Check: Plug x back in!",
-          "speech": "Always check your answer by plugging it back into the original equation. If it equals zero, you nailed it.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000
-        },
-        {
-          "frame_type": "joke",
-          "text": "Math is like pizza.",
-          "speech": "Math is like pizza. Even if you mess up the toppings, it is still pretty good practice for your brain!",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 1500
-        },
-        {
-          "frame_type": "apply",
-          "text": "Verify every time.",
-          "speech": "Think of verification like checking if your game save loaded correctly. It keeps you from losing all your progress.",
+          "text": "Gravity is a **two-way street**",
+          "speech": "Actually, it's a yes! You pull on the Earth with the exact same amount of force that it pulls on you, but since Earth is massive, it doesn't move.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
@@ -292,15 +268,55 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ]
     },
     {
+      "title": "Calculating Force",
+      "lang": "en-US",
+      "image_description": "math equation F equals ma",
+      "image_show_confidencescore": 0.7,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "Calculating **Force (Newtons)**",
+          "speech": "To find force, multiply mass in kilograms by acceleration in meters per second squared. It's the golden formula for movement.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
+          "frame_type": "diagram",
+          "text": "F = m x a math example",
+          "speech": "If you have a two kilogram ball and you accelerate it at three meters per second squared, you need six Newtons of force. Simple, right?",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500,
+          "diagram_type": "labeled_diagram",
+          "diagram_data": {
+            "labels": [
+              "Mass: 2kg",
+              "Acceleration: 3m/s2",
+              "Force: 6N"
+            ]
+          }
+        },
+        {
+          "frame_type": "curiosity",
+          "text": "What about **friction**?",
+          "speech": "We assumed there was no friction in that calculation, but what happens when you slide a toy car across carpet versus smooth ice?",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2000
+        }
+      ]
+    },
+    {
       "title": "Summary",
       "lang": "en-US",
-      "image_description": "math summary icons",
-      "image_show_confidencescore": 0.5,
+      "image_description": "Newton's laws summary visual",
+      "image_show_confidencescore": 0.6,
       "frames": [
         {
           "frame_type": "summary",
-          "text": "Factoring vs Formula",
-          "speech": "Factoring is your quick win for simple numbers, while the quadratic formula is your reliable backup for everything else. Master both, and you can solve any quadratic equation in the book.",
+          "text": "Newton's Three Laws: **Inertia**, **F=ma**, **Action/Reaction**",
+          "speech": "In summary, Newton's laws explain everything from why you stay still to how rockets launch. You've mastered the rules that keep the universe moving.",
           "tts_engine": "google",
           "voice_role": "assistant",
           "duration_ms": 3000
@@ -308,20 +324,20 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ],
       "followup_questions": [
         {
-          "question": "What if b squared minus 4ac is negative?",
-          "speech": "What happens if the number inside the square root is negative?"
+          "question": "What happens if mass increases?",
+          "speech": "What happens to the acceleration if you keep the force the same but increase the mass?"
         },
         {
-          "question": "Can every quadratic be factored?",
-          "speech": "Is it possible to factor every single quadratic equation you see?"
+          "question": "Why don't we feel Earth pull us?",
+          "speech": "If we pull back on the Earth, why don't we notice the Earth moving towards us?"
         },
         {
-          "question": "Why do we use 'plus or minus'?",
-          "speech": "Why does the quadratic formula have that plus or minus symbol in it?"
+          "question": "Can you name an action-reaction pair?",
+          "speech": "Can you think of another example of an action-reaction pair you see while playing sports?"
         }
       ],
-      "session_theme": "Mastering Quadratic Equations",
-      "video_search_query": "how to solve quadratic equations for beginners",
+      "session_theme": "Newton's Laws of Motion",
+      "video_search_query": "Newton's laws of motion explained for kids",
       "preferred_channels": [
         "Khan Academy India",
         "Physics Wallah"
