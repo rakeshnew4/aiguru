@@ -511,7 +511,7 @@ class HomeActivity : BaseActivity() {
                 bbLeft == 0  -> "Free lessons completed 🚀"
                 bbLeft == 1  -> "1 more free lesson left today! 🎓"
                 bbLeft <= 3  -> "$bbLeft free lessons — learn more! 🎨"
-                else         -> "Don't lose $bbLeft free lessons! Gain knowledge 🎓"
+                else         -> "$bbLeft free lessons  - learn more! 🎓"
             }
             val color = when {
                 creditsMode  -> "#FFB300"

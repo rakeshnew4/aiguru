@@ -1018,3 +1018,15 @@ Run to start seeding:
 - `FullChatFragment.kt`: added imports `ViewCompat`, `WindowInsetsCompat`; added `setOnApplyWindowInsetsListener` on `chatMainContent` in `onViewCreated` after `initializeUI` — sets bottom padding = max(imeInsets.bottom, navBarInsets.bottom)
 - No keyboard dismiss on send — that only happens for voice button (correct behavior)
 - Files changed: `app/src/main/res/layout/activity_chat.xml` (~line 11), `FullChatFragment.kt` (~lines 30-31 imports, ~line 425 insets listener)
+
+---
+
+## 2026-04-29 (session 9 continued)
+
+**Asked:** Session resumed — verified previous keyboard fix.
+
+**Found:** Two conflicting keyboard handlers in FullChatFragment.kt — `viewTreeObserver.addOnGlobalLayoutListener` (legacy, lines 343-354) AND `ViewCompat.setOnApplyWindowInsetsListener` (modern) both setting padding on `chatMainContent`. They would fight on every layout pass.
+
+**Fix:** Removed the legacy `viewTreeObserver` block (lines 343-354). Only the `setOnApplyWindowInsetsListener` at line ~405 remains — correct for API 35+ edge-to-edge.
+
+**Files changed:** `FullChatFragment.kt` (removed lines 343-354)
