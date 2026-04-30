@@ -141,6 +141,8 @@ def create_user_if_missing(
         # ── Referral ─────────────────────────────────────────────────────────
         "referredBy": "",
         "bonus_questions_today": 0,
+        "referral_bb_bonus_per_day": 0,
+        "referral_bb_bonus_expiry_at": 0,
     })
     logger.info("create_user_if_missing: created users_table/%s", uid)
 
@@ -390,7 +392,7 @@ def record_tts_chars(uid: str, char_count: int) -> None:
             "tts_updated_at": now,
         }, merge=True)
 
-    credits_charged = char_count // 100
+    credits_charged = char_count  # 1 char = 1 TTS credit
     if credits_charged > 0:
         _charge_credits_from_usage(db, uid, credits_charged, "tts_usage", char_count)
 
@@ -400,19 +402,21 @@ def record_tts_chars(uid: str, char_count: int) -> None:
 def _charge_credits_from_usage(db, uid: str, amount: int, usage_type: str, units: int) -> None:
     """
     Deduct credits from the user's balance to pay for AI usage.
+    TTS charges come from tts_balance; LLM token charges from balance.
     Atomic. Balance can go negative — Android UI is responsible for warnings/upsell.
-    Credits are the per-token / per-char cost of LLM and TTS calls.
     """
     if amount <= 0:
         return
     try:
         now = _now_ms()
-        # Deduct from balance (negative Increment) but DO NOT decrement lifetime_earned.
+        is_tts = usage_type == "tts_usage"
+        # TTS uses separate tts_balance pool; LLM tokens use main balance.
+        balance_field = "tts_balance" if is_tts else "balance"
         db.collection("user_credits").document(uid).set(
-            {"balance": Increment(-amount), "last_updated": now},
+            {balance_field: Increment(-amount), "last_updated": now},
             merge=True,
         )
-        unit_label = "tokens" if usage_type == "token_usage" else "chars"
+        unit_label = "chars" if is_tts else "tokens"
         db.collection("credit_transactions").document().set({
             "uid": uid,
             "amount": -amount,
@@ -515,6 +519,12 @@ def check_and_record_quota(uid: str, request_type: str) -> tuple[bool, str, bool
         if plan_expiry > 0 and plan_expiry < _now_ms():
             limit = 2 if is_bb else 12
             logger.info("check_and_record_quota: plan expired for uid=%s — reverting to free limits", uid)
+
+        # Add referral bonus to BB limit if active
+        if is_bb:
+            bonus_expiry = int(data.get("referral_bb_bonus_expiry_at") or 0)
+            if bonus_expiry > _now_ms():
+                limit += int(data.get("referral_bb_bonus_per_day") or 0)
 
         # Detect UTC day rollover
         questions_updated_at = int(data.get("questions_updated_at") or 0)
@@ -656,7 +666,8 @@ def grant_topup_credits(uid: str, amount: int, pack_id: str, pack_name: str) -> 
         logger.warning("grant_topup_credits uid=%s pack=%s: %s", uid, pack_id, exc)
 
 
-_STARTER_CREDITS = 5000   # welcome bonus for every new user (signup gift)
+_STARTER_CREDITS = 5000          # chat/LLM credit welcome bonus (signup gift)
+_STARTER_TTS_CREDITS = 50000     # TTS credit welcome bonus (separate pool)
 
 
 def init_user_credits(db, uid: str) -> None:
@@ -664,19 +675,31 @@ def init_user_credits(db, uid: str) -> None:
     try:
         ref = db.collection("user_credits").document(uid)
         if not ref.get().exists:
+            now = _now_ms()
             ref.set({
                 "balance": _STARTER_CREDITS,
                 "lifetime_earned": _STARTER_CREDITS,
-                "last_updated": _now_ms(),
+                "tts_balance": _STARTER_TTS_CREDITS,
+                "tts_lifetime_earned": _STARTER_TTS_CREDITS,
+                "last_updated": now,
             })
-            # Log the welcome grant as a transaction
+            # Log the chat welcome grant
             db.collection("credit_transactions").add({
                 "uid": uid,
                 "amount": _STARTER_CREDITS,
                 "type": "welcome_grant",
                 "source_id": "registration",
-                "description": f"Welcome bonus ({_STARTER_CREDITS} credits)",
-                "created_at": _now_ms(),
+                "description": f"Welcome bonus ({_STARTER_CREDITS} chat credits)",
+                "created_at": now,
+            })
+            # Log the TTS welcome grant
+            db.collection("credit_transactions").add({
+                "uid": uid,
+                "amount": _STARTER_TTS_CREDITS,
+                "type": "tts_welcome_grant",
+                "source_id": "registration",
+                "description": f"Welcome bonus ({_STARTER_TTS_CREDITS} TTS credits)",
+                "created_at": now,
             })
     except Exception as exc:
         logger.warning("init_user_credits uid=%s: %s", uid, exc)

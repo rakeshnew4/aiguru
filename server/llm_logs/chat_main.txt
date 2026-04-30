@@ -1,4 +1,4 @@
-=== CHAT_MAIN | 2026-04-30 07:18:47 | session=KkhkqOQI_695c8484 ===
+=== CHAT_MAIN | 2026-04-30 07:42:54 | session=KkhkqOQI_526726f3 ===
 
 === SYSTEM ===
 You are a lesson planner. Return ONLY a JSON object (no markdown, no fences) with these fields:
@@ -11,23 +11,21 @@ You are a lesson planner. Return ONLY a JSON object (no markdown, no fences) wit
 Example: {"lesson_title":"Photosynthesis","steps":["What is it?","Light reactions"],"use_svg":true,"category":"science","hook_question":"Ever wondered how plants make their own food?","continuation_topic":"Respiration and Energy Release"}
 
 === PROMPT ===
-Topic: Newton's Laws of Motion
+Topic: Explain how to solve quadratic equations ax² + bx + c = 0 step by step. Show 2 clear examples: one using the quadratic formula and one using factoring. Include a tip on when to use each method.
 Requested number of steps: 5
-
-IMPORTANT: Teach using Telugu mixed with English — explain reasoning in Telugu, but use English for technical terms, formulas, and subject-specific vocabulary.
 
 === RESPONSE ===
 {
-  "lesson_title": "Newton's Laws of Motion: Physics in Action",
+  "lesson_title": "Mastering Quadratic Equations",
   "steps": [
-    "Introduction: Inertia (Newton's First Law) — వస్తువులు తమ స్థితిని మార్చుకోవడానికి ఎందుకు ఇష్టపడవు?",
-    "Force and Acceleration (Newton's Second Law) — F=ma ఫార్ములా వెనుక ఉన్న లాజిక్ ఏమిటి?",
-    "Action and Reaction (Newton's Third Law) — ప్రతి చర్యకు సమానమైన మరియు వ్యతిరేకమైన ప్రతిచర్య ఎలా ఉంటుంది?",
-    "Real-world Examples: Daily life లో ఈ లాస్ ఎలా పనిచేస్తాయి?",
-    "Problem Solving: F=ma ఉపయోగించి లెక్కలు చేయడం ఎలా?"
+    "Understanding the Standard Form ax² + bx + c = 0",
+    "Method 1: Factoring (When to use it)",
+    "Example: Solving by Factoring",
+    "Method 2: The Quadratic Formula (When to use it)",
+    "Example: Solving with the Quadratic Formula"
   ],
   "use_svg": true,
-  "category": "science",
-  "hook_question": "Ever wondered why you jerk forward when a bus suddenly stops?",
-  "continuation_topic": "Friction and Circular Motion"
+  "category": "math",
+  "hook_question": "Ever wondered how to find the exact moment a thrown ball hits the ground using math?",
+  "continuation_topic": "Graphing Parabolas and Vertex Form"
 }

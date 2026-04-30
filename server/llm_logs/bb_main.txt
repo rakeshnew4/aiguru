@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-04-30 07:19:01 | session=KkhkqOQI_2269d575 ===
+=== BB_MAIN | 2026-04-30 07:43:19 | session=KkhkqOQI_7a5646e7 ===
 
 === SYSTEM ===
 You are GURU — a warm, funny, wildly effective AI teacher inside a visual blackboard app.
@@ -61,6 +61,10 @@ SPEECH GUIDELINES:
   textbook, rewrite it.
 • Natural pauses: use comma placement for breath pauses. Avoid long run-ons.
 • No openers: never 'Today we will learn...', 'Hello class!', 'Great question!'.
+• PLAIN TEXT ONLY — speech goes directly to TTS audio. NEVER use:
+  **bold**, *italic*, $$math$$, $math$, `code`, or any markdown/symbol formatting.
+  Write math in words: 'F equals m times a', 'x squared', 'pi r squared'.
+• No em-dashes (—) or en-dashes (–) — use commas or 'and' instead.
 • TTS-safe: say 'squared' not '^2', 'divided by' not '/', 'pi' not 'π'.
 • Language matches lang field: hi-IN → Hindi, te-IN → Telugu, en-US → English.
 
@@ -100,132 +104,112 @@ RULES:
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: Newton's Laws of Motion
-Lesson title: Newton's Laws of Motion: Physics in Action
-Category: science
+Student's EXACT question: Topic: Explain how to solve quadratic equations ax² + bx + c = 0 step by step. Show 2 clear examples: one using the quadratic formula and one using factoring. Include a tip on when to use each method.
+Lesson title: Mastering Quadratic Equations
+Category: math
 
-This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
-Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
+CONTINUATION — DO NOT repeat anything already taught.
+Student's original question: Explain how to solve quadratic equations ax² + bx + c = 0 step by step. Show 2 clear examples: one using the quadratic formula and one using factoring. Include a tip on when to use each method.
+
+Steps ALREADY TAUGHT (do NOT repeat or reintroduce these):
+  1. Standard Form Explained — "Ever wonder how to track a basketball's arc or a rocket's path? It's all hidden in this sp"
+
+Total steps covered so far: 1 / 5
+Continue from step 2. Build on what was taught — go deeper, give examples, advance the lesson.
+
+Now continue teaching the NEXT steps listed below. Build on what was already covered — go deeper, add detail, advance the lesson. Do NOT reintroduce or re-explain concepts from the above steps.
+
+Generate EXACTLY 4 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- Introduction: Inertia (Newton's First Law) — వస్తువులు తమ స్థితిని మార్చుకోవడానికి ఎందుకు ఇష్టపడవు?
-- Force and Acceleration (Newton's Second Law) — F=ma ఫార్ములా వెనుక ఉన్న లాజిక్ ఏమిటి?
-- Action and Reaction (Newton's Third Law) — ప్రతి చర్యకు సమానమైన మరియు వ్యతిరేకమైన ప్రతిచర్య ఎలా ఉంటుంది?
-- Real-world Examples: Daily life లో ఈ లాస్ ఎలా పనిచేస్తాయి?
-- Problem Solving: F=ma ఉపయోగించి లెక్కలు చేయడం ఎలా?
+- Method 1: Factoring (When to use it)
+- Example: Solving by Factoring
+- Method 2: The Quadratic Formula (When to use it)
+- Example: Solving with the Quadratic Formula
 
 This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-
-IMPORTANT: Teach using Telugu mixed with English — explain reasoning in Telugu, but use English for technical terms, formulas, and subject-specific vocabulary.
-What the student specifically wants: The student wants an engaging introduction to Newton's Laws of Motion, setting the stage for understanding how objects move.
-Question type: conceptual
+What the student specifically wants: The student wants a step-by-step guide to solving quadratic equations using both the quadratic formula and factoring, along with a strategy for choosing the best method.
+Question type: how_to
 Student level: Class 5
 GRADE SPEECH STYLE: Technical words WITH plain-English gloss. Relatable humor (games, snacks). ≤35 words/frame.
-Topic type: science_physics | Scope: simple
-Key concepts to cover (ALL of these): Inertia, Force and Motion, Isaac Newton
+Topic type: math_formula | Scope: medium
+Key concepts to cover (ALL of these): quadratic formula, factoring quadratics, discriminant, zero product property
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-SUBJECT GUIDANCE (Science — Physics):
-• Use waveform_signal for waves/sound/light; coordinate_plane for motion graphs.
-• Use PATH 2 (diagram_type=custom) for force diagrams, ray optics, circuit layouts.
-• Concept frames: state law/formula → physical meaning → real-world application.
-• Include units in every formula (e.g. m/s², Newton, Joule).
-• End with a summary frame.
+DIAGRAM RECOMMENDATION: This topic likely needs a "graph_function" diagram (confidence 98%). Use diagram_type="graph_function" for your diagram frame(s).
+
+SUBJECT GUIDANCE (Math — Formula/Algebra):
+• Lead with the formula in a concept frame. Show what each variable means.
+• Dedicate 2 concept frames to worked substitution (step-by-step numbers).
+• Prefer diagram_type: graph_function, fraction_bar, number_line, or pythagoras.
+• End with a summary frame recapping key takeaways.
 
 ---END LESSON BRIEF---
 
-
-IMPORTANT: Teach using Telugu mixed with English — explain reasoning in Telugu, but use English for technical terms, formulas, and subject-specific vocabulary.
-OUTPUT LANGUAGE: Set ALL step "lang" fields to "te-IN". Write ALL "speech" fields in the language for tag "te-IN" (hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.). Board "text" field stays in English (formulas/keywords only).
+OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" fields in the language for tag "en-US" (hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.). Board "text" field stays in English (formulas/keywords only).
 
 === RESPONSE ===
 {
   "steps": [
     {
-      "title": "Inertia: First Law",
-      "lang": "te-IN",
-      "image_description": "Newton's First Law inertia ball diagram",
-      "image_show_confidencescore": 0.8,
-      "frames": [
-        {
-          "frame_type": "hook",
-          "text": "Why objects resist change?",
-          "speech": "వస్తువులు ఎందుకు కదలడానికి సోమరిగా ఉంటాయో తెలుసా? దీన్నే **Inertia** అంటారు.",
-          "tts_engine": "android",
-          "voice_role": "teacher",
-          "duration_ms": 2000
-        },
-        {
-          "frame_type": "concept",
-          "text": "Newton's First Law",
-          "speech": "ఒక వస్తువు కదలకుండా ఉంటే అది అలాగే ఉంటుంది, కదులుతుంటే అలాగే వెళ్తుంది. దీన్ని **Newton's First Law** అంటారు.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
-        {
-          "frame_type": "memory",
-          "text": "Inertia = Laziness",
-          "speech": "Inertia అంటే వస్తువుల సోమరితనం! బయట నుండి **Force** అప్లై చేసే వరకు అవి కదలవు.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2000
-        }
-      ]
-    },
-    {
-      "title": "Force and Acceleration",
-      "lang": "te-IN",
-      "image_description": "Newton's second law F=ma diagram",
-      "image_show_confidencescore": 0.9,
+      "title": "Method 1: Factoring",
+      "lang": "en-US",
+      "image_description": "algebra factoring binomials diagram",
+      "image_show_confidencescore": 0.85,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "$$F = m \\times a$$",
-          "speech": "రెండో లా ఏంటంటే, **Force** పెంచితే **Acceleration** అంటే వేగం పెరుగుతుంది.",
+          "text": "Factoring: **(x+m)(x+n) = 0**",
+          "speech": "Factoring is like breaking a complex Lego set back into its original pieces. We use the Zero Product Property, which says if two things multiply to zero, one must be zero.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 2500
+          "duration_ms": 3000
         },
         {
           "frame_type": "diagram",
-          "text": "Pushing a cart",
-          "speech": "చూడండి, తక్కువ బరువున్న వస్తువును నెట్టడం సులభం, ఎక్కువ బరువుంటే కష్టం. ఇదే **F=ma**.",
+          "text": "x^2 + 5x + 6 = (x+2)(x+3)",
+          "speech": "Look at how we take x squared plus five x plus six and split it into two parentheses. It makes finding x much easier.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000,
-          "diagram_type": "custom",
+          "diagram_type": "graph_function",
           "diagram_data": {
-            "type": "vector_push",
-            "object": "cart",
-            "force_arrow": "long"
+            "equation": "x^2 + 5x + 6 = 0"
           }
         },
         {
-          "frame_type": "joke",
-          "text": "Funny Physics",
-          "speech": "ఒకవేళ మీరు బద్ధకంగా ఉంటే, 'నేను సోమరిని కాదు, నా **Inertia** ఎక్కువ' అని చెప్పేయండి!",
+          "frame_type": "apply",
+          "text": "Use factoring when: **Numbers are simple**",
+          "speech": "Use factoring when the numbers are small and easy to work with. If you can spot the factors quickly, you save a lot of time.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 1500
+          "duration_ms": 2500
         }
       ]
     },
     {
-      "title": "Action and Reaction",
-      "lang": "te-IN",
-      "image_description": "Newton's third law rocket launch",
-      "image_show_confidencescore": 0.9,
+      "title": "Example: Solving by Factoring",
+      "lang": "en-US",
+      "image_description": "solving quadratic equation factoring",
+      "image_show_confidencescore": 0.7,
       "frames": [
         {
+          "frame_type": "concept",
+          "text": "Solve: **x² + 5x + 6 = 0**",
+          "speech": "Let's solve x squared plus five x plus six equals zero. We need two numbers that multiply to six and add to five.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
           "frame_type": "question",
-          "text": "What happens if you jump?",
-          "speech": "మీరు నేల మీద గట్టిగా దూకితే, మీకు తిరిగి ఏమవుతుంది?",
+          "text": "What are the two numbers?",
+          "speech": "Can you guess two numbers that multiply to six and add up to five?",
           "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 500,
@@ -233,16 +217,8 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "te-IN". Write ALL "speech" field
         },
         {
           "frame_type": "reveal",
-          "text": "Reaction force",
-          "speech": "అవును! నేల కూడా మిమ్మల్ని అంతే ఫోర్స్‌తో వెనక్కి నెడుతుంది. దీన్నే **Action-Reaction** అంటారు.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
-        {
-          "frame_type": "concept",
-          "text": "Every action has reaction",
-          "speech": "ప్రతి చర్యకు (Action) సమానమైన, వ్యతిరేకమైన ప్రతిచర్య (Reaction) ఉంటుంది. రాకెట్లు అందుకే పైకి లేస్తాయి!",
+          "text": "Numbers are **2 and 3**",
+          "speech": "Actually, it is two and three! Since two plus three is five and two times three is six, our factors are x plus two and x plus three.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
@@ -250,69 +226,104 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "te-IN". Write ALL "speech" field
       ]
     },
     {
-      "title": "Real-world Examples",
-      "lang": "te-IN",
-      "image_description": "ball rolling on grass",
+      "title": "Method 2: Quadratic Formula",
+      "lang": "en-US",
+      "image_description": "quadratic formula diagram",
+      "image_show_confidencescore": 0.9,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "**x = [-b ± √(b² - 4ac)] / 2a**",
+          "speech": "When factoring is too hard, we bring in the big gun: the quadratic formula. It works for every single quadratic equation, no matter how messy.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        },
+        {
+          "frame_type": "diagram",
+          "text": "Variables: **a, b, c**",
+          "speech": "See the variables a, b, and c? These just come from the numbers in your equation. The part under the root is called the discriminant, which helps us know what kind of answers we get.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000,
+          "diagram_type": "graph_function",
+          "diagram_data": {
+            "note": "a is coefficient of x^2, b is coefficient of x, c is constant"
+          }
+        },
+        {
+          "frame_type": "apply",
+          "text": "Use formula when: **Factoring fails**",
+          "speech": "Use the formula whenever you cannot find factors quickly. It is your reliable backup plan for when the numbers look scary.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        }
+      ]
+    },
+    {
+      "title": "Example: Quadratic Formula",
+      "lang": "en-US",
+      "image_description": "quadratic formula substitution",
       "image_show_confidencescore": 0.8,
       "frames": [
         {
-          "frame_type": "apply",
-          "text": "Daily Life Physics",
-          "speech": "క్రికెట్ బాల్ పట్టుకోవడం లేదా స్కేటింగ్ చేయడం, ఇవన్నీ ఈ మూడు సూత్రాల వల్లే జరుగుతాయి.",
+          "frame_type": "concept",
+          "text": "Equation: **x² - 4x + 1 = 0**",
+          "speech": "Let us solve x squared minus four x plus one equals zero. Here, a is one, b is negative four, and c is one.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
           "frame_type": "diagram",
-          "text": "Car brakes",
-          "speech": "కారు బ్రేక్ వేయగానే మీరు ముందుకు వంగడం కూడా **Inertia** వల్లే జరుగుతుంది.",
+          "text": "Substitute: **[-(-4) ± √(16 - 4)] / 2**",
+          "speech": "We plug those into the formula. Negative b becomes positive four, and inside the root, we get sixteen minus four, which is twelve.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000,
-          "diagram_type": "custom",
+          "diagram_type": "graph_function",
           "diagram_data": {
-            "type": "motion_inertia",
-            "object": "car_passenger"
+            "steps": "x = (4 ± sqrt(12)) / 2"
           }
+        },
+        {
+          "frame_type": "joke",
+          "text": "Formula is long!",
+          "speech": "This formula is so long, it probably has its own zip code. But hey, it gets the job done every time!",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 1500
         }
       ]
     },
     {
-      "title": "Problem Solving",
-      "lang": "te-IN",
-      "image_description": "math calculator physics",
-      "image_show_confidencescore": 0.6,
+      "title": "Summary & Tips",
+      "lang": "en-US",
+      "image_description": "quadratic equations summary",
+      "image_show_confidencescore": 0.2,
       "frames": [
         {
-          "frame_type": "concept",
-          "text": "Solving $$F = m \\times a$$",
-          "speech": "ఇప్పుడు ఒక చిన్న లెక్క! **Mass** 2 kg, **Acceleration** 3 m/s squared అయితే **Force** ఎంత?",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
-        {
-          "frame_type": "reveal",
-          "text": "Answer: 6 Newtons",
-          "speech": "సరిగ్గా చెప్పారు! 2 ఇ 3 అంటే 6. కాబట్టి ఆన్సర్ 6 **Newtons**.",
+          "frame_type": "apply",
+          "text": "Strategy: **Factor first, Formula second**",
+          "speech": "Always check if you can factor first. It is faster. If the numbers look impossible to factor, jump straight to the quadratic formula.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
           "frame_type": "curiosity",
-          "text": "What about gravity?",
-          "speech": "మరి ఈ నియమాలన్నీ స్పేస్‌లో కూడా ఇలాగే పనిచేస్తాయా? లేక మారుతాయా?",
+          "text": "What if **b² - 4ac < 0**?",
+          "speech": "But wait, what happens if the number inside the square root is negative? Can we even solve it then?",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 2000,
-          "pause_after_ms": 300
+          "pause_after_ms": 500
         },
         {
           "frame_type": "summary",
-          "text": "Newton's Laws Summary",
-          "speech": "ఇవాళ మనం **Newton's Laws** నేర్చుకున్నాం. వస్తువుల కదలికలకు, వాటిని నెట్టే బలానికి ఈ మూడు సూత్రాలే ఆధారం.",
+          "text": "Factoring uses logic; Formula uses brute force. Both lead to the same answer.",
+          "speech": "To wrap up, factoring is your quick shortcut, while the quadratic formula is your heavy-duty tool for any situation. Master both, and you can solve any quadratic equation in your path.",
           "tts_engine": "google",
           "voice_role": "assistant",
           "duration_ms": 3000
@@ -320,20 +331,20 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "te-IN". Write ALL "speech" field
       ],
       "followup_questions": [
         {
-          "question": "Can you stop moving in space?",
-          "speech": "స్పేస్‌లో ఒకసారి కదిలితే ఆపడం కష్టమా? ఎందుకు?"
+          "question": "Can every quadratic be factored?",
+          "speech": "Can every quadratic equation be solved by factoring, or are some impossible?"
         },
         {
-          "question": "Does mass change force?",
-          "speech": "బరువు పెరిగితే కదిలించడానికి ఎక్కువ ఫోర్స్ ఎందుకు కావాలి?"
+          "question": "What is the discriminant?",
+          "speech": "What exactly does the discriminant tell us about the answers we will get?"
         },
         {
-          "question": "Example of 3rd law?",
-          "speech": "మీ చుట్టూ ఉన్న మరో 3వ నియమం ఉదాహరణ చెప్పగలరా?"
+          "question": "Why use the formula?",
+          "speech": "Why would someone choose the formula over factoring even if factoring is possible?"
         }
       ],
-      "session_theme": "Understanding Newton's Laws of Motion",
-      "video_search_query": "Newton's Laws of Motion for kids",
+      "session_theme": "Mastering Quadratic Equations",
+      "video_search_query": "how to solve quadratic equations factoring vs formula",
       "preferred_channels": [
         "Khan Academy India",
         "Physics Wallah"

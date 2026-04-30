@@ -274,35 +274,36 @@ class UserProfileActivity : BaseActivity() {
                     Toast.makeText(this, "Referral code must be exactly 8 characters", Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
-                ReferralManager.claimReferralCode(
-                    claimantUserId = userId,
-                    code = code,
-                    onSuccess = { referrerName ->
-                        runOnUiThread {
-                            Toast.makeText(
-                                this,
-                                "🎉 Claimed! You and $referrerName both earned bonus questions!",
-                                Toast.LENGTH_LONG
-                            ).show()
-                            loadMetadataFromFirestore() // refresh to show updated bonus
+                Thread {
+                    ReferralManager.claimReferralCodeViaServer(
+                        code = code,
+                        onSuccess = { referrerName ->
+                            runOnUiThread {
+                                Toast.makeText(
+                                    this,
+                                    "Claimed! You and $referrerName both get +${ReferralManager.REFERRED_BONUS} BB lessons/day for 30 days!",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                loadMetadataFromFirestore()
+                            }
+                        },
+                        onAlreadyClaimed = {
+                            runOnUiThread {
+                                Toast.makeText(this, "You've already used a referral code.", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        onInvalid = {
+                            runOnUiThread {
+                                Toast.makeText(this, "Invalid referral code. Double-check and try again.", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        onError = {
+                            runOnUiThread {
+                                Toast.makeText(this, "Something went wrong. Try again later.", Toast.LENGTH_SHORT).show()
+                            }
                         }
-                    },
-                    onAlreadyClaimed = {
-                        runOnUiThread {
-                            Toast.makeText(this, "You've already used a referral code.", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    onInvalid = {
-                        runOnUiThread {
-                            Toast.makeText(this, "Invalid referral code. Double-check and try again.", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    onError = {
-                        runOnUiThread {
-                            Toast.makeText(this, "Something went wrong. Try again later.", Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                )
+                    )
+                }.start()
             }
             .setNegativeButton("Cancel", null)
             .show()

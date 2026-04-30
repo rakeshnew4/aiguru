@@ -194,9 +194,15 @@ async def get_user_quota(auth: AuthUser = Depends(require_auth)):
 
         # Revert to free defaults if plan expired
         import time as _t
-        if plan_expiry > 0 and plan_expiry < int(_t.time() * 1000):
+        now_ms = int(_t.time() * 1000)
+        if plan_expiry > 0 and plan_expiry < now_ms:
             chat_limit = 12
             bb_limit   = 2
+
+        # Add active referral bonus to BB limit
+        bonus_expiry = int(data.get("referral_bb_bonus_expiry_at") or 0)
+        if bonus_expiry > now_ms:
+            bb_limit += int(data.get("referral_bb_bonus_per_day") or 0)
 
         chat_left = max(0, chat_limit - chat_today) if chat_limit > 0 else -1
         bb_left   = max(0, bb_limit   - bb_today)   if bb_limit   > 0 else -1
@@ -231,7 +237,8 @@ class QuotaStatusResponse(BaseModel):
     free_tts_chars_remaining: int
 
     # Purchased credit balance
-    credit_balance: int
+    credit_balance: int           # chat / LLM credits (5k at signup, 100 tokens = 1)
+    tts_credit_balance: int       # TTS credits (50k at signup, 1 char = 1 credit)
 
     # Per-type mode: "free" | "ai_credit" | "blocked"
     chat_mode: str
@@ -313,6 +320,11 @@ async def get_quota_status(auth: AuthUser = Depends(require_auth)):
             chat_limit = int(data.get("plan_daily_chat_limit") or 12)
             bb_limit   = int(data.get("plan_daily_bb_limit") or 2)
 
+        # Add active referral bonus to BB limit
+        bonus_expiry = int(data.get("referral_bb_bonus_expiry_at") or 0)
+        if bonus_expiry > now_ms:
+            bb_limit += int(data.get("referral_bb_bonus_per_day") or 0)
+
         # ── Free remaining ─────────────────────────────────────────────────
         if is_new_day:
             free_chat = chat_limit
@@ -342,21 +354,25 @@ async def get_quota_status(auth: AuthUser = Depends(require_auth)):
 
         # ── Credit balance ─────────────────────────────────────────────────
         credit_balance = 0
+        tts_credit_balance = 0
         try:
             if credit_doc.exists:
-                credit_balance = int((credit_doc.to_dict() or {}).get("balance", 0))
+                cdata = credit_doc.to_dict() or {}
+                credit_balance     = int(cdata.get("balance",     0))
+                tts_credit_balance = int(cdata.get("tts_balance", 0))
         except Exception:
             pass
 
-        # ── Compute mode per type ──────────────────────────────────────────
-        def _mode(free_left: int) -> str:
+        # ── Compute mode per type ────────────────────────────────────────────
+        def _mode(free_left: int, balance: int) -> str:
             if free_left > 0:
                 return "free"
-            return "ai_credit" if credit_balance > 0 else "blocked"
+            return "ai_credit" if balance > 0 else "blocked"
 
-        chat_mode = _mode(free_chat)
-        bb_mode   = _mode(free_bb)
-        tts_mode  = _mode(free_tts_remaining)
+        chat_mode = _mode(free_chat, credit_balance)
+        bb_mode   = _mode(free_bb,   credit_balance)
+        # TTS uses the dedicated tts_balance pool, falling back to main balance
+        tts_mode  = _mode(free_tts_remaining, tts_credit_balance or credit_balance)
 
         # ── Admin maintenance ──────────────────────────────────────────────
         maintenance = False
@@ -375,6 +391,7 @@ async def get_quota_status(auth: AuthUser = Depends(require_auth)):
             "free_bb_remaining":        max(0, free_bb),
             "free_tts_chars_remaining": free_tts_remaining,
             "credit_balance":           credit_balance,
+            "tts_credit_balance":        tts_credit_balance,
             "chat_mode":                chat_mode,
             "bb_mode":                  bb_mode,
             "tts_mode":                 tts_mode,

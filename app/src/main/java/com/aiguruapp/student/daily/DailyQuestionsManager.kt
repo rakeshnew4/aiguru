@@ -29,7 +29,8 @@ data class DailyQuestion(
  * @property freeBbLimit  Daily BB session allowance from plan (0 = unlimited)
  * @property freeChatLeft Free chat questions remaining today
  * @property freeChatLimit Daily chat question allowance from plan (0 = unlimited)
- * @property creditBalance Current credit balance (1 credit ≈ 100 tokens)
+ * @property creditBalance Current chat/LLM credit balance (100 tokens = 1 credit)
+ * @property ttsCredits   Current TTS credit balance (1 char = 1 credit)
  */
 data class QuotaStatus(
     val freeBbLeft: Int,
@@ -37,6 +38,7 @@ data class QuotaStatus(
     val freeChatLeft: Int,
     val freeChatLimit: Int,
     val creditBalance: Int,
+    val ttsCredits: Int = 0,
 )
 
 /**
@@ -265,12 +267,14 @@ object DailyQuestionsManager {
             val chatRemaining = j.optInt("free_chat_remaining", 0)
             val chatLimit     = j.optInt("free_chat_limit",    12)
             val balance       = j.optInt("credit_balance",      0)
+            val ttsBalance    = j.optInt("tts_credit_balance",  0)
             QuotaStatus(
                 freeBbLeft    = bbRemaining,
                 freeBbLimit   = bbLimit,
                 freeChatLeft  = chatRemaining,
                 freeChatLimit = chatLimit,
                 creditBalance = balance,
+                ttsCredits    = ttsBalance,
             )
         } catch (e: Exception) {
             null

@@ -207,6 +207,12 @@ async def quota_status(auth: AuthUser = Depends(require_auth)):
     chat_limit = int(user_data.get("plan_daily_chat_limit") or 12)
     balance    = int(credit_data.get("balance") or 0)
 
+    # Add active referral bonus to BB limit
+    _now = _now_ms()
+    bonus_expiry = int(user_data.get("referral_bb_bonus_expiry_at") or 0)
+    if bonus_expiry > _now:
+        bb_limit += int(user_data.get("referral_bb_bonus_per_day") or 0)
+
     # Detect UTC day rollover
     questions_updated_at = int(user_data.get("questions_updated_at") or 0)
     is_new_day = False

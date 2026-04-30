@@ -1,9 +1,15 @@
 package com.aiguruapp.student.config
 
 import android.util.Log
+import com.aiguruapp.student.auth.TokenManager
+import com.aiguruapp.student.http.HttpClientManager
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 
 /**
  * Manages referral code generation, registration, and claiming.
@@ -79,7 +85,64 @@ object ReferralManager {
         }
     }
 
-    // ── Claiming ───────────────────────────────────────────────────────────────
+    // ── Claiming via Server API ────────────────────────────────────────────────
+
+    /**
+     * Claims a referral [code] via the server API (preferred).
+     * Awards +5 BB sessions/day for 30 days to both claimant and referrer.
+     * Must be called from a background thread (IO dispatcher).
+     */
+    fun claimReferralCodeViaServer(
+        code: String,
+        onSuccess: (referrerName: String) -> Unit,
+        onAlreadyClaimed: () -> Unit,
+        onInvalid: () -> Unit,
+        onError: () -> Unit
+    ) {
+        val upperCode  = code.trim().uppercase()
+        val serverUrl  = AdminConfigRepository.effectiveServerUrl().trimEnd('/')
+        val authHeader = TokenManager.buildAuthHeader()
+
+        if (authHeader == null) {
+            onError()
+            return
+        }
+
+        val body = JSONObject().apply { put("code", upperCode) }
+            .toString()
+            .toRequestBody("application/json".toMediaType())
+
+        val request = Request.Builder()
+            .url("$serverUrl/referrals/apply")
+            .post(body)
+            .header("Authorization", authHeader)
+            .build()
+
+        try {
+            HttpClientManager.standardClient.newCall(request).execute().use { response ->
+                val responseBody = response.body?.string() ?: ""
+                when (response.code) {
+                    200 -> {
+                        val name = runCatching {
+                            JSONObject(responseBody).optString("referrer_name", "your friend")
+                        }.getOrDefault("your friend")
+                        onSuccess(name)
+                    }
+                    400 -> onAlreadyClaimed()
+                    422 -> onInvalid()
+                    else -> {
+                        Log.w("ReferralManager", "claimViaServer HTTP ${response.code}: $responseBody")
+                        onError()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("ReferralManager", "claimViaServer failed: ${e.message}", e)
+            onError()
+        }
+    }
+
+    // ── Claiming via Firestore (legacy — kept as fallback) ─────────────────────
 
     /**
      * Claims a referral [code] on behalf of [claimantUserId].

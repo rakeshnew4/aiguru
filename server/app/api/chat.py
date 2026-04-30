@@ -548,6 +548,36 @@ def extract_json_safe(text):
 # ── Normal-mode JSON fields expected by Android ──────────────────────────────
 _NORMAL_FIELDS = ("user_question", "answer", "user_attachment_transcription", "extra_details_or_summary", "suggest_blackboard")
 
+# ── Speech markdown-stripping patterns ───────────────────────────────────────
+# Compiled once; applied to every frame's speech field in _sanitize_bb_response.
+_SPEECH_BOLD_ITALIC_RE = re.compile(r'\*{1,3}([^*\n]+?)\*{1,3}')
+_SPEECH_MATH_BLOCK_RE  = re.compile(r'\$\$([^$]+?)\$\$', re.DOTALL)
+_SPEECH_MATH_INLINE_RE = re.compile(r'\$([^$\n]+?)\$')
+_SPEECH_BACKTICK_RE    = re.compile(r'`([^`\n]+)`')
+_SPEECH_EM_DASH_RE     = re.compile(r'[—–]')
+
+def _sanitize_speech_text(speech: str) -> str:
+    """Strip markdown and symbol formatting from a TTS speech string.
+
+    speech is fed verbatim to TTS engines (Android / Gemini / Google TTS) so it
+    must be plain readable prose — no asterisks, no dollar signs, no backticks.
+    Rules:
+      **bold** / *italic* / ***bold-italic*** → unwrap inner text
+      $$math$$ / $math$  → keep inner expression (drop $ delimiters)
+      `code`             → unwrap inner text
+      em-dash/en-dash    → replace with comma+space (better prosody)
+    """
+    if not speech:
+        return speech
+    speech = _SPEECH_BOLD_ITALIC_RE.sub(r'\1', speech)
+    speech = _SPEECH_MATH_BLOCK_RE.sub(r'\1', speech)
+    speech = _SPEECH_MATH_INLINE_RE.sub(r'\1', speech)
+    speech = _SPEECH_BACKTICK_RE.sub(r'\1', speech)
+    speech = _SPEECH_EM_DASH_RE.sub(', ', speech)
+    speech = re.sub(r'  +', ' ', speech).strip()
+    return speech
+
+
 # Valid values for BB frame fields
 _VALID_TTS_ENGINES = {"android", "gemini", "google"}
 _VALID_VOICE_ROLES = {"teacher", "assistant", "quiz", "feedback"}
@@ -830,11 +860,11 @@ def _sanitize_bb_response(text: str) -> str:
                     for inner in nested:
                         if isinstance(inner, dict):
                             _coerce_frame(inner)
-                            inner["speech"] = _strip_speech_opener(inner.get("speech") or "")
+                            inner["speech"] = _sanitize_speech_text(_strip_speech_opener(inner.get("speech") or ""))
                             flattened.append(inner)
                 else:
                     _coerce_frame(frame)
-                    frame["speech"] = _strip_speech_opener(frame.get("speech") or "")
+                    frame["speech"] = _sanitize_speech_text(_strip_speech_opener(frame.get("speech") or ""))
                     flattened.append(frame)
 
             step["frames"] = flattened

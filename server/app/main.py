@@ -35,6 +35,7 @@ from app.api.diagram import router as diagram_router
 from app.api.daily_questions import router as daily_questions_router
 from app.api.credits import router as credits_router
 from app.api.tasks import router as tasks_router
+from app.api.referrals import router as referrals_router
 from app.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -83,6 +84,7 @@ app.include_router(diagram_router)
 app.include_router(daily_questions_router)
 app.include_router(credits_router)
 app.include_router(tasks_router)
+app.include_router(referrals_router)
 
 # ── Static files & Admin portal ───────────────────────────────────────────────
 _static_dir = os.path.join(os.path.dirname(__file__), "static")

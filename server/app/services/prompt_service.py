@@ -98,13 +98,70 @@ _TOPIC_TYPE_TEACHING_HINTS: dict[str, str] = {
 # ── Language Instructions ─────────────────────────────────────────────────────
 
 language_instructions = {
-    "hi-IN": "\n\nIMPORTANT: Teach in Hinglish — mix Hindi and English naturally, the way Indian students actually study. Use Hindi for explanations and reasoning; keep English for technical terms, formulas, and subject-specific vocabulary.",
-    "bn-IN": "\n\nIMPORTANT: Teach using Bengali mixed with English — explain concepts in Bengali, but keep English for technical terms, formulas, and subject-specific words.",
-    "te-IN": "\n\nIMPORTANT: Teach using Telugu mixed with English — explain reasoning in Telugu, but use English for technical terms, formulas, and subject-specific vocabulary.",
-    "ta-IN": "\n\nIMPORTANT: Teach using Tamil mixed with English — explain in Tamil, keeping English for technical terms, formulas, and subject-specific vocabulary.",
-    "mr-IN": "\n\nIMPORTANT: Teach using Marathi mixed with English — explain in Marathi, keeping English for technical terms, formulas, and subject-specific vocabulary.",
-    "kn-IN": "\n\nIMPORTANT: Teach using Kannada mixed with English — explain in Kannada, keeping English for technical terms, formulas, and subject-specific vocabulary.",
-    "gu-IN": "\n\nIMPORTANT: Teach using Gujarati mixed with English — explain in Gujarati, keeping English for technical terms, formulas, and subject-specific vocabulary.",
+    "hi-IN": (
+        "\n\nSPEECH LANGUAGE — Hinglish (Devanagari script + English mix):\n"
+        "• Write ALL Hindi words in Devanagari Unicode script — NEVER in Roman/Latin letters.\n"
+        "  BAD: 'dekho', 'matlab', 'kyunki'. GOOD: 'देखो', 'मतलब', 'क्योंकि'.\n"
+        "• Use Devanagari for: verbs, explanations, reasoning, connectors (मतलब, देखो, क्योंकि, तो, याद रखो).\n"
+        "• Keep English (Roman script) for: subject nouns, technical terms, formulas, proper nouns, unit names.\n"
+        "  Examples: Force, Photosynthesis, Newton's Law, Cell, Mitosis, Atom, Energy, Velocity.\n"
+        "• NEVER transliterate English words into Devanagari — 'Force' not 'फ़ोर्स'.\n"
+        "• NEVER write Hindi words in Roman letters — 'देखो' not 'dekho'.\n"
+        "• Example — BAD: 'dekho, Force matlab mass times acceleration.'\n"
+        "            GOOD: 'देखो, Force मतलब mass times acceleration, यानी F equals m times a.'"
+    ),
+    "te-IN": (
+        "\n\nSPEECH LANGUAGE — Tenglish (Telugu script + English mix):\n"
+        "• Write ALL Telugu words in Telugu Unicode script — NEVER in Roman/Latin letters.\n"
+        "  BAD: 'chudandi', 'ante', 'meeru'. GOOD: 'చూడండి', 'అంటే', 'మీరు'.\n"
+        "• Use Telugu script for: verbs, explanations, reasoning, connectors (అంటే, చూడండి, ఒకసారి, కాబట్టి, ఎందుకంటే).\n"
+        "• Keep English (Roman script) for: subject nouns, technical terms, formulas, proper nouns, unit names.\n"
+        "  Examples: Force, Photosynthesis, Newton's Law, Cell, Inertia, Atom, Energy, Acceleration.\n"
+        "• NEVER transliterate English words into Telugu script — 'Force' not 'ఫోర్స్'.\n"
+        "• NEVER write Telugu words in Roman letters — 'చూడండి' not 'chudandi'.\n"
+        "• Example — BAD: 'chudandi, Force ante mass times acceleration.'\n"
+        "            GOOD: 'చూడండి, Force అంటే mass times acceleration, అదే F equals m times a.'"
+    ),
+    "ta-IN": (
+        "\n\nSPEECH LANGUAGE — Tamil script + English mix:\n"
+        "• Write ALL Tamil words in Tamil Unicode script — NEVER in Roman/Latin letters.\n"
+        "  BAD: 'endral', 'paarungal'. GOOD: 'என்றால்', 'பாருங்கள்'.\n"
+        "• Use Tamil script for: verbs, explanations, connectors (என்றால், பாருங்கள், ஏனென்றால்).\n"
+        "• Keep English (Roman) for: technical terms, formulas, proper nouns (Force, Cell, Atom, Energy).\n"
+        "• NEVER transliterate English words into Tamil script."
+    ),
+    "bn-IN": (
+        "\n\nSPEECH LANGUAGE — Bengali script + English mix:\n"
+        "• Write ALL Bengali words in Bengali Unicode script — NEVER in Roman/Latin letters.\n"
+        "  BAD: 'mane', 'dekho'. GOOD: 'মানে', 'দেখো'.\n"
+        "• Use Bengali script for: verbs, explanations, connectors (মানে, দেখো, কারণ, তাহলে).\n"
+        "• Keep English (Roman) for: technical terms, formulas, proper nouns (Force, Cell, Atom, Energy).\n"
+        "• NEVER transliterate English words into Bengali script."
+    ),
+    "mr-IN": (
+        "\n\nSPEECH LANGUAGE — Marathi Devanagari script + English mix:\n"
+        "• Write ALL Marathi words in Devanagari Unicode script — NEVER in Roman/Latin letters.\n"
+        "  BAD: 'mhanje', 'bagha'. GOOD: 'म्हणजे', 'बघा'.\n"
+        "• Use Devanagari for: verbs, explanations, connectors (म्हणजे, बघा, म्हणून, आठव).\n"
+        "• Keep English (Roman) for: technical terms, formulas, proper nouns (Force, Cell, Atom, Energy).\n"
+        "• NEVER transliterate English words into Devanagari."
+    ),
+    "kn-IN": (
+        "\n\nSPEECH LANGUAGE — Kannada script + English mix:\n"
+        "• Write ALL Kannada words in Kannada Unicode script — NEVER in Roman/Latin letters.\n"
+        "  BAD: 'antha', 'nodi'. GOOD: 'ಅಂಥ', 'ನೋಡಿ'.\n"
+        "• Use Kannada script for: verbs, explanations, connectors (ಅಂಥ, ನೋಡಿ, ಏಕೆಂದರೆ, ಅಂದರೆ).\n"
+        "• Keep English (Roman) for: technical terms, formulas, proper nouns (Force, Cell, Atom, Energy).\n"
+        "• NEVER transliterate English words into Kannada script."
+    ),
+    "gu-IN": (
+        "\n\nSPEECH LANGUAGE — Gujarati script + English mix:\n"
+        "• Write ALL Gujarati words in Gujarati Unicode script — NEVER in Roman/Latin letters.\n"
+        "  BAD: 'mane', 'juo'. GOOD: 'મને', 'જુઓ'.\n"
+        "• Use Gujarati script for: verbs, explanations, connectors (મને, જુઓ, એટલે, કારણ).\n"
+        "• Keep English (Roman) for: technical terms, formulas, proper nouns (Force, Cell, Atom, Energy).\n"
+        "• NEVER transliterate English words into Gujarati script."
+    ),
 }
 
 # ---Shared JSON output footer (appended to every normal-mode prompt)---
@@ -215,7 +272,7 @@ blackboard_prompt = (
     '"image_description":"educational Wikimedia phrase",'
     '"image_show_confidencescore":0.7,'
     '"frames":[{"frame_type":"concept","text":"max 2 lines","speech":"1-2 sentences",'
-    '"tts_engine":"gemini","voice_role":"teacher","duration_ms":2500,"pause_after_ms":0,'
+    '"tts_engine":"gemini","voice_role":"teacher","duration_ms":2500'
     '"diagram_type":"","diagram_data":{},"visual_description":""}],'
     '"followup_questions":[{"question":"...","speech":"...","tts_engine":"android","voice_role":"teacher"}],'
     '"session_theme":"...","video_search_query":"...","preferred_channels":["Physics Wallah","Khan Academy India"]}]}\n\n'
@@ -223,11 +280,11 @@ blackboard_prompt = (
     # ── FRAME TYPES ───────────────────────────────────────────────────────────
     "FRAME TYPES — use these strategically, never mechanically:\n"
     "• hook      : Step 1 Frame 1 ONLY. A jaw-dropping question or wild real-world fact.\n"
-    "              Speech = the question/hook (punchy, ≤12 words). if pause needed pause_after_ms = 200-500.\n"
+    "              Speech = the question/hook (punchy, ≤12 words).\n"
     "• concept   : Core explanation. Speech = calm, 1-2 sentences. No jargon without explanation.\n"
     "• memory    : Mnemonic, rhyme, or unforgettable analogy. Speech = the sticky hook.\n"
     "• diagram   : Visual explanation. Client adds a 2.5s silent viewing window before speech.\n"
-    "              Speech describes what to see in the diagram — we need to tell that observer diagarma for a sec, pause_after_ms=1500 max.\n"
+    "              Speech describes what to see in the diagram — we need to tell that observer diagaram for a sec\n"
     "• apply     : Real-world anchor. Speech = how this shows up in the student's actual life.\n"
     "• curiosity : Bridge to next step. Speech = tantalising question that makes them want to\n"
     "              keep watching. Never answer it — the next step answers it.\n"
@@ -274,13 +331,17 @@ blackboard_prompt = (
     "  textbook, rewrite it.\n"
     "• Natural pauses: use comma placement for breath pauses. Avoid long run-ons.\n"
     "• No openers: never 'Today we will learn...', 'Hello class!', 'Great question!'.\n"
+    "• PLAIN TEXT ONLY — speech goes directly to TTS audio. NEVER use:\n"
+    "  **bold**, *italic*, $$math$$, $math$, `code`, or any markdown/symbol formatting.\n"
+    "  Write math in words: 'F equals m times a', 'x squared', 'pi r squared'.\n"
+    "• No em-dashes (—) or en-dashes (–) — use commas or 'and' instead.\n"
     "• TTS-safe: say 'squared' not '^2', 'divided by' not '/', 'pi' not 'π'.\n"
     "• Language matches lang field: hi-IN → Hindi, te-IN → Telugu, en-US → English.\n\n"
 
     # ── TIMING ────────────────────────────────────────────────────────────────
-    "TIMING (duration_ms = display time AFTER TTS; pause_after_ms = silence before advancing):\n"
+    "TIMING (duration_ms = display time AFTER TTS;:\n"
     "concept / memory / apply / reveal : duration_ms 2000-3000.\n"
-    "hook / curiosity                  : duration_ms 2000, pause_after_ms 200-500.\n"
+    "hook / curiosity                  : duration_ms 2000,\n"
     "question                          : duration_ms 500, pause_after_ms 3000-5000.\n"
     "diagram                           : duration_ms 3000-4000 (client auto-adds 2.5s silent view).\n"
     "joke                              : duration_ms 1500.\n"
@@ -295,7 +356,7 @@ blackboard_prompt = (
     "- DO NOT include youtube_clip on any frame — videos surfaced separately.\n"
     "- Use ONE lesson-level video_search_query, never per-step.\n"
     "- text field: **bold** key words only, $$math$$, max 2 lines, always English.\n"
-    "- pause_after_ms REQUIRED on question frames. Optional (omit if 0) on hook/curiosity.\n"
+    "- pause_after_ms REQUIRED on question frames.\n"
     "- image_description: specific Wikimedia phrase — MUST include topic name.\n"
     "  GOOD: 'mitosis cell division diagram'. BAD: 'diagram', 'biology'.\n"
     "  image_show_confidencescore: 0.85-0.95 concrete visuals, 0.6-0.8 named concepts,\n"

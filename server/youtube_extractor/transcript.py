@@ -49,5 +49,5 @@ def _fetch_sync(video_id: str) -> list[dict]:
                 })
         return normalized
     except Exception as exc:
-        logger.info("[yt_extractor] Transcript fetch failed for %s: %s", video_id, exc)
+        logger.debug("[yt_extractor] Transcript fetch failed for %s: %s", video_id, exc)
         return []

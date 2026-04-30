@@ -123,6 +123,9 @@ class SubjectActivity : BaseActivity() {
         if (localChapters.isEmpty()) {
             skeleton?.visibility = android.view.View.VISIBLE
             startSkeletonPulse(skeleton)
+            // Hide empty state while loading — skeleton replaces it
+            findViewById<android.view.View>(R.id.chaptersEmptyState)?.visibility =
+                android.view.View.GONE
         }
 
         // ALSO load from Firestore as fallback (survives app uninstall)
@@ -130,7 +133,10 @@ class SubjectActivity : BaseActivity() {
             onSuccess = { remoteList ->
                 val localSet = localChapters.toSet()
                 val toAdd = remoteList.filter { it !in localSet }
-                runOnUiThread { skeleton?.visibility = android.view.View.GONE }
+                runOnUiThread {
+                    skeleton?.clearAnimation()
+                    skeleton?.visibility = android.view.View.GONE
+                }
                 if (toAdd.isNotEmpty()) {
                     val updated = localChapters + toAdd
                     saveChaptersLocally(updated)
@@ -161,7 +167,10 @@ class SubjectActivity : BaseActivity() {
                 }
             },
             onFailure = {
-                runOnUiThread { skeleton?.visibility = android.view.View.GONE }
+                runOnUiThread {
+                    skeleton?.clearAnimation()
+                    skeleton?.visibility = android.view.View.GONE
+                }
             }
         )
     }

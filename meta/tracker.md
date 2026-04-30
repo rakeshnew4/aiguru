@@ -1052,3 +1052,62 @@ Run to start seeding:
 - `BlackboardActivity.kt` followup question speak ~line 4622: added `tts.setLocale(Locale.forLanguageTag(preferredLanguageTag))` before `tts.speak()` to ensure correct locale.
 
 **Files changed:** `BlackboardActivity.kt` (~lines 2283-2290 finalEngine logic, ~lines 760-766 preloadUpcoming, ~line 4622 followup locale)
+
+---
+
+## 2026-04-30 (session 3)
+
+**Asked:** Add referral system — when someone is referred, give +5 BB lessons/day for a month to both parties.
+
+**Root cause / current state:**
+- `ReferralManager.kt` existed but only did client-side Firestore transaction — wrote `bonus_questions_today` to `users/{uid}` (old collection). Server quota reads from `users_table/{uid}` → bonus had zero effect on server-enforced limits.
+- No time limit on bonus.
+- No server-side referral API.
+
+**Fix:**
+1. **New** `server/app/api/referrals.py` — `POST /referrals/apply`: validates code from `referralCodes`, prevents self-referral and double-claiming, writes `referral_bb_bonus_per_day=5` + `referral_bb_bonus_expiry_at=now+30d` to `users_table/{uid}` for both claimant and referrer.
+2. `server/app/services/user_service.py`: new user defaults include `referral_bb_bonus_per_day=0` + `referral_bb_bonus_expiry_at=0`; `check_and_record_quota()` adds bonus to `limit` for BB when not expired.
+3. `server/app/api/users.py`: `get_user_quota` + `get_quota_status` both add bonus to `bb_limit` when active.
+4. `server/app/api/credits.py`: `quota_status` adds bonus to `bb_limit` when active.
+5. `server/app/main.py`: registered `referrals_router`.
+6. `ReferralManager.kt`: added `claimReferralCodeViaServer()` using server API + auth token (OkHttp); old Firestore `claimReferralCode()` kept as legacy fallback.
+7. `UserProfileActivity.kt`: claim button now calls `claimReferralCodeViaServer` on a background thread.
+
+**Files changed:** `server/app/api/referrals.py` (new), `server/app/services/user_service.py` (~lines 141-145, 523-527), `server/app/api/users.py` (~lines 200-205, 322-326), `server/app/api/credits.py` (~lines 208-214), `server/app/main.py` (~lines 38, 87), `ReferralManager.kt` (new import block + new fn claimReferralCodeViaServer ~line 84), `UserProfileActivity.kt` (~lines 277-306)
+
+---
+
+## 2026-04-30 (session 4)
+
+**Asked:** (1) Read CLAUDE.md. (2) Are we rendering or fetching NCERT PDFs from ncert.json — check and do accordingly. Also NCERT chapter count corrections from URL verification session.
+
+**NCERT flow (confirmed by reading code):**
+- `ncert.json` (Android asset) stores book codes + chapter ranges only — NOT the PDFs
+- `HomeActivity.kt` `confirmNcertImport()` (~line 2278): reads code + `chapters` field ("0-8" → start=1, end=8), builds NCERT PDF URLs via `ncertChapterUrl()` → `https://ncert.nic.in/textbook/pdf/{code}{ch:02d}.pdf`, stores in SharedPreferences + Firestore
+- `ChapterActivity.kt` `setupNcertChapter()` (~line 703): downloads PDF from ncert.nic.in at runtime, caches to `cacheDir/pdf_cache/`, renders pages as images — **fetches live from NCERT website, NOT from local asset**
+- `ncertCandidateUrls()` tries multiple URL variants (standard, no-pad, trailing-1, dd, dd1)
+
+**ncert.json corrections applied** (`app/src/main/assets/ncert.json`) — 18 chapter count fixes based on confirmed HEAD requests to ncert.nic.in:
+| Book | Old | New |
+|------|-----|-----|
+| Class 7 Math gegp1 | 0-13 | 0-8 |
+| Class 7 Science gecu1 | 0-18 | 0-12 |
+| Class 7 SS History gees1 | 0-10 | 0-12 |
+| Class 7 SS Geography gees2 | 0-10 | 0-8 |
+| Class 7 English geah1 | 0-10 | 0-7 |
+| Class 8 English hehd1 | 0-10 | 0-8 |
+| Class 8 English heih1 | 0-10 | 0-8 |
+| Class 8 SS History hees1 | 0-12 | 0-7 |
+| Class 9 Math iemh1 | 0-15 | 0-8 |
+| Class 9 Science iesc1 | 0-15 | 0-13 |
+| Class 10 English jefp1 | 0-10 | 0-9 |
+| Class 10 Math jemh1 | 0-15 | 0-14 |
+| Class 10 Science jesc1 | 0-16 | 0-13 |
+| Class 10 SS History jess1 | 0-5 | 0-6 |
+| Class 10 SS Geography jess2 | 0-7 | 0-5 |
+| Class 10 SS Civics jess3 | 0-8 | 0-5 |
+| Class 11 Math kemh1 | 0-16 | 0-14 |
+| Class 12 Biology lebo1 | 0-16 | 0-13 |
+Books with ALL 404 (English/SS for Class 6/9) kept as-is — likely IP-blocked from cloud server, may work from residential IPs.
+
+**Files changed:** `app/src/main/assets/ncert.json` (18 chapter range fixes)

@@ -165,33 +165,33 @@
       {
         "text": "An Alien Hand",
         "code": "geah1",
-        "chapters": "0-10"
+        "chapters": "0-7"
       }
     ],
     "Mathematics": [
       {
         "text": "Mathematics",
         "code": "gegp1",
-        "chapters": "0-13"
+        "chapters": "0-8"
       }
     ],
     "Science": [
       {
         "text": "Science",
         "code": "gecu1",
-        "chapters": "0-18"
+        "chapters": "0-12"
       }
     ],
     "Social Science": [
       {
         "text": "Our Pasts - II (History)",
         "code": "gees1",
-        "chapters": "0-10"
+        "chapters": "0-12"
       },
       {
         "text": "Our Environment (Geography)",
         "code": "gees2",
-        "chapters": "0-10"
+        "chapters": "0-8"
       },
       {
         "text": "Social and Political Life - II (Civics)",
@@ -205,12 +205,12 @@
       {
         "text": "Honeydew",
         "code": "hehd1",
-        "chapters": "0-10"
+        "chapters": "0-8"
       },
       {
         "text": "It So Happened",
         "code": "heih1",
-        "chapters": "0-10"
+        "chapters": "0-8"
       }
     ],
     "Mathematics": [
@@ -231,7 +231,7 @@
       {
         "text": "Our Pasts - III (History)",
         "code": "hees1",
-        "chapters": "0-12"
+        "chapters": "0-7"
       },
       {
         "text": "Resources and Development (Geography)",
@@ -262,14 +262,14 @@
       {
         "text": "Mathematics",
         "code": "iemh1",
-        "chapters": "0-15"
+        "chapters": "0-8"
       }
     ],
     "Science": [
       {
         "text": "Science",
         "code": "iesc1",
-        "chapters": "0-15"
+        "chapters": "0-13"
       }
     ],
     "Social Science": [
@@ -305,38 +305,38 @@
       {
         "text": "Footprints Without Feet",
         "code": "jefp1",
-        "chapters": "0-10"
+        "chapters": "0-9"
       }
     ],
     "Mathematics": [
       {
         "text": "Mathematics",
         "code": "jemh1",
-        "chapters": "0-15"
+        "chapters": "0-14"
       }
     ],
     "Science": [
       {
         "text": "Science",
         "code": "jesc1",
-        "chapters": "0-16"
+        "chapters": "0-13"
       }
     ],
     "Social Science": [
       {
         "text": "India and the Contemporary World II (History)",
         "code": "jess1",
-        "chapters": "0-5"
+        "chapters": "0-6"
       },
       {
         "text": "Contemporary India II (Geography)",
         "code": "jess2",
-        "chapters": "0-7"
+        "chapters": "0-5"
       },
       {
         "text": "Democratic Politics II (Civics)",
         "code": "jess3",
-        "chapters": "0-8"
+        "chapters": "0-5"
       },
       {
         "text": "Understanding Economic Development",
@@ -362,7 +362,7 @@
       {
         "text": "Mathematics",
         "code": "kemh1",
-        "chapters": "0-16"
+        "chapters": "0-14"
       }
     ],
     "Physics": [
@@ -488,7 +488,7 @@
       {
         "text": "Biology",
         "code": "lebo1",
-        "chapters": "0-16"
+        "chapters": "0-13"
       }
     ],
     "History": [
