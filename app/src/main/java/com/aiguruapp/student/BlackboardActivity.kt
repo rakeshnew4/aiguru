@@ -2663,8 +2663,8 @@ class BlackboardActivity : AppCompatActivity() {
         // "Almost done" hint
         val nearEnd = steps.isNotEmpty() && currentStepIdx >= steps.size - 2 && !atStart
         bbProgressHintTv.visibility = if (nearEnd) View.VISIBLE else View.GONE
-        if (nearEnd) bbProgressHintTv.text =
-            if (currentStepIdx == steps.size - 1) " ""
+        if (nearEnd) bbProgressHintTv.text ="";
+
     }
 
     /**

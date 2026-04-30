@@ -5,6 +5,18 @@
 
 ---
 
+## 2026-04-30
+
+**Asked:** Fix Kotlin compile error in `FullChatFragment.kt:1674` — argument type mismatch: `Function3<Int,Int,Int,Unit>` passed where `Function1<String,Unit>` expected.
+**Root cause:** `streamChat()` in `ServerProxyClient.kt` has an `onFirstStep: ((String)->Unit)?` parameter (line 114) between `onStatus` and `onToken`. All three call sites in `FullChatFragment.kt` omitted it, shifting `onDone` into the `onToken` slot.
+**Changed:**
+- `FullChatFragment.kt:1674` — added `null` for `onFirstStep` (image branch)
+- `FullChatFragment.kt:1688` — same fix (PDF branch)
+- `FullChatFragment.kt:1699` — same fix (text-only branch)
+**Files read:**
+- `FullChatFragment.kt:1655–1702` — sendMessage `when` block, all three `streamChat` call sites
+- `ServerProxyClient.kt:101–118` — `streamChat` full signature: 16 params; `onFirstStep:((String)->Unit)?` is param 13, optional
+
 ## 2026-04-29
 
 **Asked:** Fix Kotlin compile error in `FullChatFragment.kt` about conflicting local declarations for `chatMainContent`.

@@ -1671,7 +1671,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                                 emptyMap(),
                                 { transcript -> serverPageTranscript = transcript },
                                 { bb -> serverSuggestBlackboard = bb },
-                                onStatus, onToken, onDone, onError)
+                                onStatus, null, onToken, onDone, onError)
                         } else {
                             if (b64 != null) client.streamWithImage(sysPrompt, ctxMessage, b64,
                                 onToken, onDone, onError)
@@ -1685,7 +1685,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                                 emptyMap(),
                                 { transcript -> serverPageTranscript = transcript },
                                 { bb -> serverSuggestBlackboard = bb },
-                                onStatus, onToken, onDone, onError)
+                                onStatus, null, onToken, onDone, onError)
                         else
                             client.streamWithImage(sysPrompt, ctxMessage, capturedPdfBase64,
                                 onToken, onDone, onError)
@@ -1696,7 +1696,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                                 emptyMap(),
                                 { transcript -> serverPageTranscript = transcript },
                                 { bb -> serverSuggestBlackboard = bb },
-                                onStatus, onToken, onDone, onError)
+                                onStatus, null, onToken, onDone, onError)
                         else
                             client.streamText(sysPrompt, ctxMessage, onToken, onDone, onError)
                 }
