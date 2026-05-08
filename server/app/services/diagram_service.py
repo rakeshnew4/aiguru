@@ -46,7 +46,7 @@ PROCESS / FLOW
 - flow           → steps/process (e.g. "How does photosynthesis work?")
 - cycle          → continuous loops (e.g. "water cycle", "carbon cycle")
 - comparison     → two things side-by-side (e.g. "mitosis vs meiosis")
-- labeled_diagram→ central concept with labelled parts (e.g. "cell organelles", "heart")
+- anatomy→ central concept with labelled parts (e.g. "cell organelles", "heart")
 
 GRAPHS / DATA
 - line_graph     → trends / scatter (e.g. "speed vs time")
@@ -79,7 +79,7 @@ Decision rules:
 - area / rectangle / perimeter → "rectangle_area"
 - atom / electron / nucleus / Bohr → "atom"
 - wave / sound wave / light wave → "waveform_signal"
-- cell / organelle / anatomy / label → "labeled_diagram"
+- cell / organelle / anatomy / label → "anatomy"
 - number line / integers → "number_line"
 - fraction / comparing fractions → "fraction_bar"
 - anything else → "flow"
@@ -97,7 +97,7 @@ line_graph:      { "points": [[0,0],[1,2],[2,4]], "x_label": "x", "y_label": "y"
 graph_function:  { "function": "quadratic", "a": 1, "b": 0, "c": 0, "x_range": [-4,4] }
 atom:            { "nucleus_label": "H", "orbits": [{"electrons": 1, "color": "secondary"}] }
 waveform_signal: { "title": "Sound Wave", "wave_type": "sine", "amplitude": 50, "cycles": 2 }
-labeled_diagram: { "center": "Cell", "center_shape": "circle", "parts": ["Nucleus",...] }
+anatomy: { "center": "Cell", "center_shape": "circle", "parts": ["Nucleus",...] }
 number_line:     { "start": -5, "end": 5, "marked_points": [0,2], "highlight_range": [1,4] }
 fraction_bar:    { "fractions": [{"num":1,"den":2},{"num":3,"den":4}], "title": "Fractions" }
 
@@ -282,7 +282,7 @@ def _sanitise_data(dtype: str, data: dict) -> dict:
             "duration": max(4.0, min(20.0, float(data.get("duration", 12)))),
         }
 
-    if dtype == "labeled_diagram":
+    if dtype == "anatomy":
         parts = [str(p)[:20] for p in (data.get("parts") or [])][:6]
         return {
             "center":       str(data.get("center", ""))[:20],

@@ -2,7 +2,7 @@
 svg_renderers.py — Basic diagram renderers.
 
 Generates shape-list descriptors for: triangle, circle_radius,
-rectangle_area, line_graph, flow, comparison, cycle, labeled_diagram.
+rectangle_area, line_graph, flow, comparison, cycle, anatomy.
 """
 
 import math
@@ -437,7 +437,7 @@ def _render_cycle(data: dict) -> list:
     return shapes
 
 
-def _render_labeled_diagram(data: dict) -> list:
+def _render_anatomy(data: dict) -> list:
     """
     Anatomy / structure diagram — a central shape with radiating dashed
     pointer lines to labelled parts.  Great for cells, atoms, machines.

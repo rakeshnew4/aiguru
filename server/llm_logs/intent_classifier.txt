@@ -1,12 +1,12 @@
-=== INTENT_CLASSIFIER | 2026-04-27 09:05:25 | session=RFQp1HbS_9925cfad ===
+=== INTENT_CLASSIFIER | 2026-05-08 13:54:03 | session=KkhkqOQI_9ca4d4fc ===
 
 === PROMPT ===
 You are a lightning-fast intent classifier for a school tutoring app.
 Classify the student input into exactly one intent. Output ONLY valid JSON -- nothing else.
 
-Student question: "Wha?"
+Student question: "Why light has that much speed?"
 Has image attached: false
-Last assistant message (first 120 chars): ""
+Last assistant message (first 120 chars): " I'm doing great, thank you so much for asking! I'm ready and excited to help you learn something new today—what's on yo"
 
 JSON output (one object, no extra text):
 {"intent": "<one of: greet|image_explain|calculate|definition|followup|explain|practice|other>", "complexity": "<one of: low|medium|high>"}
@@ -27,4 +27,4 @@ Complexity rules:
 - high   -> multi-concept question, multi-step derivation, compare and contrast
 
 === RESPONSE ===
-{"intent": "other", "complexity": "low"}
+{"intent": "explain", "complexity": "high"}

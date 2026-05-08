@@ -30,8 +30,7 @@ _TOPIC_TYPE_TEACHING_HINTS: dict[str, str] = {
     ),
     "science_biology": (
         "SUBJECT GUIDANCE (Science — Biology):\n"
-        "• Use cycle for life cycles/processes (mitosis, water cycle, photosynthesis).\n"
-       
+        "• For life cycles/processes (mitosis, photosynthesis, cell division): use diagram_type=custom so the LLM draws the actual process, NOT diagram_type=cycle.\n"
         "• Use PATH 2 (diagram_type=custom) for anatomy cross-sections (heart, leaf, kidney).\n"
         "• Concept frames: function → structure → real-body example.\n"
         "• End with a summary frame."
@@ -83,8 +82,7 @@ _TOPIC_TYPE_TEACHING_HINTS: dict[str, str] = {
     ),
     "geography_environment": (
         "SUBJECT GUIDANCE (Geography / Environment):\n"
-        "• Use cycle for water cycle, carbon cycle, rock cycle, nutrient cycles.\n"
-       
+        "• For water cycle, carbon cycle, rock cycle, nutrient cycles: use diagram_type=custom so the LLM draws a real process diagram, NOT diagram_type=cycle.\n"
         "• Use PATH 2 (diagram_type=custom) for cross-section diagrams (mountain, valley).\n"
         "• Concept frames: location/name → characteristic → human impact or real example.\n"
         "• End with a summary frame."
@@ -361,6 +359,8 @@ blackboard_prompt = (
     "  tts_engine, voice_role, duration_ms.\n"
     "- Step fields (title, lang, image_description, image_show_confidencescore) on the STEP\n"
     "  — NEVER inside frames.\n"
+    "- NEVER use diagram_type 'cycle' or 'labeled' — they produce ugly circular box layouts.\n"
+    "  For cyclic processes (water cycle, mitosis, etc.) use diagram_type='custom' instead.\n"
     "- FOLLOWUP_QUESTIONS: ONLY on LAST step. Exactly 3 thought-provoking questions.\n"
     "  Each: question (≤14 words) + speech (≤20 words, conversational, in lesson lang).\n"
     "- VIDEO: session_theme = 3-8 words; video_search_query = specific YouTube query;\n"

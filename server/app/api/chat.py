@@ -682,7 +682,7 @@ _DIAGRAM_SUB_TYPES = frozenset({
     "atom", "solar_system", "waveform_signal", "wave", "triangle",
     "circle_radius", "rectangle_area", "geometry_angles", "line_graph",
     "graph_function", "number_line", "fraction_bar",
-    "flow", "cycle", "comparison", "labeled_diagram", "anatomy", "cell",
+    "flow", "cycle", "comparison", "anatomy", "anatomy", "cell",
     "cell_diagram", "flow_arrow", "custom",
 })
 

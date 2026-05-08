@@ -1,4 +1,4 @@
-=== CHAT_MAIN | 2026-05-08 12:18:05 | session=KkhkqOQI_6342ef74 ===
+=== CHAT_MAIN | 2026-05-08 13:54:49 | session=KkhkqOQI_085b3fc6 ===
 
 === SYSTEM ===
 You are a lesson planner. Return ONLY a JSON object (no markdown, no fences) with these fields:
@@ -11,21 +11,39 @@ You are a lesson planner. Return ONLY a JSON object (no markdown, no fences) wit
 Example: {"lesson_title":"Photosynthesis","steps":["What is it?","Light reactions"],"use_svg":true,"category":"science","hook_question":"Ever wondered how plants make their own food?","continuation_topic":"Respiration and Energy Release"}
 
 === PROMPT ===
-Topic: Pythagoras Theorem
+Topic: That is a brilliant question! It can feel mind-boggling that light travels at $$300,000$$ kilometers every single second. To understand why, we have to look at what light actually *is*.
+
+**The Mechanism:**
+Light is a form of **electromagnetic radiation**. Unlike a ball that you throw, which needs your arm's strength to push it, light is a wave of energy that creates itself as it travels. Because light has **zero mass** (it is completely weightless), there is absolutely nothing to hold it back. In our universe, mass acts like a brake or a drag—the more mass something has, the more energy it needs to move. Since **photons** have no mass at all, they don't need to 'accelerate' or 'build up' speed. They exist, and *poof*, they are already at the maximum speed possible!
+
+**Real-World Application:**
+Think about running through a swimming pool. The water pushes against you, slowing you down because you have mass. Now, imagine you are a ghost with no body at all. You could glide through the water without feeling any resistance! That is exactly like a **photon** traveling through space—there is no 'water' or 'drag' to slow it down, so it hits the universal speed limit instantly.
+
+**Worked Example:**
+Let's see how much faster light is than a super-fast jet. A very fast fighter jet flies at about $$2,500$$ km/h. 
+
+1. First, let's turn the speed of light into an hourly rate: $$300,000 	ext{ km/s} 	imes 3,600 	ext{ seconds in an hour} = 1,080,000,000 	ext{ km/h}$$.
+2. Now, compare them: $$rac{1,080,000,000}{2,500} = 432,000$$.
+
+Light is roughly $$432,000$$ times faster than a top-tier fighter jet! 
+
+**Memory Tip:** Just remember that light is the 'speed limit' of the universe. Nothing can travel faster because the universe is built on the rule that mass cannot move faster than light, and light—having no mass—is the champion of speed!
+
+The speed of light is so fast that it could travel around the Earth's equator about 7.5 times in just one second!
 Requested number of steps: 5
 
 === RESPONSE ===
 {
-  "lesson_title": "The Magic of Right Triangles",
+  "lesson_title": "The Universal Speed Limit: Why Light Moves So Fast",
   "steps": [
-    "Defining the Right Triangle",
-    "The Formula Explained",
-    "Visualizing the Squares",
-    "Solving for the Hypotenuse",
-    "Real-World Applications"
+    "Defining electromagnetic radiation",
+    "The role of mass and drag",
+    "Understanding photons",
+    "Comparing light to human-made speeds",
+    "The cosmic speed limit rule"
   ],
   "use_svg": true,
-  "category": "math",
-  "hook_question": "Ever wondered how builders ensure a corner is perfectly square without a fancy tool?",
-  "continuation_topic": "Trigonometric Ratios and SOHCAHTOA"
+  "category": "science",
+  "hook_question": "Ever wondered why nothing in the universe can travel faster than light?",
+  "continuation_topic": "Time Dilation and Relativity"
 }

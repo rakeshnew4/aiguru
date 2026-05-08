@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-05-08 12:18:20 | session=KkhkqOQI_b51becac ===
+=== BB_MAIN | 2026-05-08 13:55:04 | session=KkhkqOQI_3b1f65c8 ===
 
 === SYSTEM ===
 You are GURU — a warm, funny, wildly effective AI teacher inside a visual blackboard app.
@@ -86,6 +86,8 @@ RULES:
   tts_engine, voice_role, duration_ms.
 - Step fields (title, lang, image_description, image_show_confidencescore) on the STEP
   — NEVER inside frames.
+- NEVER use diagram_type 'cycle' or 'labeled' — they produce ugly circular box layouts.
+  For cyclic processes (water cycle, mitosis, etc.) use diagram_type='custom' instead.
 - FOLLOWUP_QUESTIONS: ONLY on LAST step. Exactly 3 thought-provoking questions.
   Each: question (≤14 words) + speech (≤20 words, conversational, in lesson lang).
 - VIDEO: session_theme = 3-8 words; video_search_query = specific YouTube query;
@@ -95,43 +97,60 @@ RULES:
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: Pythagoras Theorem
-Lesson title: The Magic of Right Triangles
-Category: math
+Student's EXACT question: Topic: That is a brilliant question! It can feel mind-boggling that light travels at $$300,000$$ kilometers every single second. To understand why, we have to look at what light actually *is*.
+
+**The Mechanism:**
+Light is a form of **electromagnetic radiation**. Unlike a ball that you throw, which needs your arm's strength to push it, light is a wave of energy that creates itself as it travels. Because light has **zero mass** (it is completely weightless), there is absolutely nothing to hold it back. In our universe, mass acts like a brake or a drag—the more mass something has, the more energy it needs to move. Since **photons** have no mass at all, they don't need to 'accelerate' or 'build up' speed. They exist, and *poof*, they are already at the maximum speed possible!
+
+**Real-World Application:**
+Think about running through a swimming pool. The water pushes against you, slowing you down because you have mass. Now, imagine you are a ghost with no body at all. You could glide through the water without feeling any resistance! That is exactly like a **photon** traveling through space—there is no 'water' or 'drag' to slow it down, so it hits the universal speed limit instantly.
+
+**Worked Example:**
+Let's see how much faster light is than a super-fast jet. A very fast fighter jet flies at about $$2,500$$ km/h. 
+
+1. First, let's turn the speed of light into an hourly rate: $$300,000 	ext{ km/s} 	imes 3,600 	ext{ seconds in an hour} = 1,080,000,000 	ext{ km/h}$$.
+2. Now, compare them: $$rac{1,080,000,000}{2,500} = 432,000$$.
+
+Light is roughly $$432,000$$ times faster than a top-tier fighter jet! 
+
+**Memory Tip:** Just remember that light is the 'speed limit' of the universe. Nothing can travel faster because the universe is built on the rule that mass cannot move faster than light, and light—having no mass—is the champion of speed!
+
+The speed of light is so fast that it could travel around the Earth's equator about 7.5 times in just one second!
+Lesson title: The Universal Speed Limit: Why Light Moves So Fast
+Category: science
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
 Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- Defining the Right Triangle
-- The Formula Explained
-- Visualizing the Squares
-- Solving for the Hypotenuse
-- Real-World Applications
+- Defining electromagnetic radiation
+- The role of mass and drag
+- Understanding photons
+- Comparing light to human-made speeds
+- The cosmic speed limit rule
 
 This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants a foundational introduction to identifying right triangles and their specific parts (hypotenuse and legs).
-Question type: definition
+What the student specifically wants: The student wants to understand the nature of light as electromagnetic radiation and why it travels at such a high, constant speed.
+Question type: conceptual
 Student level: Class 5
 GRADE SPEECH STYLE: Technical words WITH plain-English gloss. Relatable humor (games, snacks). ≤35 words/frame.
-Topic type: math_geometry | Scope: simple
-Key concepts to cover (ALL of these): Right Angle, Hypotenuse, Legs of a Triangle
+Topic type: science_physics | Scope: medium
+Key concepts to cover (ALL of these): electromagnetic radiation, photons, speed of light constant, wave-particle duality
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-DIAGRAM RECOMMENDATION: This topic likely needs a "triangle" diagram (confidence 98%). Use diagram_type="triangle" for your diagram frame(s).
+DIAGRAM RECOMMENDATION: This topic likely needs a "waveform_signal" diagram (confidence 98%). Use diagram_type="waveform_signal" for your diagram frame(s).
 
-SUBJECT GUIDANCE (Math — Geometry):
-• Use diagram_type: triangle, right_angle, polygon, polygon_formation, circle_geometry, angle, or coordinate_plane.
-• right_angle: two perpendicular lines with square marker — use for 90° angle topics.
-• polygon_formation: shows triangle→square→pentagon→hexagon progression with interior angle formula.
-• Show labelled measurements in the diagram data (a_val, b_val, show_angles, etc.).
-• Concept frames: state property → prove/derive → example with numbers.
-• End with a summary frame of key properties.
+SUBJECT GUIDANCE (Science — Physics):
+• Use waveform_signal for waves/sound/light; coordinate_plane for motion graphs.
+• Use PATH 2 (diagram_type=custom) for force diagrams, ray optics, circuit layouts.
+• Concept frames: state law/formula → physical meaning → real-world application.
+• Include units in every formula (e.g. m/s², Newton, Joule).
+• End with a summary frame.
 
 ---END LESSON BRIEF---
 
@@ -141,127 +160,108 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
 {
   "steps": [
     {
-      "title": "Defining the Right Triangle",
+      "title": "What is Light?",
       "lang": "en-US",
-      "image_description": "right triangle geometry shape",
+      "image_description": "electromagnetic radiation wave diagram",
       "image_show_confidencescore": 0.9,
       "frames": [
         {
           "frame_type": "hook",
-          "text": "Ever noticed **corners**?",
-          "speech": "Have you ever noticed how the corner of your notebook or a door is perfectly square?",
+          "text": "The Universal Speed Limit",
+          "speech": "Imagine something that could circle the entire Earth seven times in just one single heartbeat.",
           "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 3000
         },
         {
           "frame_type": "concept",
-          "text": "The **Right Angle**",
-          "speech": "That square corner is called a right angle, which is exactly 90 degrees. A triangle with one of these is simply a right triangle.",
+          "text": "Electromagnetic Radiation",
+          "speech": "Light is electromagnetic radiation, which is just a fancy way to say a wave of pure energy that moves on its own.",
           "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 4000
-        },
-        {
-          "frame_type": "memory",
-          "text": "The **L** shape",
-          "speech": "Think of it like the letter L, standing perfectly straight and tall, never leaning.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000
-        }
-      ]
-    },
-    {
-      "title": "The Formula Explained",
-      "lang": "en-US",
-      "image_description": "right triangle labeled a b c",
-      "image_show_confidencescore": 0.95,
-      "frames": [
-        {
-          "frame_type": "concept",
-          "text": "a² + b² = c²",
-          "speech": "Pythagoras found a secret rule. If you square the two shorter sides, or legs, and add them, you get the square of the longest side, the hypotenuse.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 4500
-        },
-        {
-          "frame_type": "diagram",
-          "text": "a, b = legs; c = hypotenuse",
-          "speech": "Look at the diagram. The two sides touching the right angle are the legs. The long, slanted side across from the corner is the hypotenuse.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 4000,
-          "diagram_type": "triangle",
-          "diagram_data": {
-            "a_val": 3,
-            "b_val": 4,
-            "c_val": 5,
-            "show_angles": true,
-            "labels": {
-              "a": "leg",
-              "b": "leg",
-              "c": "hypotenuse"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "title": "Visualizing the Squares",
-      "lang": "en-US",
-      "image_description": "pythagorean theorem squares diagram",
-      "image_show_confidencescore": 0.9,
-      "frames": [
-        {
-          "frame_type": "diagram",
-          "text": "Squares on sides",
-          "speech": "Imagine building a square floor out of blocks on each side. The two smaller floors perfectly fill the big floor space.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 4000,
-          "diagram_type": "triangle",
-          "diagram_data": {
-            "show_squares": true
-          }
-        },
-        {
-          "frame_type": "question",
-          "text": "Which side is longest?",
-          "speech": "Looking at our triangle, which side do you think is always the longest, the legs or the hypotenuse?",
-          "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 3500
         },
         {
-          "frame_type": "reveal",
-          "text": "The hypotenuse wins!",
-          "speech": "Plot twist, it is the hypotenuse. Because it is slanted, it has to stretch further across the space than the straight legs.",
+          "frame_type": "diagram",
+          "text": "Light Wave",
+          "speech": "See this wave? It does not need a road or a push to travel, it just ripples through space.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 4000
+          "duration_ms": 3000,
+          "diagram_type": "waveform_signal",
+          "diagram_data": {
+            "label": "Light Wave",
+            "color": "yellow"
+          }
         }
+      ],
+      "session_theme": "The Speed of Light",
+      "video_search_query": "how fast is the speed of light explained",
+      "preferred_channels": [
+        "Khan Academy Kids",
+        "Physics Wallah"
       ]
     },
     {
-      "title": "Solving for the Hypotenuse",
+      "title": "Mass and Drag",
       "lang": "en-US",
-      "image_description": "math calculation 3 4 5 triangle",
+      "image_description": "object moving through water vs vacuum",
       "image_show_confidencescore": 0.8,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "Example: 3, 4, 5",
-          "speech": "Let us try numbers. If a leg is 3 and the other is 4, the hypotenuse is 5. Nine plus sixteen equals twenty-five.",
+          "text": "Mass acts like a brake",
+          "speech": "Mass, or the amount of stuff in an object, acts like a brake that slows down everything it touches.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 4000
+          "duration_ms": 3000
         },
         {
-          "frame_type": "joke",
-          "text": "Math jokes!",
-          "speech": "Why was the math book sad? Because it had too many problems, but at least this one has a perfect answer!",
+          "frame_type": "apply",
+          "text": "Running in a pool",
+          "speech": "Think about running through a swimming pool. The water pushes against you and slows you down because you have mass.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500
+        },
+        {
+          "frame_type": "diagram",
+          "text": "Mass vs Vacuum",
+          "speech": "On the left, a ball hits water drag. On the right, light travels in a vacuum with zero resistance.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500,
+          "diagram_type": "custom",
+          "visual_description": "Split screen: Bowling ball hitting water ripples vs a light beam moving straight through empty space."
+        }
+      ]
+    },
+    {
+      "title": "Meet the Photon",
+      "lang": "en-US",
+      "image_description": "photon particle diagram",
+      "image_show_confidencescore": 0.85,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "What is a Photon?",
+          "speech": "Light is made of tiny packets of energy called photons, which act like little energy snacks for the universe.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500
+        },
+        {
+          "frame_type": "question",
+          "text": "Weight of a photon?",
+          "speech": "Do you think a tiny photon has any weight at all?",
+          "tts_engine": "android",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
+          "frame_type": "reveal",
+          "text": "Zero mass",
+          "speech": "Actually, it is zero weight. Since photons have no mass, they have no drag to slow them down.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
@@ -269,55 +269,75 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ]
     },
     {
-      "title": "Real-World Applications",
+      "title": "Speed Comparison",
       "lang": "en-US",
-      "image_description": "ladder against wall triangle",
-      "image_show_confidencescore": 0.9,
+      "image_description": "speed comparison chart jet vs light",
+      "image_show_confidencescore": 0.7,
       "frames": [
         {
           "frame_type": "apply",
-          "text": "Ladders and Walls",
-          "speech": "Think of a ladder leaning against a wall. The ladder is the hypotenuse, and the ground and wall are the legs.",
+          "text": "Jet vs Light",
+          "speech": "A fast jet flies at two thousand kilometers per hour, but light is four hundred thousand times faster.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3500
         },
         {
-          "frame_type": "curiosity",
-          "text": "What if it changes?",
-          "speech": "What happens if we change the angle just a tiny bit? Does the rule still work?",
+          "frame_type": "joke",
+          "text": "The speedy friend",
+          "speech": "Light is like that one friend who shows up to the party before you even send the invite.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3000
+          "duration_ms": 1500
+        },
+        {
+          "frame_type": "diagram",
+          "text": "Comparison Scale",
+          "speech": "See the massive gap? The jet is a tiny dot, while light is already across the entire map.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000,
+          "diagram_type": "custom",
+          "visual_description": "A bar chart showing a tiny pixel for a Jet and a massive, screen-spanning bar for Light."
+        }
+      ]
+    },
+    {
+      "title": "The Cosmic Limit",
+      "lang": "en-US",
+      "image_description": "universal speed limit sign",
+      "image_show_confidencescore": 0.6,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "The universal limit",
+          "speech": "This is the cosmic speed limit, the fastest anything can go because nothing with mass can keep up.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500
         },
         {
           "frame_type": "summary",
-          "text": "Lesson Wrap-up",
-          "speech": "We learned that right triangles have a 90 degree corner, two legs, and a long hypotenuse. And with the formula, we can find any missing side length!",
+          "text": "Lesson Summary",
+          "speech": "Light is a weightless wave of energy that zips through space without drag. It is the universe's ultimate speed champion.",
           "tts_engine": "google",
           "voice_role": "assistant",
-          "duration_ms": 4500
+          "duration_ms": 3000
         }
       ],
       "followup_questions": [
         {
-          "question": "Can a triangle have two right angles?",
-          "speech": "Can a triangle have two right angles? Think about the shape it would make."
+          "question": "Can anything go faster?",
+          "speech": "If nothing with mass can go faster than light, what happens to objects that try?"
         },
         {
-          "question": "Why is the hypotenuse always opposite the right angle?",
-          "speech": "Why is the hypotenuse always opposite the right angle? Try drawing it."
+          "question": "What is a vacuum?",
+          "speech": "Why does light travel even faster in a vacuum than it does in air?"
         },
         {
-          "question": "What happens if the triangle is not a right triangle?",
-          "speech": "What happens if the triangle is not a right triangle? Does the formula still work?"
+          "question": "Light as a particle?",
+          "speech": "If light is a wave, how can it also be a particle, like a photon?"
         }
-      ],
-      "session_theme": "The Magic of Right Triangles",
-      "video_search_query": "Pythagoras theorem for kids",
-      "preferred_channels": [
-        "Khan Academy India",
-        "Physics Wallah"
       ]
     }
   ]

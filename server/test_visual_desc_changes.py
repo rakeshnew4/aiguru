@@ -41,7 +41,7 @@ check("DIAGRAM VISUAL RULE present",
 check("visual_description MANDATORY instruction present",
       "MANDATORY" in blackboard_prompt and "visual_description" in blackboard_prompt)
 
-check("labeled_diagram restriction present",
+check("anatomy restriction present",
       "NEVER for physics forces" in blackboard_prompt)
 
 check("PHYSICS/FORCE DIAGRAM RULE present",
@@ -195,7 +195,7 @@ for dtype, data in [
     ("triangle", {"labels": ["A", "B", "C"]}),
     ("cycle", {"steps": ["Evaporation", "Condensation", "Precipitation"]}),
     ("flow", {"steps": ["Input", "Process", "Output"]}),
-    ("labeled_diagram", {"center": "Cell", "parts": ["Nucleus", "Membrane"]}),
+    ("anatomy", {"center": "Cell", "parts": ["Nucleus", "Membrane"]}),
 ]:
     shapes = build_from_diagram_type(dtype, data)
     html = build_animated_svg(shapes) if shapes else ""

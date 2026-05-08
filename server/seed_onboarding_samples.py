@@ -335,7 +335,7 @@ SAMPLE_CELL = {
             _frame("diagram",
                 text="Plant cell — labeled parts",
                 speech="Here is a labeled diagram of a plant cell showing its main organelles — each part has a specific function.",
-                diagram_type="labeled_diagram",
+                diagram_type="anatomy",
                 data={"center": "Cell", "center_shape": "rect",
                       "parts": ["Nucleus", "Chloroplast", "Cell Wall", "Vacuole", "Mitochondria", "Cell Membrane"]}),
         ]),

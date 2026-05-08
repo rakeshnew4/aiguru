@@ -53,7 +53,7 @@ SUPPORTED_TYPES: dict[str, str] = {
     "flow":             "flowArrow",
     # Cycle, structure, comparison
     "cycle":            "cycle",
-    "labeled_diagram":  "labeled",
+    "anatomy":  "labeled",
     "anatomy":          "labeled",
     "cell":             "labeled",
     "cell_diagram":     "labeled",

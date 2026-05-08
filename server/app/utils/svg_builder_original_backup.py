@@ -1110,7 +1110,7 @@ def _render_cycle(data: dict) -> list:
     return shapes
 
 
-def _render_labeled_diagram(data: dict) -> list:
+def _render_anatomy(data: dict) -> list:
     """
     Anatomy / structure diagram — a central shape with radiating dashed
     pointer lines to labelled parts.  Great for cells, atoms, machines.
@@ -1806,10 +1806,10 @@ _RENDERERS = {
     "flow":            _render_flow,
     "comparison":      _render_comparison,
     "cycle":           _render_cycle,
-    "labeled_diagram": _render_labeled_diagram,
-    "anatomy":         _render_labeled_diagram,   # alias
-    "cell":            _render_labeled_diagram,   # alias
-    "cell_diagram":    _render_labeled_diagram,   # alias
+    "anatomy": _render_anatomy,
+    "anatomy":         _render_anatomy,   # alias
+    "cell":            _render_anatomy,   # alias
+    "cell_diagram":    _render_anatomy,   # alias
     # ── Science ───────────────────────────────────────────────────────────────
     "atom":            _render_atom,
     "solar_system":    _render_solar_system,

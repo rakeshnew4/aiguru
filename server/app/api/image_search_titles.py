@@ -44,6 +44,11 @@ _FORCE_DIAGRAM_KEYWORDS = {
 }
 _BASIC_GEOMETRY_TYPES = {"triangle", "polygon", "angle", "rectangle", "square"}
 
+# Diagram types that produce circular/radial node-in-ring layouts.
+# These look like "boxes in a circle" which the user doesn't want.
+# Skip JS engine + SMIL for these and go straight to LLM SVG instead.
+_CIRCULAR_LAYOUT_TYPES = {"cycle", "labeled"}
+
 
 def _has_force_description(visual_desc: str) -> bool:
     lower = visual_desc.lower()
@@ -543,10 +548,12 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, a
                             logger.info("Built atom JS animation for step '%s'", step_title)
 
                     # ── JS engine: procedural, continuous animations ───────────
-                    # Handles: wave, solar_system, cycle, flow, plant, sun,
-                    # labeled_diagram, cell, comparison, etc.
+                    # Handles: wave, solar_system, flow, plant, sun,
+                    # anatomy, cell, comparison, etc.
                     # Runs forever via requestAnimationFrame — no SMIL freeze.
-                    if not html:
+                    # Skip circular layout types (cycle, labeled) — they produce
+                    # "boxes in a circle" which is visually unhelpful.
+                    if not html and d_type.lower() not in _CIRCULAR_LAYOUT_TYPES:
                         html = build_js_diagram_html(d_type, d_data)
                         if html:
                             logger.info(
@@ -555,7 +562,8 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, a
                             )
 
                     # ── LLM SVG: complex anatomy / structures not in engine ───
-                    # Heart chambers, eye cross-section, circuit schematics, etc.
+                    # Also handles circular layout types (cycle, labeled) —
+                    # LLM produces a meaningful visual instead of boxes-in-a-ring.
                     if not html:
                         html = build_llm_svg(
                             diagram_type=d_type,
@@ -564,9 +572,15 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, a
                             speech=frame_speech,
                             visual_description=visual_desc,
                         )
+                        if html and d_type.lower() in _CIRCULAR_LAYOUT_TYPES:
+                            logger.info(
+                                "Built LLM SVG (circular type=%s redirected) for step '%s'",
+                                d_type, step_title,
+                            )
 
                     # ── Fallback: Python SMIL builder (geometric, no LLM) ────
-                    if not html:
+                    # Skip for circular layout types — no circular SMIL fallback.
+                    if not html and d_type.lower() not in _CIRCULAR_LAYOUT_TYPES:
                         shapes = build_from_diagram_type(d_type, d_data)
                         if shapes:
                             html = build_animated_svg(shapes, static=not animations_enabled)

@@ -42,6 +42,7 @@ def extract_json_safe_traced(text):
     except json.JSONDecodeError as e:
         print(f"  ❌ Fast path failed: {e}")
 
+
     # Trailing comma path
     try:
         r = json.loads(_remove_trailing_commas(stripped))

@@ -1,4 +1,4 @@
-=== BB_SVG_BUILDER | 2026-04-30 07:38:07 | session=none ===
+=== BB_SVG_BUILDER | 2026-05-08 13:55:14 | session=none ===
 
 === SYSTEM ===
 You are an SVG diagram artist for an educational app. Draw accurate diagrams as raw SVG.
@@ -30,13 +30,15 @@ DRAW REAL STRUCTURES (never flowcharts with boxes/arrows):
 === PROMPT ===
 Draw this educational diagram as SVG:
 
-  Diagram type : PATH 2
-  Topic/title  : Oxygen Refresh
-  Context      : ఈ డయాగ్రమ్‌లో చూడండి, రక్తం ఎలా ఫ్రెష్ ఆక్సిజన్‌ని తీసుకుంటుందో.
+  Diagram type : custom
+  Topic/title  : Speed Comparison
+  Context      : See the massive gap? The jet is a tiny dot, while light is already across the entire map.
   Data hints   : none
+  Visual layout: A bar chart showing a tiny pixel for a Jet and a massive, screen-spanning bar for Light.
+  Follow this layout exactly — positions, arrows, and labels as described above.
 
-Draw "Oxygen Refresh" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
+Draw "Speed Comparison" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
 Animate each part appearing sequentially.  Output ONLY the <svg> element.
 
 === RESPONSE ===
-<svg viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#1A2B1A"/><text x="200" y="25" text-anchor="middle" font-family="serif" fill="#F0EDD0" font-size="13" font-weight="bold" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0s"/>Oxygen Refresh</text><path d="M150 150 A 60 60 0 1 0 270 150 A 60 60 0 1 0 150 150" fill="#81C784" fill-opacity="0.25" stroke="#81C784" stroke-width="2" stroke-dasharray="377" stroke-dashoffset="377"><animate attributeName="stroke-dashoffset" values="377;0" dur="0.6s" fill="freeze" begin="0.3s"/></path><path d="M120 180 C 120 120, 300 120, 300 180 C 300 240, 120 240, 120 180" fill="#FF6B6B" fill-opacity="0.25" stroke="#FF6B6B" stroke-width="2" stroke-dasharray="600" stroke-dashoffset="600"><animate attributeName="stroke-dashoffset" values="600;0" dur="0.6s" fill="freeze" begin="0.9s"/></path><circle cx="160" cy="190" r="12" fill="#FF6B6B" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.5s"/></circle><circle cx="210" cy="200" r="12" fill="#FF6B6B" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.8s"/></circle><circle cx="260" cy="190" r="12" fill="#FF6B6B" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="2.1s"/></circle><line x1="210" y1="150" x2="210" y2="180" stroke="#4FC3F7" stroke-width="2" stroke-dasharray="30" stroke-dashoffset="30"><animate attributeName="stroke-dashoffset" values="30;0" dur="0.6s" fill="freeze" begin="2.4s"/></line><text x="210" y="140" text-anchor="middle" font-family="serif" fill="#4FC3F7" font-size="11" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="2.7s"/>Oxygen (O2)</text><text x="80" y="150" text-anchor="middle" font-family="serif" fill="#81C784" font-size="11" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="3.0s"/>Alveolus</text><text x="330" y="220" text-anchor="middle" font-family="serif" fill="#FF6B6B" font-size="11" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="3.3s"/>Capillary</text><text x="210" y="260" text-anchor="middle" font-family="serif" fill="#F0EDD0" font-size="11" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="3.6s"/>Blood Flow</text></svg>
+<svg viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#1A2B1A"/><text x="200" y="30" font-family="serif" fill="#F0EDD0" font-size="13" font-weight="bold" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0s"/>Speed Comparison</text><path d="M40 120 L50 120 L50 130 L40 130 Z" fill="#FF6B6B" fill-opacity="0.25" stroke="#FF6B6B" stroke-width="2" stroke-dasharray="40" stroke-dashoffset="40"><animate attributeName="stroke-dashoffset" values="40;0" dur="0.6s" fill="freeze" begin="0.3s"/></path><text x="45" y="110" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0.6s"/>Jet</text><path d="M40 200 L360 200 L360 210 L40 210 Z" fill="#FFD700" fill-opacity="0.25" stroke="#FFD700" stroke-width="2" stroke-dasharray="320" stroke-dashoffset="320"><animate attributeName="stroke-dashoffset" values="320;0" dur="0.6s" fill="freeze" begin="0.9s"/></path><text x="200" y="190" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.2s"/>Light Speed</text><path d="M40 220 L360 220" stroke="#8BAB8B" stroke-width="1" stroke-dasharray="4 4" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.5s"/></path><text x="200" y="240" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.5s"/>Distance in 1 sec</text></svg>

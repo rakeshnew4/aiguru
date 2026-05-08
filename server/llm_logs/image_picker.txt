@@ -1,4 +1,4 @@
-=== IMAGE_PICKER | 2026-05-08 12:18:27 | session=none ===
+=== IMAGE_PICKER | 2026-05-08 13:55:15 | session=none ===
 
 === PROMPT ===
 You are selecting the best matching Wikimedia Commons image for each blackboard lesson step.
@@ -8,51 +8,51 @@ When a Visual layout is provided, prefer images that match the described visual 
 Output ONLY valid JSON mapping step index (string key) to the EXACT title string or null.
 
 Steps needing images:
-[0] Step "Defining the Right Triangle" — topic: "right triangle geometry shape"
-[1] Step "The Formula Explained" — topic: "right triangle labeled a b c"
-[2] Step "Visualizing the Squares" — topic: "pythagorean theorem squares diagram"
-[3] Step "Solving for the Hypotenuse" — topic: "math calculation 3 4 5 triangle"
-[4] Step "Real-World Applications" — topic: "ladder against wall triangle"
+[0] Step "What is Light?" — topic: "electromagnetic radiation wave diagram"
+[1] Step "Mass and Drag" — topic: "object moving through water vs vacuum"
+[2] Step "Meet the Photon" — topic: "photon particle diagram"
+[3] Step "Speed Comparison" — topic: "speed comparison chart jet vs light"
+[4] Step "The Cosmic Limit" — topic: "universal speed limit sign"
 
 Available Wikimedia titles:
-- Academ two successive gnomons of isosceles right triangle.svg
-- Centroid of a Triangle.png
-- FS RC bw.png
-- FS RQ.png
-- FS RQ dia.png
-- Triangle-equilateral.svg
-- TriangleArrow-Right.svg
-- White triangle right.svg
-- Incircle of orthogonal triangle el.svg
-- Pseudo right triangle explanation.svg
-- Right Angled Triangle in Assamese.svg
-- Right triangle circumcenter.svg
-- Right triangle inscribed gr.svg
-- Right triangle isosceles el.svg
-- Simple right triangle el.svg
-- Triangle-right-abchpq.svg
-- Chineese Pythagorean theorem 2.PNG
-- Isosceles right triangle with legs length 1.svg
-- Measurement of Horizon Drop comparing use of Pythagorean Theorem to 8 in per mile squared "rule".jpg
-- Pythagoras algebraic.svg
-- Pythagorean-theorem.svg
-- Pythagorean.svg
-- Pythagorean theorem - Ani.gif
-- Square root of 2 triangle.svg
-- FS CE dia.png
-- FS CRCCC dia.png
-- FS CRCC dia.png
-- FS CRC dia.png
-- FS EC(2) dia.png
-- FS EC(3) dia.png
+- Atmospheric electromagnetic opacity ja.svg
+- Atmospheric electromagnetic opacity mk.svg
+- Dipole xmting antenna animation 4 408x318x150ms.gif
+- EM Spectrum Properties edit.svg
+- Electromagnetic waves using integral Maxwell equations.svg
+- Elementary-particle-interactions-is.svg
+- Elementary particle interactions-it (original).svg
+- Elementary particle interactions-pl.svg
+- Elementary particle interactions.svg
+- Feynman particle - photon - 200 px.svg
+- Photon-photon scattering.svg
+- Three jet photon jets.png
+- Three jet photon string.png
+- A nonstandard 9½ MPH speed limit sign in Cougar, Washington.jpg
+- Canadian Rail Speed Limit (65).svg
+- HGV-Bus Speed Limit Sign.jpg
+- Kübekháza 2021-03-02 city limit sign, 40 km-h speed limit road sign 01.jpg
+- Rail Speed Limit Sign LRC (100).svg
+- Rail Speed Limit Sign TURBO (85).svg
+- Speed Limit 20 sign on Commercial Drive, Southbridge, Massachusetts.jpg
+- Variable speed limit digital speed limit sign.jpeg
+- EM Spectrum Properties edit fa.svg
+- EM Spectrum Properties edit tr.svg
+- EM Spectrum Properties es.svg
+- Electromagnetic-Spectrum mk.svg
+- Electromagnetic spectrum -an.svg
+- Electromagnetic spectrum -eng.svg
+- Spectre.svg
+- Light-wave-fr.png
+- Light-wave clear.svg
 
 Output example: {"0": "Photosynthesis diagram.svg", "3": null, "5": "Newton laws.png"}
 
 === RESPONSE ===
 {
-  "0": "Simple right triangle el.svg",
-  "1": "Triangle-right-abchpq.svg",
-  "2": "Pythagorean-theorem.svg",
-  "3": "Pythagoras algebraic.svg",
+  "0": "Light-wave clear.svg",
+  "1": null,
+  "2": "Feynman particle - photon - 200 px.svg",
+  "3": null,
   "4": null
 }

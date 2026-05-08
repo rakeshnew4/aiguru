@@ -2376,6 +2376,7 @@ class BlackboardActivity : AppCompatActivity() {
                     showScoreCard()
                 } else if (isLastFrameOverall) {
                     showLessonCompleteNotif()
+                    showCompletionCard()
                 } else {
                     advanceFrame()
                 }
@@ -3163,6 +3164,7 @@ class BlackboardActivity : AppCompatActivity() {
                             showScoreCard()
                         } else if (isLastFrameOverall) {
                             showLessonCompleteNotif()
+                            showCompletionCard()
                         } else {
                             advanceFrame()
                         }

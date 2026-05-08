@@ -104,7 +104,7 @@ _SCHEMAS: dict[str, dict[str, str]] = {
             "Points must be parallel in structure (same attributes compared)."
         ),
     },
-    "labeled_diagram": {
+    "anatomy": {
         "schema": (
             '{"center":"Central Structure","center_shape":"circle",'
             '"parts":["Part1","Part2","Part3","Part4","Part5"]}'

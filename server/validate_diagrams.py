@@ -205,7 +205,7 @@ TESTS = [
     # 10. Labeled diagram (anatomy style)
     {
         "name": "Labeled diagram cell parts",
-        "dtype": "labeled_diagram",
+        "dtype": "anatomy",
         "data": {
             "center": "Cell",
             "center_shape": "circle",

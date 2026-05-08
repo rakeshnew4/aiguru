@@ -12,7 +12,7 @@ Usage:
     from app.utils.svg_llm_builder import build_llm_svg
 
     html = build_llm_svg(
-        diagram_type = "labeled_diagram",
+        diagram_type = "anatomy",
         data         = {"label": "Heart", "parts": ["Left Ventricle", ...]},
         topic        = "The Human Heart",
         speech       = "The heart has four chambers...",
@@ -154,7 +154,7 @@ def build_llm_svg(
 
     Parameters
     ----------
-    diagram_type        : str   e.g. "labeled_diagram", "anatomy", "flow"
+    diagram_type        : str   e.g. "anatomy", "anatomy", "flow"
     data                : dict  enriched diagram data from the lesson plan
     topic               : str   step title — tells the LLM what to draw
     speech              : str   frame speech text — gives anatomical context

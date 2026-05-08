@@ -39,7 +39,7 @@ from app.utils.svg_renderers import (
     _render_flow,
     _render_comparison,
     _render_cycle,
-    _render_labeled_diagram,
+    _render_anatomy,
 )
 from app.utils.svg_renderers_sci import (
     _render_atom,
@@ -80,10 +80,10 @@ _RENDERERS = {
     "flow":            _render_flow,
     "comparison":      _render_comparison,
     "cycle":           _render_cycle,
-    "labeled_diagram": _render_labeled_diagram,
-    "anatomy":         _render_labeled_diagram,
-    "cell":            _render_labeled_diagram,
-    "cell_diagram":    _render_labeled_diagram,
+    "anatomy": _render_anatomy,
+    "anatomy":         _render_anatomy,
+    "cell":            _render_anatomy,
+    "cell_diagram":    _render_anatomy,
     # Science
     "atom":            _render_atom,
     "solar_system":    _render_solar_system,
