@@ -1,39 +1,83 @@
-=== BB_ENRICHMENT | 2026-04-30 10:39:09 | session=none ===
+=== BB_ENRICHMENT | 2026-05-08 12:18:25 | session=none ===
 
 === SYSTEM ===
 You are a diagram data generator for an educational app. Output ONLY a valid JSON object — no text, no markdown, no explanation.
 
 === PROMPT ===
-Topic: "Newton's Second Law"
-Teaching content: "Imagine pushing an empty shopping cart versus one full of groceries. The full one has more mass, so you need more force to speed it up."
-Diagram type: labeled_diagram
+Topic: "Visualizing the Squares"
+Teaching content: "Imagine building a square floor out of blocks on each side. The two smaller floors perfectly fill the big floor space."
+Diagram type: triangle
 Color keys: primary (chalk white), label (yellow), secondary (sky blue), highlight (red), teal, orange, green, pink, purple, gold, coral, mint
-Schema: {"center":"Central Structure","center_shape":"circle","parts":["Part1","Part2","Part3","Part4","Part5"]}
-Hint: center: the main structure name. parts: 3-7 component labels, clockwise from top. center_shape: circle (biology cells), rect (mechanical parts).
+Schema: {"labels":["A","B","C"],"show_height":false,"show_incircle":false,"show_circumcircle":false}
+Hint: show_height: true when Pythagoras or altitude is being taught. Labels can be angle names or side lengths. show_incircle/circumcircle: true only when explicitly relevant.
 Existing data (improve/complete this): {}
 
 Generate the BEST data JSON for this diagram. Fill ALL keys. Be accurate to the topic. Reply with ONLY the JSON object.
 
 === RESPONSE ===
 {
-  "center": "Newton's Second Law (F=ma)",
-  "center_shape": "circle",
-  "parts": [
-    "Force (F): Push applied",
-    "Mass (m): Full cart",
-    "Acceleration (a): Speed change",
-    "Mass (m): Empty cart",
-    "Force (F): Resistance"
+  "labels": [
+    "a",
+    "b",
+    "c"
   ],
-  "colors": {
-    "center": "primary",
-    "parts": [
-      "highlight",
-      "secondary",
-      "teal",
-      "orange",
-      "green"
-    ],
-    "labels": "label"
-  }
+  "show_height": true,
+  "show_incircle": false,
+  "show_circumcircle": false,
+  "shapes": [
+    {
+      "type": "triangle",
+      "points": [
+        [0, 0],
+        [3, 0],
+        [0, 4]
+      ],
+      "stroke": "chalk white",
+      "fill": "sky blue",
+      "opacity": 0.6
+    },
+    {
+      "type": "square",
+      "points": [
+        [0, 0],
+        [-4, 0],
+        [-4, 4],
+        [0, 4]
+      ],
+      "label": "a²",
+      "fill": "orange",
+      "stroke": "chalk white"
+    },
+    {
+      "type": "square",
+      "points": [
+        [0, 0],
+        [0, -3],
+        [3, -3],
+        [3, 0]
+      ],
+      "label": "b²",
+      "fill": "green",
+      "stroke": "chalk white"
+    },
+    {
+      "type": "square",
+      "points": [
+        [0, 4],
+        [3, 0],
+        [7, 3],
+        [4, 7]
+      ],
+      "label": "c²",
+      "fill": "red",
+      "stroke": "chalk white"
+    }
+  ],
+  "annotations": [
+    {
+      "text": "a² + b² = c²",
+      "position": [2, 5],
+      "color": "yellow"
+    }
+  ]
 }

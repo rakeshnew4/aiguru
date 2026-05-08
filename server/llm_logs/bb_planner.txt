@@ -1,20 +1,20 @@
-=== BB_PLANNER | 2026-04-30 10:38:57 | session=v6LtCBtv_15aaa4fd ===
+=== BB_PLANNER | 2026-05-08 12:18:11 | session=KkhkqOQI_b51becac ===
 
 === PROMPT ===
 You are a lesson analyst for a personal visual AI tutor responding to a student's SPECIFIC question.
 Analyze exactly what the student is asking and return a focused lesson plan.
 Output ONLY valid JSON — nothing else.
 
-Student question (answer THIS specifically): "Topic: Newton's Laws of Motion
-Lesson title: Newton's Laws of Motion
-Category: science
+Student question (answer THIS specifically): "Topic: Pythagoras Theorem
+Lesson title: The Magic of Right Triangles
+Category: math
 
+This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
-CONTINUATION — DO NOT repeat anything already taught.
-Student's original question: Newton's Laws of Motion
-
-Steps ALREADY TAUGHT (do NOT repeat or reintroduce these):
-  1. Inertia: First Law — "Ever wonder why y"
+Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
+Steps to generate in this batch:
+- Defining the Right Triangle
+- "
 Chapter context (excerpt): ""
 Recent conversation (last 3 turns):
   (No prior conversation — this is the student's first question)
@@ -49,21 +49,68 @@ Rules:
 
 === RESPONSE ===
 {
-  "topic_type": "science_physics",
-  "scope": "medium",
+  "topic_type": "math_geometry",
+  "scope": "simple",
   "key_concepts": [
-    "Newton's Second Law",
-    "Force equals mass times acceleration",
-    "Relationship between force and motion"
+    "Right Angle",
+    "Hypotenuse",
+    "Legs of a Triangle"
   ],
   "steps_count": 5,
   "image_search_terms": [
-    "Newton second law diagram",
-    "force mass acceleration formula"
+    "right triangle diagram",
+    "hypotenuse and legs of right triangle"
   ],
-  "question_focus": "The student wants to understand Newton's Second Law of Motion and how force, mass, and acceleration relate to each other.",
-  "question_type": "conceptual",
-  "prior_knowledge": "The student has already learned about Newton's First Law (Inertia).",
-  "hook_question": "Why is it much harder to push a loaded shopping cart than an empty one?",
-  "continuation_topic": "Newton's Third Law of Motion"
+  "question_focus": "The student wants a foundational introduction to identifying right triangles and their specific parts (hypotenuse and legs).",
+  "question_type": "definition",
+  "prior_knowledge": "",
+  "hook_question": "Have you ever wondered why construction workers use a 3-4-5 triangle to make sure a corner is perfectly square?",
+  "continuation_topic": "Calculating the Pythagorean Theorem",
+  "lesson_plan": [
+    {
+      "step_number": 1,
+      "title": "The Perfect Corner",
+      "frames": [
+        "Visual of a square corner in a building frame.",
+        "Explanation that a right triangle is defined by one 90-degree angle.",
+        "Highlighting the 'L' shape that forms the right angle."
+      ]
+    },
+    {
+      "step_number": 2,
+      "title": "Identifying the Right Angle",
+      "frames": [
+        "Visual of a triangle with a square symbol in the corner.",
+        "Explanation that the square symbol is the universal sign for 90 degrees.",
+        "Briefly show examples of non-right triangles to contrast."
+      ]
+    },
+    {
+      "step_number": 3,
+      "title": "Meet the Legs",
+      "frames": [
+        "Highlight the two sides that touch the right angle.",
+        "Label these sides as 'Leg A' and 'Leg B'.",
+        "Explain that these sides 'support' the right angle."
+      ]
+    },
+    {
+      "step_number": 4,
+      "title": "The Hypotenuse",
+      "frames": [
+        "Highlight the longest side opposite the right angle.",
+        "Label this side as the 'Hypotenuse'.",
+        "Visual trick: The right angle points directly at the hypotenuse."
+      ]
+    },
+    {
+      "step_number": 5,
+      "title": "Summary Check",
+      "frames": [
+        "Full diagram showing Leg A, Leg B, and Hypotenuse.",
+        "Quick quiz: Can you point to the hypotenuse?",
+        "Final encouragement: You've mastered the anatomy of a right triangle!"
+      ]
+    }
+  ]
 }

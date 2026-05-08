@@ -1,4 +1,4 @@
-=== IMAGE_PICKER | 2026-04-30 10:39:11 | session=none ===
+=== IMAGE_PICKER | 2026-05-08 12:18:27 | session=none ===
 
 === PROMPT ===
 You are selecting the best matching Wikimedia Commons image for each blackboard lesson step.
@@ -8,34 +8,51 @@ When a Visual layout is provided, prefer images that match the described visual 
 Output ONLY valid JSON mapping step index (string key) to the EXACT title string or null.
 
 Steps needing images:
-[0] Step "Newton's Second Law" — topic: "force equals mass times acceleration diagram"
-[1] Step "The Third Law" — topic: "action and reaction forces diagram"
-[2] Step "Real-world Examples" — topic: "person on skateboard pushing wall"
-[3] Step "Calculating Force" — topic: "math equation F equals ma"
-[4] Step "Summary" — topic: "Newton's laws summary visual"
+[0] Step "Defining the Right Triangle" — topic: "right triangle geometry shape"
+[1] Step "The Formula Explained" — topic: "right triangle labeled a b c"
+[2] Step "Visualizing the Squares" — topic: "pythagorean theorem squares diagram"
+[3] Step "Solving for the Hypotenuse" — topic: "math calculation 3 4 5 triangle"
+[4] Step "Real-World Applications" — topic: "ladder against wall triangle"
 
 Available Wikimedia titles:
-- AASHTOSSD.png
-- Forces 2 carts connected by string.svg
-- Reaction support avec et sans adherence.svg
-- Rescue from Above -- intro for Alaska paracargo (22552415147).jpg
-- A peep into Brest with a navel review! - drawn & etch'd by R. Newton. LCCN2003675459.jpg
-- La Raqueta y el Polvo.jpg
-- Bloque en plano inclinado con roce.svg
-- Bloque en plano inclinado con roce amarrado a bloque colgante.svg
-- Carrito de montaña rusa.svg
-- Container en plano inclinado con roce tirado por dos fuerzas.svg
-- Newton's second law 3F=2ma.png
-- Newton's third law 1D.png
-- On the Theory of Relativity - Mass, Force and Energy (Robert Daniel Carmichael).djvu
+- Academ two successive gnomons of isosceles right triangle.svg
+- Centroid of a Triangle.png
+- FS RC bw.png
+- FS RQ.png
+- FS RQ dia.png
+- Triangle-equilateral.svg
+- TriangleArrow-Right.svg
+- White triangle right.svg
+- Incircle of orthogonal triangle el.svg
+- Pseudo right triangle explanation.svg
+- Right Angled Triangle in Assamese.svg
+- Right triangle circumcenter.svg
+- Right triangle inscribed gr.svg
+- Right triangle isosceles el.svg
+- Simple right triangle el.svg
+- Triangle-right-abchpq.svg
+- Chineese Pythagorean theorem 2.PNG
+- Isosceles right triangle with legs length 1.svg
+- Measurement of Horizon Drop comparing use of Pythagorean Theorem to 8 in per mile squared "rule".jpg
+- Pythagoras algebraic.svg
+- Pythagorean-theorem.svg
+- Pythagorean.svg
+- Pythagorean theorem - Ani.gif
+- Square root of 2 triangle.svg
+- FS CE dia.png
+- FS CRCCC dia.png
+- FS CRCC dia.png
+- FS CRC dia.png
+- FS EC(2) dia.png
+- FS EC(3) dia.png
 
 Output example: {"0": "Photosynthesis diagram.svg", "3": null, "5": "Newton laws.png"}
 
 === RESPONSE ===
 {
-  "0": "Newton's second law 3F=2ma.png",
-  "1": "Newton's third law 1D.png",
-  "2": null,
-  "3": null,
+  "0": "Simple right triangle el.svg",
+  "1": "Triangle-right-abchpq.svg",
+  "2": "Pythagorean-theorem.svg",
+  "3": "Pythagoras algebraic.svg",
   "4": null
 }

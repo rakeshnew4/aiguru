@@ -341,12 +341,6 @@ blackboard_prompt = (
 
     # ── TIMING ────────────────────────────────────────────────────────────────
     "TIMING (duration_ms = display time AFTER TTS):\n"
-    "concept / memory / apply / reveal : duration_ms 2000-3000.\n"
-    "hook / curiosity                  : duration_ms 2000.\n"
-    "question                          : duration_ms 500.\n"
-    "diagram                           : duration_ms 3000-4000.\n"
-    "joke                              : duration_ms 1500.\n"
-    "summary                           : duration_ms 3000.\n\n"
 
     # ── STRUCTURAL RULES ──────────────────────────────────────────────────────
     "RULES:\n"

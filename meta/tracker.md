@@ -1186,3 +1186,16 @@ Books with ALL 404 (English/SS for Class 6/9) kept as-is — likely IP-blocked f
 
 **Files read:** `BlackboardActivity.kt:490-515, 1548-1735, 2370-2448`; `chat/BlackboardGenerator.kt:1-55, 228-330`
 **Files changed:** `app/src/main/java/com/aiguruapp/student/BlackboardActivity.kt`, `app/src/main/java/com/aiguruapp/student/chat/BlackboardGenerator.kt`
+
+## 2026-05-08
+
+**Asked:** Is there any 2-second pause in TTS while speaking?
+
+**Finding:** No hardcoded 2-second pause in TTS speaking flow.
+- The 3× `postDelayed(2000)` calls in `BlackboardActivity.kt` are all non-TTS: lines 617-619 and 641-643 redirect to SubscriptionActivity on credits exhaustion; line 3082-3086 is `showLessonCompleteNotif()` banner visibility.
+- `makeTtsCallback` → `continueAfterSpeech()` calls `advanceFrame()` immediately — comment: "Advance immediately after speech ends/fails — no pauses."
+- `advanceFrame()` → `showFrame()` → `speakFrame()` has zero artificial delays.
+- Only potential source of perceived pause: `BbAiTtsEngine.play()` cache miss path waits up to **8s** (`waitForKey(key, timeoutMs=8_000L)`, polls every 100ms) for preloaded audio. On slow network this could manifest as ~1-3s silence before speech starts.
+
+**Files read:** `BlackboardActivity.kt` (lines 605-644, 930-993, 1060-1112, 2301-2430, 3082-3218); `BbAiTtsEngine.kt` (full: lines 98-232); `AiTtsProvider.kt` (no delays found); `TextToSpeechManager.kt` (no delays found)
+**Files changed:** none

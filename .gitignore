@@ -156,3 +156,9 @@ google_tts_serviceaccount.json
 google_service_youtube.json
 server/.env.bak.*
 **/*.pyc
+server/llm_logs/*
+server/bb_presentize.json
+server/response.json
+server/response.txt
+*.svg
+*.png

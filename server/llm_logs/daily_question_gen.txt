@@ -1,11 +1,11 @@
-=== DAILY_QUESTION_GEN | 2026-04-30 04:45:56 | session=none ===
+=== DAILY_QUESTION_GEN | 2026-05-08 11:19:13 | session=none ===
 
 === PROMPT ===
 Generate exactly 3 engaging daily learning questions for a student.
 
 Student's top subjects: General, Biology, Neuroscience
 Recent topics studied: Bioluminescence, Cognitive Science, Photosynthesis, Explain Heart Pumping, Water Cycle, Atom, DNA, Why do some deep-sea creatures create their own light in total darkness?, How do our brains distinguish between a real memory and a vivid dream?, Newton's Laws of Motion
-Topics already used today (AVOID these): Botany, Sensory Systems, Earth Science, Chemistry, Neuroplasticity, Cardiology, Nuclear Physics, Chronobiology, Electromagnetism, Animal Behavior
+Topics already used today (AVOID these): Cardiovascular System, Biomimicry, Neuroanatomy, Physics, Cardiovascular Physiology, Neuroplasticity, Photobiology, Sleep Mechanisms, Consciousness, Evolutionary Adaptation
 
 Rules:
 - Each question must be thought-provoking and curiosity-driven (not "what is X")
@@ -27,24 +27,24 @@ hook: one-line real-world curiosity fact related to the question (under 12 words
 === RESPONSE ===
 [
   {
-    "question": "Why do some animals evolve to be transparent instead of camouflaged?",
+    "question": "Why do plants change the color of their leaves in autumn?",
     "subject": "Biology",
-    "topic": "Evolutionary Adaptation",
+    "topic": "Botany",
     "difficulty": 1,
-    "hook": "Glass frogs are so transparent you can see their beating hearts."
+    "hook": "Leaves contain hidden colors revealed only when chlorophyll fades away."
   },
   {
-    "question": "How does the brain decide which memories are worth keeping forever?",
+    "question": "How does the brain decide which memories are important enough to keep?",
     "subject": "Neuroscience",
     "topic": "Memory Consolidation",
     "difficulty": 2,
-    "hook": "Your hippocampus acts like a librarian for your life experiences."
+    "hook": "Your brain constantly deletes trivial information to save precious storage space."
   },
   {
-    "question": "What would happen to human metabolism if we could perform photosynthesis?",
+    "question": "What would happen to Earth's atmosphere if all photosynthesis suddenly stopped?",
     "subject": "General Science",
-    "topic": "Bioenergetics",
+    "topic": "Ecology",
     "difficulty": 3,
-    "hook": "Some sea slugs can actually steal chloroplasts to survive on sunlight."
+    "hook": "Plants are the primary reason our atmosphere contains breathable oxygen."
   }
 ]

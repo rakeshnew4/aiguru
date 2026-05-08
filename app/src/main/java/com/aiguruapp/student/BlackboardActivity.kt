@@ -825,7 +825,7 @@ class BlackboardActivity : AppCompatActivity() {
             }
 
             // ── Step 1: Get lesson outline from LLM ────────────────────────
-            runOnUiThread { loadingText.text = "📖 Reading Your input…" }
+            runOnUiThread { loadingText.text = "Planning lesson…" }
             BlackboardGenerator.callIntent(
                 topic            = message,
                 totalSteps       = totalStepsTarget,
@@ -836,7 +836,7 @@ class BlackboardActivity : AppCompatActivity() {
                     // ── Step 2: Generate first chunk ───────────────────────
                     val firstTitles = intent_.stepTitles.take(BlackboardGenerator.CHUNK_SIZE)
                     val isOnlyChunk = totalStepsTarget <= BlackboardGenerator.CHUNK_SIZE
-                    runOnUiThread { loadingText.text = "Readin your input…" }
+                    runOnUiThread { loadingText.text = "Building lesson…" }
                     BlackboardGenerator.generateChunk(
                         topic            = message,
                         intent           = intent_,
@@ -848,28 +848,6 @@ class BlackboardActivity : AppCompatActivity() {
                         bbFeatures       = sessionConfig.toServerFlags(),
                         onStatus = { statusMsg, _ ->
                             runOnUiThread { loadingText.text = statusMsg }
-                        },
-                        onFirstStep = { firstSteps ->
-                            // Step 1 is ready — show immediately while remaining steps generate
-                            lifecycleScope.launch(Dispatchers.Main) {
-                                if (contentGroup.visibility == View.VISIBLE) return@launch // already shown
-                                steps = firstSteps
-                                computedFontSp = computeFontSize(steps)
-                                progressSeekBar.max = (totalStepsTarget * framesPerStepTarget).coerceAtLeast(firstSteps.sumOf { it.frames.size })
-                                loadingGroup.visibility = View.GONE
-                                contentGroup.visibility = View.VISIBLE
-                                saveSessionBtn.visibility = View.VISIBLE
-                                showAskFabOnly()
-                                if (isTeacherMode) publishLessonBtn.visibility = View.VISIBLE
-                                buildDots()
-                                setupBoard()
-                                preloadUpcoming(0, 0, count = 3)
-                                showFrame(0, 0)
-                                showFirstTimerTipsIfNeeded()
-                                if (!isTeacherMode && intent.hasExtra(EXTRA_TASK_ID)) {
-                                    bbStartTimeMs = System.currentTimeMillis()
-                                }
-                            }
                         },
                         onSuccess = { generated ->
                             if (recordSession && !userId.isNullOrBlank()) {
@@ -892,7 +870,6 @@ class BlackboardActivity : AppCompatActivity() {
                                 lifecycleScope.launch(Dispatchers.Main) { updateBbQuotaChip(userId) }
                             }
                             lifecycleScope.launch(Dispatchers.Main) {
-                                val alreadyStarted = contentGroup.visibility == View.VISIBLE
                                 steps = generated
                                 // Cache by messageId so re-opening the same message skips re-generation
                                 if (!msgCacheKey.isNullOrBlank()) {
@@ -903,29 +880,20 @@ class BlackboardActivity : AppCompatActivity() {
                                 computedFontSp = computeFontSize(steps)
                                 chunksCompleted = 1
         progressSeekBar.max = (totalStepsTarget * framesPerStepTarget).coerceAtLeast(generated.sumOf { it.frames.size })
-                                if (alreadyStarted) {
-                                    // Step 1 was already shown via onFirstStep — just update navigation
-                                    // for steps 2-N that are now available. Don't reset playback.
-                                    buildDots()
-                                    updateCounterAndDots()
-                                    incrementLocalBbCounter()
-                                } else {
-                                    // Normal path (no early first_step) — show everything now
-                                    loadingGroup.visibility = View.GONE
-                                    contentGroup.visibility = View.VISIBLE
-                                    saveSessionBtn.visibility = View.VISIBLE
-                                    showAskFabOnly()
-                                    if (isTeacherMode) publishLessonBtn.visibility = View.VISIBLE
-                                    buildDots()
-                                    setupBoard()
-                                    preloadUpcoming(0, 0, count = 3)
-                                    showFrame(0, 0)
-                                    incrementLocalBbCounter()
-                                    showFirstTimerTipsIfNeeded()
-                                    // Record lesson start time — actual read tracking happens step-by-step in showFrame()
-                                    if (!isTeacherMode && intent.hasExtra(EXTRA_TASK_ID)) {
-                                        bbStartTimeMs = System.currentTimeMillis()
-                                    }
+                                loadingGroup.visibility = View.GONE
+                                contentGroup.visibility = View.VISIBLE
+                                saveSessionBtn.visibility = View.VISIBLE
+                                showAskFabOnly()
+                                if (isTeacherMode) publishLessonBtn.visibility = View.VISIBLE
+                                buildDots()
+                                setupBoard()
+                                preloadUpcoming(0, 0, count = 3)
+                                showFrame(0, 0)
+                                incrementLocalBbCounter()
+                                showFirstTimerTipsIfNeeded()
+                                // Record lesson start time — actual read tracking happens step-by-step in showFrame()
+                                if (!isTeacherMode && intent.hasExtra(EXTRA_TASK_ID)) {
+                                    bbStartTimeMs = System.currentTimeMillis()
                                 }
                             }
                         },
@@ -2153,8 +2121,7 @@ class BlackboardActivity : AppCompatActivity() {
         lifecycleScope.launch {
             // Server now stores the direct image URL in image_description.
             // If it already starts with https:// use it directly — no re-query needed.
-            // Otherwise search Wikimedia using searchWithConfidence (top-10 candidates,
-            // best keyword-match wins) rather than blindly taking the first result.
+            // Legacy fallback: if it's a title/description, search Wikimedia for it.
             val url: String? = if (query.startsWith("https://", ignoreCase = true)) {
                 query
             } else {
@@ -2420,13 +2387,18 @@ class BlackboardActivity : AppCompatActivity() {
     private fun advanceFrame() {
         if (isPaused) return
         val step = steps.getOrNull(currentStepIdx) ?: return
-        when {
-            currentFrameIdx < step.frames.size - 1 ->
-                showFrame(currentStepIdx, currentFrameIdx + 1)
-            currentStepIdx < steps.size - 1 ->
-                showFrame(currentStepIdx + 1, 0)
-            else -> showCompletionCard()
-        }
+        val nextStepIdx  = if (currentFrameIdx < step.frames.size - 1) currentStepIdx else currentStepIdx + 1
+        val nextFrameIdx = if (currentFrameIdx < step.frames.size - 1) currentFrameIdx + 1 else 0
+        stepsScrollView.postDelayed({
+            if (isPaused) return@postDelayed
+            when {
+                currentFrameIdx < (steps.getOrNull(currentStepIdx)?.frames?.size ?: 0) - 1 ->
+                    showFrame(currentStepIdx, currentFrameIdx + 1)
+                currentStepIdx < steps.size - 1 ->
+                    showFrame(currentStepIdx + 1, 0)
+                else -> showCompletionCard()
+            }
+        }, 800)
     }
 
     private fun showCompletionCard() {
@@ -2693,8 +2665,7 @@ class BlackboardActivity : AppCompatActivity() {
         // "Almost done" hint
         val nearEnd = steps.isNotEmpty() && currentStepIdx >= steps.size - 2 && !atStart
         bbProgressHintTv.visibility = if (nearEnd) View.VISIBLE else View.GONE
-        if (nearEnd) bbProgressHintTv.text ="";
-
+        if (nearEnd) bbProgressHintTv.text = ""
     }
 
     /**
@@ -3205,15 +3176,18 @@ class BlackboardActivity : AppCompatActivity() {
         }
 
         override fun onComplete() {
-            runOnUiThread { hideSubtitle() }
-            continueAfterSpeech()
+            runOnUiThread {
+                hideSubtitle()
+                continueAfterSpeech()
+            }
         }
 
         override fun onError(error: String) {
-            runOnUiThread { hideSubtitle() }
             android.util.Log.w("Blackboard", "TTS: $error")
-            // Do not stall playback when a TTS call fails for a frame.
-            runOnUiThread { continueAfterSpeech() }
+            runOnUiThread {
+                hideSubtitle()
+                continueAfterSpeech()
+            }
         }
     }
 
@@ -4361,7 +4335,7 @@ class BlackboardActivity : AppCompatActivity() {
             )
         }
         val loadingTv = TextView(this).apply {
-            text = "📖 Reading Your input……"
+            text = "⏳ Building lesson…"
             textSize = computedFontSp - 6f
             setTextColor(Color.parseColor("#8070A0"))
             typeface = caveat
@@ -4677,7 +4651,6 @@ class BlackboardActivity : AppCompatActivity() {
                 val speechContext = buildLessonSpeechContext()
                 val toRead = fq.speech.ifBlank { fq.question }
                 try {
-                    tts.setLocale(Locale.forLanguageTag(preferredLanguageTag))
                     tts.speak(toRead, object : TTSCallback {
                         override fun onStart() {}
                         override fun onComplete() {
