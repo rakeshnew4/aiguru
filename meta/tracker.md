@@ -1199,3 +1199,37 @@ Books with ALL 404 (English/SS for Class 6/9) kept as-is — likely IP-blocked f
 
 **Files read:** `BlackboardActivity.kt` (lines 605-644, 930-993, 1060-1112, 2301-2430, 3082-3218); `BbAiTtsEngine.kt` (full: lines 98-232); `AiTtsProvider.kt` (no delays found); `TextToSpeechManager.kt` (no delays found)
 **Files changed:** none
+
+---
+
+**Asked:** Stop circular/ring-of-boxes SVG diagrams (cycle, labeled types) from being generated.
+
+**Root cause:** `cycle` type in JS engine (`diagrams.js:432`) renders steps in a ring with box labels. `labeled` type renders central node surrounded by labels in a circle. Both produce "boxes in a circle" visual.
+
+**Changed:**
+- `server/app/api/image_search_titles.py` — added `_CIRCULAR_LAYOUT_TYPES = {"cycle", "labeled"}` constant (line ~51); JS engine call wrapped with `d_type.lower() not in _CIRCULAR_LAYOUT_TYPES` guard; SMIL fallback also guarded; LLM SVG builder now handles these types instead; added redirect log message.
+- `server/app/services/prompt_service.py` — `science_biology` hint: replaced `"Use cycle for life cycles..."` with `"use diagram_type=custom instead of cycle"`; `geography_environment` hint: same replacement; `blackboard_prompt` RULES: added `"NEVER use diagram_type 'cycle' or 'labeled' — they produce ugly circular box layouts."` instruction.
+- `server/app/utils/diagram_router.py` — remapped `mitosis`, `meiosis`, `water cycle`, `carbon cycle`, `nitrogen cycle`, `life cycle`, `stages of`, `phases of`, `cycle` → all now map to `"custom"` instead of `"cycle"`.
+
+**Files read:** `svg_builder.py` (grep for cycle/radial); `svg_renderers.py` (lines 367-430 `_render_cycle`); `diagrams.js` (lines 419-490 `cycle` function); `image_search_titles.py` (lines 45-600); `prompt_service.py` (lines 1-100 hints, 262-440 blackboard_prompt, 538-560 diagram hint logic); `diagram_router.py` (lines 65-200 keyword map)
+
+---
+
+**Asked:** Also block cycle/labeled from the LLM prompt level (not just rendering pipeline).
+**Changed:** (same as above — all 3 files updated in that task)
+
+---
+
+**Asked:** On plan activation, also award tts_balance from plan's tts_credits_on_activation field.
+
+**Root cause:** `_award_activation_credits` only incremented `balance` and `lifetime_earned` in `user_credits/{uid}`. TTS pool (`tts_balance`) was never topped up on plan purchase.
+
+**Changed:**
+- `server/app/services/user_service.py`:
+  - `_lookup_plan_limits()` fallback list (line ~71): added `"tts_credits_on_activation"` alongside `"credits_on_activation"` so root-level Firestore docs are picked up too
+  - `activate_plan()` (line ~292): added `activation_tts_credits` read from `limits.get("tts_credits_on_activation")`; updated log to include `tts_credits`
+  - `_award_activation_credits()` signature changed to `(db, uid, amount, tts_amount, plan_id, plan_name)`: if `tts_amount > 0`, increments `tts_balance` + `tts_lifetime_earned` in same `user_credits` doc; logs a `plan_activation_tts` transaction in `credit_transactions`
+
+**To use:** Add `tts_credits_on_activation: <int>` inside `limits` map of each plan doc in Firestore `plans/` collection. E.g. `basic → 50000`, `pro → 200000`. No code change needed after that.
+
+**Files read:** `user_service.py` (lines 45-95 _lookup_plan_limits, 217-340 activate_plan, 641-700 _award_activation_credits, 700-740 init_user_credits); `users.py` (lines 355-400 quota status tts_balance); `FirestoreManager.kt` (grep for tts)
