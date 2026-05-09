@@ -1623,7 +1623,6 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
             setToolbarTitle("Crop Image")
             setToolbarColor(android.graphics.Color.parseColor("#1A237E"))
             setToolbarWidgetColor(android.graphics.Color.WHITE)
-            setStatusBarColor(android.graphics.Color.parseColor("#0D1650"))
             setActiveControlsWidgetColor(android.graphics.Color.parseColor("#5C6BC0"))
             setFreeStyleCropEnabled(true)
             setShowCropGrid(true)

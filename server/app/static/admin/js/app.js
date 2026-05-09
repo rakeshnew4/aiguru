@@ -101,6 +101,7 @@ const App = (() => {
 
   const SECTION_MAP = {
     dashboard:     { title: 'Dashboard',       render: () => Dashboard.render()      },
+    analytics:     { title: 'Analytics',       render: () => Analytics.render()      },
     users:         { title: 'Users',            render: () => Users.render()          },
     subjects:      { title: 'Subjects',         render: () => Subjects.render()       },
     chapters:      { title: 'Chapters',         render: () => Chapters.render()       },

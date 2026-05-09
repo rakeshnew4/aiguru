@@ -148,6 +148,7 @@ def build_llm_svg(
     speech: str = "",
     visual_description: str = "",
     max_retries: int = MAX_RETRIES,
+    uid: str = None,
 ) -> str:
     """
     Ask the LLM to generate raw SVG for a diagram.
@@ -208,6 +209,7 @@ def build_llm_svg(
                 images=[],
                 system_prompt=_SYSTEM_PROMPT,
                 call_name="bb_svg_builder",
+                uid=uid,
             )
             raw = result.get("text", "")
             if not raw:

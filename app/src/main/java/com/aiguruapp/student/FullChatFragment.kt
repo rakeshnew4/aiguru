@@ -1142,7 +1142,6 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             // Dark toolbar so the white ✓ and ✕ icons are always visible
             setToolbarColor(android.graphics.Color.parseColor("#1A237E"))
             setToolbarWidgetColor(android.graphics.Color.WHITE)
-            setStatusBarColor(android.graphics.Color.parseColor("#0D1650"))
             setActiveControlsWidgetColor(android.graphics.Color.parseColor("#5C6BC0"))
             setFreeStyleCropEnabled(true)
             setShowCropGrid(true)

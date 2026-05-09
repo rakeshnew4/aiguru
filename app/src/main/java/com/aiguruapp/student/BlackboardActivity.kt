@@ -267,6 +267,8 @@ class BlackboardActivity : AppCompatActivity() {
     private lateinit var saveSessionBtn: TextView
     private lateinit var bbSettingsBtn:  TextView
     private var sessionAlreadySaved = false
+    /** Session ID auto-written to bb_watch_history when generation completes. */
+    private var lastAutoHistoryId: String? = null
     private lateinit var bbCompletionCard: View
     private lateinit var stepNamesScrollView: android.widget.HorizontalScrollView
     private lateinit var stepNamesContainer: LinearLayout
@@ -934,6 +936,29 @@ class BlackboardActivity : AppCompatActivity() {
                                 )
                                 lifecycleScope.launch(Dispatchers.Main) { updateBbQuotaChip(userId) }
                             }
+                            // Auto-record every generated session to watch history (no user action needed)
+                            if (!userId.isNullOrBlank()) {
+                                val bbSubject  = intent.getStringExtra(EXTRA_SUBJECT) ?: "General"
+                                val bbChapter  = intent.getStringExtra(EXTRA_CHAPTER) ?: "General"
+                                val convId     = intent.getStringExtra(EXTRA_CONVERSATION_ID) ?: ""
+                                val msgId      = intent.getStringExtra(EXTRA_MESSAGE_ID) ?: ""
+                                val historyId  = "${convId}_${System.currentTimeMillis()}"
+                                val stepsJson  = com.aiguruapp.student.chat.BlackboardGenerator.serializeSteps(generated)
+                                com.aiguruapp.student.chat.BlackboardGenerator.writeSessionCache(applicationContext, historyId, stepsJson)
+                                com.aiguruapp.student.firestore.FirestoreManager.recordBbHistory(
+                                    userId        = userId,
+                                    subject       = bbSubject,
+                                    chapter       = bbChapter,
+                                    sessionId     = historyId,
+                                    messageId     = msgId,
+                                    conversationId = convId,
+                                    topic         = message,
+                                    stepCount     = generated.size,
+                                    stepsJson     = stepsJson
+                                )
+                                // Store historyId so saveCurrentSession can use the same doc
+                                lastAutoHistoryId = historyId
+                            }
                             lifecycleScope.launch(Dispatchers.Main) {
                                 val wasAlreadyPlaying = contentGroup.visibility == View.VISIBLE
                                 // Snapshot position BEFORE replacing steps so we can resume
@@ -1143,7 +1168,7 @@ class BlackboardActivity : AppCompatActivity() {
                 "• Tap 💬 to ask follow-up questions\n" +
                 "• Tap 📷 in the ask bar to attach a photo of your textbook\n" +
                 "• Tap 🎤 in the ask bar to speak your question hands-free\n" +
-                "• Tap 💾 Save to keep this lesson for later"
+                "• Tap ⭐ Favourite to save this lesson to My Sessions"
 
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             if (!isFinishing) {
@@ -1186,7 +1211,7 @@ class BlackboardActivity : AppCompatActivity() {
 
         // Show saving spinner on button
         saveSessionBtn.isEnabled = false
-        saveSessionBtn.text = "⏳ Saving…"
+        saveSessionBtn.text = "⏳ Adding…"
 
         val stepsJson = com.aiguruapp.student.chat.BlackboardGenerator.serializeSteps(steps)
         // Pre-populate disk cache so the first replay is served locally without a Firestore round-trip
@@ -1206,13 +1231,13 @@ class BlackboardActivity : AppCompatActivity() {
             onSuccess     = {
                 sessionAlreadySaved = true
                 saveSessionBtn.isEnabled = true
-                saveSessionBtn.text = "✓ Saved"
+                saveSessionBtn.text = "⭐ Favourited"
                 saveSessionBtn.setTextColor(android.graphics.Color.parseColor("#A0FFD0"))
-                android.widget.Toast.makeText(this, "Session saved!", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(this, "Added to My Sessions!", android.widget.Toast.LENGTH_SHORT).show()
             },
             onFailure     = {
                 saveSessionBtn.isEnabled = true
-                saveSessionBtn.text = "💾 Save"
+                saveSessionBtn.text = "⭐ Favourite"
                 android.widget.Toast.makeText(this, "Save failed — try again", android.widget.Toast.LENGTH_SHORT).show()
             }
         )
@@ -3814,7 +3839,6 @@ class BlackboardActivity : AppCompatActivity() {
             setToolbarTitle("Crop Image")
             setToolbarColor(android.graphics.Color.parseColor("#1A237E"))
             setToolbarWidgetColor(android.graphics.Color.WHITE)
-            setStatusBarColor(android.graphics.Color.parseColor("#0D1650"))
             setActiveControlsWidgetColor(android.graphics.Color.parseColor("#5C6BC0"))
             setFreeStyleCropEnabled(true)
             setShowCropGrid(true)

@@ -45,6 +45,9 @@
         <a class="nav-item" data-section="dashboard">
           <span class="nav-icon">&#9632;</span> Dashboard
         </a>
+        <a class="nav-item" data-section="analytics">
+          <span class="nav-icon">&#128202;</span> Analytics
+        </a>
         <a class="nav-item" data-section="users">
           <span class="nav-icon">&#128100;</span> Users
         </a>
@@ -105,6 +108,7 @@
 
       <main class="content-area">
         <section id="section-dashboard"     class="section"></section>
+        <section id="section-analytics"     class="section hidden"></section>
         <section id="section-users"         class="section hidden"></section>
         <section id="section-subjects"      class="section hidden"></section>
         <section id="section-chapters"      class="section hidden"></section>
@@ -143,6 +147,7 @@
   <!-- Load order matters: api → section modules → app (router last) -->
   <script src="/static/admin/js/api.js"></script>
   <script src="/static/admin/js/dashboard.js"></script>
+  <script src="/static/admin/js/analytics.js"></script>
   <script src="/static/admin/js/users.js"></script>
   <script src="/static/admin/js/content.js"></script>
   <script src="/static/admin/js/plans.js"></script>

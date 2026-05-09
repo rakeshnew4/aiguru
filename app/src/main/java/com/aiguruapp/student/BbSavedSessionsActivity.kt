@@ -41,6 +41,7 @@ class BbSavedSessionsActivity : BaseActivity() {
     private val sharedSessions = mutableListOf<Map<String, Any>>()
     private var activeFilter: String? = null
     private var showingShared = false
+    private var isAllHistory = false
 
     private lateinit var subject: String
     private lateinit var chapter: String
@@ -55,8 +56,8 @@ class BbSavedSessionsActivity : BaseActivity() {
         userId  = SessionManager.getFirestoreUserId(this)
 
         findViewById<ImageButton>(R.id.backBtn).setOnClickListener { finish() }
-        val isAllHistory = intent.getBooleanExtra(EXTRA_ALL_HISTORY, false)
-        val subtitle = if (isAllHistory) "All saved sessions" else "$subject › $chapter"
+        isAllHistory = intent.getBooleanExtra(EXTRA_ALL_HISTORY, false)
+        val subtitle = if (isAllHistory) "Watch History" else "$subject › $chapter"
         findViewById<TextView>(R.id.chapterSubtitle).text = subtitle
 
         // Tab strip — only in Watch History mode
@@ -65,6 +66,8 @@ class BbSavedSessionsActivity : BaseActivity() {
         val tabSharedWithMe = findViewById<TextView>(R.id.tabSharedWithMe)
         if (isAllHistory) {
             tabStrip.visibility = android.view.View.VISIBLE
+            tabMySessions.text   = "My Sessions"
+            tabSharedWithMe.text = "Shared with Me"
             tabMySessions.setOnClickListener   { switchTab(false, tabMySessions, tabSharedWithMe) }
             tabSharedWithMe.setOnClickListener { switchTab(true,  tabMySessions, tabSharedWithMe) }
         }
@@ -93,7 +96,8 @@ class BbSavedSessionsActivity : BaseActivity() {
 
     // ── Local cache helpers ───────────────────────────────────────────────────
 
-    private fun cacheFile(): File = File(cacheDir, "bb_sessions_${userId}.json")
+    private fun cacheFile(): File = File(cacheDir,
+        if (isAllHistory) "bb_watch_history_${userId}.json" else "bb_sessions_${userId}.json")
 
     @Suppress("UNCHECKED_CAST")
     private fun readCache(): List<Map<String, Any>>? = try {
@@ -144,16 +148,17 @@ class BbSavedSessionsActivity : BaseActivity() {
             buildFilterChips()
         }
         // Refresh from Firestore in background; update + re-cache if changed
-        FirestoreManager.loadAllSavedBbSessions(
-            userId = userId,
-            onSuccess = { list ->
+        val loadFn: (String, (List<Map<String, Any>>) -> Unit, (Exception?) -> Unit) -> Unit =
+            if (isAllHistory) FirestoreManager::loadBbWatchHistory
+            else FirestoreManager::loadAllSavedBbSessions
+        loadFn(
+            userId, { list ->
                 writeCache(list)
                 allSessions.clear()
                 allSessions.addAll(list)
                 applyFilter(activeFilter)
                 buildFilterChips()
-            },
-            onFailure = {
+            }, {
                 if (cached == null)
                     Toast.makeText(this, "Couldn't load sessions", Toast.LENGTH_SHORT).show()
                 // else: silently use cached data — no toast if we already showed something
@@ -304,34 +309,47 @@ class BbSavedSessionsActivity : BaseActivity() {
     private fun confirmDelete(session: Map<String, Any>) {
         val sessionId = session["session_id"] as? String ?: session["id"] as? String ?: return
         AlertDialog.Builder(this)
-            .setTitle("Delete Session?")
-            .setMessage("Remove this saved session from chapter notes?")
-            .setPositiveButton("Delete") { _, _ ->
-                FirestoreManager.deleteBbSession(
-                    userId    = userId,
-                    subject   = subject,
-                    chapter   = chapter,
-                    sessionId = sessionId,
-                    onSuccess = {
-                        allSessions.removeAll { (it["session_id"] ?: it["id"]) == sessionId }
-                        val idx = sessions.indexOfFirst {
-                            (it["session_id"] ?: it["id"]) == sessionId
-                        }
-                        if (idx >= 0) {
-                            sessions.removeAt(idx)
-                            adapter.notifyItemRemoved(idx)
-                        }
-                        if (sessions.isEmpty()) {
-                            emptyState.visibility   = View.VISIBLE
-                            recyclerView.visibility = View.GONE
-                        }
-                        buildFilterChips()
-                        writeCache(allSessions)  // keep cache in sync after delete
-                    },
-                    onFailure = {
-                        Toast.makeText(this, "Delete failed", Toast.LENGTH_SHORT).show()
+            .setTitle("Remove Session?")
+            .setMessage(if (isAllHistory) "Remove from Watch History?" else "Remove this session from My Sessions?")
+            .setPositiveButton("Remove") { _, _ ->
+                val onDeleteSuccess = {
+                    allSessions.removeAll { (it["session_id"] ?: it["id"]) == sessionId }
+                    val idx = sessions.indexOfFirst {
+                        (it["session_id"] ?: it["id"]) == sessionId
                     }
-                )
+                    if (idx >= 0) {
+                        sessions.removeAt(idx)
+                        adapter.notifyItemRemoved(idx)
+                    }
+                    if (sessions.isEmpty()) {
+                        emptyState.visibility   = View.VISIBLE
+                        recyclerView.visibility = View.GONE
+                    }
+                    buildFilterChips()
+                    writeCache(allSessions)
+                    Unit
+                }
+                val onDeleteFailure = { _: Exception? ->
+                    Toast.makeText(this, "Remove failed", Toast.LENGTH_SHORT).show()
+                    Unit
+                }
+                if (isAllHistory) {
+                    FirestoreManager.deleteBbHistoryEntry(
+                        userId    = userId,
+                        sessionId = sessionId,
+                        onSuccess = onDeleteSuccess,
+                        onFailure = onDeleteFailure
+                    )
+                } else {
+                    FirestoreManager.deleteBbSession(
+                        userId    = userId,
+                        subject   = subject,
+                        chapter   = chapter,
+                        sessionId = sessionId,
+                        onSuccess = onDeleteSuccess,
+                        onFailure = onDeleteFailure
+                    )
+                }
             }
             .setNegativeButton("Cancel", null)
             .show()
@@ -369,7 +387,8 @@ class BbSavedSessionsActivity : BaseActivity() {
             val session   = sessions[position]
             val topic     = (session["topic"] as? String)?.trim() ?: "(no topic)"
             val stepCount = (session["step_count"] as? Long)?.toInt() ?: (session["step_count"] as? Int) ?: 0
-            val savedAt   = (session["saved_at"] as? Long)
+            val savedAt   = (session["viewed_at"] as? Long)
+                ?: (session["saved_at"] as? Long)
                 ?: (session["shared_at"] as? Long) ?: 0L
             val senderName = session["sender_name"] as? String
 

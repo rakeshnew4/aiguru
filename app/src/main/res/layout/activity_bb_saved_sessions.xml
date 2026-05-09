@@ -28,7 +28,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_centerInParent="true"
-            android:text="📓 Saved BB Sessions"
+            android:text="📓 BB Sessions"
             android:textColor="#E0F0FF"
             android:textSize="16sp"
             android:textStyle="bold" />

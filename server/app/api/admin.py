@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import os
 import secrets
+import time as _time
 import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -76,29 +78,157 @@ def _collection_list(collection: str, limit: int = 200) -> List[Dict]:
     return [_doc_to_dict(d) for d in docs]
 
 
+def _count_collection(col: str) -> int:
+    """Use Firestore count() aggregation (1 read) instead of streaming all docs."""
+    db = _get_db()
+    try:
+        result = db.collection(col).count().get()
+        return result[0][0].value
+    except Exception:
+        return len(list(db.collection(col).limit(2000).stream()))
+
+
+def _to_epoch_s(v: Any) -> float:
+    """Normalise various timestamp formats to epoch seconds (float)."""
+    if not v:
+        return 0.0
+    if isinstance(v, (int, float)):
+        return float(v) / 1000 if v > 1e10 else float(v)
+    if hasattr(v, "timestamp"):  # datetime / Firestore DatetimeWithNanoseconds
+        return v.timestamp()
+    return 0.0
+
+
+# Simple in-memory caches to avoid hammering Firestore on every page load
+_stats_cache: Dict[str, Any] = {}
+_analytics_cache: Dict[str, Any] = {}
+_CACHE_TTL = 300  # 5 minutes
+
+
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
 @router.get("/stats")
 def admin_stats(_: str = Depends(_require_admin)):
-    db = _get_db()
-    users_count = len(list(db.collection("users").limit(500).stream()))
-    subjects_count = len(list(db.collection("subjects").limit(500).stream()))
-    chapters_count = len(list(db.collection("chapters").limit(1000).stream()))
-    plans_count = len(list(db.collection("plans").limit(100).stream()))
-    payments_count = len(list(db.collection("payment_receipts").limit(500).stream()))
-    quizzes_count = len(list(db.collection("quizzes").limit(500).stream()))
-    schools_count = len(list(db.collection("schools").limit(100).stream()))
-    referrals_count = len(list(db.collection("referralCodes").limit(500).stream()))
-    return {
-        "users": users_count,
-        "subjects": subjects_count,
-        "chapters": chapters_count,
-        "plans": plans_count,
-        "payments": payments_count,
-        "quizzes": quizzes_count,
-        "schools": schools_count,
-        "referral_codes": referrals_count,
+    """Count-only stats using Firestore aggregation queries (cheap: 1 read/collection)."""
+    now = _time.time()
+    if _stats_cache.get("ts", 0) + _CACHE_TTL > now:
+        return _stats_cache["data"]
+
+    data = {
+        "users":          _count_collection("users"),
+        "subjects":       _count_collection("subjects"),
+        "chapters":       _count_collection("chapters"),
+        "plans":          _count_collection("plans"),
+        "payments":       _count_collection("payment_receipts"),
+        "quizzes":        _count_collection("quizzes"),
+        "schools":        _count_collection("schools"),
+        "referral_codes": _count_collection("referralCodes"),
     }
+    _stats_cache.update({"ts": now, "data": data})
+    return data
+
+
+@router.get("/analytics")
+async def admin_analytics(_: str = Depends(_require_admin)):
+    """
+    Rich analytics in a single endpoint — 2 Firestore fetches + LiteLLM API.
+    Cached for 5 minutes.
+    """
+    now = _time.time()
+    if _analytics_cache.get("ts", 0) + _CACHE_TTL > now:
+        return _analytics_cache["data"]
+
+    db = _get_db()
+    today = datetime.now(timezone.utc)
+    today_start = _to_epoch_s(int(datetime(today.year, today.month, today.day, tzinfo=timezone.utc).timestamp()))
+    week_ago    = _to_epoch_s(int((today - timedelta(days=7)).timestamp()))
+    month_start = _to_epoch_s(int(datetime(today.year, today.month, 1, tzinfo=timezone.utc).timestamp()))
+
+    # ── Single-pass user analysis ──────────────────────────────────────────────
+    users = [d.to_dict() or {} for d in db.collection("users").limit(500).stream()]
+    plan_dist:  Dict[str, int] = {}
+    grade_dist: Dict[str, int] = {}
+    active_today = new_week = new_month = 0
+
+    for u in users:
+        plan  = u.get("planId") or u.get("plan_id") or u.get("plan") or "free"
+        plan_dist[plan] = plan_dist.get(plan, 0) + 1
+
+        grade = str(u.get("grade") or u.get("class_grade") or "?")
+        grade_dist[grade] = grade_dist.get(grade, 0) + 1
+
+        upd_ts = _to_epoch_s(u.get("questions_updated_at"))
+        if upd_ts >= today_start and upd_ts > 0:
+            active_today += 1
+
+        ca_ts = _to_epoch_s(u.get("created_at") or u.get("createdAt"))
+        if ca_ts > 0:
+            if ca_ts >= week_ago:
+                new_week += 1
+            if ca_ts >= month_start:
+                new_month += 1
+
+    # ── Payment revenue ────────────────────────────────────────────────────────
+    payments = [d.to_dict() or {} for d in db.collection("payment_receipts").limit(200).stream()]
+    total_rev = month_rev = 0.0
+    for p in payments:
+        amt = 0.0
+        for field in ("amount", "amount_rupees", "amount_inr", "price"):
+            raw = p.get(field)
+            if raw:
+                try:
+                    amt = float(raw)
+                    break
+                except (TypeError, ValueError):
+                    pass
+        total_rev += amt
+        pt = _to_epoch_s(p.get("paid_at") or p.get("created_at") or p.get("timestamp"))
+        if pt >= month_start and pt > 0:
+            month_rev += amt
+
+    # ── LiteLLM costs ──────────────────────────────────────────────────────────
+    llm_raw: Dict = {}
+    try:
+        from app.services import litellm_service as _lls
+        llm_raw = await _lls.get_all_usage_stats() or {}
+    except Exception:
+        pass
+
+    total_cost  = float(llm_raw.get("total_cost_all_users") or 0)
+    user_costs: Dict = llm_raw.get("users") or {}
+    top_spenders = sorted(
+        [{"uid": uid,
+          "cost": float(v.get("total_cost") or 0),
+          "requests": int(v.get("total_requests") or 0)}
+         for uid, v in user_costs.items()],
+        key=lambda x: x["cost"],
+        reverse=True,
+    )[:15]
+    total_users = len(users)
+
+    data = {
+        "users": {
+            "total":          total_users,
+            "new_this_week":  new_week,
+            "new_this_month": new_month,
+            "active_today":   active_today,
+            "plan_distribution":  dict(sorted(plan_dist.items(),  key=lambda x: x[1], reverse=True)),
+            "grade_distribution": dict(sorted(grade_dist.items(), key=lambda x: x[1], reverse=True)),
+        },
+        "revenue": {
+            "total":         round(total_rev, 2),
+            "this_month":    round(month_rev, 2),
+            "payment_count": len(payments),
+        },
+        "llm": {
+            "total_cost_usd":        round(total_cost, 4),
+            "avg_cost_per_user_usd": round(total_cost / max(total_users, 1), 4),
+            "users_with_usage":      len(user_costs),
+            "top_spenders":          top_spenders,
+        },
+    }
+    _analytics_cache.update({"ts": now, "data": data})
+    return data
 
 
 # ── Users ─────────────────────────────────────────────────────────────────────
@@ -611,31 +741,40 @@ def get_activity_logs(
     _: str = Depends(_require_admin),
 ):
     """Return recent activity log entries, newest first."""
-    # db = _get_db()
-    # ref = db.collection("activity_logs")
-    # query = ref.order_by("timestamp", direction=firestore.Query.DESCENDING)
-    # if event_type:
-    #     query = ref.where("event_type", "==", event_type).order_by("timestamp", direction=firestore.Query.DESCENDING)
-    # if uid:
-    #     query = ref.where("uid", "==", uid).order_by("timestamp", direction=firestore.Query.DESCENDING)
-    # docs = query.limit(limit).stream()
-    docs = []
-    return [_doc_to_dict(d) for d in docs]
+    db = _get_db()
+    ref = db.collection("activity_logs")
+    try:
+        if uid:
+            # where-only, no order_by — avoids composite-index requirement
+            docs = ref.where("uid", "==", uid).limit(limit).stream()
+        elif event_type:
+            docs = ref.where("event_type", "==", event_type).limit(limit).stream()
+        else:
+            docs = ref.order_by("timestamp", direction=firestore.Query.DESCENDING).limit(limit).stream()
+        return [_doc_to_dict(d) for d in docs]
+    except Exception as exc:
+        logger.warning("activity_logs read failed: %s", exc)
+        return []
 
 
 @router.get("/activity-logs/stats")
 def get_activity_stats(_: str = Depends(_require_admin)):
     """Return count totals per event type over the last 500 entries."""
     db = _get_db()
-    # docs = db.collection("activity_logs").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(500).stream()
-    counts = {}
-    recent = []
-    # for doc in docs:
-    #     data = _doc_to_dict(doc)
-    #     event = data.get("event_type", "unknown")
-    #     counts[event] = counts.get(event, 0) + 1
-    #     if len(recent) < 10:
-    #         recent.append(data)
+    counts: Dict[str, int] = {}
+    recent: List[Dict] = []
+    try:
+        docs = db.collection("activity_logs").order_by(
+            "timestamp", direction=firestore.Query.DESCENDING
+        ).limit(500).stream()
+        for doc in docs:
+            data = _doc_to_dict(doc)
+            event = data.get("event_type", "unknown")
+            counts[event] = counts.get(event, 0) + 1
+            if len(recent) < 10:
+                recent.append(data)
+    except Exception as exc:
+        logger.warning("activity_logs/stats read failed: %s", exc)
     return {"counts": counts, "recent": recent, "total": sum(counts.values())}
 
 

@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-05-08 13:55:04 | session=KkhkqOQI_3b1f65c8 ===
+=== BB_MAIN | 2026-05-09 14:42:06 | session=KkhkqOQI_60ea9af8 ===
 
 === SYSTEM ===
 You are GURU — a warm, funny, wildly effective AI teacher inside a visual blackboard app.
@@ -97,59 +97,40 @@ RULES:
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: That is a brilliant question! It can feel mind-boggling that light travels at $$300,000$$ kilometers every single second. To understand why, we have to look at what light actually *is*.
+Student's EXACT question: Topic: Why are leaves green?
 
-**The Mechanism:**
-Light is a form of **electromagnetic radiation**. Unlike a ball that you throw, which needs your arm's strength to push it, light is a wave of energy that creates itself as it travels. Because light has **zero mass** (it is completely weightless), there is absolutely nothing to hold it back. In our universe, mass acts like a brake or a drag—the more mass something has, the more energy it needs to move. Since **photons** have no mass at all, they don't need to 'accelerate' or 'build up' speed. They exist, and *poof*, they are already at the maximum speed possible!
+[Speech context from previous lesson: Ever wonder how plants eat without mouths? They use photosynthesis, a secret recipe turning sunlight, water, and air into sugary snacks. Plants are like master chefs. They gather water from roots, carbon dioxide from the air, and sunlight energy to cook their food. Imagine a kitchen where sunlight is the oven, water and air are the ingredients, and sugar is the delicious final meal. Inside every leaf are tiny green solar panels called chloroplasts. They contain chlorophyll, the green pigment that grabs sunlight. Chlorophyll is like a solar-powered battery charger, except it makes sugar instead of charging your phone. Much tastier, right? See these tiny green dots? Those are the chloroplasts, the busy factories working hard to catch every bit of light. First, the plant traps sunlight to split water molecules apart. It’s like breaking open a water balloon to get the power inside. Quick quiz! To get energy, what molecule does the plant split apart first? Actually, it is water! The plant splits water molecules to release energy and oxygen. Now for the magic. The plant takes that energy and carbon dioxide to build glucose, or sugar. This is the plant's food. Think of this cycle like a s]
+Lesson title: Why are leaves green?
 
-**Real-World Application:**
-Think about running through a swimming pool. The water pushes against you, slowing you down because you have mass. Now, imagine you are a ghost with no body at all. You could glide through the water without feeling any resistance! That is exactly like a **photon** traveling through space—there is no 'water' or 'drag' to slow it down, so it hits the universal speed limit instantly.
-
-**Worked Example:**
-Let's see how much faster light is than a super-fast jet. A very fast fighter jet flies at about $$2,500$$ km/h. 
-
-1. First, let's turn the speed of light into an hourly rate: $$300,000 	ext{ km/s} 	imes 3,600 	ext{ seconds in an hour} = 1,080,000,000 	ext{ km/h}$$.
-2. Now, compare them: $$rac{1,080,000,000}{2,500} = 432,000$$.
-
-Light is roughly $$432,000$$ times faster than a top-tier fighter jet! 
-
-**Memory Tip:** Just remember that light is the 'speed limit' of the universe. Nothing can travel faster because the universe is built on the rule that mass cannot move faster than light, and light—having no mass—is the champion of speed!
-
-The speed of light is so fast that it could travel around the Earth's equator about 7.5 times in just one second!
-Lesson title: The Universal Speed Limit: Why Light Moves So Fast
-Category: science
+[Speech context from previous lesson:
+Category: general
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
-Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
+Generate EXACTLY 0 steps with APPROXIMATELY 4 frames each.
 Steps to generate in this batch:
-- Defining electromagnetic radiation
-- The role of mass and drag
-- Understanding photons
-- Comparing light to human-made speeds
-- The cosmic speed limit rule
 
-This topic benefits from SVG diagrams — use at least one diagram frame per step.
+
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants to understand the nature of light as electromagnetic radiation and why it travels at such a high, constant speed.
+What the student specifically wants: The student wants to understand the biological mechanism (chlorophyll) that causes leaves to appear green by reflecting green light.
 Question type: conceptual
 Student level: Class 5
 GRADE SPEECH STYLE: Technical words WITH plain-English gloss. Relatable humor (games, snacks). ≤35 words/frame.
-Topic type: science_physics | Scope: medium
-Key concepts to cover (ALL of these): electromagnetic radiation, photons, speed of light constant, wave-particle duality
+Topic type: science_biology | Scope: medium
+What student already knows (DO NOT repeat this): The student understands the basic process of photosynthesis: plants turn sunlight, water, and carbon dioxide into food.
+Key concepts to cover (ALL of these): chlorophyll, light spectrum, reflection and absorption
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-DIAGRAM RECOMMENDATION: This topic likely needs a "waveform_signal" diagram (confidence 98%). Use diagram_type="waveform_signal" for your diagram frame(s).
+DIAGRAM RECOMMENDATION: This topic likely needs a "leaf_anatomy" diagram (confidence 97%). Use diagram_type="leaf_anatomy" for your diagram frame(s).
 
-SUBJECT GUIDANCE (Science — Physics):
-• Use waveform_signal for waves/sound/light; coordinate_plane for motion graphs.
-• Use PATH 2 (diagram_type=custom) for force diagrams, ray optics, circuit layouts.
-• Concept frames: state law/formula → physical meaning → real-world application.
-• Include units in every formula (e.g. m/s², Newton, Joule).
+SUBJECT GUIDANCE (Science — Biology):
+• For life cycles/processes (mitosis, photosynthesis, cell division): use diagram_type=custom so the LLM draws the actual process, NOT diagram_type=cycle.
+• Use PATH 2 (diagram_type=custom) for anatomy cross-sections (heart, leaf, kidney).
+• Concept frames: function → structure → real-body example.
 • End with a summary frame.
 
 ---END LESSON BRIEF---
@@ -160,184 +141,233 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
 {
   "steps": [
     {
-      "title": "What is Light?",
+      "title": "Sunlight is a rainbow",
       "lang": "en-US",
-      "image_description": "electromagnetic radiation wave diagram",
-      "image_show_confidencescore": 0.9,
+      "image_description": "prism splitting white light into rainbow colors",
+      "image_show_confidencescore": 0.85,
       "frames": [
         {
           "frame_type": "hook",
-          "text": "The Universal Speed Limit",
-          "speech": "Imagine something that could circle the entire Earth seven times in just one single heartbeat.",
+          "text": "Sunlight is actually a rainbow!",
+          "speech": "Sunlight looks clear, but it is actually a rainbow of colors hidden inside, just like a disco ball.",
           "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 3000
         },
         {
           "frame_type": "concept",
-          "text": "Electromagnetic Radiation",
-          "speech": "Light is electromagnetic radiation, which is just a fancy way to say a wave of pure energy that moves on its own.",
+          "text": "White light = all colors",
+          "speech": "White light is made of red, orange, yellow, green, blue, and violet light waves all mixed together.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3500
+          "duration_ms": 3000
         },
         {
-          "frame_type": "diagram",
-          "text": "Light Wave",
-          "speech": "See this wave? It does not need a road or a push to travel, it just ripples through space.",
+          "frame_type": "concept",
+          "text": "Absorption and reflection",
+          "speech": "When light hits an object, the object eats some colors and spits others back out into the air.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3000,
-          "diagram_type": "waveform_signal",
-          "diagram_data": {
-            "label": "Light Wave",
-            "color": "yellow"
-          }
+          "duration_ms": 3000
+        },
+        {
+          "frame_type": "memory",
+          "text": "Picky eaters",
+          "speech": "Think of a leaf like a really picky eater that loves almost every color except for green.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
         }
-      ],
-      "session_theme": "The Speed of Light",
-      "video_search_query": "how fast is the speed of light explained",
-      "preferred_channels": [
-        "Khan Academy Kids",
-        "Physics Wallah"
       ]
     },
     {
-      "title": "Mass and Drag",
+      "title": "The green machine",
       "lang": "en-US",
-      "image_description": "object moving through water vs vacuum",
+      "image_description": "chlorophyll molecule diagram",
       "image_show_confidencescore": 0.8,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "Mass acts like a brake",
-          "speech": "Mass, or the amount of stuff in an object, acts like a brake that slows down everything it touches.",
+          "text": "Chlorophyll pigment",
+          "speech": "Inside leaves, there is a special chemical called chlorophyll, which is the green pigment that traps light.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
         },
-        {
-          "frame_type": "apply",
-          "text": "Running in a pool",
-          "speech": "Think about running through a swimming pool. The water pushes against you and slows you down because you have mass.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3500
-        },
-        {
-          "frame_type": "diagram",
-          "text": "Mass vs Vacuum",
-          "speech": "On the left, a ball hits water drag. On the right, light travels in a vacuum with zero resistance.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3500,
-          "diagram_type": "custom",
-          "visual_description": "Split screen: Bowling ball hitting water ripples vs a light beam moving straight through empty space."
-        }
-      ]
-    },
-    {
-      "title": "Meet the Photon",
-      "lang": "en-US",
-      "image_description": "photon particle diagram",
-      "image_show_confidencescore": 0.85,
-      "frames": [
         {
           "frame_type": "concept",
-          "text": "What is a Photon?",
-          "speech": "Light is made of tiny packets of energy called photons, which act like little energy snacks for the universe.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3500
-        },
-        {
-          "frame_type": "question",
-          "text": "Weight of a photon?",
-          "speech": "Do you think a tiny photon has any weight at all?",
-          "tts_engine": "android",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
-        {
-          "frame_type": "reveal",
-          "text": "Zero mass",
-          "speech": "Actually, it is zero weight. Since photons have no mass, they have no drag to slow them down.",
+          "text": "Light vacuum",
+          "speech": "Chlorophyll acts like a solar powered vacuum cleaner for light, sucking up energy to make food.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
-        }
-      ]
-    },
-    {
-      "title": "Speed Comparison",
-      "lang": "en-US",
-      "image_description": "speed comparison chart jet vs light",
-      "image_show_confidencescore": 0.7,
-      "frames": [
+        },
         {
-          "frame_type": "apply",
-          "text": "Jet vs Light",
-          "speech": "A fast jet flies at two thousand kilometers per hour, but light is four hundred thousand times faster.",
+          "frame_type": "concept",
+          "text": "Selective absorption",
+          "speech": "It loves to swallow red and blue light for energy, but it is terrible at absorbing green light.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3500
+          "duration_ms": 3000
         },
         {
           "frame_type": "joke",
-          "text": "The speedy friend",
-          "speech": "Light is like that one friend who shows up to the party before you even send the invite.",
+          "text": "Broccoli at dinner",
+          "speech": "Poor chlorophyll, it tries to eat the green light but ends up spitting it out like broccoli at dinner.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 1500
-        },
-        {
-          "frame_type": "diagram",
-          "text": "Comparison Scale",
-          "speech": "See the massive gap? The jet is a tiny dot, while light is already across the entire map.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000,
-          "diagram_type": "custom",
-          "visual_description": "A bar chart showing a tiny pixel for a Jet and a massive, screen-spanning bar for Light."
+          "duration_ms": 2500
         }
       ]
     },
     {
-      "title": "The Cosmic Limit",
+      "title": "Inside the leaf",
       "lang": "en-US",
-      "image_description": "universal speed limit sign",
-      "image_show_confidencescore": 0.6,
+      "image_description": "leaf anatomy cross section showing chloroplasts",
+      "image_show_confidencescore": 0.97,
       "frames": [
         {
-          "frame_type": "concept",
-          "text": "The universal limit",
-          "speech": "This is the cosmic speed limit, the fastest anything can go because nothing with mass can keep up.",
+          "frame_type": "diagram",
+          "text": "Leaf anatomy cross-section",
+          "speech": "Look at this cross section of a leaf, showing the layers where the magic happens.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3500
+          "duration_ms": 2500,
+          "diagram_type": "leaf_anatomy",
+          "diagram_data": {
+            "layers": [
+              "cuticle",
+              "epidermis",
+              "mesophyll",
+              "chloroplasts"
+            ]
+          },
+          "visual_description": "Showing the internal structure of a leaf with chloroplasts."
+        },
+        {
+          "frame_type": "diagram",
+          "text": "Chloroplasts working",
+          "speech": "The top layers are packed with chloroplasts, which are like tiny solar panel factories.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        },
+        {
+          "frame_type": "diagram",
+          "text": "Light absorption",
+          "speech": "See how the red and blue light waves get trapped inside the leaf to power the food making?",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        },
+        {
+          "frame_type": "diagram",
+          "text": "Green light reflection",
+          "speech": "But notice the green light waves, they bounce right off the surface like a rubber ball.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        }
+      ]
+    },
+    {
+      "title": "The big reveal",
+      "lang": "en-US",
+      "image_description": "reflection of light off a green leaf",
+      "image_show_confidencescore": 0.9,
+      "frames": [
+        {
+          "frame_type": "question",
+          "text": "Why not black?",
+          "speech": "Wait a second, if plants absorb almost all the light, why aren't leaves black?",
+          "tts_engine": "android",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        },
+        {
+          "frame_type": "reveal",
+          "text": "Reflection is key",
+          "speech": "Actually, it is because they reflect the green light right into our eyes.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        },
+        {
+          "frame_type": "concept",
+          "text": "Wasteful green light",
+          "speech": "Since they do not use green light for energy, they toss it back at us instead of eating it.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        },
+        {
+          "frame_type": "concept",
+          "text": "The result",
+          "speech": "That reflection is exactly why the whole world looks like a big green salad to us.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        }
+      ]
+    },
+    {
+      "title": "Fall colors and wrap up",
+      "lang": "en-US",
+      "image_description": "autumn leaves changing color",
+      "image_show_confidencescore": 0.85,
+      "frames": [
+        {
+          "frame_type": "apply",
+          "text": "Autumn leaves",
+          "speech": "That is also why leaves turn yellow or red in autumn when the green chlorophyll finally breaks down.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        },
+        {
+          "frame_type": "curiosity",
+          "text": "Alien plants?",
+          "speech": "Do you think plants on another planet would look green if their sun was a different color?",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
         },
         {
           "frame_type": "summary",
-          "text": "Lesson Summary",
-          "speech": "Light is a weightless wave of energy that zips through space without drag. It is the universe's ultimate speed champion.",
+          "text": "Summary",
+          "speech": "To recap, sunlight is a mix of colors, but leaves use chlorophyll to absorb red and blue light for food. Because they cannot use green light, they reflect it back, which makes them look green to us.",
           "tts_engine": "google",
           "voice_role": "assistant",
-          "duration_ms": 3000
+          "duration_ms": 5000
+        },
+        {
+          "frame_type": "summary",
+          "text": "Summary",
+          "speech": "Great job exploring the science of color today.",
+          "tts_engine": "google",
+          "voice_role": "assistant",
+          "duration_ms": 2000
         }
       ],
       "followup_questions": [
         {
-          "question": "Can anything go faster?",
-          "speech": "If nothing with mass can go faster than light, what happens to objects that try?"
+          "question": "What happens if a plant gets no light?",
+          "speech": "What do you think happens to the green color if a plant gets absolutely no light?"
         },
         {
-          "question": "What is a vacuum?",
-          "speech": "Why does light travel even faster in a vacuum than it does in air?"
+          "question": "Can plants use green light?",
+          "speech": "If plants can't use green light, why do they have so much chlorophyll?"
         },
         {
-          "question": "Light as a particle?",
-          "speech": "If light is a wave, how can it also be a particle, like a photon?"
+          "question": "Why do leaves turn red in fall?",
+          "speech": "Why do you think leaves turn red or orange when the green chlorophyll is gone?"
         }
+      ],
+      "session_theme": "Why are leaves green?",
+      "video_search_query": "why are leaves green photosynthesis explained",
+      "preferred_channels": [
+        "Khan Academy India",
+        "Physics Wallah"
       ]
     }
   ]

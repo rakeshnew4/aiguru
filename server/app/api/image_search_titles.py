@@ -497,6 +497,7 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, a
                         topic=step_title,
                         speech=frame_speech,
                         visual_description=intent or visual_desc or step_title,
+                        uid=uid,
                     )
                     if html:
                         logger.info("Built LLM SVG (custom intent) for step '%s'", step_title)
@@ -571,6 +572,7 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, a
                             topic=step_title,
                             speech=frame_speech,
                             visual_description=visual_desc,
+                            uid=uid,
                         )
                         if html and d_type.lower() in _CIRCULAR_LAYOUT_TYPES:
                             logger.info(
@@ -600,6 +602,7 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, a
                         topic=step_title,
                         speech=frame_speech,
                         visual_description=visual_desc,
+                        uid=uid,
                     )
                     if html:
                         logger.info(

@@ -893,6 +893,80 @@ object FirestoreManager {
     }
 
     /**
+     * Auto-record every generated BB session to the watch history collection.
+     * Called immediately when lesson generation completes — user action NOT required.
+     * Collection: users/{uid}/bb_watch_history (flat, ordered by viewed_at desc)
+     */
+    fun recordBbHistory(
+        userId: String,
+        subject: String,
+        chapter: String,
+        sessionId: String,
+        messageId: String,
+        conversationId: String,
+        topic: String,
+        stepCount: Int,
+        ttsKeys: List<String> = emptyList(),
+        stepsJson: String = ""
+    ) {
+        if (userId.isBlank() || userId == "guest_user") return
+        val data = mapOf(
+            "session_id"      to sessionId,
+            "message_id"      to messageId,
+            "conversation_id" to conversationId,
+            "topic"           to topic,
+            "subject"         to subject,
+            "chapter"         to chapter,
+            "step_count"      to stepCount,
+            "preview"         to topic.trim().take(120),
+            "viewed_at"       to System.currentTimeMillis(),
+            "tts_keys"        to ttsKeys,
+            "steps_json"      to stepsJson
+        )
+        usersRef(userId)
+            .collection("bb_watch_history").document(sessionId)
+            .set(data, SetOptions.merge())
+    }
+
+    /**
+     * Load all watch-history BB sessions (every generated session) for a user.
+     */
+    fun loadBbWatchHistory(
+        userId: String,
+        onSuccess: (List<Map<String, Any>>) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") { onFailure(null); return }
+        usersRef(userId)
+            .collection("bb_watch_history")
+            .orderBy("viewed_at", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .limit(200)
+            .get()
+            .addOnSuccessListener { snap ->
+                val sessions = snap.documents.mapNotNull { doc ->
+                    doc.data?.toMutableMap()?.also { it["id"] = doc.id }
+                }
+                onSuccess(sessions)
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /** Delete a watch-history entry (user explicitly removes it). */
+    fun deleteBbHistoryEntry(
+        userId: String,
+        sessionId: String,
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") { onFailure(null); return }
+        usersRef(userId)
+            .collection("bb_watch_history").document(sessionId)
+            .delete()
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /**
      * Load all saved BB sessions for a user across ALL subjects/chapters.
      * Uses the flat mirror collection written by saveBbSession.
      */

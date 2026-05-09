@@ -1360,3 +1360,118 @@ Books with ALL 404 (English/SS for Class 6/9) kept as-is — likely IP-blocked f
 **Fix:** Added fire-and-forget `ReferralManager.codeForUser(userId)` call in `HomeActivity.onCreate()` after userId is set (line ~153). Now every user who reaches the home screen registers their code automatically. Skips `guest_user`.
 **Files read:** `FriendsActivity.kt` (full: lines 1-310); `ReferralManager.kt` (lines 1-90); `users.py` (lines 413-547 lookup + share-session endpoints); `HomeActivity.kt` (lines 148-157); `SessionManager.kt` (lines 198-219); `TokenManager.kt` (lines 30-67)
 **Files changed:** `app/src/main/java/com/aiguruapp/student/HomeActivity.kt` (line ~29: added ReferralManager import; line ~153: added codeForUser call)
+
+---
+
+## 2026-05-09 (session 15)
+
+**Asked:** Fix `BB image matching failed: name 'uid' is not defined` — BB lesson loading but image matching crashes.
+
+**Root cause:** Session 14 cont patched `chat.py:1285` to pass `uid=uid` to `get_titles()`, but the local variable inside `chat_stream()` is `_uid` (set at line 1002 as `_uid = req.user_id or auth.uid`). No bare `uid` exists in that scope → `NameError`.
+
+**Fix:**
+- `server/app/api/chat.py:1285` — `uid=uid` → `uid=_uid`
+
+**Files read:** `CLAUDE.md` (full), `meta/tracker.md` (tail), `meta/rules.md` (full), `chat.py` (lines 1270-1295 image-matching block, grep for uid assignments)
+**Files changed:** `server/app/api/chat.py` (line 1285)
+
+---
+
+## 2026-05-09 (session 16)
+
+**Asked:** Watch History should show ALL generated BB sessions (not just saved ones). Saved Sessions → rename to "My Sessions" / Favourites (explicit save only). Save button → "⭐ Favourite".
+
+**Architecture change:**
+- New Firestore collection: `users/{uid}/bb_watch_history` — auto-written every time a BB lesson generates, no user action needed.
+- Existing `saved_bb_sessions_flat` collection = My Sessions / Favourites — only written when user taps ⭐ Favourite button.
+- "Watch History" drawer item now loads from `bb_watch_history`. "My Sessions" card on home loads from `saved_bb_sessions_flat`.
+
+**Changes:**
+1. **`FirestoreManager.kt`** (inserted before `loadAllSavedBbSessions`):
+   - Added `recordBbHistory(userId, subject, chapter, sessionId, messageId, conversationId, topic, stepCount, ttsKeys, stepsJson)` → writes to `bb_watch_history` with `viewed_at` timestamp
+   - Added `loadBbWatchHistory(userId, onSuccess, onFailure)` → reads `bb_watch_history` ordered by `viewed_at` desc, limit 200
+   - Added `deleteBbHistoryEntry(userId, sessionId, onSuccess, onFailure)` → deletes from `bb_watch_history`
+
+2. **`BlackboardActivity.kt`**:
+   - Added `lastAutoHistoryId: String?` field (line ~271)
+   - In `generateSteps` `onSuccess` block: after quota recording, auto-calls `FirestoreManager.recordBbHistory()` with a new `historyId = "${convId}_${currentTimeMillis}"`. Does NOT require `recordSession=true` — fires for all users.
+   - Save button icon: `💾` → `⭐` in layout
+   - Completion card: `💾 Save` → `⭐ Favourite` in layout
+   - `saveCurrentSession()`: spinner text `⏳ Saving…` → `⏳ Adding…`; success text `✓ Saved` → `⭐ Favourited`; toast "Session saved!" → "Added to My Sessions!"; failure text `💾 Save` → `⭐ Favourite`
+   - Tips dialog: `"Tap 💾 Save…"` → `"Tap ⭐ Favourite to save to My Sessions"`
+
+3. **`BbSavedSessionsActivity.kt`**:
+   - Added `isAllHistory: Boolean` as class field (was local to `onCreate`)
+   - Subtitle: `"All saved sessions"` → `"Watch History"` in all-history mode
+   - Cache file name: `bb_watch_history_{uid}.json` in history mode, `bb_sessions_{uid}.json` in saved mode
+   - `loadSessions()`: uses `loadBbWatchHistory` in all-history mode, `loadAllSavedBbSessions` in saved mode
+   - `confirmDelete()`: uses `deleteBbHistoryEntry` in history mode, `deleteBbSession` in saved mode; dialog messages updated to "Remove from Watch History?" / "Remove from My Sessions?"
+   - Date field in adapter: now reads `viewed_at` first, falls back to `saved_at`, then `shared_at`
+   - Tab labels set dynamically in code: "My Sessions" / "Shared with Me"
+
+4. **`activity_bb_saved_sessions.xml`**: Header title `"📓 Saved BB Sessions"` → `"📓 BB Sessions"`
+
+5. **`activity_home.xml`**: Quick action card `"Saved Sessions"` → `"My Sessions"`, subtitle `"View history"` → `"Favourites & saved"`
+
+**Files read:** `CLAUDE.md` (full), `meta/rules.md` (full), `meta/tracker.md` (tail), `meta/android_index.md` (lines 1-200), `BbSavedSessionsActivity.kt` (full), `FirestoreManager.kt` (lines 852-1000), `BlackboardActivity.kt` (lines 265-280, 415-470, 836-1000, 1155-1240), `activity_blackboard.xml` (lines 255-280, 514-535), `activity_bb_saved_sessions.xml` (lines 20-100), `activity_home.xml` (lines 455-490, 1195-1215)
+**Files changed:** `FirestoreManager.kt`, `BlackboardActivity.kt`, `BbSavedSessionsActivity.kt`, `activity_blackboard.xml`, `activity_bb_saved_sessions.xml`, `activity_home.xml`
+
+---
+
+## 2026-05-09 (session 17)
+
+**Asked:** Check if SVG gen LLM calls are using per-user ID.
+
+**Root cause:** `build_llm_svg()` in `svg_llm_builder.py` calls `_call_litellm_proxy` directly without a `uid` param — always fell back to master key. `enrich_diagram_data()` in `enrichment_service.py` already had `uid` correctly. `get_titles()` in `image_search_titles.py` already passes `uid` to `build_enrichment_tasks` but the 3 `build_llm_svg` call sites inside `get_titles` did not forward `uid`.
+
+**Fix:**
+- `server/app/utils/svg_llm_builder.py` — added `uid: str = None` param to `build_llm_svg()`; passed `uid=uid` to `_call_litellm_proxy()` call.
+- `server/app/api/image_search_titles.py` — added `uid=uid` to all 3 `build_llm_svg` call sites (custom-intent path, LLM-fallback path, force-override path). All 3 are inside `get_titles()` which already has `uid` in scope.
+
+**Files read:** `server_index.md` (grep), `svg_llm_builder.py` (lines 140-220), `enrichment_service.py` (lines 177-320), `image_search_titles.py` (lines 480-610, grep for uid/build_llm_svg), `llm_service.py` (lines 185-230 _call_litellm_proxy signature)
+**Files changed:** `server/app/utils/svg_llm_builder.py`, `server/app/api/image_search_titles.py`
+
+## 2026-05-09
+
+**Asked:** Overhaul admin dashboard — better UI/UX, reduce Firestore reads, add rich analytics (app growth, LLM usage, cost per user, plan/grade distribution, top spenders, revenue).
+
+**Root cause / approach:**
+- `/stats` endpoint was streaming full collections to count docs (expensive: N reads). Replaced with Firestore `count()` aggregation (1 read per collection) + 5-min in-memory cache.
+- No analytics endpoint existed. Added `/analytics` that does 2 Firestore fetches (users ≤500, payments ≤200) + LiteLLM API call, computes everything server-side.
+- Activity logs were fully commented out (dead code). Restored with simplified queries (no composite-index issue).
+- Frontend had only basic count cards on the dashboard; no growth/cost/plan analysis.
+
+**Files changed:**
+- `server/app/api/admin.py` — added `_count_collection()`, `_to_epoch_s()`, cache dicts; replaced `admin_stats` with count()+cache; new `GET /analytics` endpoint; fixed `GET /activity-logs` and `/activity-logs/stats` (uncommented + simplified)
+- `server/app/static/admin/js/dashboard.js` — full rewrite: stat cards with color borders, growth KPI row, plan/grade bar charts, LiteLLM top-spenders table, health badge
+- `server/app/static/admin/js/analytics.js` — NEW file: full Analytics section with growth KPIs, revenue summary, LLM cost efficiency, plan/grade distributions, top spenders with cost tier badges
+- `server/app/static/admin/index.html` — added Analytics nav item, section div, analytics.js script tag
+- `server/app/static/admin/js/app.js` — added `analytics` to SECTION_MAP
+- `server/app/static/admin/css/styles.css` — added: section-label, kpi-row/card, two-col-grid, bar-row/track/fill/count, health-badge, analytics-kpi-grid/card styles; responsive breakpoints
+
+**Files read:**
+- `meta/tracker.md` (tail), `meta/rules.md` (full), `CLAUDE.md` (full)
+- `server/app/api/admin.py` (full, 661 lines)
+- `server/app/static/admin/index.html` (full, 156 lines)
+- `server/app/static/admin/js/dashboard.js`, `api.js`, `users.js`, `logs.js`, `app.js` (full)
+- `server/app/static/admin/css/styles.css` (full)
+- `server/seed_firestore.py` (lines 1–80), `server/seed_user_quotas.py` (full)
+- `server/app/api/users.py` (grep: questions_updated_at, planId, created_at)
+
+## 2026-05-09 (Android — Play Console warnings)
+
+**Asked:** Fix Play Console Android 15/16 deprecation warnings from Release 19.
+
+**Root cause:** All 3 warnings in your code are `UCrop.Options.setStatusBarColor()` — the uCrop API that internally calls the deprecated `Window.setStatusBarColor`. BlackboardActivity already uses `enableEdgeToEdge()` correctly; the UCrop call was a leftover conflict.
+
+**Changed:**
+- `BlackboardActivity.kt:3842` — removed `setStatusBarColor()` from UCrop.Options block
+- `HomeActivity.kt:1626` — same
+- `FullChatFragment.kt:1145` — same
+
+**Not fixed (third-party, can't touch):**
+- `androidx.activity.s.a/u.a` — `enableEdgeToEdge()` backward-compat shim; ignore
+- `com.razorpay:checkout:1.6.41` — orientation lock in BaseCheckoutActivity; update Razorpay to latest version when available
+- `com.yalantis.ucrop:2.2.9` — uCrop library itself still calls deprecated API internally; updating uCrop may help
+
+**Files read:** `meta/android_index.md` (lines 1–60), `BlackboardActivity.kt:3836–3847`, `HomeActivity.kt:1620–1631`, `FullChatFragment.kt:1139–1150`, `app/build.gradle` (SDK versions + dependencies)

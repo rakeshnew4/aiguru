@@ -379,11 +379,34 @@
 ---
 
 ## api/admin.py
-**Path:** `server/app/api/admin.py`
+**Path:** `server/app/api/admin.py` | Lines: ~730 (after 2026-05-09 refactor)
 
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
-| (unread) | ? | Admin-only endpoints (school management, config) |
+| `_require_admin()` | 35–44 | HTTP Basic Auth: checks ADMIN_USERNAME / ADMIN_PASSWORD env vars |
+| `_get_db()` | 49–64 | Lazy singleton for sync Firestore client using service account |
+| `_count_collection()` | 78–85 | Uses Firestore `count()` aggregation (1 read/call) with stream() fallback |
+| `_to_epoch_s()` | 88–95 | Normalises int ms, int s, datetime → epoch seconds float |
+| `_stats_cache`, `_analytics_cache` | 97–99 | In-memory dicts; TTL = 300s (5 min) each |
+| `GET /stats` | 103–120 | Returns 8 collection counts; uses count() + cache — very cheap |
+| `GET /analytics` | 123–195 | One-pass: reads users(500) + payments(200) + LiteLLM; returns growth, plan dist, revenue, LLM cost |
+| `GET /users` | 207–211 | Lists up to 200 user docs |
+| `GET /users/{uid}` | 213–221 | Fetches user + chapter_progress subcollection |
+| `PUT /users/{uid}` | 224–228 | Merge-update user doc |
+| `DELETE /users/{uid}` | 231–234 | Hard-delete user doc |
+| CRUD: subjects, chapters, plans, schools, offers | 237–385 | Standard set/merge/delete per collection |
+| `GET /model-config` | 281–305 | Returns live env tiers + Firestore admin_config/global |
+| `PUT /model-config` | 308–312 | Updates admin_config/global |
+| `GET /payments/intents` | 317–322 | Payment intents, ordered by created_at DESC |
+| `GET /payments/receipts` | 325–329 | Payment receipts |
+| `GET /app-config` | 337–340 | Reads updates/app_config doc |
+| `GET /bb-samples` | 387–389 | Lists global onboarding BB samples |
+| `GET /notifications` | 432–433 | Lists notification docs |
+| `GET /referral-codes` | 461–463 | Lists referralCodes collection |
+| LiteLLM endpoints | 479–608 | Key create/list/revoke + usage per-user + all-users + health check |
+| `GET /activity-logs` | 612–629 | Live activity logs; order_by timestamp DESC (no composite index: uid/event_type filter skips orderBy) |
+| `GET /activity-logs/stats` | 633–648 | Count per event_type over last 500 log entries |
+| `GET /collection/{name}` | 653–668 | Read-only hatch for ALLOWED_COLLECTIONS set |
 
 ---
 
