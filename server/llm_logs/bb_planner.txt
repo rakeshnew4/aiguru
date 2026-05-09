@@ -1,13 +1,19 @@
-=== BB_PLANNER | 2026-05-09 14:41:54 | session=KkhkqOQI_60ea9af8 ===
+=== BB_PLANNER | 2026-05-09 15:17:42 | session=KkhkqOQI_6c026711 ===
 
 === PROMPT ===
 You are a lesson analyst for a personal visual AI tutor responding to a student's SPECIFIC question.
 Analyze exactly what the student is asking and return a focused lesson plan.
 Output ONLY valid JSON — nothing else.
 
-Student question (answer THIS specifically): "Topic: Why are leaves green?
+Student question (answer THIS specifically): "Topic: Photosynthesis
+Lesson title: Unlocking Photosynthesis: How Plants Eat Light
+Category: science
 
-[Speech context from previous lesson: Ever wonder how plants eat without mouths? They use photosynthesis, a secret recipe turning sunlight, water, and air into sugary snacks. Plants are like master chefs. They gather water from roots, carbon dioxide from the air, and su"
+This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
+
+Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
+Steps to generate in this batch:
+- The Ingredien"
 Chapter context (excerpt): ""
 Recent conversation (last 3 turns):
   (No prior conversation — this is the student's first question)
@@ -43,21 +49,22 @@ Rules:
 === RESPONSE ===
 {
   "topic_type": "science_biology",
-  "scope": "medium",
+  "scope": "simple",
   "key_concepts": [
-    "chlorophyll",
-    "light spectrum",
-    "reflection and absorption"
+    "Photosynthesis",
+    "Chlorophyll",
+    "Reactants",
+    "Solar Energy"
   ],
   "steps_count": 5,
   "image_search_terms": [
-    "chlorophyll molecule structure",
-    "light spectrum absorption reflection diagram",
-    "green leaf chloroplast"
+    "photosynthesis diagram simple",
+    "plant leaf cross section chloroplast",
+    "sunlight water carbon dioxide plant"
   ],
-  "question_focus": "The student wants to understand the biological mechanism (chlorophyll) that causes leaves to appear green by reflecting green light.",
+  "question_focus": "The student wants an engaging introduction to photosynthesis, specifically focusing on the essential ingredients plants need to create their own food.",
   "question_type": "conceptual",
-  "prior_knowledge": "The student understands the basic process of photosynthesis: plants turn sunlight, water, and carbon dioxide into food.",
-  "hook_question": "If plants love sunlight so much, why do they reject the green part of it?",
-  "continuation_topic": "Why leaves change color in autumn"
+  "prior_knowledge": "",
+  "hook_question": "Have you ever wondered how a plant grows big and strong without ever eating a single meal?",
+  "continuation_topic": "The Process of Photosynthesis"
 }

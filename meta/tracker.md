@@ -1475,3 +1475,14 @@ Books with ALL 404 (English/SS for Class 6/9) kept as-is — likely IP-blocked f
 - `com.yalantis.ucrop:2.2.9` — uCrop library itself still calls deprecated API internally; updating uCrop may help
 
 **Files read:** `meta/android_index.md` (lines 1–60), `BlackboardActivity.kt:3836–3847`, `HomeActivity.kt:1620–1631`, `FullChatFragment.kt:1139–1150`, `app/build.gradle` (SDK versions + dependencies)
+
+## 2026-05-09 (admin.py bugfix)
+
+**Asked:** Fix `AttributeError: 'list' object has no attribute 'items'` in `/analytics` endpoint.
+
+**Root cause:** `litellm_service.get_all_usage_stats()` calls `/user/list` and returns the raw response, which is a list of user objects (or `{"users": [...]}` shaped), not the `{uid: stats}` dict my analytics code assumed. The `or {}` guard doesn't help because a non-empty list is truthy.
+
+**Changed:**
+- `server/app/api/admin.py:189–215` — replaced hardcoded `llm_raw.get("users")` dict assumption with a normaliser that handles: plain list, `{"users": [...]}`, `{"data": [...]}`, or existing `{uid: stats}` dict shapes. Also maps LiteLLM field names (`spend` → `total_cost`, `total_requests_made` → `total_requests`).
+
+**Files read:** `server/app/services/litellm_service.py:163–185` (get_all_usage_stats implementation), `server/app/api/admin.py:169–200`

@@ -187,15 +187,36 @@ async def admin_analytics(_: str = Depends(_require_admin)):
             month_rev += amt
 
     # ── LiteLLM costs ──────────────────────────────────────────────────────────
-    llm_raw: Dict = {}
+    llm_raw: Any = {}
     try:
         from app.services import litellm_service as _lls
         llm_raw = await _lls.get_all_usage_stats() or {}
     except Exception:
         pass
 
-    total_cost  = float(llm_raw.get("total_cost_all_users") or 0)
-    user_costs: Dict = llm_raw.get("users") or {}
+    # LiteLLM /user/list returns a list of user objects; normalise to uid→stats dict.
+    # Also handles {"users": [...]} or {"data": [...]} wrapper shapes.
+    total_cost = float((llm_raw.get("total_cost_all_users") if isinstance(llm_raw, dict) else None) or 0)
+    raw_users: Any = (
+        llm_raw if isinstance(llm_raw, list)
+        else llm_raw.get("users") or llm_raw.get("data") or {}
+        if isinstance(llm_raw, dict) else {}
+    )
+    user_costs: Dict = {}
+    if isinstance(raw_users, list):
+        for item in raw_users:
+            uid = item.get("user_id") or item.get("id") or ""
+            if not uid:
+                continue
+            cost = float(item.get("spend") or item.get("total_cost") or 0)
+            reqs = int(item.get("total_requests_made") or item.get("total_requests") or 0)
+            user_costs[uid] = {"total_cost": cost, "total_requests": reqs}
+        if not total_cost:
+            total_cost = sum(v["total_cost"] for v in user_costs.values())
+    elif isinstance(raw_users, dict):
+        user_costs = raw_users
+        if not total_cost:
+            total_cost = sum(float(v.get("total_cost") or v.get("spend") or 0) for v in user_costs.values())
     top_spenders = sorted(
         [{"uid": uid,
           "cost": float(v.get("total_cost") or 0),

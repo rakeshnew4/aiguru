@@ -1,4 +1,4 @@
-=== BB_SVG_BUILDER | 2026-05-09 14:42:11 | session=none ===
+=== BB_SVG_BUILDER | 2026-05-09 15:18:07 | session=none ===
 
 === SYSTEM ===
 You are an SVG diagram artist for an educational app. Draw accurate diagrams as raw SVG.
@@ -30,76 +30,15 @@ DRAW REAL STRUCTURES (never flowcharts with boxes/arrows):
 === PROMPT ===
 Draw this educational diagram as SVG:
 
-  Diagram type : leaf_anatomy
-  Topic/title  : Inside the leaf
-  Context      : Look at this cross section of a leaf, showing the layers where the magic happens.
+  Diagram type : custom
+  Topic/title  : The Calvin Cycle
+  Context      : This diagram shows how the cycle keeps spinning to pump out sugar, using the energy we collected earlier.
   Data hints   : none
-  Visual layout: Showing the internal structure of a leaf with chloroplasts.
+  Visual layout: A circular flow chart showing CO2 and Energy entering, and Glucose exiting.
   Follow this layout exactly — positions, arrows, and labels as described above.
 
-Draw "Inside the leaf" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
+Draw "The Calvin Cycle" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
 Animate each part appearing sequentially.  Output ONLY the <svg> element.
 
 === RESPONSE ===
-<svg viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg">
-  <rect width="400" height="300" fill="#1A2B1A"/>
-  
-  <text x="20" y="30" font-family="serif" font-size="13" font-weight="bold" fill="#F0EDD0">Inside the leaf
-    <animate attributeName="opacity" values="0;1" dur="0.35s" begin="0s" fill="freeze"/>
-  </text>
-
-  <!-- Cuticle -->
-  <path d="M20 60 L380 60" stroke="#81C784" stroke-width="4" stroke-dasharray="360" stroke-dashoffset="360">
-    <animate attributeName="stroke-dashoffset" values="360;0" dur="0.6s" begin="0.3s" fill="freeze"/>
-  </path>
-  <text x="20" y="50" font-family="serif" font-size="11" fill="#F0EDD0" opacity="0">Cuticle
-    <animate attributeName="opacity" values="0;1" dur="0.35s" begin="0.3s" fill="freeze"/>
-  </text>
-
-  <!-- Upper Epidermis -->
-  <rect x="20" y="65" width="360" height="20" fill="#81C784" fill-opacity="0.25" stroke="#81C784" stroke-width="2" stroke-dasharray="760" stroke-dashoffset="760">
-    <animate attributeName="stroke-dashoffset" values="760;0" dur="0.6s" begin="0.6s" fill="freeze"/>
-  </rect>
-  <text x="20" y="95" font-family="serif" font-size="11" fill="#F0EDD0" opacity="0">Upper Epidermis
-    <animate attributeName="opacity" values="0;1" dur="0.35s" begin="0.6s" fill="freeze"/>
-  </text>
-
-  <!-- Palisade Mesophyll -->
-  <g stroke="#4FC3F7" stroke-width="2" fill="#4FC3F7" fill-opacity="0.25">
-    <rect x="30" y="95" width="20" height="80" rx="5" stroke-dasharray="200" stroke-dashoffset="200">
-      <animate attributeName="stroke-dashoffset" values="200;0" dur="0.6s" begin="0.9s" fill="freeze"/>
-    </rect>
-    <rect x="60" y="95" width="20" height="90" rx="5" stroke-dasharray="220" stroke-dashoffset="220">
-      <animate attributeName="stroke-dashoffset" values="220;0" dur="0.6s" begin="0.9s" fill="freeze"/>
-    </rect>
-    <rect x="90" y="95" width="20" height="85" rx="5" stroke-dasharray="210" stroke-dashoffset="210">
-      <animate attributeName="stroke-dashoffset" values="210;0" dur="0.6s" begin="0.9s" fill="freeze"/>
-    </rect>
-    <circle cx="40" cy="120" r="4" fill="#F5E3A0" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="1.2s" fill="freeze"/></circle>
-    <circle cx="70" cy="150" r="4" fill="#F5E3A0" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="1.2s" fill="freeze"/></circle>
-  </g>
-  <text x="20" y="200" font-family="serif" font-size="11" fill="#F0EDD0" opacity="0">Palisade Cells
-    <animate attributeName="opacity" values="0;1" dur="0.35s" begin="0.9s" fill="freeze"/>
-  </text>
-
-  <!-- Spongy Mesophyll -->
-  <g stroke="#FFB74D" stroke-width="2" fill="#FFB74D" fill-opacity="0.25">
-    <ellipse cx="200" cy="220" rx="25" ry="15" stroke-dasharray="130" stroke-dashoffset="130">
-      <animate attributeName="stroke-dashoffset" values="130;0" dur="0.6s" begin="1.5s" fill="freeze"/>
-    </ellipse>
-    <ellipse cx="260" cy="230" rx="20" ry="20" stroke-dasharray="125" stroke-dashoffset="125">
-      <animate attributeName="stroke-dashoffset" values="125;0" dur="0.6s" begin="1.5s" fill="freeze"/>
-    </ellipse>
-  </g>
-  <text x="200" y="260" font-family="serif" font-size="11" fill="#F0EDD0" opacity="0">Spongy Layer
-    <animate attributeName="opacity" values="0;1" dur="0.35s" begin="1.5s" fill="freeze"/>
-  </text>
-
-  <!-- Stoma -->
-  <path d="M320 270 C310 270, 310 290, 320 290 C330 290, 330 270, 320 270" stroke="#FF6B6B" stroke-width="2" fill="none" stroke-dasharray="60" stroke-dashoffset="60">
-    <animate attributeName="stroke-dashoffset" values="60;0" dur="0.6s" begin="1.8s" fill="freeze"/>
-  </path>
-  <text x="310" y="260" font-family="serif" font-size="11" fill="#F0EDD0" opacity="0">Stoma
-    <animate attributeName="opacity" values="0;1" dur="0.35s" begin="1.8s" fill="freeze"/>
-  </text>
-</svg>
+<svg viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#1A2B1A"/><text x="200" y="25" text-anchor="middle" font-family="serif" fill="#F0EDD0" font-size="13" font-weight="bold" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0s"/>The Calvin Cycle</text><path d="M200 60 A 80 80 0 1 1 199 60" fill="none" stroke="#8BAB8B" stroke-width="3" stroke-dasharray="503" stroke-dashoffset="503"><animate attributeName="stroke-dashoffset" from="503" to="0" dur="0.6s" fill="freeze" begin="0.3s"/></path><path d="M200 140 L 200 80" fill="none" stroke="#F0EDD0" stroke-width="2" marker-end="url(#arrowhead)" stroke-dasharray="60" stroke-dashoffset="60"><animate attributeName="stroke-dashoffset" from="60" to="0" dur="0.6s" fill="freeze" begin="0.9s"/></path><defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#F0EDD0"/></marker></defs><circle cx="200" cy="60" r="15" fill="#81C784" fill-opacity="0.25" stroke="#81C784" stroke-width="2" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.5s"/></circle><text x="200" y="55" text-anchor="middle" font-family="serif" fill="#F0EDD0" font-size="11" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.5s"/>CO2 Fix</text><circle cx="280" cy="140" r="15" fill="#FFB74D" fill-opacity="0.25" stroke="#FFB74D" stroke-width="2" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="2.1s"/></circle><text x="280" y="135" text-anchor="middle" font-family="serif" fill="#F0EDD0" font-size="11" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="2.1s"/>ATP/NADPH</text><circle cx="200" cy="220" r="15" fill="#FF6B6B" fill-opacity="0.25" stroke="#FF6B6B" stroke-width="2" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="2.7s"/></circle><text x="200" y="215" text-anchor="middle" font-family="serif" fill="#F0EDD0" font-size="11" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="2.7s"/>Glucose</text><circle cx="120" cy="140" r="15" fill="#4FC3F7" fill-opacity="0.25" stroke="#4FC3F7" stroke-width="2" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="3.3s"/></circle><text x="120" y="135" text-anchor="middle" font-family="serif" fill="#F0EDD0" font-size="11" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="3.3s"/>Regen</text><path d="M200 235 L 200 280" fill="none" stroke="#FF6B6B" stroke-width="2" marker-end="url(#arrowhead)" stroke-dasharray="45" stroke-dashoffset="45"><animate attributeName="stroke-dashoffset" from="45" to="0" dur="0.6s" fill="freeze" begin="3.9s"/></path><text x="200" y="290" text-anchor="middle" font-family="serif" fill="#F0EDD0" font-size="11" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="4.5s"/>Output</text></svg>

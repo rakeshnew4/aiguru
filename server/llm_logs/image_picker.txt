@@ -1,4 +1,4 @@
-=== IMAGE_PICKER | 2026-05-09 14:42:13 | session=none ===
+=== IMAGE_PICKER | 2026-05-09 15:18:09 | session=none ===
 
 === PROMPT ===
 You are selecting the best matching Wikimedia Commons image for each blackboard lesson step.
@@ -8,36 +8,43 @@ When a Visual layout is provided, prefer images that match the described visual 
 Output ONLY valid JSON mapping step index (string key) to the EXACT title string or null.
 
 Steps needing images:
-[0] Step "Sunlight is a rainbow" — topic: "prism splitting white light into rainbow colors"
-[1] Step "The green machine" — topic: "chlorophyll molecule diagram"
-[2] Step "Inside the leaf" — topic: "leaf anatomy cross section showing chloroplasts"
-[3] Step "The big reveal" — topic: "reflection of light off a green leaf"
-[4] Step "Fall colors and wrap up" — topic: "autumn leaves changing color"
+[0] Step "The Ingredients" — topic: "plant photosynthesis ingredients diagram"
+[1] Step "The Chloroplast Factory" — topic: "leaf anatomy chloroplast diagram"
+[2] Step "Light-Dependent Reactions" — topic: "chlorophyll solar energy absorption diagram"
+[3] Step "The Calvin Cycle" — topic: "calvin cycle sugar production diagram"
+[4] Step "Why It Matters" — topic: "oxygen cycle and food web diagram"
 
 Available Wikimedia titles:
-- 1ppr peridinin chlorophyll protein.png
-- 1ppr peridinin chlorophyll protein trimer.png
-- Fpls-02-00028-g012.png
-- Green Mansions 1904.djvu
-- AUTUMN LEAF COLOR CHANGING.jpg
-- Autumn leaves by Kirkstall Road - geograph.org.uk - 7023682.jpg
-- Leaves in autumn - qahan Village - Qom Province - Iran Nature 08.jpg
-- Hemoglobin-Chlorophyll.svg
-- Structure of bacterial antenna complex.png
-- Bryum capillare leaf cells showing chloroplasts.jpg
-- Leaf Structure.svg
-- Leaf Structure ar.svg
-- Leaf Structure ms.svg
-- Tradescantia, leaf, Etzold green 3.JPG
-- Tradescantia, stalk, Etzold green 6.jpg
+- C4 Plant Anatomy.svg
+- Cycling of marine phytoplankton.png
+- Microorganisms and climate change.png
+- The Effect of Severe and Prolonged Muscular Work on Food Consumption, Digestion, and Metabolism.djvu
+- Simple photosynthesis overview-hy.png
+- Simple photosynthesis overview-ja.svg
+- Simple photosynthesis overview-jv.jpg
+- Simple photosynthesis overview-ru.svg
+- Simple photosynthesis overview-ta.svg
+- Simple photosynthesis overview - Ar.png
+- Simple photosynthesis overview bs.svg
+- Simple photosynthesis overview zh-hant.svg
+- Angiosperm Leaf Abaxial Midrib Collenchyma in Nymphea (36909780853).jpg
+- Angiosperm Leaf Abaxial Midrib in Nymphea (37547640462).jpg
+- Angiosperm Leaf Adaxial Midrib in Nymphaea (37321110790).jpg
+- Angiosperm Leaf Bundle Sheath and Sclerenchyma in Potamogeton Leaf (36716451191).jpg
+- Angiosperm Leaf Midrib Vascular Bundle in The Hydrophyte Potamogeton (36716448871).jpg
+- Angiosperm Leaf Secondary Vascular Bundle in the Hydrophyte Potamogeton (36716446291).jpg
+- Angiosperm Leaf The Hydrophytic Dicotyledonous Leaf of Nymphaea (37531065536).jpg
+- Angiosperm Leaf The Hydrophytic Dicotyledonous Leaf of Potamogeton (36716447811).jpg
+- Global Carbon Dioxide 2020-2021 for Hyperwalls (SVS4983 - CO2Volumetric 9600x3240 30fps 01740).png
+- Plants in sunlight.jpg
 
 Output example: {"0": "Photosynthesis diagram.svg", "3": null, "5": "Newton laws.png"}
 
 === RESPONSE ===
 {
-  "0": null,
-  "1": "Hemoglobin-Chlorophyll.svg",
-  "2": "Leaf Structure.svg",
+  "0": "Simple photosynthesis overview-ru.svg",
+  "1": "Angiosperm Leaf The Hydrophytic Dicotyledonous Leaf of Nymphaea (37531065536).jpg",
+  "2": null,
   "3": null,
-  "4": "AUTUMN LEAF COLOR CHANGING.jpg"
+  "4": null
 }

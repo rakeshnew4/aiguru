@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-05-09 14:42:06 | session=KkhkqOQI_60ea9af8 ===
+=== BB_MAIN | 2026-05-09 15:17:52 | session=KkhkqOQI_6c026711 ===
 
 === SYSTEM ===
 You are GURU — a warm, funny, wildly effective AI teacher inside a visual blackboard app.
@@ -97,35 +97,35 @@ RULES:
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: Why are leaves green?
-
-[Speech context from previous lesson: Ever wonder how plants eat without mouths? They use photosynthesis, a secret recipe turning sunlight, water, and air into sugary snacks. Plants are like master chefs. They gather water from roots, carbon dioxide from the air, and sunlight energy to cook their food. Imagine a kitchen where sunlight is the oven, water and air are the ingredients, and sugar is the delicious final meal. Inside every leaf are tiny green solar panels called chloroplasts. They contain chlorophyll, the green pigment that grabs sunlight. Chlorophyll is like a solar-powered battery charger, except it makes sugar instead of charging your phone. Much tastier, right? See these tiny green dots? Those are the chloroplasts, the busy factories working hard to catch every bit of light. First, the plant traps sunlight to split water molecules apart. It’s like breaking open a water balloon to get the power inside. Quick quiz! To get energy, what molecule does the plant split apart first? Actually, it is water! The plant splits water molecules to release energy and oxygen. Now for the magic. The plant takes that energy and carbon dioxide to build glucose, or sugar. This is the plant's food. Think of this cycle like a s]
-Lesson title: Why are leaves green?
-
-[Speech context from previous lesson:
-Category: general
+Student's EXACT question: Topic: Photosynthesis
+Lesson title: Unlocking Photosynthesis: How Plants Eat Light
+Category: science
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
-Generate EXACTLY 0 steps with APPROXIMATELY 4 frames each.
+Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
+- The Ingredients: Water, CO2, and Sunlight
+- The Chloroplast Factory: Where Magic Happens
+- Light-Dependent Reactions: Capturing Energy
+- The Calvin Cycle: Building Glucose
+- Why It Matters: Oxygen and the Food Web
 
-
+This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants to understand the biological mechanism (chlorophyll) that causes leaves to appear green by reflecting green light.
+What the student specifically wants: The student wants an engaging introduction to photosynthesis, specifically focusing on the essential ingredients plants need to create their own food.
 Question type: conceptual
 Student level: Class 5
 GRADE SPEECH STYLE: Technical words WITH plain-English gloss. Relatable humor (games, snacks). ≤35 words/frame.
-Topic type: science_biology | Scope: medium
-What student already knows (DO NOT repeat this): The student understands the basic process of photosynthesis: plants turn sunlight, water, and carbon dioxide into food.
-Key concepts to cover (ALL of these): chlorophyll, light spectrum, reflection and absorption
+Topic type: science_biology | Scope: simple
+Key concepts to cover (ALL of these): Photosynthesis, Chlorophyll, Reactants, Solar Energy
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-DIAGRAM RECOMMENDATION: This topic likely needs a "leaf_anatomy" diagram (confidence 97%). Use diagram_type="leaf_anatomy" for your diagram frame(s).
+DIAGRAM RECOMMENDATION: This topic likely needs a "leaf_anatomy" diagram (confidence 98%). Use diagram_type="leaf_anatomy" for your diagram frame(s).
 
 SUBJECT GUIDANCE (Science — Biology):
 • For life cycles/processes (mitosis, photosynthesis, cell division): use diagram_type=custom so the LLM draws the actual process, NOT diagram_type=cycle.
@@ -141,169 +141,103 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
 {
   "steps": [
     {
-      "title": "Sunlight is a rainbow",
+      "title": "The Ingredients",
       "lang": "en-US",
-      "image_description": "prism splitting white light into rainbow colors",
+      "image_description": "plant photosynthesis ingredients diagram",
       "image_show_confidencescore": 0.85,
       "frames": [
         {
           "frame_type": "hook",
-          "text": "Sunlight is actually a rainbow!",
-          "speech": "Sunlight looks clear, but it is actually a rainbow of colors hidden inside, just like a disco ball.",
+          "text": "Eating **Sunlight**?",
+          "speech": "Imagine if you could eat sunlight for lunch instead of a sandwich. Plants do exactly that using a process called photosynthesis, which is just a fancy word for making food out of light.",
           "tts_engine": "android",
           "voice_role": "teacher",
-          "duration_ms": 3000
+          "duration_ms": 4000
         },
         {
           "frame_type": "concept",
-          "text": "White light = all colors",
-          "speech": "White light is made of red, orange, yellow, green, blue, and violet light waves all mixed together.",
+          "text": "The **Reactants**",
+          "speech": "To make this meal, plants need three simple ingredients, or reactants. They take in water from the roots, carbon dioxide from the air, and energy from the sun.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3000
+          "duration_ms": 3500
         },
         {
-          "frame_type": "concept",
-          "text": "Absorption and reflection",
-          "speech": "When light hits an object, the object eats some colors and spits others back out into the air.",
+          "frame_type": "diagram",
+          "text": "Sun + Water + CO2",
+          "speech": "Look at how these ingredients enter the plant. Water travels up from the soil, while carbon dioxide enters through tiny holes in the leaves.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3000
-        },
-        {
-          "frame_type": "memory",
-          "text": "Picky eaters",
-          "speech": "Think of a leaf like a really picky eater that loves almost every color except for green.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000
+          "duration_ms": 3000,
+          "diagram_type": "custom",
+          "diagram_data": {
+            "title": "Plant Input",
+            "parts": ["Sunlight", "Water", "CO2"]
+          },
+          "visual_description": "A simple diagram showing sunlight, water, and CO2 entering a plant leaf."
         }
       ]
     },
     {
-      "title": "The green machine",
+      "title": "The Chloroplast Factory",
       "lang": "en-US",
-      "image_description": "chlorophyll molecule diagram",
+      "image_description": "leaf anatomy chloroplast diagram",
+      "image_show_confidencescore": 0.95,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "Inside the **Chloroplast**",
+          "speech": "Inside every leaf, there are millions of tiny kitchens called chloroplasts. These are the factories where the actual cooking happens.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        },
+        {
+          "frame_type": "diagram",
+          "text": "Leaf **Anatomy**",
+          "speech": "Notice the layers here. The chloroplasts are packed with chlorophyll, which gives plants their green color and acts like a solar panel.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000,
+          "diagram_type": "leaf_anatomy",
+          "visual_description": "Cross-section of a leaf showing chloroplasts inside the cells."
+        },
+        {
+          "frame_type": "joke",
+          "text": "Green **Thumb**",
+          "speech": "Why are plants so good at math? Because they know exactly how to use their roots to square up the sun. Okay, that was a bit cheesy, but chlorophyll is definitely the star of the show.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500
+        }
+      ]
+    },
+    {
+      "title": "Light-Dependent Reactions",
+      "lang": "en-US",
+      "image_description": "chlorophyll solar energy absorption diagram",
       "image_show_confidencescore": 0.8,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "Chlorophyll pigment",
-          "speech": "Inside leaves, there is a special chemical called chlorophyll, which is the green pigment that traps light.",
+          "text": "Capturing **Solar Energy**",
+          "speech": "In the first stage, the chlorophyll catches sunlight and uses that power to split water molecules apart. It is basically charging up tiny batteries for the plant.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3000
+          "duration_ms": 3500
         },
-        {
-          "frame_type": "concept",
-          "text": "Light vacuum",
-          "speech": "Chlorophyll acts like a solar powered vacuum cleaner for light, sucking up energy to make food.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000
-        },
-        {
-          "frame_type": "concept",
-          "text": "Selective absorption",
-          "speech": "It loves to swallow red and blue light for energy, but it is terrible at absorbing green light.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000
-        },
-        {
-          "frame_type": "joke",
-          "text": "Broccoli at dinner",
-          "speech": "Poor chlorophyll, it tries to eat the green light but ends up spitting it out like broccoli at dinner.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        }
-      ]
-    },
-    {
-      "title": "Inside the leaf",
-      "lang": "en-US",
-      "image_description": "leaf anatomy cross section showing chloroplasts",
-      "image_show_confidencescore": 0.97,
-      "frames": [
-        {
-          "frame_type": "diagram",
-          "text": "Leaf anatomy cross-section",
-          "speech": "Look at this cross section of a leaf, showing the layers where the magic happens.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500,
-          "diagram_type": "leaf_anatomy",
-          "diagram_data": {
-            "layers": [
-              "cuticle",
-              "epidermis",
-              "mesophyll",
-              "chloroplasts"
-            ]
-          },
-          "visual_description": "Showing the internal structure of a leaf with chloroplasts."
-        },
-        {
-          "frame_type": "diagram",
-          "text": "Chloroplasts working",
-          "speech": "The top layers are packed with chloroplasts, which are like tiny solar panel factories.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000
-        },
-        {
-          "frame_type": "diagram",
-          "text": "Light absorption",
-          "speech": "See how the red and blue light waves get trapped inside the leaf to power the food making?",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000
-        },
-        {
-          "frame_type": "diagram",
-          "text": "Green light reflection",
-          "speech": "But notice the green light waves, they bounce right off the surface like a rubber ball.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000
-        }
-      ]
-    },
-    {
-      "title": "The big reveal",
-      "lang": "en-US",
-      "image_description": "reflection of light off a green leaf",
-      "image_show_confidencescore": 0.9,
-      "frames": [
         {
           "frame_type": "question",
-          "text": "Why not black?",
-          "speech": "Wait a second, if plants absorb almost all the light, why aren't leaves black?",
+          "text": "What happens if we block the **Light**?",
+          "speech": "What do you think happens to the plant factory if we suddenly block all the light?",
           "tts_engine": "android",
           "voice_role": "teacher",
-          "duration_ms": 3000
+          "duration_ms": 2000
         },
         {
           "frame_type": "reveal",
-          "text": "Reflection is key",
-          "speech": "Actually, it is because they reflect the green light right into our eyes.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000
-        },
-        {
-          "frame_type": "concept",
-          "text": "Wasteful green light",
-          "speech": "Since they do not use green light for energy, they toss it back at us instead of eating it.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000
-        },
-        {
-          "frame_type": "concept",
-          "text": "The result",
-          "speech": "That reflection is exactly why the whole world looks like a big green salad to us.",
+          "text": "The **Shutdown**",
+          "speech": "Actually, it is like a power cut. The whole factory shuts down because there is no electricity to keep the machines running.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
@@ -311,60 +245,90 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ]
     },
     {
-      "title": "Fall colors and wrap up",
+      "title": "The Calvin Cycle",
       "lang": "en-US",
-      "image_description": "autumn leaves changing color",
-      "image_show_confidencescore": 0.85,
+      "image_description": "calvin cycle sugar production diagram",
+      "image_show_confidencescore": 0.75,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "Building **Glucose**",
+          "speech": "Now for the magic. The plant takes the energy from the previous step and uses it to turn carbon dioxide into glucose, which is simple plant sugar.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500
+        },
+        {
+          "frame_type": "memory",
+          "text": "The **Sugar Factory**",
+          "speech": "Think of the Calvin Cycle as the final assembly line in a candy factory, where the ingredients are finally turned into delicious, sweet glucose.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        },
+        {
+          "frame_type": "diagram",
+          "text": "Cycle **Process**",
+          "speech": "This diagram shows how the cycle keeps spinning to pump out sugar, using the energy we collected earlier.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500,
+          "diagram_type": "custom",
+          "diagram_data": {
+            "title": "Calvin Cycle",
+            "flow": ["Energy In", "CO2 In", "Glucose Out"]
+          },
+          "visual_description": "A circular flow chart showing CO2 and Energy entering, and Glucose exiting."
+        }
+      ]
+    },
+    {
+      "title": "Why It Matters",
+      "lang": "en-US",
+      "image_description": "oxygen cycle and food web diagram",
+      "image_show_confidencescore": 0.8,
       "frames": [
         {
           "frame_type": "apply",
-          "text": "Autumn leaves",
-          "speech": "That is also why leaves turn yellow or red in autumn when the green chlorophyll finally breaks down.",
+          "text": "Our **Oxygen** source",
+          "speech": "This is why plants are amazing. They do not just make food for themselves, they release oxygen as a byproduct, which we need to breathe.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
         },
         {
           "frame_type": "curiosity",
-          "text": "Alien plants?",
-          "speech": "Do you think plants on another planet would look green if their sun was a different color?",
+          "text": "The **Food Web**",
+          "speech": "Without this process, the entire food web would collapse. Have you ever wondered what would happen if the sun disappeared for a whole month?",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
         },
         {
           "frame_type": "summary",
-          "text": "Summary",
-          "speech": "To recap, sunlight is a mix of colors, but leaves use chlorophyll to absorb red and blue light for food. Because they cannot use green light, they reflect it back, which makes them look green to us.",
+          "text": "Photosynthesis **Recap**",
+          "speech": "So, photosynthesis is how plants turn sunlight, water, and carbon dioxide into sugar and oxygen. It is the foundation of life on Earth, feeding the planet and letting us breathe.",
           "tts_engine": "google",
           "voice_role": "assistant",
-          "duration_ms": 5000
-        },
-        {
-          "frame_type": "summary",
-          "text": "Summary",
-          "speech": "Great job exploring the science of color today.",
-          "tts_engine": "google",
-          "voice_role": "assistant",
-          "duration_ms": 2000
+          "duration_ms": 4000
         }
       ],
       "followup_questions": [
         {
-          "question": "What happens if a plant gets no light?",
-          "speech": "What do you think happens to the green color if a plant gets absolutely no light?"
+          "question": "Why are leaves green?",
+          "speech": "Why do you think leaves are green? Think about what we said about chlorophyll."
         },
         {
-          "question": "Can plants use green light?",
-          "speech": "If plants can't use green light, why do they have so much chlorophyll?"
+          "question": "What if plants stopped?",
+          "speech": "What would happen to humans if all plants suddenly stopped doing photosynthesis?"
         },
         {
-          "question": "Why do leaves turn red in fall?",
-          "speech": "Why do you think leaves turn red or orange when the green chlorophyll is gone?"
+          "question": "Can plants live in dark?",
+          "speech": "Could a plant survive in a room with absolutely no light? Why or why not?"
         }
       ],
-      "session_theme": "Why are leaves green?",
-      "video_search_query": "why are leaves green photosynthesis explained",
+      "session_theme": "Photosynthesis: The Solar Powered Life",
+      "video_search_query": "how photosynthesis works for kids",
       "preferred_channels": [
         "Khan Academy India",
         "Physics Wallah"
