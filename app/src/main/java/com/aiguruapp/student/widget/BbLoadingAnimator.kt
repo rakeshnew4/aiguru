@@ -1,18 +1,25 @@
 package com.aiguruapp.student.widget
 
+import android.content.Context
+import android.os.Handler
+import android.os.Looper
+import android.view.View
 import android.webkit.WebView
 import android.webkit.WebSettings
 import android.webkit.WebChromeClient
+import android.webkit.WebViewClient
 
 /**
  * Manages the SVG loading animation WebView shown while BB sessions generate.
  *
- * Strategy: at session start, 5 random animations are picked from the full pool.
- * Those 5 play in order (no repeats). When all 5 are exhausted, a fresh random 5
- * are chosen from the full pool for the next batch.
- *
- * Assets live in: assets/loading_svgs/
- * Call [start] to load the next animation, [stop] to clear the WebView.
+ * Strategy:
+ *  - At first [start] call, all HTML files are pre-loaded into memory and a small
+ *    `<script>` is injected that slows every CSS animation by [SLOW_FACTOR]. This
+ *    avoids per-switch disk I/O so the WebView crossover feels instant.
+ *  - Each loading episode picks 5 random animations (no repeats within the session).
+ *  - A fast warmup default plays first so the user never sees an unstyled WebView,
+ *    then session animations rotate every [ROTATE_INTERVAL_MS].
+ *  - WebView bg is solid #0D1117 so there's no white flash before HTML renders.
  */
 object BbLoadingAnimator {
 
@@ -58,11 +65,67 @@ object BbLoadingAnimator {
         "loading_svgs/36_tetris.html"
     )
 
+    /** Always-quick first frame so we never show an unstyled white WebView. */
+    private const val WARMUP_ASSET = "loading_svgs/22_bouncing_balls.html"
+    private const val WARMUP_MS = 4000L
+    private const val ROTATE_INTERVAL_MS = 4000L
     private const val SESSION_SIZE = 5
+    private const val DARK_BG = 0xFF0D1117.toInt()
+    /** Multiplier applied to every CSS animation-duration. >1 = slower. */
+    private const val SLOW_FACTOR = 1.6
 
-    // Current session queue: 5 filenames picked randomly, served in order
+    /** asset-path → HTML content (with slowdown script injected). One-time lazy load. */
+    private val htmlCache = mutableMapOf<String, String>()
+
     private val sessionQueue = mutableListOf<String>()
     private var sessionIndex = 0
+    private val handler = Handler(Looper.getMainLooper())
+    private var rotateRunnable: Runnable? = null
+    private var activeWebView: WebView? = null
+
+    /** Read every HTML asset into [htmlCache] once. Safe to call repeatedly. */
+    private fun ensureCached(ctx: Context) {
+        if (htmlCache.size >= ALL_ANIMATIONS.size) return
+        for (path in ALL_ANIMATIONS) {
+            if (htmlCache.containsKey(path)) continue
+            try {
+                ctx.assets.open(path).bufferedReader().use { reader ->
+                    htmlCache[path] = injectSlowdown(reader.readText())
+                }
+            } catch (_: Exception) {
+                // Missing/unreadable asset — fall back to file:// URL at load time.
+            }
+        }
+    }
+
+    /**
+     * Append a `<script>` that walks all elements after `load` and multiplies their
+     * `animation-duration` by [SLOW_FACTOR]. Handles comma-separated multi-animation
+     * values by scaling each component independently.
+     */
+    private fun injectSlowdown(html: String): String {
+        val js = """
+            <script>
+            window.addEventListener('load', function() {
+              var f = $SLOW_FACTOR;
+              document.querySelectorAll('*').forEach(function(el) {
+                var d = getComputedStyle(el).animationDuration;
+                if (!d || d === '' || d === '0s') return;
+                var scaled = d.split(',').map(function(s) {
+                  var t = s.trim();
+                  var n = parseFloat(t);
+                  return (isNaN(n) || n <= 0) ? t : (n * f) + 's';
+                }).join(', ');
+                el.style.animationDuration = scaled;
+              });
+            });
+            </script>
+        """.trimIndent()
+        return if (html.contains("</body>"))
+            html.replace("</body>", "$js</body>")
+        else
+            html + js
+    }
 
     /** Pick SESSION_SIZE distinct animations at random from the full pool. */
     private fun refreshSession() {
@@ -71,20 +134,20 @@ object BbLoadingAnimator {
         sessionIndex = 0
     }
 
-    /** Return the next animation in the session queue; refreshes when exhausted. */
     private fun nextAnimation(): String {
         if (sessionIndex >= sessionQueue.size) refreshSession()
         return sessionQueue[sessionIndex++]
     }
 
     /**
-     * Load the next session animation into [webView] and make it visible.
-     * Must be called on the main thread.
+     * Begin the loading animation sequence on [webView]. Must be called on the main thread.
+     * Cancels any in-flight rotation tied to a prior call before starting fresh.
      */
     fun start(webView: WebView) {
-        val chosen = nextAnimation()
-        webView.stopLoading()
-        webView.clearCache(true)
+        cancelRotation()
+        activeWebView = webView
+        ensureCached(webView.context.applicationContext)
+
         with(webView.settings) {
             javaScriptEnabled                = true
             domStorageEnabled                = false
@@ -96,22 +159,71 @@ object BbLoadingAnimator {
             displayZoomControls              = false
             setSupportZoom(false)
         }
-        webView.setBackgroundColor(0x00000000)
+        webView.setBackgroundColor(DARK_BG)
         webView.webChromeClient = WebChromeClient()
-        // Append a timestamp fragment so the WebView treats each load as a distinct URL
-        // and cannot serve a cached version of a previously shown animation.
-        val url = "file:///android_asset/$chosen#${System.currentTimeMillis()}"
-        webView.loadUrl(url)
-        webView.visibility = android.view.View.VISIBLE
+
+        // Stay INVISIBLE until the first page finishes painting — eliminates the
+        // white flash. Subsequent rotation swaps are in-memory and instant so we
+        // never go invisible again.
+        webView.visibility = View.INVISIBLE
+        webView.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView, url: String?) {
+                if (activeWebView === view) view.visibility = View.VISIBLE
+                // Reset to a no-op client so rotation swaps don't hide/show the view
+                view.webViewClient = WebViewClient()
+            }
+        }
+
+        refreshSession()
+        loadAsset(webView, WARMUP_ASSET)
+
+        rotateRunnable = Runnable {
+            if (activeWebView === webView) {
+                loadAsset(webView, nextAnimation())
+                scheduleNext(webView)
+            }
+        }
+        handler.postDelayed(rotateRunnable!!, WARMUP_MS)
+    }
+
+    private fun loadAsset(webView: WebView, asset: String) {
+        webView.stopLoading()
+        val cached = htmlCache[asset]
+        if (cached != null) {
+            webView.loadDataWithBaseURL(
+                "file:///android_asset/", cached, "text/html", "utf-8", null
+            )
+        } else {
+            // Fallback for assets missing from the cache — straight from disk.
+            webView.loadUrl("file:///android_asset/$asset#${System.currentTimeMillis()}")
+        }
+    }
+
+    private fun scheduleNext(webView: WebView) {
+        rotateRunnable?.let { handler.removeCallbacks(it) }
+        val r = Runnable {
+            if (activeWebView === webView) {
+                loadAsset(webView, nextAnimation())
+                scheduleNext(webView)
+            }
+        }
+        rotateRunnable = r
+        handler.postDelayed(r, ROTATE_INTERVAL_MS)
+    }
+
+    private fun cancelRotation() {
+        rotateRunnable?.let { handler.removeCallbacks(it) }
+        rotateRunnable = null
     }
 
     /**
-     * Stop the animation and hide the WebView.
-     * Must be called on the main thread.
+     * Stop rotation, blank the WebView, hide it. Must be called on the main thread.
      */
     fun stop(webView: WebView) {
+        cancelRotation()
         webView.stopLoading()
         webView.loadUrl("about:blank")
-        webView.visibility = android.view.View.GONE
+        webView.visibility = View.GONE
+        if (activeWebView === webView) activeWebView = null
     }
 }

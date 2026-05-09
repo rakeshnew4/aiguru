@@ -390,10 +390,21 @@ class BlackboardActivity : AppCompatActivity() {
             }
         }
 
+        // Push the top-right cluster below the status bar (edge-to-edge is enabled,
+        // so the hardcoded 20dp marginTop sits behind the status bar on most devices).
+        val topCluster = findViewById<android.view.ViewGroup>(R.id.bbTopRightCluster)
+        if (topCluster != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(topCluster) { v, insets ->
+                val statusTop = insets.getInsets(WindowInsetsCompat.Type.systemBars()).top
+                val lp = v.layoutParams as android.widget.FrameLayout.LayoutParams
+                lp.topMargin = statusTop + (4 * resources.displayMetrics.density).toInt()
+                v.layoutParams = lp
+                insets
+            }
+        }
+
         // Exclude the top-right button cluster (⚙ Save Publish ✕) from the back-gesture zone.
-        // These buttons sit ~6dp from the right edge, fully inside the ~20dp gesture zone.
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            val topCluster = findViewById<android.view.ViewGroup>(R.id.bbTopRightCluster)
             topCluster?.viewTreeObserver?.addOnGlobalLayoutListener {
                 val loc = IntArray(2)
                 topCluster.getLocationInWindow(loc)
@@ -953,6 +964,19 @@ class BlackboardActivity : AppCompatActivity() {
                                 val historyId  = "${convId}_${System.currentTimeMillis()}"
                                 val stepsJson  = com.aiguruapp.student.chat.BlackboardGenerator.serializeSteps(generated)
                                 com.aiguruapp.student.chat.BlackboardGenerator.writeSessionCache(applicationContext, historyId, stepsJson)
+                                // Write to local watch-history cache immediately so the list shows
+                                // even when Firestore is slow or offline.
+                                appendLocalWatchHistory(
+                                    userId    = userId,
+                                    historyId = historyId,
+                                    subject   = bbSubject,
+                                    chapter   = bbChapter,
+                                    topic     = message,
+                                    stepCount = generated.size,
+                                    stepsJson = stepsJson,
+                                    convId    = convId,
+                                    msgId     = msgId
+                                )
                                 com.aiguruapp.student.firestore.FirestoreManager.recordBbHistory(
                                     userId        = userId,
                                     subject       = bbSubject,
@@ -1221,7 +1245,7 @@ class BlackboardActivity : AppCompatActivity() {
 
         // Show saving spinner on button
         saveSessionBtn.isEnabled = false
-        saveSessionBtn.text = "⏳ Adding…"
+        saveSessionBtn.text = "⏳ Saving…"
 
         val stepsJson = com.aiguruapp.student.chat.BlackboardGenerator.serializeSteps(steps)
         // Pre-populate disk cache so the first replay is served locally without a Firestore round-trip
@@ -1240,17 +1264,70 @@ class BlackboardActivity : AppCompatActivity() {
             stepsJson     = stepsJson,
             onSuccess     = {
                 sessionAlreadySaved = true
-                saveSessionBtn.isEnabled = true
-                saveSessionBtn.text = "⭐ Favourited"
+                sessionAlreadySaved = true
+                saveSessionBtn.isEnabled = false
+                saveSessionBtn.text = "✓ Saved"
                 saveSessionBtn.setTextColor(android.graphics.Color.parseColor("#A0FFD0"))
-                android.widget.Toast.makeText(this, "Added to My Sessions!", android.widget.Toast.LENGTH_SHORT).show()
+                // Show snackbar-style notification at bottom of screen
+                val snack = com.google.android.material.snackbar.Snackbar.make(
+                    findViewById(android.R.id.content),
+                    "Saved to My Sessions",
+                    com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
+                )
+                snack.show()
             },
             onFailure     = {
                 saveSessionBtn.isEnabled = true
-                saveSessionBtn.text = "⭐ Favourite"
+                saveSessionBtn.text = "💾 Save"
+                saveSessionBtn.setTextColor(android.graphics.Color.parseColor("#9ABBD8"))
                 android.widget.Toast.makeText(this, "Save failed — try again", android.widget.Toast.LENGTH_SHORT).show()
             }
         )
+    }
+
+    // ── Local watch-history cache (mirrors BbSavedSessionsActivity.cacheFile logic) ──
+
+    /**
+     * Prepend an entry to the local watch-history JSON file so that
+     * BbSavedSessionsActivity shows it immediately without a Firestore round-trip.
+     * The file is: cacheDir/bb_watch_history_<userId>.json
+     * Format: JSON array of objects, newest first.
+     */
+    private fun appendLocalWatchHistory(
+        userId: String, historyId: String,
+        subject: String, chapter: String, topic: String,
+        stepCount: Int, stepsJson: String, convId: String, msgId: String
+    ) {
+        try {
+            val file = java.io.File(cacheDir, "bb_watch_history_${userId}.json")
+            val existing = if (file.exists()) {
+                try { org.json.JSONArray(file.readText()) } catch (_: Exception) { org.json.JSONArray() }
+            } else org.json.JSONArray()
+
+            val entry = org.json.JSONObject().apply {
+                put("session_id",       historyId)
+                put("id",               historyId)
+                put("subject",          subject)
+                put("chapter",          chapter)
+                put("topic",            topic)
+                put("step_count",       stepCount)
+                put("steps_json",       stepsJson)
+                put("conversation_id",  convId)
+                put("message_id",       msgId)
+                put("created_at",       System.currentTimeMillis())
+            }
+
+            // Build new array: new entry first, then existing (newest-first order)
+            val merged = org.json.JSONArray()
+            merged.put(entry)
+            for (i in 0 until existing.length()) merged.put(existing.getJSONObject(i))
+
+            // Cap at 50 entries to avoid unbounded growth
+            val capped = org.json.JSONArray()
+            for (i in 0 until minOf(merged.length(), 50)) capped.put(merged.getJSONObject(i))
+
+            file.writeText(capped.toString())
+        } catch (_: Exception) {}
     }
 
     // ── Load lesson from teacher-assigned global bb_cache (no LLM) ─────────────

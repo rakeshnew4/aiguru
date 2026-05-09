@@ -256,36 +256,46 @@ object FirestoreManager {
                             else -> "$durationDays days"
                         }
 
-                        val features = buildList {
-                            if (credits > 0) {
-                                add(
-                                    if (bonusCredits > 0) {
-                                        "$credits base credits + $bonusCredits bonus"
-                                    } else {
-                                        "$credits credits included"
-                                    }
-                                )
-                            }
-                            if (monthlyTokens > 0) {
-                                add("About ${monthlyTokens / 1000}K tokens of usage")
-                            } else if (credits > 0) {
-                                add("Usage billed from your credit balance")
-                            }
-                            if (blackboardEnabled) add("Blackboard lessons and quizzes")
-                            if (aiTtsEnabled) {
-                                add(
-                                    if (monthlyTtsChars > 0) {
-                                        "AI voice up to ${monthlyTtsChars / 1000}K chars"
-                                    } else {
-                                        "AI voice enabled"
-                                    }
-                                )
-                            }
-                            if (imageEnabled) add("Image-based explanations")
-                            if (isEmpty()) {
-                                add(doc.getString("description") ?: "Flexible AI learning access")
-                            }
-                        }.take(5)
+                        val features: List<String> = run {
+                            @Suppress("UNCHECKED_CAST")
+                            val fromFirestore = (doc.get("features") as? List<*>)
+                                ?.filterIsInstance<String>()
+                                ?.filter { it.isNotBlank() }
+                                ?: emptyList()
+                            if (fromFirestore.isNotEmpty()) return@run fromFirestore
+
+                            // Firestore has no features array — derive from limits as fallback
+                            buildList {
+                                if (credits > 0) {
+                                    add(
+                                        if (bonusCredits > 0) {
+                                            "$credits base credits + $bonusCredits bonus"
+                                        } else {
+                                            "$credits credits included"
+                                        }
+                                    )
+                                }
+                                if (monthlyTokens > 0) {
+                                    add("About ${monthlyTokens / 1000}K tokens of usage")
+                                } else if (credits > 0) {
+                                    add("Usage billed from your credit balance")
+                                }
+                                if (blackboardEnabled) add("Blackboard lessons and quizzes")
+                                if (aiTtsEnabled) {
+                                    add(
+                                        if (monthlyTtsChars > 0) {
+                                            "AI voice up to ${monthlyTtsChars / 1000}K chars"
+                                        } else {
+                                            "AI voice enabled"
+                                        }
+                                    )
+                                }
+                                if (imageEnabled) add("Image-based explanations")
+                                if (isEmpty()) {
+                                    add(doc.getString("description") ?: "Flexible AI learning access")
+                                }
+                            }.take(5)
+                        }
 
                         val accentColor = doc.getString("accent_color")
                             ?: doc.getString("accentColor")

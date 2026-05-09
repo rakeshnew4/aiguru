@@ -2202,7 +2202,7 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
     private fun showAddSubjectDialog() {
         val options = arrayOf(
             "\ud83d\udcd6 Import from NCERT (auto-add subject + chapters)",
-            "\ud83d\udcdd Type subject name manually"
+            "\ud83d\udcdd Add Custom Subject"
         )
         AlertDialog.Builder(this)
             .setTitle("\ud83d\udcda Add Subject")

@@ -1578,3 +1578,150 @@ Books with ALL 404 (English/SS for Class 6/9) kept as-is — likely IP-blocked f
 - Animator already upgraded to session-queue strategy (5 random per session, no repeats)
 - Files 27_lightning, 28_telescope, 29_popcorn already existed from a prior session
 - Total pool: 39 animations
+
+---
+
+## Session 18 — BB Loading Animator: rotation + no white flash
+
+**Date:** 2026-05-09
+**Asked:** Currently first SVG repeats (loops forever for the entire 10–15s wait) and a blank white screen flashes before render. Add cycling and remove the white flash.
+
+**Root cause:**
+- `start()` only loaded ONE animation; CSS keyframes use `infinite`, so user saw the same animation looping the entire wait.
+- WebView bg was `0x00000000` (transparent) → parent layout's white showed through during the brief window before HTML rendered.
+
+**Files modified:**
+- `app/src/main/java/com/aiguruapp/student/widget/BbLoadingAnimator.kt` — full rewrite of strategy:
+  - Added `Handler` + `rotateRunnable` for time-based rotation
+  - `WARMUP_ASSET = 22_bouncing_balls.html`, `WARMUP_MS = 2000L` — guaranteed-fast first frame
+  - `ROTATE_INTERVAL_MS = 2500L` — swap to next session animation every 2.5s after warmup
+  - `setBackgroundColor(0xFF0D1117)` instead of transparent — matches SVG bg, eliminates flash
+  - `cancelRotation()` called from both new `start()` and `stop()` to prevent stale callbacks
+  - Each `start()` call calls `refreshSession()` so new BB sessions get fresh random 5
+  - `activeWebView` reference check inside Runnables guards against firing on a stopped WebView
+
+**Flow:**
+1. `start()` → set dark bg, show WARMUP_ASSET immediately
+2. After 2s → switch to `nextAnimation()` from session queue, start 2.5s rotation
+3. After ~14.5s (2 + 5×2.5) → session exhausted → refresh + continue
+4. `stop()` → cancel rotation, blank WebView, hide
+
+**Notes:**
+- Pool is 39 animations; session picks 5 random distinct.
+- Call sites unchanged: `BlackboardActivity.kt:851, 1263, 1308` (start), 9 stop sites. No changes to BlackboardActivity needed.
+
+---
+
+## 2026-05-09 (Session 18 — Subscription plan features from Firestore)
+
+**Asked:** Plan descriptions in SubscriptionActivity are hardcoded; load from Firestore instead.
+
+**Investigation:**
+- `FirestoreManager.kt` ~L258–290: `features` was a `buildList {}` derived from plan limits (credits, tokens, tts, image flags) — ignored the Firestore `features` array field entirely.
+- `FirestorePlan.kt` already has `val features: List<String>` field.
+- `SubscriptionActivity.kt` already renders `plan.features.joinToString("\n") { "✓  $it" }` — UI was correct.
+- `seed_firestore.py` seeds `features` array in Firestore documents.
+
+**Fix:**
+- `app/src/main/java/com/aiguruapp/student/firestore/FirestoreManager.kt` ~L258:
+  - Read `doc.get("features")` → `List<String>` first.
+  - If non-empty → use it directly (Firestore-driven descriptions).
+  - If empty → fall back to the old `buildList {}` from limits (unchanged fallback logic).
+
+**Files changed:**
+- `FirestoreManager.kt` — `features` block replaced with `run { ... }` that checks Firestore first (~L258–300)
+
+---
+
+## 2026-05-09 (Session 18b — Watch History local cache + Save button UI)
+
+**Asked:**
+1. Watch History not showing in BbSavedSessionsActivity — save it in Android local cache
+2. Save button shows ⭐ icon — restore visible save button; show "Saved to My Sessions" as notification
+
+**Root cause (watch history):**
+- `BlackboardActivity` called `FirestoreManager.recordBbHistory()` but never wrote to the local JSON cache.
+- `BbSavedSessionsActivity` reads `bb_watch_history_<userId>.json` on open; if Firestore is slow/offline, list was empty.
+
+**Fix 1 — Watch history local cache:**
+- `BlackboardActivity.kt`: Added `appendLocalWatchHistory()` private helper (~line 1260).
+  - Reads `cacheDir/bb_watch_history_<userId>.json` (same file BbSavedSessionsActivity uses).
+  - Prepends new entry as JSONObject with fields: session_id, id, subject, chapter, topic, step_count, steps_json, conversation_id, message_id, created_at.
+  - Caps at 50 entries; newest first.
+- Called immediately after `writeSessionCache()` in the auto-history block (~line 955), before `recordBbHistory()`.
+
+**Fix 2 — Save button:**
+- `activity_blackboard.xml` (`saveSessionBtn`): Changed from 36dp icon-only (⭐) to pill button with `wrap_content` width, `@drawable/bg_save_btn`, text "💾 Save", textSize 12sp.
+- Created `app/src/main/res/drawable/bg_save_btn.xml` — rounded rectangle, dark bg `#1A2A3A`, stroke `#4A7FA5`.
+- `BlackboardActivity.kt` `saveCurrentSession()`:
+  - Spinner: "⏳ Saving…" (was "⏳ Adding…")
+  - Success: button disabled, text "✓ Saved", color `#A0FFD0` + Snackbar "Saved to My Sessions" (was toast)
+  - Failure: button re-enabled, text "💾 Save", color reset to `#9ABBD8`
+
+**Files changed:**
+- `BlackboardActivity.kt` — `appendLocalWatchHistory()` new function; `saveCurrentSession()` text + Snackbar; auto-history block now calls `appendLocalWatchHistory()` first
+- `activity_blackboard.xml` — saveSessionBtn layout changed
+- `app/src/main/res/drawable/bg_save_btn.xml` — new drawable
+
+**Files read (no changes):**
+- `models/FirestorePlan.kt` L1–55: data class with `features: List<String>`, `isFree`, `displayPrice`
+- `SubscriptionActivity.kt` L200–360: `bindFirestorePlanCard()` reads `plan.features`, `bindPlanCard()` reads `plan.features`
+- `models/SubscriptionPlan.kt` L1–40: separate data class used by `AdminConfigRepository` — not the same as `FirestorePlan`
+- `config/AdminConfigRepository.kt` L200–250: `planFromDoc()` also missing `features` field — but this is a separate code path (not used by SubscriptionActivity display)
+
+**Also changed this session:**
+- `BlackboardActivity.kt` ~L2517: 600ms `postDelayed` before auto-advance in `continueAfterFrame()` and `continueAfterSpeech()` — slows down fast-paced automatic lesson progression
+- `BbLoadingAnimator.kt`: Added `clearCache(true)` + timestamp URL fragment in `start()` to fix WebView caching repeat-animation bug
+
+---
+
+## Session 19 — BB Loading Animator: in-memory cache + slowdown + 4s interval
+
+**Date:** 2026-05-09
+**Asked:** Keep all SVGs in Android (avoid switch-delay), 4s per animation, animations themselves are too fast.
+
+**Files modified:**
+- `app/src/main/java/com/aiguruapp/student/widget/BbLoadingAnimator.kt`:
+  - `WARMUP_MS = 4000L`, `ROTATE_INTERVAL_MS = 4000L` (was 2000/2500)
+  - `SLOW_FACTOR = 1.6` constant — applied to every CSS `animation-duration`
+  - `htmlCache: MutableMap<String,String>` — pre-loads all 39 HTML assets into memory on first `start()` via `ensureCached(ctx)` using `ctx.assets.open(path).bufferedReader()`
+  - `injectSlowdown(html)` — appends a `<script>` before `</body>` that on `window.load` walks every element, reads `getComputedStyle(...).animationDuration`, splits on commas, multiplies each numeric token by `SLOW_FACTOR`, and writes back via inline style
+  - `loadAsset()` now uses `webView.loadDataWithBaseURL("file:///android_asset/", cached, ...)` when cached (no disk I/O); falls back to `loadUrl(file://...)` if asset wasn't cacheable
+  - All other plumbing (warmup → rotation, dark bg, session-of-5, cancellation guards) unchanged from session 18
+
+**Why this avoids the switch delay:**
+- Disk read happens once at first `start()`, not on every 4s rotation
+- `loadDataWithBaseURL` has no URL→file resolution cost
+- Combined with `setBackgroundColor(0xFF0D1117)`, the brief WebView reflow is invisible (dark→dark)
+
+**Tuning knobs (single-line edits at top of object):**
+- `SLOW_FACTOR = 1.6` — bump to 2.0 for slower, 1.3 for milder
+- `ROTATE_INTERVAL_MS = 4000L` — per-animation display time
+- `WARMUP_ASSET` / `WARMUP_MS` — first-frame default and its duration
+
+---
+
+## Session 20 — Home page made scrollable
+
+**Date:** 2026-05-09
+**Asked:** On small phones, content below the BB card / daily challenge is pushed off-screen and unreachable. Make the home page scrollable.
+
+**Root cause:** Top sections (hero, BB CTA, quota strip, daily challenge, smart suggestions) were stacked in a vertical LinearLayout with `wrap_content` heights, then the subjects RecyclerView was given `weight=1` for the remainder. On short displays, weight=1 collapsed to 0 and the subjects list became invisible.
+
+**Files modified:**
+- `app/src/main/res/layout/activity_home.xml`:
+  - After the top nav `</LinearLayout>` at L129, wrapped everything below in: `FrameLayout (weight=1) > SwipeRefreshLayout (id=homeSwipeRefresh) > NestedScrollView (fillViewport=true) > LinearLayout (vertical, bg=colorBackground)` (new opens at L133–148)
+  - Removed the redundant inner `FrameLayout (weight=1) > LinearLayout` (was around the subjects area) — its purpose moved to the outer FrameLayout
+  - Removed the inner `SwipeRefreshLayout` that was wrapping the RecyclerView (id moved to outer wrapper, kept name `homeSwipeRefresh`)
+  - RecyclerView changed from `match_parent` height + weight to `wrap_content` + `android:nestedScrollingEnabled="false"` so it lays out all subject cards inside the parent NestedScrollView
+  - calcFab + feedbackChip remain as the outer FrameLayout's overlay siblings (gravity bottom|end and bottom|start) — still float over the scrollable area
+  - New closings at L888–890 (LinearLayout, NestedScrollView, SwipeRefreshLayout); existing `</FrameLayout>` at L932 now closes the new outer FrameLayout
+
+**No Kotlin changes:** All IDs preserved (`homeSwipeRefresh`, `subjectsRecyclerView`, `calcFab`, `feedbackChip`, all section ids).
+
+**Tradeoff:** RecyclerView no longer recycles (lays out all items at once). Acceptable — subjects list is small (typically 5–15 items per student).
+
+**Layout-tag balance** (verified):
+- Wrappers added: 1 FrameLayout, 1 SwipeRefreshLayout, 1 NestedScrollView, 1 LinearLayout
+- Wrappers removed: 1 FrameLayout, 1 LinearLayout, 1 SwipeRefreshLayout
+- Net: +1 NestedScrollView; closings match 1:1
