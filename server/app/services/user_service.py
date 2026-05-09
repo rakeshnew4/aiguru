@@ -68,7 +68,8 @@ def _lookup_plan_limits(db, plan_id: str) -> dict:
             limits = {}
         # Fallback: if key fields are missing from the limits sub-map, check root level.
         # This handles manually-created Firestore docs where credits_on_activation is at root.
-        for fallback_key in ("credits_on_activation", "daily_chat_questions", "daily_bb_sessions",
+        for fallback_key in ("credits_on_activation", "tts_credits_on_activation",
+                             "daily_chat_questions", "daily_bb_sessions",
                              "tts_enabled", "ai_tts_enabled", "blackboard_enabled",
                              "image_upload_enabled"):
             if fallback_key not in limits and fallback_key in raw:
@@ -294,10 +295,16 @@ def activate_plan(
         activation_credits = 0
         logger.warning("activate_plan: invalid credits_on_activation value in plan %s: %r",
                        plan_id, limits.get("credits_on_activation"))
-    logger.info("activate_plan: should_award=%s activation_credits=%d plan=%s uid=%s",
-                should_award, activation_credits, plan_id, uid)
+    try:
+        activation_tts_credits = int(limits.get("tts_credits_on_activation") or 0)
+    except (TypeError, ValueError):
+        activation_tts_credits = 0
+        logger.warning("activate_plan: invalid tts_credits_on_activation value in plan %s: %r",
+                       plan_id, limits.get("tts_credits_on_activation"))
+    logger.info("activate_plan: should_award=%s activation_credits=%d tts_credits=%d plan=%s uid=%s",
+                should_award, activation_credits, activation_tts_credits, plan_id, uid)
     if should_award and activation_credits > 0:
-        _award_activation_credits(db, uid, activation_credits, plan_id, plan_name)
+        _award_activation_credits(db, uid, activation_credits, activation_tts_credits, plan_id, plan_name)
 
     logger.info(
         "activate_plan: uid=%s plan_id=%s expiry=%d credits_awarded=%s",
@@ -638,18 +645,19 @@ def check_and_record_quota(uid: str, request_type: str) -> tuple[bool, str, bool
 
 # ── Credits helper (used by activate_plan) ────────────────────────────────────
 
-def _award_activation_credits(db, uid: str, amount: int, plan_id: str, plan_name: str) -> None:
-    """Award plan activation credits atomically."""
+def _award_activation_credits(db, uid: str, amount: int, tts_amount: int, plan_id: str, plan_name: str) -> None:
+    """Award plan activation credits (LLM + TTS) atomically."""
     try:
         now = _now_ms()
-        db.collection("user_credits").document(uid).set(
-            {
-                "balance": Increment(amount),
-                "lifetime_earned": Increment(amount),
-                "last_updated": now,
-            },
-            merge=True,
-        )
+        credit_update = {
+            "balance": Increment(amount),
+            "lifetime_earned": Increment(amount),
+            "last_updated": now,
+        }
+        if tts_amount > 0:
+            credit_update["tts_balance"] = Increment(tts_amount)
+            credit_update["tts_lifetime_earned"] = Increment(tts_amount)
+        db.collection("user_credits").document(uid).set(credit_update, merge=True)
         db.collection("credit_transactions").document().set({
             "uid": uid,
             "amount": amount,
@@ -658,7 +666,17 @@ def _award_activation_credits(db, uid: str, amount: int, plan_id: str, plan_name
             "description": f"Plan activated: {plan_name}",
             "created_at": now,
         })
-        logger.info("_award_activation_credits: uid=%s amount=%d plan=%s", uid, amount, plan_id)
+        if tts_amount > 0:
+            db.collection("credit_transactions").document().set({
+                "uid": uid,
+                "amount": tts_amount,
+                "type": "plan_activation_tts",
+                "source_id": plan_id,
+                "description": f"TTS credits on plan activation: {plan_name}",
+                "created_at": now,
+            })
+        logger.info("_award_activation_credits: uid=%s amount=%d tts=%d plan=%s",
+                    uid, amount, tts_amount, plan_id)
     except Exception as exc:
         logger.warning("_award_activation_credits uid=%s: %s", uid, exc)
 
