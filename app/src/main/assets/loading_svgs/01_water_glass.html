@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; }
+  svg { width:140px; height:180px; }
+  .label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+  #water { animation: fill 3s ease-in-out infinite; transform-origin: bottom center; }
+  @keyframes fill {
+    0%   { transform: scaleY(0.05); opacity:0.6; }
+    70%  { transform: scaleY(1);    opacity:1;   }
+    85%  { transform: scaleY(1);    opacity:1;   }
+    100% { transform: scaleY(0.05); opacity:0.6; }
+  }
+  #wave { animation: wave 1.2s linear infinite; }
+  @keyframes wave {
+    0%   { d: path("M0,4 Q14,0 28,4 Q42,8 56,4 Q70,0 84,4 L84,0 L0,0 Z"); }
+    50%  { d: path("M0,0 Q14,4 28,0 Q42,-4 56,0 Q70,4 84,0 L84,0 L0,0 Z"); }
+    100% { d: path("M0,4 Q14,0 28,4 Q42,8 56,4 Q70,0 84,4 L84,0 L0,0 Z"); }
+  }
+  #bubble1 { animation: bubble 2s ease-in infinite 0.3s; }
+  #bubble2 { animation: bubble 2s ease-in infinite 1.1s; }
+  #bubble3 { animation: bubble 2s ease-in infinite 1.7s; }
+  @keyframes bubble {
+    0%   { cy: 90; opacity:0; r:3; }
+    20%  { opacity:0.7; }
+    80%  { opacity:0.4; }
+    100% { cy: 30; opacity:0; r:5; }
+  }
+  #drops rect { animation: drip 3s ease-in infinite; }
+  #drop1 { animation: drip 3s ease-in infinite 0s; }
+  #drop2 { animation: drip 3s ease-in infinite 0.4s; }
+  @keyframes drip {
+    0%   { transform: translateY(-20px); opacity:1; }
+    40%  { transform: translateY(30px);  opacity:1; }
+    41%  { opacity:0; }
+    100% { opacity:0; }
+  }
+  #shimmer { animation: shimmer 2s ease-in-out infinite; }
+  @keyframes shimmer {
+    0%,100% { opacity:0.15; }
+    50%      { opacity:0.5; }
+  }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 100 130">
+  <defs>
+    <clipPath id="glassClip">
+      <polygon points="18,10 82,10 74,120 26,120"/>
+    </clipPath>
+    <linearGradient id="waterGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#1A6BE0"/>
+      <stop offset="50%"  stop-color="#3D9FFF"/>
+      <stop offset="100%" stop-color="#1A6BE0"/>
+    </linearGradient>
+    <linearGradient id="glassGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#4A90D9" stop-opacity="0.4"/>
+      <stop offset="40%"  stop-color="#B0D8FF" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#4A90D9" stop-opacity="0.3"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Glass body -->
+  <polygon points="18,10 82,10 74,120 26,120" fill="none" stroke="#4A90D9" stroke-width="2.5" stroke-linejoin="round"/>
+  <!-- Glass shine -->
+  <polygon points="18,10 82,10 74,120 26,120" fill="url(#glassGrad)"/>
+  <!-- Left shine streak -->
+  <line x1="24" y1="18" x2="28" y2="108" stroke="#B0D8FF" stroke-width="1.5" stroke-opacity="0.3"/>
+
+  <!-- Water fill (clipped) -->
+  <g clip-path="url(#glassClip)">
+    <g id="water">
+      <rect x="18" y="30" width="64" height="90" fill="url(#waterGrad)" opacity="0.85"/>
+      <!-- Wave top -->
+      <path id="wave" d="M18,34 Q32,30 46,34 Q60,38 74,34 L82,30 L18,30 Z" fill="#5BBFFF" opacity="0.7"/>
+    </g>
+    <!-- Bubbles -->
+    <circle id="bubble1" cx="38" cy="90" r="3" fill="none" stroke="#7BD8FF" stroke-width="1"/>
+    <circle id="bubble2" cx="55" cy="75" r="2" fill="none" stroke="#7BD8FF" stroke-width="1"/>
+    <circle id="bubble3" cx="45" cy="85" r="2.5" fill="none" stroke="#7BD8FF" stroke-width="1"/>
+    <!-- Shimmer -->
+    <rect id="shimmer" x="30" y="30" width="6" height="85" rx="3" fill="white" opacity="0.15"/>
+  </g>
+
+  <!-- Glass rim -->
+  <rect x="15" y="8" width="70" height="5" rx="2.5" fill="#4A90D9" opacity="0.5"/>
+  <!-- Glass base -->
+  <rect x="24" y="118" width="52" height="5" rx="2.5" fill="#4A90D9" opacity="0.5"/>
+
+  <!-- Drip drops -->
+  <g id="drop1"><ellipse cx="60" cy="6" rx="2" ry="3.5" fill="#3D9FFF" opacity="0.9"/></g>
+  <g id="drop2"><ellipse cx="72" cy="2" rx="1.5" ry="3" fill="#3D9FFF" opacity="0.7"/></g>
+</svg>
+<div class="label">Preparing lesson…</div>
+</body>
+</html>

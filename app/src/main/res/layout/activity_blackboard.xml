@@ -34,6 +34,14 @@
             android:paddingEnd="32dp"
             android:layout_marginTop="16dp" />
 
+        <!-- SVG loading animation WebView -->
+        <WebView
+            android:id="@+id/bbLoadingWebView"
+            android:layout_width="200dp"
+            android:layout_height="220dp"
+            android:layout_marginTop="20dp"
+            android:background="#00000000" />
+
     </LinearLayout>
 
     <!-- ══════════════════════════════════════════════════════════════════════

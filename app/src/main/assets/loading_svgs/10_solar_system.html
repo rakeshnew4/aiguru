@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; }
+  svg { width:160px; height:160px; }
+  .label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+  /* Sun glow pulse */
+  #sun_halo { animation: sunPulse 2s ease-in-out infinite; }
+  @keyframes sunPulse {
+    0%,100% { r:18; opacity:0.3; }
+    50%     { r:24; opacity:0.6; }
+  }
+  #sun_core { animation: sunCore 2s ease-in-out infinite; }
+  @keyframes sunCore {
+    0%,100% { filter: drop-shadow(0 0 4px #FFD700); }
+    50%     { filter: drop-shadow(0 0 12px #FFE44D); }
+  }
+
+  /* Planet 1 orbit (Mercury-like, small, fast) */
+  #orbit1_group { animation: orbit 3s linear infinite; transform-origin: 60px 60px; }
+  /* Planet 2 orbit (Earth-like, medium) */
+  #orbit2_group { animation: orbit 6s linear infinite; transform-origin: 60px 60px; }
+  /* Planet 3 orbit (Saturn-like, large, slow) */
+  #orbit3_group { animation: orbit 11s linear infinite; transform-origin: 60px 60px; }
+  /* Planet 4 (tiny, very fast inner) */
+  #orbit4_group { animation: orbit 2s linear infinite; transform-origin: 60px 60px; }
+
+  @keyframes orbit {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  /* Counter-rotate planet so it stays upright */
+  #p1 { animation: counter 3s linear infinite; transform-origin: 60px 40px; }
+  #p2 { animation: counter 6s linear infinite; transform-origin: 60px 30px; }
+  #p3 { animation: counter 11s linear infinite; transform-origin: 60px 18px; }
+  #p4 { animation: counter 2s linear infinite; transform-origin: 60px 47px; }
+  @keyframes counter {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(-360deg); }
+  }
+
+  /* Saturn ring tilt */
+  #saturn_ring { animation: ringTilt 11s linear infinite; transform-origin: 60px 18px; }
+  @keyframes ringTilt {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(-360deg); }
+  }
+
+  .star_bg { animation: twinkle var(--d) ease-in-out infinite var(--dl); }
+  @keyframes twinkle {
+    0%,100% { opacity:0.2; }
+    50%     { opacity:1; }
+  }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 120 120">
+  <defs>
+    <radialGradient id="sunGrad">
+      <stop offset="0%"   stop-color="#FFF5A0"/>
+      <stop offset="60%"  stop-color="#FFD700"/>
+      <stop offset="100%" stop-color="#FF9500"/>
+    </radialGradient>
+    <radialGradient id="p1Grad">
+      <stop offset="0%"   stop-color="#C0A0A0"/>
+      <stop offset="100%" stop-color="#808080"/>
+    </radialGradient>
+    <radialGradient id="p2Grad" cx="35%" cy="35%" r="65%">
+      <stop offset="0%"   stop-color="#4A90D9"/>
+      <stop offset="50%"  stop-color="#2A6BE0"/>
+      <stop offset="100%" stop-color="#1A3A80"/>
+    </radialGradient>
+    <radialGradient id="p3Grad" cx="30%" cy="30%" r="70%">
+      <stop offset="0%"   stop-color="#D4A060"/>
+      <stop offset="100%" stop-color="#A06020"/>
+    </radialGradient>
+    <radialGradient id="p4Grad">
+      <stop offset="0%"   stop-color="#E0C090"/>
+      <stop offset="100%" stop-color="#A09060"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background stars -->
+  <circle class="star_bg" cx="5"   cy="8"   r="0.8" fill="white" style="--d:1.8s;--dl:0s"/>
+  <circle class="star_bg" cx="115" cy="12"  r="0.7" fill="white" style="--d:2.3s;--dl:0.4s"/>
+  <circle class="star_bg" cx="8"   cy="50"  r="0.8" fill="white" style="--d:1.5s;--dl:0.8s"/>
+  <circle class="star_bg" cx="112" cy="70"  r="0.7" fill="white" style="--d:2.1s;--dl:0.2s"/>
+  <circle class="star_bg" cx="5"   cy="100" r="0.8" fill="white" style="--d:1.9s;--dl:1.1s"/>
+  <circle class="star_bg" cx="115" cy="100" r="0.7" fill="white" style="--d:2.4s;--dl:0.6s"/>
+  <circle class="star_bg" cx="50"  cy="5"   r="0.8" fill="white" style="--d:1.6s;--dl:1.3s"/>
+  <circle class="star_bg" cx="80"  cy="115" r="0.7" fill="white" style="--d:2.0s;--dl:0.9s"/>
+
+  <!-- Orbit rings (static ellipses) -->
+  <ellipse cx="60" cy="60" rx="13" ry="13" fill="none" stroke="#7B52CC" stroke-width="0.5" stroke-opacity="0.3"/>
+  <ellipse cx="60" cy="60" rx="22" ry="22" fill="none" stroke="#7B52CC" stroke-width="0.5" stroke-opacity="0.3"/>
+  <ellipse cx="60" cy="60" rx="35" ry="35" fill="none" stroke="#7B52CC" stroke-width="0.5" stroke-opacity="0.25"/>
+  <ellipse cx="60" cy="60" rx="42" ry="42" fill="none" stroke="#7B52CC" stroke-width="0.5" stroke-opacity="0.2"/>
+
+  <!-- Sun -->
+  <circle id="sun_halo" cx="60" cy="60" r="18" fill="#FFD700" opacity="0.3"/>
+  <g id="sun_core">
+    <circle cx="60" cy="60" r="12" fill="url(#sunGrad)"/>
+  </g>
+
+  <!-- Planet 4 (innermost, tiny) -->
+  <g id="orbit4_group">
+    <g id="p4"><circle cx="60" cy="47" r="2.5" fill="url(#p4Grad)"/></g>
+  </g>
+
+  <!-- Planet 1 (Mercury-like) -->
+  <g id="orbit1_group">
+    <g id="p1"><circle cx="60" cy="38" r="3.5" fill="url(#p1Grad)"/></g>
+  </g>
+
+  <!-- Planet 2 (Earth-like) -->
+  <g id="orbit2_group">
+    <g id="p2">
+      <circle cx="60" cy="30" r="5" fill="url(#p2Grad)"/>
+      <!-- Moon -->
+      <circle cx="67" cy="28" r="1.5" fill="#C0C0D0"/>
+    </g>
+  </g>
+
+  <!-- Planet 3 (Saturn-like) -->
+  <g id="orbit3_group">
+    <g id="p3">
+      <g id="saturn_ring">
+        <ellipse cx="60" cy="18" rx="11" ry="3" fill="none" stroke="#D4A060" stroke-width="2" opacity="0.7"/>
+      </g>
+      <circle cx="60" cy="18" r="7" fill="url(#p3Grad)"/>
+    </g>
+  </g>
+</svg>
+<div class="label">Orbiting knowledge…</div>
+</body>
+</html>

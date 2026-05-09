@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:monospace; }
+svg { width:165px; height:145px; }
+.label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+/* Cursor blink */
+#cursor { animation: blink 0.6s step-start infinite; }
+@keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0; } }
+
+/* Typewriter arm swing for carriage return */
+#arm { animation: carriageReturn 6s steps(1) infinite; transform-origin: 10px 50px; }
+@keyframes carriageReturn {
+  0%,80%   { transform:translateX(0); }
+  85%,100% { transform:translateX(-80px); }
+}
+/* Characters appear one by one (clip-width expands) */
+#line1text { animation: type1 6s steps(14,end) infinite; clip-path:inset(0 100% 0 0); }
+#line2text { animation: type2 6s steps(12,end) infinite; clip-path:inset(0 100% 0 0); }
+#line3text { animation: type3 6s steps(10,end) infinite; clip-path:inset(0 100% 0 0); }
+@keyframes type1 {
+  0%,5%   { clip-path:inset(0 100% 0 0); }
+  35%,80% { clip-path:inset(0 0% 0 0); }
+  85%,100% { clip-path:inset(0 100% 0 0); }
+}
+@keyframes type2 {
+  0%,38%   { clip-path:inset(0 100% 0 0); }
+  60%,80%  { clip-path:inset(0 0% 0 0); }
+  85%,100% { clip-path:inset(0 100% 0 0); }
+}
+@keyframes type3 {
+  0%,62%   { clip-path:inset(0 100% 0 0); }
+  76%,82%  { clip-path:inset(0 0% 0 0); }
+  85%,100% { clip-path:inset(0 100% 0 0); }
+}
+
+/* Paper scroll up slightly after each line */
+#paper { animation: paperScroll 6s steps(3) infinite; }
+@keyframes paperScroll {
+  0%,33%   { transform:translateY(0); }
+  34%,66%  { transform:translateY(-14px); }
+  67%,82%  { transform:translateY(-28px); }
+  83%,100% { transform:translateY(0); }
+}
+
+/* Bell ding flash at end of line */
+#bell { animation: bellFlash 6s ease-in-out infinite; opacity:0; }
+@keyframes bellFlash {
+  0%,30%,35%,65%,70%,100% { opacity:0; }
+  32%,33%                   { opacity:1; }
+  67%,68%                   { opacity:1; }
+}
+
+/* Key hammers: subtle up-down taps */
+.key { animation: keyTap 0.2s ease-in-out infinite var(--kd); transform-origin: center bottom; }
+@keyframes keyTap {
+  0%,100% { transform:translateY(0); }
+  50%     { transform:translateY(-3px); }
+}
+
+/* Ribbon color shift */
+#ribbon { animation: ribbonColor 6s linear infinite; }
+@keyframes ribbonColor {
+  0%,50%  { fill:#CC2020; }
+  50%,100%{ fill:#1A1A1A; }
+}
+</style></head><body>
+<svg viewBox="0 0 140 120">
+  <defs>
+    <linearGradient id="typerG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#4A3030"/>
+      <stop offset="100%" stop-color="#2A1A1A"/>
+    </linearGradient>
+    <linearGradient id="paperG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#E8EACC"/>
+      <stop offset="100%" stop-color="#C8CAA0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Typewriter body -->
+  <rect x="8" y="55" width="124" height="55" rx="8" fill="url(#typerG)" stroke="#6A3A3A" stroke-width="1.5"/>
+  <rect x="12" y="60" width="116" height="45" rx="6" fill="#3A2020"/>
+
+  <!-- Platen roller -->
+  <rect x="12" y="44" width="116" height="14" rx="7" fill="#2A1A1A" stroke="#4A2A2A" stroke-width="1"/>
+  <rect x="16" y="46" width="108" height="10" rx="5" fill="#1A0A0A"/>
+
+  <!-- Paper -->
+  <clipPath id="platenClip"><rect x="14" y="0" width="112" height="52"/></clipPath>
+  <g clip-path="url(#platenClip)">
+    <g id="paper">
+      <rect x="22" y="2" width="96" height="58" rx="2" fill="url(#paperG)"/>
+      <!-- Lines on paper -->
+      <line x1="24" y1="22" x2="116" y2="22" stroke="#D0D2A0" stroke-width="0.5"/>
+      <line x1="24" y1="36" x2="116" y2="36" stroke="#D0D2A0" stroke-width="0.5"/>
+      <line x1="24" y1="50" x2="116" y2="50" stroke="#D0D2A0" stroke-width="0.5"/>
+      <!-- Typed lines -->
+      <text id="line1text" x="26" y="20" font-size="8" fill="#1A1A1A" font-family="monospace">F = m × a</text>
+      <text id="line2text" x="26" y="34" font-size="8" fill="#1A1A1A" font-family="monospace">E = mc²</text>
+      <text id="line3text" x="26" y="48" font-size="8" fill="#1A1A1A" font-family="monospace">v = λf</text>
+    </g>
+  </clipPath>
+
+  <!-- Ribbon -->
+  <rect id="ribbon" x="35" y="52" width="70" height="4" rx="2" fill="#CC2020"/>
+
+  <!-- Type head / carriage arm -->
+  <g id="arm">
+    <rect x="88" y="50" width="18" height="8" rx="3" fill="#5A3030"/>
+    <rect x="91" y="48" width="4"  height="5" rx="1" fill="#3A1A1A"/>
+  </g>
+
+  <!-- Cursor on paper -->
+  <rect id="cursor" x="68" y="38" width="6" height="9" rx="1" fill="#CC2020"/>
+
+  <!-- Bell icon (flashes at end of line) -->
+  <text id="bell" x="120" y="52" font-size="12" fill="#FFD700">🔔</text>
+
+  <!-- Keys row 1 -->
+  <rect class="key" x="18"  y="84" width="12" height="10" rx="3" fill="#5A3030" stroke="#3A1A1A" stroke-width="1" style="--kd:0s"/>
+  <rect class="key" x="32"  y="84" width="12" height="10" rx="3" fill="#5A3030" stroke="#3A1A1A" stroke-width="1" style="--kd:0.07s"/>
+  <rect class="key" x="46"  y="84" width="12" height="10" rx="3" fill="#5A3030" stroke="#3A1A1A" stroke-width="1" style="--kd:0.14s"/>
+  <rect class="key" x="60"  y="84" width="12" height="10" rx="3" fill="#5A3030" stroke="#3A1A1A" stroke-width="1" style="--kd:0.21s"/>
+  <rect class="key" x="74"  y="84" width="12" height="10" rx="3" fill="#5A3030" stroke="#3A1A1A" stroke-width="1" style="--kd:0.28s"/>
+  <rect class="key" x="88"  y="84" width="12" height="10" rx="3" fill="#5A3030" stroke="#3A1A1A" stroke-width="1" style="--kd:0.35s"/>
+  <rect class="key" x="102" y="84" width="12" height="10" rx="3" fill="#5A3030" stroke="#3A1A1A" stroke-width="1" style="--kd:0.42s"/>
+  <!-- Row 2 -->
+  <rect class="key" x="24"  y="97" width="12" height="10" rx="3" fill="#4A2828" stroke="#3A1A1A" stroke-width="1" style="--kd:0.06s"/>
+  <rect class="key" x="38"  y="97" width="12" height="10" rx="3" fill="#4A2828" stroke="#3A1A1A" stroke-width="1" style="--kd:0.18s"/>
+  <rect class="key" x="52"  y="97" width="12" height="10" rx="3" fill="#4A2828" stroke="#3A1A1A" stroke-width="1" style="--kd:0.24s"/>
+  <rect class="key" x="66"  y="97" width="12" height="10" rx="3" fill="#4A2828" stroke="#3A1A1A" stroke-width="1" style="--kd:0.30s"/>
+  <rect class="key" x="80"  y="97" width="12" height="10" rx="3" fill="#4A2828" stroke="#3A1A1A" stroke-width="1" style="--kd:0.36s"/>
+  <rect class="key" x="94"  y="97" width="12" height="10" rx="3" fill="#4A2828" stroke="#3A1A1A" stroke-width="1" style="--kd:0.12s"/>
+  <!-- Space bar -->
+  <rect class="key" x="38" y="110" width="64" height="7" rx="3" fill="#3A2020" stroke="#2A1010" stroke-width="1" style="--kd:0.15s"/>
+</svg>
+<div class="label">Typing up your lesson…</div>
+</body></html>

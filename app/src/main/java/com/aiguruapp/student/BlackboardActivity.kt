@@ -171,6 +171,7 @@ class BlackboardActivity : AppCompatActivity() {
     // ── Views ─────────────────────────────────────────────────────────────────
     private lateinit var loadingGroup:    View
     private lateinit var loadingText:     TextView
+    private lateinit var bbLoadingWebView: android.webkit.WebView
     private lateinit var contentGroup:    View
     private lateinit var stepsScrollView: ScrollView
     private lateinit var stepsContainer:  LinearLayout
@@ -311,6 +312,7 @@ class BlackboardActivity : AppCompatActivity() {
 
         loadingGroup    = findViewById(R.id.loadingGroup)
         loadingText     = findViewById(R.id.loadingText)
+        bbLoadingWebView = findViewById(R.id.bbLoadingWebView)
         contentGroup    = findViewById(R.id.contentGroup)
         stepsScrollView = findViewById(R.id.stepsScrollView)
         stepsContainer  = findViewById(R.id.stepsContainer)
@@ -351,6 +353,7 @@ class BlackboardActivity : AppCompatActivity() {
 
         // Ensure nav buttons are brought to front after overlays are hidden
         fun hideOverlaysAndRestoreNav() {
+            com.aiguruapp.student.widget.BbLoadingAnimator.stop(bbLoadingWebView)
             loadingGroup.visibility = View.GONE
             bbCompletionCard.visibility = View.GONE
             val bbAskBar = findViewById<android.widget.LinearLayout>(R.id.bbAskBar)
@@ -658,6 +661,7 @@ class BlackboardActivity : AppCompatActivity() {
                                                     )
                                                 }
                                             } else {
+                                                com.aiguruapp.student.widget.BbLoadingAnimator.stop(bbLoadingWebView)
                                                 loadingGroup.visibility = android.view.View.GONE
                                                 loadingText.text = check.upgradeMessage
                                                 loadingText.visibility = android.view.View.VISIBLE
@@ -682,6 +686,7 @@ class BlackboardActivity : AppCompatActivity() {
                                         }
                                     return@runOnUiThread
                                 }
+                                com.aiguruapp.student.widget.BbLoadingAnimator.stop(bbLoadingWebView)
                                 loadingGroup.visibility = android.view.View.GONE
                                 loadingText.text = check.upgradeMessage
                                 loadingText.visibility = android.view.View.VISIBLE
@@ -843,6 +848,7 @@ class BlackboardActivity : AppCompatActivity() {
         recordSession: Boolean = false,
         imageBase64: String? = null
     ) {
+        com.aiguruapp.student.widget.BbLoadingAnimator.start(bbLoadingWebView)
         collectedClips.clear()
         lifecycleScope.launch(Dispatchers.IO) {
             // ── Local message cache: skip LLM if this message was already explained ──
@@ -857,6 +863,7 @@ class BlackboardActivity : AppCompatActivity() {
                             steps = cachedSteps
                             computedFontSp = computeFontSize(steps)
                             progressSeekBar.max = steps.sumOf { it.frames.size }
+                            com.aiguruapp.student.widget.BbLoadingAnimator.stop(bbLoadingWebView)
                             loadingGroup.visibility = View.GONE
                             contentGroup.visibility = View.VISIBLE
                             saveSessionBtn.visibility = View.VISIBLE
@@ -907,6 +914,7 @@ class BlackboardActivity : AppCompatActivity() {
                                     // is immediately true and fires a premature second generateChunk call.
                                     isGeneratingNextChunk = true
                                     computedFontSp = computeFontSize(steps)
+                                    com.aiguruapp.student.widget.BbLoadingAnimator.stop(bbLoadingWebView)
                                     loadingGroup.visibility = View.GONE
                                     contentGroup.visibility = View.VISIBLE
                                     showAskFabOnly()
@@ -976,6 +984,7 @@ class BlackboardActivity : AppCompatActivity() {
                                 computedFontSp = computeFontSize(steps)
                                 chunksCompleted = 1
         progressSeekBar.max = (totalStepsTarget * framesPerStepTarget).coerceAtLeast(generated.sumOf { it.frames.size })
+                                com.aiguruapp.student.widget.BbLoadingAnimator.stop(bbLoadingWebView)
                                 loadingGroup.visibility = View.GONE
                                 contentGroup.visibility = View.VISIBLE
                                 saveSessionBtn.visibility = View.VISIBLE
@@ -1039,6 +1048,7 @@ class BlackboardActivity : AppCompatActivity() {
                             lifecycleScope.launch(Dispatchers.Main) {
                                 steps = generated
                                 computedFontSp = computeFontSize(steps)
+                                com.aiguruapp.student.widget.BbLoadingAnimator.stop(bbLoadingWebView)
                                 loadingGroup.visibility = View.GONE
                                 contentGroup.visibility = View.VISIBLE
                                 saveSessionBtn.visibility = View.VISIBLE
@@ -1250,6 +1260,7 @@ class BlackboardActivity : AppCompatActivity() {
      * Called when [EXTRA_BB_CACHE_ID] is set — no quota deduction, no LLM cost.
      */
     private fun loadFromGlobalCache(bbCacheId: String, userId: String?) {
+        com.aiguruapp.student.widget.BbLoadingAnimator.start(bbLoadingWebView)
         loadingText.text = "Loading lesson…"
         lifecycleScope.launch(Dispatchers.IO) {
             com.aiguruapp.student.chat.BlackboardGenerator.loadFromGlobalCache(
@@ -1259,6 +1270,7 @@ class BlackboardActivity : AppCompatActivity() {
                     lifecycleScope.launch(Dispatchers.Main) {
                         steps = generated
                         computedFontSp = computeFontSize(steps)
+                        com.aiguruapp.student.widget.BbLoadingAnimator.stop(bbLoadingWebView)
                         loadingGroup.visibility = View.GONE
                         contentGroup.visibility = View.VISIBLE
                         // Show inline ask bar now that content is ready
@@ -1293,6 +1305,7 @@ class BlackboardActivity : AppCompatActivity() {
      * Reads the [steps_json] field stored when the session was saved — no LLM call.
      */
     private fun loadFromSavedSession(sessionId: String, userId: String) {
+        com.aiguruapp.student.widget.BbLoadingAnimator.start(bbLoadingWebView)
         loadingText.text = "Loading saved session…"
         lifecycleScope.launch(Dispatchers.IO) {
             com.aiguruapp.student.chat.BlackboardGenerator.loadFromSavedSession(
@@ -1304,6 +1317,7 @@ class BlackboardActivity : AppCompatActivity() {
                     lifecycleScope.launch(Dispatchers.Main) {
                         steps = generated
                         computedFontSp = computeFontSize(steps)
+                        com.aiguruapp.student.widget.BbLoadingAnimator.stop(bbLoadingWebView)
                         loadingGroup.visibility = View.GONE
                         contentGroup.visibility = View.VISIBLE
                         // Show inline ask bar — user can still ask follow-up questions
@@ -2493,7 +2507,7 @@ class BlackboardActivity : AppCompatActivity() {
                     showLessonCompleteNotif()
                     showCompletionCard()
                 } else {
-                    advanceFrame()
+                    stepsScrollView.postDelayed({ advanceFrame() }, 600)
                 }
             }
         }
@@ -3269,14 +3283,14 @@ class BlackboardActivity : AppCompatActivity() {
                     else -> {
                         val isLastFrameOverall = stepIdx == steps.size - 1 &&
                             frameIdx == (steps.lastOrNull()?.frames?.size ?: 1) - 1
-                        // Advance immediately after speech ends/fails — no pauses.
+                        // 600 ms breathing pause so the lesson doesn't feel rushed.
                         if (isLastFrameOverall && quizTotal > 0) {
                             showScoreCard()
                         } else if (isLastFrameOverall) {
                             showLessonCompleteNotif()
                             showCompletionCard()
                         } else {
-                            advanceFrame()
+                            stepsScrollView.postDelayed({ advanceFrame() }, 600)
                         }
                     }
                 }

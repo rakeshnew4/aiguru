@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; overflow:hidden; }
+svg { width:155px; height:165px; }
+.label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+/* Volcano erupts: lava blobs shoot up */
+.blob { animation: erupt var(--bd) cubic-bezier(.3,.7,.5,1) infinite var(--bl); opacity:0; }
+@keyframes erupt {
+  0%    { transform:translate(0,0) scale(0.5); opacity:0; }
+  5%    { opacity:1; }
+  40%   { opacity:0.9; }
+  100%  { transform:translate(var(--bx),var(--by)) scale(0.2); opacity:0; }
+}
+
+/* Smoke puffs rise */
+.smoke { animation: smokeUp 3s ease-out infinite var(--sl); opacity:0; }
+@keyframes smokeUp {
+  0%   { transform:translate(0,0) scale(0.3); opacity:0; }
+  10%  { opacity:0.6; }
+  100% { transform:translate(var(--sx,0px),-60px) scale(2); opacity:0; }
+}
+
+/* Lava flow down sides */
+#lava_l { animation: flowL 2s ease-in-out infinite; }
+#lava_r { animation: flowR 2s ease-in-out infinite 0.4s; }
+@keyframes flowL {
+  0%   { stroke-dashoffset:60; }
+  70%  { stroke-dashoffset:0; }
+  100% { stroke-dashoffset:0; }
+}
+@keyframes flowR {
+  0%   { stroke-dashoffset:60; }
+  70%  { stroke-dashoffset:0; }
+  100% { stroke-dashoffset:0; }
+}
+
+/* Ground rumble */
+#ground { animation: rumble 0.15s linear infinite; }
+@keyframes rumble {
+  0%,100% { transform:translateX(0); }
+  33%     { transform:translateX(-1px); }
+  66%     { transform:translateX(1px); }
+}
+
+/* Crater glow */
+#crater { animation: craterGlow 1.2s ease-in-out infinite; }
+@keyframes craterGlow {
+  0%,100% { fill:#FF4400; }
+  50%     { fill:#FFD700; }
+}
+
+/* Stars twinkle */
+.star { animation: tw var(--d) ease-in-out infinite var(--dl); }
+@keyframes tw { 0%,100% { opacity:0.2; } 50% { opacity:1; } }
+</style></head><body>
+<svg viewBox="0 0 120 130">
+  <defs>
+    <linearGradient id="volc" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#5A3020"/>
+      <stop offset="100%" stop-color="#2A1510"/>
+    </linearGradient>
+    <linearGradient id="lavaG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#FFD700"/>
+      <stop offset="100%" stop-color="#FF2200"/>
+    </linearGradient>
+    <radialGradient id="skyG">
+      <stop offset="0%"   stop-color="#1A0A30"/>
+      <stop offset="100%" stop-color="#0D1117"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Sky -->
+  <rect x="0" y="0" width="120" height="130" fill="url(#skyG)"/>
+
+  <!-- Stars -->
+  <circle class="star" cx="10"  cy="12"  r="1" fill="white" style="--d:1.8s;--dl:0s"/>
+  <circle class="star" cx="105" cy="8"   r="1" fill="white" style="--d:2.1s;--dl:0.4s"/>
+  <circle class="star" cx="15"  cy="35"  r="1" fill="white" style="--d:1.5s;--dl:0.8s"/>
+  <circle class="star" cx="108" cy="40"  r="1" fill="white" style="--d:2.3s;--dl:0.2s"/>
+
+  <!-- Smoke puffs -->
+  <circle class="smoke" cx="60" cy="40" r="8" fill="#5A5878" style="--sl:0s;   --sx:-8px"/>
+  <circle class="smoke" cx="60" cy="40" r="7" fill="#4A4868" style="--sl:0.8s; --sx:6px"/>
+  <circle class="smoke" cx="60" cy="40" r="9" fill="#6A6888" style="--sl:1.6s; --sx:-3px"/>
+  <circle class="smoke" cx="60" cy="40" r="6" fill="#5A5878" style="--sl:2.4s; --sx:10px"/>
+
+  <!-- Volcano body -->
+  <polygon points="60,18 100,110 20,110" fill="url(#volc)" stroke="#3A2015" stroke-width="1.5"/>
+  <!-- Snow cap style dark tip with crater -->
+  <polygon points="60,18 72,50 48,50" fill="#3A2015"/>
+  <!-- Lava flow left -->
+  <path id="lava_l" d="M55,42 Q44,65 38,85 Q34,100 30,110"
+        fill="none" stroke="url(#lavaG)" stroke-width="5" stroke-linecap="round"
+        stroke-dasharray="60" stroke-dashoffset="60"/>
+  <!-- Lava flow right -->
+  <path id="lava_r" d="M65,42 Q76,65 82,85 Q86,100 90,110"
+        fill="none" stroke="url(#lavaG)" stroke-width="4" stroke-linecap="round"
+        stroke-dasharray="60" stroke-dashoffset="60"/>
+
+  <!-- Eruption blobs -->
+  <circle class="blob" cx="60" cy="38" r="5" fill="#FFD700" style="--bd:1.4s;--bl:0s;   --bx:-18px;--by:-40px"/>
+  <circle class="blob" cx="60" cy="38" r="4" fill="#FF4400" style="--bd:1.6s;--bl:0.3s; --bx:15px; --by:-50px"/>
+  <circle class="blob" cx="60" cy="38" r="6" fill="#FF8800" style="--bd:1.3s;--bl:0.6s; --bx:-8px; --by:-55px"/>
+  <circle class="blob" cx="60" cy="38" r="3" fill="#FFD700" style="--bd:1.5s;--bl:0.9s; --bx:22px; --by:-38px"/>
+  <circle class="blob" cx="60" cy="38" r="5" fill="#FF2200" style="--bd:1.7s;--bl:1.2s; --bx:-25px;--by:-45px"/>
+  <circle class="blob" cx="60" cy="38" r="4" fill="#FF8800" style="--bd:1.4s;--bl:1.5s; --bx:5px;  --by:-60px"/>
+
+  <!-- Crater glow -->
+  <ellipse id="crater" cx="60" cy="35" rx="10" ry="5" fill="#FF4400"/>
+
+  <!-- Ground -->
+  <g id="ground">
+    <rect x="0" y="108" width="120" height="14" rx="4" fill="#2A3040"/>
+    <rect x="0" y="110" width="120" height="8"  rx="3" fill="#1E2535"/>
+  </g>
+</svg>
+<div class="label">Knowledge erupting soon…</div>
+</body></html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; }
+  svg { width:160px; height:160px; }
+  .label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+  #gear1 { animation: spinCW  3s linear infinite; transform-origin: 42px 55px; }
+  #gear2 { animation: spinCCW 3s linear infinite; transform-origin: 80px 55px; }
+  #gear3 { animation: spinCW  2s linear infinite; transform-origin: 62px 88px; }
+
+  @keyframes spinCW  { from { transform: rotate(0deg); }   to { transform: rotate(360deg); }  }
+  @keyframes spinCCW { from { transform: rotate(0deg); }   to { transform: rotate(-360deg); } }
+
+  #spark1 { animation: spark 1.8s ease-in-out infinite 0s; }
+  #spark2 { animation: spark 1.8s ease-in-out infinite 0.6s; }
+  #spark3 { animation: spark 1.8s ease-in-out infinite 1.2s; }
+  @keyframes spark {
+    0%   { opacity:0; transform: translate(0,0) scale(0.5); }
+    20%  { opacity:1; }
+    100% { opacity:0; transform: translate(-12px,-18px) scale(0); }
+  }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 120 120">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#9B70FF"/>
+      <stop offset="100%" stop-color="#5B30CC"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7B52CC"/>
+      <stop offset="100%" stop-color="#3D1A6E"/>
+    </linearGradient>
+    <linearGradient id="g3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#B08AFF"/>
+      <stop offset="100%" stop-color="#6B40CC"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Gear 1 (large, left) -->
+  <g id="gear1">
+    <circle cx="42" cy="55" r="20" fill="url(#g1)" stroke="#B08AFF" stroke-width="1.5"/>
+    <circle cx="42" cy="55" r="6"  fill="#0D1117"/>
+    <!-- Teeth -->
+    <rect x="39" y="30" width="6" height="8" rx="2" fill="url(#g1)"/>
+    <rect x="39" y="72" width="6" height="8" rx="2" fill="url(#g1)"/>
+    <rect x="17" y="52" width="8" height="6" rx="2" fill="url(#g1)"/>
+    <rect x="59" y="52" width="8" height="6" rx="2" fill="url(#g1)"/>
+    <rect x="23" y="37" width="8" height="6" rx="2" fill="url(#g1)" transform="rotate(-45,27,40)"/>
+    <rect x="55" y="65" width="8" height="6" rx="2" fill="url(#g1)" transform="rotate(-45,59,68)"/>
+    <rect x="23" y="63" width="8" height="6" rx="2" fill="url(#g1)" transform="rotate(45,27,66)"/>
+    <rect x="55" y="38" width="8" height="6" rx="2" fill="url(#g1)" transform="rotate(45,59,41)"/>
+  </g>
+
+  <!-- Gear 2 (large, right) -->
+  <g id="gear2">
+    <circle cx="80" cy="55" r="20" fill="url(#g2)" stroke="#7B52CC" stroke-width="1.5"/>
+    <circle cx="80" cy="55" r="6"  fill="#0D1117"/>
+    <rect x="77" y="30" width="6" height="8" rx="2" fill="url(#g2)"/>
+    <rect x="77" y="72" width="6" height="8" rx="2" fill="url(#g2)"/>
+    <rect x="55" y="52" width="8" height="6" rx="2" fill="url(#g2)"/>
+    <rect x="97" y="52" width="8" height="6" rx="2" fill="url(#g2)"/>
+    <rect x="61" y="37" width="8" height="6" rx="2" fill="url(#g2)" transform="rotate(-45,65,40)"/>
+    <rect x="93" y="65" width="8" height="6" rx="2" fill="url(#g2)" transform="rotate(-45,97,68)"/>
+    <rect x="61" y="63" width="8" height="6" rx="2" fill="url(#g2)" transform="rotate(45,65,66)"/>
+    <rect x="93" y="38" width="8" height="6" rx="2" fill="url(#g2)" transform="rotate(45,97,41)"/>
+  </g>
+
+  <!-- Gear 3 (small, center-bottom) -->
+  <g id="gear3">
+    <circle cx="62" cy="88" r="14" fill="url(#g3)" stroke="#C0A0FF" stroke-width="1.5"/>
+    <circle cx="62" cy="88" r="4"  fill="#0D1117"/>
+    <rect x="59" y="69" width="6" height="7" rx="2" fill="url(#g3)"/>
+    <rect x="59" y="100" width="6" height="7" rx="2" fill="url(#g3)"/>
+    <rect x="44" y="85" width="7" height="6" rx="2" fill="url(#g3)"/>
+    <rect x="71" y="85" width="7" height="6" rx="2" fill="url(#g3)"/>
+    <rect x="48" y="72" width="7" height="5" rx="2" fill="url(#g3)" transform="rotate(-45,51.5,74.5)"/>
+    <rect x="72" y="96" width="7" height="5" rx="2" fill="url(#g3)" transform="rotate(-45,75.5,98.5)"/>
+    <rect x="72" y="72" width="7" height="5" rx="2" fill="url(#g3)" transform="rotate(45,75.5,74.5)"/>
+    <rect x="48" y="96" width="7" height="5" rx="2" fill="url(#g3)" transform="rotate(45,51.5,98.5)"/>
+  </g>
+
+  <!-- Sparks at gear mesh point -->
+  <circle id="spark1" cx="62" cy="73" r="2.5" fill="#FFD700"/>
+  <circle id="spark2" cx="59" cy="70" r="2"   fill="#FFA500"/>
+  <circle id="spark3" cx="65" cy="71" r="1.5" fill="#FFD700"/>
+
+  <!-- Processing text -->
+  <text x="60" y="115" text-anchor="middle" font-size="8" fill="#7B9CC8" font-family="sans-serif">Processing…</text>
+</svg>
+<div class="label">Thinking hard for you…</div>
+</body>
+</html>

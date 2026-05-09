@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; }
+  svg { width:130px; height:190px; }
+  .label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+  /* Bulb glow pulses when lit */
+  #bulb_glow  { animation: glow 2s ease-in-out infinite 1s; }
+  #bulb_fill  { animation: litUp 2s ease-out infinite; }
+  #halo       { animation: halo 2s ease-in-out infinite 1s; }
+  @keyframes glow {
+    0%,20%  { opacity:0; }
+    50%,100% { opacity:0.8; }
+  }
+  @keyframes litUp {
+    0%,20%  { fill: #2A1A4A; }
+    50%,100% { fill: #FFE44D; }
+  }
+  @keyframes halo {
+    0%,20%  { opacity:0; r:0; }
+    40%     { opacity:0.3; r:30; }
+    100%    { opacity:0; r:45; }
+  }
+
+  /* Filament draw */
+  #filament { stroke-dasharray:60; stroke-dashoffset:60; animation: drawFil 0.6s ease forwards 0.8s; }
+  @keyframes drawFil { to { stroke-dashoffset:0; } }
+
+  /* Idea sparks fly out */
+  .idea { animation: idea var(--dur) ease-out infinite var(--del); opacity:0; }
+  @keyframes idea {
+    0%   { transform: translate(0,0) scale(0); opacity:0; }
+    10%  { opacity:1; transform: translate(0,0) scale(1); }
+    100% { transform: translate(var(--tx),var(--ty)) scale(0.3); opacity:0; }
+  }
+
+  /* Loop whole animation */
+  #whole { animation: loop 4s linear infinite; }
+  @keyframes loop {
+    0%,85% { opacity:1; }
+    88%,99% { opacity:0; }
+    100%   { opacity:1; }
+  }
+
+  /* Base cord sway */
+  #cord { animation: sway 3s ease-in-out infinite 1.5s; transform-origin: 60px 42px; }
+  @keyframes sway {
+    0%,100% { transform: rotate(0deg); }
+    33%     { transform: rotate(3deg); }
+    66%     { transform: rotate(-3deg); }
+  }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 120 160">
+  <defs>
+    <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#FFE44D" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#FFE44D" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="bulbGrad" cx="35%" cy="30%" r="70%">
+      <stop offset="0%"   stop-color="#FFF5A0"/>
+      <stop offset="60%"  stop-color="#FFE44D"/>
+      <stop offset="100%" stop-color="#FFAA00"/>
+    </radialGradient>
+    <linearGradient id="baseGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7B52CC"/>
+      <stop offset="100%" stop-color="#3D1A6E"/>
+    </linearGradient>
+  </defs>
+
+  <g id="whole">
+    <!-- Halo glow behind bulb -->
+    <circle id="halo" cx="60" cy="72" r="0" fill="url(#glowGrad)"/>
+
+    <!-- Bulb shape -->
+    <circle id="bulb_fill" cx="60" cy="72" r="28" fill="#2A1A4A"/>
+    <circle id="bulb_glow" cx="60" cy="72" r="28" fill="url(#bulbGrad)"/>
+    <!-- Glass outline -->
+    <circle cx="60" cy="72" r="28" fill="none" stroke="#7B52CC" stroke-width="2"/>
+    <!-- Shine streak -->
+    <ellipse cx="50" cy="60" rx="6" ry="10" fill="white" opacity="0.12" transform="rotate(-20,50,60)"/>
+
+    <!-- Filament -->
+    <path id="filament" d="M52,85 Q56,75 60,80 Q64,85 68,75 Q72,65 60,60" fill="none" stroke="#FFD700" stroke-width="2" stroke-linecap="round"/>
+
+    <!-- Bulb base/neck -->
+    <rect x="48" y="98" width="24" height="8"  rx="2" fill="url(#baseGrad)"/>
+    <rect x="44" y="104" width="32" height="6" rx="2" fill="#4A2DA0"/>
+    <rect x="46" y="108" width="28" height="5" rx="2" fill="#3D1A6E"/>
+    <!-- Screw ridges -->
+    <line x1="44" y1="106" x2="76" y2="106" stroke="#7B52CC" stroke-width="0.8" opacity="0.5"/>
+    <line x1="44" y1="109" x2="76" y2="109" stroke="#7B52CC" stroke-width="0.8" opacity="0.5"/>
+    <line x1="44" y1="112" x2="76" y2="112" stroke="#7B52CC" stroke-width="0.8" opacity="0.5"/>
+
+    <!-- Cord -->
+    <path id="cord" d="M60,113 Q58,125 60,130 Q62,135 60,140" fill="none" stroke="#3A4060" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Ceiling mount -->
+    <rect x="52" y="38" width="16" height="6" rx="3" fill="#252840"/>
+    <!-- Cord top -->
+    <line x1="60" y1="44" x2="60" y2="98" stroke="#3A4060" stroke-width="2" opacity="0.6"/>
+
+    <!-- Idea sparks: stars/symbols -->
+    <text class="idea" x="82" y="60" font-size="12" fill="#FFD700" style="--dur:3s;--del:1.2s;--tx:18px;--ty:-15px">★</text>
+    <text class="idea" x="30" y="55" font-size="10" fill="#FF9500" style="--dur:3s;--del:1.6s;--tx:-15px;--ty:-20px">!</text>
+    <text class="idea" x="88" y="80" font-size="9"  fill="#FFE44D" style="--dur:3s;--del:2.0s;--tx:20px;--ty:5px">✦</text>
+    <text class="idea" x="24" y="80" font-size="10" fill="#FFD700" style="--dur:3s;--del:2.4s;--tx:-20px;--ty:0px">?</text>
+    <text class="idea" x="76" y="48" font-size="8"  fill="#FFAA00" style="--dur:3s;--del:2.8s;--tx:12px;--ty:-25px">✦</text>
+    <text class="idea" x="38" y="48" font-size="9"  fill="#FFD700" style="--dur:3s;--del:3.2s;--tx:-12px;--ty:-22px">★</text>
+  </g>
+</svg>
+<div class="label">Lighting up your lesson…</div>
+</body>
+</html>

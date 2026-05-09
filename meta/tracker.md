@@ -1475,3 +1475,106 @@ Books with ALL 404 (English/SS for Class 6/9) kept as-is — likely IP-blocked f
 - `com.yalantis.ucrop:2.2.9` — uCrop library itself still calls deprecated API internally; updating uCrop may help
 
 **Files read:** `meta/android_index.md` (lines 1–60), `BlackboardActivity.kt:3836–3847`, `HomeActivity.kt:1620–1631`, `FullChatFragment.kt:1139–1150`, `app/build.gradle` (SDK versions + dependencies)
+
+---
+
+## Session 16b — BB Loading SVG Animations
+
+**Date:** 2025-05-09
+**Asked:** Create 10 SVG animations shown below the spinner while BB session loads (10–15s wait)
+
+**Files created:**
+- `app/src/main/assets/loading_svgs/01_water_glass.html` — Water filling a glass
+- `app/src/main/assets/loading_svgs/02_house_build.html` — House construction (walls, roof, chimney)
+- `app/src/main/assets/loading_svgs/03_rocket_launch.html` — Rocket launching into space
+- `app/src/main/assets/loading_svgs/04_plant_grow.html` — Seed → sprout → flower
+- `app/src/main/assets/loading_svgs/05_gears.html` — 3 interlocking spinning gears with sparks
+- `app/src/main/assets/loading_svgs/06_constellation.html` — Stars connecting into a constellation
+- `app/src/main/assets/loading_svgs/07_lightbulb.html` — Lightbulb turning on with idea sparks
+- `app/src/main/assets/loading_svgs/08_pencil_write.html` — Pencil writing equations on paper
+- `app/src/main/assets/loading_svgs/09_brain_neurons.html` — Brain with firing neural connections
+- `app/src/main/assets/loading_svgs/10_solar_system.html` — Planets orbiting the sun
+
+**Files modified:**
+- `app/src/main/res/layout/activity_blackboard.xml` — Added `<WebView android:id="@+id/bbLoadingWebView" 200×220dp` inside loadingGroup below loadingText
+- `app/src/main/java/com/aiguruapp/student/widget/BbLoadingAnimator.kt` — NEW: singleton with `start(webView)` picks random animation, `stop(webView)` clears it
+- `app/src/main/java/com/aiguruapp/student/BlackboardActivity.kt`:
+  - Added `private lateinit var bbLoadingWebView: android.webkit.WebView` field (~line 173)
+  - `onCreate`: `bbLoadingWebView = findViewById(R.id.bbLoadingWebView)` (~line 315)
+  - `generateSteps()`: `BbLoadingAnimator.start(bbLoadingWebView)` at top (~line 851)
+  - `loadFromGlobalCache()`: start at top (~line 1263)
+  - `loadFromSavedSession()`: start at top (~line 1308)
+  - All 9 `loadingGroup.visibility = View.GONE` sites: `BbLoadingAnimator.stop(bbLoadingWebView)` added before each
+
+**Notes:**
+- Each HTML is self-contained SVG+CSS animation, dark-themed (#0D1117 bg), purple/blue palette
+- Loaded via `file:///android_asset/loading_svgs/NN_name.html` into WebView
+- Random selection each time via `Math.random()` in BbLoadingAnimator
+- WebView transparent background, no JS security issues (no external URLs, no DOM storage)
+
+---
+
+## 2026-05-09 (Session 16c — 29 more SVG animations + 5-per-session picker)
+
+**Asked (part 1):** Add 20+ more entertaining loading animations + fix repeat bug (same one kept showing)
+
+**Files created (animations 13–29):**
+- `app/src/main/assets/loading_svgs/13_atom_nucleus.html` — Bohr model: 3 coloured electrons on elliptical orbits, glowing nucleus
+- `app/src/main/assets/loading_svgs/14_book_open.html` — Book opening, pages flip, equations float out
+- `app/src/main/assets/loading_svgs/15_volcano.html` — Volcano erupting: lava blobs fly, smoke puffs, lava flows
+- `app/src/main/assets/loading_svgs/16_snowflake.html` — Snowflake arms crystallise from centre, falling snowflakes bg
+- `app/src/main/assets/loading_svgs/17_train.html` — Side-scrolling night train, smoke puffs, tree scene scrolls
+- `app/src/main/assets/loading_svgs/18_submarine.html` — Submarine bobs with propeller spin, sonar ping, bubbles, fish
+- `app/src/main/assets/loading_svgs/19_hot_air_balloon.html` — Balloon rises/sways, flame flicker, drifting clouds, birds
+- `app/src/main/assets/loading_svgs/20_domino.html` — 7 domino tiles fall sequentially with dust puffs
+- `app/src/main/assets/loading_svgs/21_magnifier.html` — Magnifying glass scans over equations, symbols reveal
+- `app/src/main/assets/loading_svgs/22_bouncing_balls.html` — 4 coloured balls bounce with squash/stretch + shadows
+- `app/src/main/assets/loading_svgs/23_typewriter.html` — Typewriter types equations line by line, cursor blinks, bell
+- `app/src/main/assets/loading_svgs/24_wave_interference.html` — Two wave sources, constructive/destructive interference nodes
+- `app/src/main/assets/loading_svgs/25_crystal_grow.html` — Geometric crystal grows from seed, gem facets fill
+- `app/src/main/assets/loading_svgs/26_clock.html` — Analog clock with swinging pendulum, 3 hands sweep
+- `app/src/main/assets/loading_svgs/27_lightning.html` — Storm cloud, dual lightning bolts flash, rain falls, puddle ripples
+- `app/src/main/assets/loading_svgs/28_telescope.html` — Telescope scans sky, stars appear in view, shooting star
+- `app/src/main/assets/loading_svgs/29_popcorn.html` — Popcorn kernels pop and fly out of jiggly pot, flame below
+
+(Note: files 27_aurora, 28_butterfly, 29_tornado, 30_chemistry, 31_maze_solve, 32_prism_rainbow, 33_sandcastle, 34_music_notes, 35_fish_jump also exist in the folder from prior sessions)
+
+**Asked (part 2):** Pick 5 random SVGs per session (not cycle all 37)
+
+**Changed:**
+- `BbLoadingAnimator.kt` — Complete rewrite:
+  - `ALL_ANIMATIONS` array: all 38 filenames (01–35 + duplicates)
+  - `SESSION_SIZE = 5`
+  - `sessionQueue`: mutable list of 5 randomly chosen filenames
+  - `refreshSession()`: shuffles all, takes first 5, resets index
+  - `nextAnimation()`: serves from queue, auto-refreshes when exhausted
+  - `start()`: calls `nextAnimation()` instead of `Math.random()` 
+  - Session persists across calls until all 5 are shown, then new 5 picked
+
+
+---
+
+## Session 17 — BB Loading SVG Animations (Batch 2)
+
+**Date:** 2026-05-09
+**Asked:** Create 10 more loading SVG animations (entertaining, dark-themed, same style as 01–26)
+
+**Files created:**
+- `app/src/main/assets/loading_svgs/27_aurora.html` — Northern lights curtains over snowy pine trees
+- `app/src/main/assets/loading_svgs/28_butterfly.html` — Chrysalis cracking open, butterfly emerging & flapping
+- `app/src/main/assets/loading_svgs/29_tornado.html` — Spinning funnel with lightning, debris orbiting base
+- `app/src/main/assets/loading_svgs/30_chemistry.html` — Bubbling beaker over bunsen flame with rising steam
+- `app/src/main/assets/loading_svgs/31_maze_solve.html` — Dot solving a maze with animateMotion + trail draw
+- `app/src/main/assets/loading_svgs/32_prism_rainbow.html` — White light beam entering prism, splitting into 6 colours
+- `app/src/main/assets/loading_svgs/33_sandcastle.html` — Blocks dropping one-by-one to build a sandcastle
+- `app/src/main/assets/loading_svgs/34_music_notes.html` — Floating notes + bouncing equalizer bars
+- `app/src/main/assets/loading_svgs/35_fish_jump.html` — Fish jumping moonlit water arc with splashes & ripples
+- `app/src/main/assets/loading_svgs/36_tetris.html` — Tetris blocks falling into a grid with ghost piece
+
+**Files modified:**
+- `app/src/main/java/com/aiguruapp/student/widget/BbLoadingAnimator.kt` — Added 36_tetris.html to ALL_ANIMATIONS array (now 39 total animations)
+
+**Notes:**
+- Animator already upgraded to session-queue strategy (5 random per session, no repeats)
+- Files 27_lightning, 28_telescope, 29_popcorn already existed from a prior session
+- Total pool: 39 animations
