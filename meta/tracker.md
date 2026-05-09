@@ -1199,3 +1199,130 @@ Books with ALL 404 (English/SS for Class 6/9) kept as-is — likely IP-blocked f
 
 **Files read:** `BlackboardActivity.kt` (lines 605-644, 930-993, 1060-1112, 2301-2430, 3082-3218); `BbAiTtsEngine.kt` (full: lines 98-232); `AiTtsProvider.kt` (no delays found); `TextToSpeechManager.kt` (no delays found)
 **Files changed:** none
+
+---
+
+## 2026-05-09
+
+**Asked:** Fix compile error — Unresolved reference 'topic' at BbSavedSessionsActivity.kt:268.
+**Root cause:** `replaySession()` used `topic` directly but never declared it. `shareSession()` (line 285) correctly extracts it from the session map as `session["topic"] as? String`. `replaySession()` was missing that extraction.
+**Fix:** Added `val topic = session["topic"] as? String ?: ""` at the top of `replaySession()`, before the intent block.
+**Files read:** `BbSavedSessionsActivity.kt` (lines 1-60, 255-285); `FirestoreManager.kt` (grep: saveBbSession/topic — line 872 confirms "topic" key in session map)
+**Files changed:** `app/src/main/java/com/aiguruapp/student/BbSavedSessionsActivity.kt` (line 263: added topic extraction)
+
+---
+
+## 2026-05-09 (session 13)
+
+**Asked:** (1) Standardize referral bonus to 3/day (not 5), controlled from Firestore config — no code deploy needed to change. (2) In-app user-to-user BB session sharing — Friends page (add friend by referral code), share sessions directly to friends, "Shared with me" tab in Watch History.
+
+**Key code insight — how codes/UIDs are generated:**
+- `ReferralManager.codeForUser(uid)` → deterministic 8-char hash of `userId` → always the same for same user. Called once on profile screen open. Writes `referralCodes/{CODE} → {ownerUserId, ownerName}` if not already present.
+- `referralCodes/{code}` is the ONLY code→uid mapping. All friend lookups + referral claims read this.
+- `users/{uid}` stores identity + all subcollections (friends, shared_with_me, saved_bb_sessions_flat, etc.)
+- `users_table/{uid}` stores quota/plan/referral bonus fields — server-managed.
+
+**Changes:**
+
+1. **`server/app/api/referrals.py`** — rewrote entirely:
+   - Removed hardcoded `REFERRAL_BB_BONUS_PER_DAY = 5`
+   - Added `_get_referral_config(db)` → reads `app_config/referral_settings` `{bonus_per_day, bonus_days}`, defaults to 3/30 on error
+   - Rest of claim logic unchanged (one-time gate, referrer bonus stacking)
+
+2. **`server/app/api/users.py`** — added 2 new endpoints:
+   - `GET /users/lookup?code=XXXX` → reads `referralCodes/{code}` → returns `{uid, name, code}` (for add-friend flow). Rejects own code.
+   - `POST /users/share-session` body `{to_code, session_id, topic, step_count, steps_json, message_id, conversation_id}` → resolves recipient via code → writes to `users/{recipientUid}/shared_with_me/{senderId}_{sessionId}` with sender_name + shared_at → auto-adds both as friends in `users/{uid}/friends/{friendUid}`.
+   - Fixed bug: `sender_name` was reading wrong code doc; now reads directly from `users_table/{senderUid}.name`.
+
+3. **`FirestoreManager.kt`** — added 3 new methods (lines ~968-1035):
+   - `addFriend(userId, friendUid, name, code, ...)` → `users/{uid}/friends/{friendUid}`
+   - `loadFriends(userId, ...)` → ordered by `added_at` desc
+   - `loadSharedWithMe(userId, ...)` → `users/{uid}/shared_with_me/` ordered by `shared_at` desc
+
+4. **`FriendsActivity.kt`** (new file) + `activity_friends.xml` + `item_friend.xml`:
+   - Browse mode: shows friends list with "Add Friend" button
+   - Add friend: calls `GET /users/lookup?code=XXXX` → confirm dialog → `FirestoreManager.addFriend`
+   - Share mode (launched from BbSavedSessionsActivity): shows friends list with "Share" buttons → POST `/users/share-session`
+   - Registered in `AndroidManifest.xml`
+
+5. **`BbSavedSessionsActivity.kt`**:
+   - `shareSession()` now opens `FriendsActivity` in share mode (instead of Android share sheet)
+   - Added `showingShared: Boolean` state + `sharedSessions` list
+   - `switchTab()` / `loadSharedSessions()` / `showSharedSessions()` — tab logic
+   - Adapter `onBindViewHolder`: shows `sender_name` in date field for shared sessions; hides Share/Delete buttons on received sessions
+   - Layout: added tab strip in `activity_bb_saved_sessions.xml` (hidden unless EXTRA_ALL_HISTORY=true)
+
+6. **`activity_home.xml`** — added `drawerItemFriends` LinearLayout (👥 Friends & Share) between Watch History and Teacher items
+
+7. **`HomeActivity.kt`** — added `drawerItemFriends` click handler → opens `FriendsActivity`
+
+8. **`firestore.rules`** — added `app_config/{docId}` block: `allow read, write: if false` (server reads via Admin SDK, no client access)
+
+9. **`seed_app_config.py`** (new root-level script) — writes `app_config/referral_settings {bonus_per_day:3, bonus_days:30}` to Firestore. Seeded successfully ✅.
+
+**Firestore collections added:**
+- `app_config/referral_settings` → `{bonus_per_day: 3, bonus_days: 30}` ← seeded ✅
+- `users/{uid}/friends/{friendUid}` → `{name, code, added_at}`
+- `users/{uid}/shared_with_me/{senderId}_{sessionId}` → `{session_id, sender_uid, sender_name, topic, step_count, steps_json, message_id, conversation_id, shared_at}`
+
+**Files changed:** `server/app/api/referrals.py` (full rewrite), `server/app/api/users.py` (2 new endpoints + bug fix), `FirestoreManager.kt` (~lines 968-1035 new methods), `FriendsActivity.kt` (new), `activity_friends.xml` (new), `item_friend.xml` (new), `BbSavedSessionsActivity.kt` (shareSession + tab logic), `activity_bb_saved_sessions.xml` (tab strip), `activity_home.xml` (drawerItemFriends), `HomeActivity.kt` (click handler), `AndroidManifest.xml` (FriendsActivity), `firestore.rules` (app_config rule), `seed_app_config.py` (new)
+
+---
+
+## 2026-05-09 (session 14)
+
+**Asked:** 3 bugs: (1) Add Page in chapter gives invalid index — "not knowing how to name it". (2) Chat guides not showing Pages/BB Sessions tabs; guides must show only first time. (3) BB session tips showing again and again (not first-time only).
+
+**Fix 1 — ChapterActivity extra image page index:**
+- Root cause: PDF chapter loads "📄  Page 1..N" in `pagesListData`. `uploadImageButton` → `savePage()` appends to both `imagePagePaths` and `pagesListData`. Old code named the extra page "Page uploaded - $timestamp". When user clicks the new item at position N, `onViewPage(N)` called `pdfPageManager.getPage(pdfId, pdfAssetPath, N)` — out of bounds (valid 0..N-1). Same for `onAskPage(N)`.
+- Fix in `savePage()`: page now named `"📷  Extra Page ${imagePagePaths.size}"` (after add, so first extra = "Extra Page 1").
+- Fix in `onViewPage(position)` and `onAskPage(position)`: if `isPdfChapter && position >= pdfPageCount` → treat as extra image page: `imgIdx = position - pdfPageCount`, then `fragment.attachImage(imagePagePaths[imgIdx])` and return early.
+- Files changed: `ChapterActivity.kt` (`savePage` naming, `onViewPage` guard, `onAskPage` guard)
+
+**Fix 2 — ChatTourManager: add Pages/BB Sessions tabs step + fix hidden view:**
+- Root cause: The step for `R.id.pagesDrawerAddPageButton` is inside the closed left drawer → `isShown` returns false → `findNextVisible()` skips it → user never sees Pages step. Also no step for the tab layout (Pages/Chat/BB Sessions tabs in ChapterActivity).
+- Fix: Replaced `pagesDrawerAddPageButton` step with `R.id.tabLayout` step as the **first** step. New step title: "📑 Pages · Chat · BB Sessions". Description explains all three tabs + swipe gesture. The "first time only" logic (KEY_CHAT SharedPrefs, `shouldShow()` + `markDone()`) was already correct — no change needed.
+- Files changed: `ChatTourManager.kt` (steps list: added tabLayout step at position 0, removed pagesDrawerAddPageButton step)
+
+**Fix 3 — BB session tips first-time only:**
+- Root cause: `showFirstTimerTipsIfNeeded()` used `if (sessions > 3) return` — showed different dialog tips at sessions 1, 2, 3. User saw a new dialog every other session launch.
+- Fix: Changed to `if (sessions != 1) return`. Merged all tips (navigation + camera + voice) into one comprehensive message shown only on the very first BB session launch.
+- Files changed: `BlackboardActivity.kt` (`showFirstTimerTipsIfNeeded` ~line 1135)
+
+**Files changed:** `ChapterActivity.kt` (~lines 960-1000 onViewPage/onAskPage, ~line 1055 savePage), `ChatTourManager.kt` (steps list), `BlackboardActivity.kt` (~line 1135 showFirstTimerTipsIfNeeded)
+
+---
+
+## 2026-05-09 (session 14 cont — LLM per-user key threading)
+
+**Asked:** All LLM calls must use per-user LiteLLM key — observed some calls falling back to master/guest key.
+
+**Root cause:** `generate_response(uid=None)` → `_call_litellm_proxy()` falls back to `LITELLM_MASTER_KEY` when uid is None. Multiple call sites didn't pass uid at all.
+
+**Fixes:**
+- `server/app/api/bb.py:63` — `generate_response(..., uid=auth.uid)` ✅
+- `server/app/api/analyze_image.py:158` — `generate_response(..., uid=auth.uid)` ✅
+- `server/app/api/daily_questions.py:214` — `generate_response(..., uid=uid)` (uid from auth at line 145) ✅
+- `server/app/services/diagram_service.py` — `_call_llm(question, uid)` + `generate_diagram(question, uid)` ✅
+- `server/app/api/diagram.py:49` — `generate_diagram(req.question.strip(), uid=auth.uid)` ✅
+- `server/app/services/enrichment_service.py` — `enrich_diagram_data(..., uid=uid)` + `build_enrichment_tasks(..., uid=uid)` ✅
+- `server/app/api/image_search_titles.py` — `get_titles(..., uid=uid)` + `_pick_titles_sync(..., uid=uid)` + calls to `build_enrichment_tasks(uid=uid)` ✅
+- `server/app/api/chat.py:1283` — `get_titles(..., uid=uid)` ✅
+
+**Files changed:** `bb.py`, `analyze_image.py`, `daily_questions.py`, `diagram_service.py`, `diagram.py`, `enrichment_service.py`, `image_search_titles.py`, `chat.py`
+
+---
+
+**Asked:** Fix compile error — `'if' must have both main and 'else' branches` at FriendsActivity.kt:78.
+**Root cause:** Smart/curly quote `"` after `share ` closed the string literal early; `$sessionTopic` was outside the string, so the `if` expression had no `else`.
+**Fix:** Replaced curly quotes with escaped ASCII quotes: `\"$sessionTopic\"`.
+**Files read:** `FriendsActivity.kt` (lines 70-89)
+**Files changed:** `app/src/main/java/com/aiguruapp/student/FriendsActivity.kt` (line 78)
+
+---
+
+**Asked:** Friend lookup not working — validate friends/share flow and fix.
+**Root cause:** `ReferralManager.codeForUser()` was only called in `UserProfileActivity`. If a user never opened their profile, their `referralCodes/{code}` document never existed in Firestore → server lookup returns 404 → "No user found". Firestore rules (`referralCodes`), server endpoint, and Android HTTP call are all correct.
+**Fix:** Added fire-and-forget `ReferralManager.codeForUser(userId)` call in `HomeActivity.onCreate()` after userId is set (line ~153). Now every user who reaches the home screen registers their code automatically. Skips `guest_user`.
+**Files read:** `FriendsActivity.kt` (full: lines 1-310); `ReferralManager.kt` (lines 1-90); `users.py` (lines 413-547 lookup + share-session endpoints); `HomeActivity.kt` (lines 148-157); `SessionManager.kt` (lines 198-219); `TokenManager.kt` (lines 30-67)
+**Files changed:** `app/src/main/java/com/aiguruapp/student/HomeActivity.kt` (line ~29: added ReferralManager import; line ~153: added codeForUser call)

@@ -234,6 +234,7 @@ def _call_litellm_proxy(
                 "temperature": model_config.temperature,
                 "max_tokens": model_config.max_tokens,
                 "cache": {"no-cache": False},
+                "user": uid or "guest",
                 "metadata": {
                     "call_name": call_name,
                     "uid": uid or "guest",

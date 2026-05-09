@@ -960,6 +960,15 @@ class ChapterActivity : BaseActivity() {
     private fun onViewPage(position: Int) {
         metricsTracker.recordPageViewed(position + 1)
         markPageOpened(position)
+        // Extra image page appended after PDF pages — open in chat instead of PDF viewer
+        if (isPdfChapter && position >= pdfPageCount) {
+            val imgIdx = position - pdfPageCount
+            if (imgIdx !in imagePagePaths.indices) return
+            val fragment = getOrCreateChatFragment()
+            switchToChat()
+            fragment.attachImage(imagePagePaths[imgIdx])
+            return
+        }
         // Pre-render this page (and let PageViewerActivity handle rest)
         lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -986,6 +995,15 @@ class ChapterActivity : BaseActivity() {
     private fun onAskPage(position: Int) {
         metricsTracker.recordPageViewed(position + 1)
         markPageOpened(position)
+        // Extra image page appended after PDF pages — open in chat directly
+        if (isPdfChapter && position >= pdfPageCount) {
+            val imgIdx = position - pdfPageCount
+            if (imgIdx !in imagePagePaths.indices) return
+            val fragment = getOrCreateChatFragment()
+            switchToChat()
+            fragment.attachImage(imagePagePaths[imgIdx])
+            return
+        }
         Toast.makeText(this, "Rendering page ${position + 1}…", Toast.LENGTH_SHORT).show()
         lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -1058,7 +1076,8 @@ class ChapterActivity : BaseActivity() {
         })
         prefs.edit().putString(key, arr.toString()).apply()
         imagePagePaths.add(imagePath)
-        pagesListData.add("Page uploaded - $timestamp")
+        // Name extra image pages sequentially so user knows which page it is
+        pagesListData.add("📷  Extra Page ${imagePagePaths.size}")
         pageListAdapter.notifyItemInserted(pagesListData.size - 1)
         Toast.makeText(this, "Page saved!", Toast.LENGTH_SHORT).show()
     }

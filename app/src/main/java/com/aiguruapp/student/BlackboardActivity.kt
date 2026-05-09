@@ -340,6 +340,26 @@ class BlackboardActivity : AppCompatActivity() {
         bbImgPreviewThumb = findViewById(R.id.bbImgPreviewThumb)
         bbImgPreviewRemove = findViewById(R.id.bbImgPreviewRemove)
 
+        // Reference to the main navigation button row (media controls)
+        val navButtonRow = (findViewById<ProgressBar>(R.id.bbProgressSeek).parent as? LinearLayout)?.getChildAt(1) as? LinearLayout
+
+        fun bringNavButtonsToFront() {
+            navButtonRow?.bringToFront()
+        }
+
+        // Ensure nav buttons are brought to front after overlays are hidden
+        fun hideOverlaysAndRestoreNav() {
+            loadingGroup.visibility = View.GONE
+            bbCompletionCard.visibility = View.GONE
+            val bbAskBar = findViewById<android.widget.LinearLayout>(R.id.bbAskBar)
+            bbAskBar.visibility = View.GONE
+            bringNavButtonsToFront()
+        }
+
+        // Example: call hideOverlaysAndRestoreNav() after lesson is loaded or overlays are dismissed
+        // You may want to call this in more places as needed
+        // hideOverlaysAndRestoreNav()
+
         bbVoiceManager = VoiceManager(this)
         bbMediaManager = MediaManager(this)
 
@@ -351,6 +371,32 @@ class BlackboardActivity : AppCompatActivity() {
         bbAskInput.setOnEditorActionListener { _, _, _ -> sendBbQuestion(); true }
         bbAskToggle.setOnClickListener { toggleAskBar() }   // ✕ inside ask bar
         bbChatFab.setOnClickListener { toggleAskBar() }     // 💬 floating FAB
+
+        // Exclude the FAB from Android's edge back-gesture zone so the right side of the button
+        // doesn't get swallowed as a system gesture (gesture zone is ~20dp from right edge;
+        // FAB margin is 16dp, so its right portion falls inside the zone without this).
+        bbChatFab.viewTreeObserver.addOnGlobalLayoutListener {
+            val rect = android.graphics.Rect()
+            bbChatFab.getHitRect(rect)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                bbChatFab.systemGestureExclusionRects = listOf(
+                    android.graphics.Rect(0, 0, bbChatFab.width, bbChatFab.height)
+                )
+            }
+        }
+
+        // Exclude the top-right button cluster (⚙ Save Publish ✕) from the back-gesture zone.
+        // These buttons sit ~6dp from the right edge, fully inside the ~20dp gesture zone.
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            val topCluster = findViewById<android.view.ViewGroup>(R.id.bbTopRightCluster)
+            topCluster?.viewTreeObserver?.addOnGlobalLayoutListener {
+                val loc = IntArray(2)
+                topCluster.getLocationInWindow(loc)
+                topCluster.systemGestureExclusionRects = listOf(
+                    android.graphics.Rect(0, 0, topCluster.width, topCluster.height)
+                )
+            }
+        }
 
         // Keep ask bar above keyboard on API 35+ edge-to-edge
         val bbAskBar = findViewById<android.widget.LinearLayout>(R.id.bbAskBar)
@@ -849,6 +895,25 @@ class BlackboardActivity : AppCompatActivity() {
                         onStatus = { statusMsg, _ ->
                             runOnUiThread { loadingText.text = statusMsg }
                         },
+                        onFirstStep = { firstSteps ->
+                            // Stream first step immediately — user sees content ~5-8s earlier
+                            lifecycleScope.launch(Dispatchers.Main) {
+                                if (steps.isEmpty() && loadingGroup.visibility == View.VISIBLE) {
+                                    steps = firstSteps
+                                    // Block triggerNextChunk until the full chunk arrives in onSuccess.
+                                    // Without this, showFrame(0,0) sees steps.size=1 → stepIdx>=steps.size-2
+                                    // is immediately true and fires a premature second generateChunk call.
+                                    isGeneratingNextChunk = true
+                                    computedFontSp = computeFontSize(steps)
+                                    loadingGroup.visibility = View.GONE
+                                    contentGroup.visibility = View.VISIBLE
+                                    showAskFabOnly()
+                                    buildDots()
+                                    setupBoard()
+                                    showFrame(0, 0)
+                                }
+                            }
+                        },
                         onSuccess = { generated ->
                             if (recordSession && !userId.isNullOrBlank()) {
                                 // Server already incremented the quota counter via check_and_record_quota().
@@ -870,7 +935,13 @@ class BlackboardActivity : AppCompatActivity() {
                                 lifecycleScope.launch(Dispatchers.Main) { updateBbQuotaChip(userId) }
                             }
                             lifecycleScope.launch(Dispatchers.Main) {
+                                val wasAlreadyPlaying = contentGroup.visibility == View.VISIBLE
+                                // Snapshot position BEFORE replacing steps so we can resume
+                                val resumeStep  = currentStepIdx
+                                val resumeFrame = currentFrameIdx
                                 steps = generated
+                                // Unblock next-chunk trigger (may have been held by onFirstStep preview)
+                                isGeneratingNextChunk = false
                                 // Cache by messageId so re-opening the same message skips re-generation
                                 if (!msgCacheKey.isNullOrBlank()) {
                                     getSharedPreferences("bb_msg_cache", MODE_PRIVATE).edit()
@@ -886,9 +957,19 @@ class BlackboardActivity : AppCompatActivity() {
                                 showAskFabOnly()
                                 if (isTeacherMode) publishLessonBtn.visibility = View.VISIBLE
                                 buildDots()
-                                setupBoard()
-                                preloadUpcoming(0, 0, count = 3)
-                                showFrame(0, 0)
+                                if (wasAlreadyPlaying) {
+                                    // User is mid-lesson from the onFirstStep preview — let the
+                                    // existing animation/TTS continue naturally. Just update the
+                                    // dots and preload upcoming audio. Do NOT call setupBoard()
+                                    // (clears board) or showFrame() (duplicates content).
+                                    val safeStep  = resumeStep.coerceIn(0, steps.size - 1)
+                                    val safeFrame = resumeFrame.coerceIn(0, (steps.getOrNull(safeStep)?.frames?.size ?: 1) - 1)
+                                    preloadUpcoming(safeStep, safeFrame, count = 3)
+                                } else {
+                                    setupBoard()
+                                    preloadUpcoming(0, 0, count = 3)
+                                    showFrame(0, 0)
+                                }
                                 incrementLocalBbCounter()
                                 showFirstTimerTipsIfNeeded()
                                 // Record lesson start time — actual read tracking happens step-by-step in showFrame()
@@ -1054,20 +1135,15 @@ class BlackboardActivity : AppCompatActivity() {
     private fun showFirstTimerTipsIfNeeded() {
         val prefs    = getSharedPreferences("bb_prefs", MODE_PRIVATE)
         val sessions = prefs.getInt("bb_sessions_alltime", 0)
-        if (sessions > 3) return   // only show for first 3 sessions
+        if (sessions != 1) return   // show only on the very first BB session
 
-        val tips = when (sessions) {
-            1 -> "👋 Welcome to Blackboard Mode!\n\n" +
-                    "• Tap ▶ / ◀ to move between slides\n" +
-                    "• Tap ⏸ to pause the lesson\n" +
-                    "• Tap 💬 to ask follow-up questions\n" +
-                    "• Tap 💾 Save to keep this lesson"
-            2 -> "📷 Did you know?\n\n" +
-                    "Tap the 📷 icon in the ask bar to attach a photo of your textbook — the AI will explain it!"
-            3 -> "🎤 Voice questions work too!\n\n" +
-                    "Tap 🎤 in the ask bar and speak your question hands-free."
-            else -> return
-        }
+        val tips = "👋 Welcome to Blackboard Mode!\n\n" +
+                "• Tap ▶ / ◀ to move between slides\n" +
+                "• Tap ⏸ to pause the lesson\n" +
+                "• Tap 💬 to ask follow-up questions\n" +
+                "• Tap 📷 in the ask bar to attach a photo of your textbook\n" +
+                "• Tap 🎤 in the ask bar to speak your question hands-free\n" +
+                "• Tap 💾 Save to keep this lesson for later"
 
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             if (!isFinishing) {
@@ -1112,6 +1188,10 @@ class BlackboardActivity : AppCompatActivity() {
         saveSessionBtn.isEnabled = false
         saveSessionBtn.text = "⏳ Saving…"
 
+        val stepsJson = com.aiguruapp.student.chat.BlackboardGenerator.serializeSteps(steps)
+        // Pre-populate disk cache so the first replay is served locally without a Firestore round-trip
+        com.aiguruapp.student.chat.BlackboardGenerator.writeSessionCache(applicationContext, sessionId, stepsJson)
+
         com.aiguruapp.student.firestore.FirestoreManager.saveBbSession(
             userId        = uid,
             subject       = subject,
@@ -1122,7 +1202,7 @@ class BlackboardActivity : AppCompatActivity() {
             topic         = topic,
             stepCount     = steps.size,
             ttsKeys       = ttsKeys,
-            stepsJson     = com.aiguruapp.student.chat.BlackboardGenerator.serializeSteps(steps),
+            stepsJson     = stepsJson,
             onSuccess     = {
                 sessionAlreadySaved = true
                 saveSessionBtn.isEnabled = true
@@ -1191,6 +1271,7 @@ class BlackboardActivity : AppCompatActivity() {
         loadingText.text = "Loading saved session…"
         lifecycleScope.launch(Dispatchers.IO) {
             com.aiguruapp.student.chat.BlackboardGenerator.loadFromSavedSession(
+                context              = applicationContext,
                 userId               = userId,
                 sessionId            = sessionId,
                 preferredLanguageTag = preferredLanguageTag,
@@ -1987,6 +2068,15 @@ class BlackboardActivity : AppCompatActivity() {
 
     // ── Pre-session settings dialog ───────────────────────────────────────────
     private fun showPreSessionDialog(onConfirm: () -> Unit) {
+        val prefs = getSharedPreferences("bb_prefs", MODE_PRIVATE)
+        val hasSeenDialog = prefs.getBoolean("presession_dialog_seen", false)
+        if (hasSeenDialog) {
+            // User already configured once — skip dialog, use saved settings
+            onConfirm()
+            return
+        }
+        // First time ever — show the dialog and mark as seen
+        prefs.edit().putBoolean("presession_dialog_seen", true).apply()
         _showLessonSettingsDialog(isPreSession = true) { onConfirm() }
     }
 
@@ -2387,19 +2477,14 @@ class BlackboardActivity : AppCompatActivity() {
     /** Advance to next frame in current step, or first frame of next step. */
     private fun advanceFrame() {
         if (isPaused) return
-        val step = steps.getOrNull(currentStepIdx) ?: return
-        val nextStepIdx  = if (currentFrameIdx < step.frames.size - 1) currentStepIdx else currentStepIdx + 1
-        val nextFrameIdx = if (currentFrameIdx < step.frames.size - 1) currentFrameIdx + 1 else 0
-        stepsScrollView.postDelayed({
-            if (isPaused) return@postDelayed
-            when {
-                currentFrameIdx < (steps.getOrNull(currentStepIdx)?.frames?.size ?: 0) - 1 ->
-                    showFrame(currentStepIdx, currentFrameIdx + 1)
-                currentStepIdx < steps.size - 1 ->
-                    showFrame(currentStepIdx + 1, 0)
-                else -> showCompletionCard()
-            }
-        }, 800)
+        steps.getOrNull(currentStepIdx) ?: return
+        when {
+            currentFrameIdx < (steps.getOrNull(currentStepIdx)?.frames?.size ?: 0) - 1 ->
+                showFrame(currentStepIdx, currentFrameIdx + 1)
+            currentStepIdx < steps.size - 1 ->
+                showFrame(currentStepIdx + 1, 0)
+            else -> showCompletionCard()
+        }
     }
 
     private fun showCompletionCard() {
@@ -4337,7 +4422,7 @@ class BlackboardActivity : AppCompatActivity() {
             )
         }
         val loadingTv = TextView(this).apply {
-            text = "⏳ Building lesson…"
+            text = "Analyzing Your Input…"
             textSize = computedFontSp - 6f
             setTextColor(Color.parseColor("#8070A0"))
             typeface = caveat

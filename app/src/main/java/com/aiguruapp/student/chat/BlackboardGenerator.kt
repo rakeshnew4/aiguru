@@ -873,7 +873,26 @@ $svgNote$lastFrameNote$langInstruction"""
      * No LLM call is made — this is a pure Firestore fetch.
      * Must be called from a background thread.
      */
+    private fun sessionCacheFile(context: android.content.Context, sessionId: String): java.io.File {
+        val dir = java.io.File(context.cacheDir, "bb_sessions")
+        dir.mkdirs()
+        return java.io.File(dir, "$sessionId.json")
+    }
+
+    private fun readSessionCache(context: android.content.Context, sessionId: String): String? {
+        val file = sessionCacheFile(context, sessionId)
+        if (!file.exists()) return null
+        val ageDays = (System.currentTimeMillis() - file.lastModified()) / 86_400_000L
+        if (ageDays > 7) { file.delete(); return null }
+        return try { file.readText() } catch (e: Exception) { null }
+    }
+
+    internal fun writeSessionCache(context: android.content.Context, sessionId: String, json: String) {
+        try { sessionCacheFile(context, sessionId).writeText(json) } catch (_: Exception) {}
+    }
+
     fun loadFromSavedSession(
+        context: android.content.Context,
         userId: String,
         sessionId: String,
         preferredLanguageTag: String? = null,
@@ -884,6 +903,62 @@ $svgNote$lastFrameNote$langInstruction"""
         var result: List<BlackboardStep>? = null
         var errorMsg = ""
 
+        // ── Local cache hit — skip Firestore entirely ──────────────────────────
+        val cached = readSessionCache(context, sessionId)
+        if (cached != null) {
+            try {
+                val arr = JSONArray(cached)
+                val langFallback = preferredLanguageTag ?: "en-US"
+                val steps = (0 until arr.length()).map { i ->
+                    val stepObj = arr.getJSONObject(i)
+                    val langTag = normalizeLanguageTag(
+                        raw      = stepObj.optString("lang", stepObj.optString("language", "")),
+                        fallback = langFallback
+                    )
+                    val framesArr = stepObj.getJSONArray("frames")
+                    val frames = (0 until framesArr.length()).map { j ->
+                        val frameObj  = framesArr.getJSONObject(j)
+                        val hlArr     = frameObj.optJSONArray("highlight")
+                        val optsArr   = frameObj.optJSONArray("quiz_options")
+                        val kwArr     = frameObj.optJSONArray("quiz_keywords")
+                        val fillArr   = frameObj.optJSONArray("fill_blanks")
+                        val orderArr  = frameObj.optJSONArray("quiz_correct_order")
+                        val fType     = frameObj.optString("frame_type", "concept")
+                        val rawEngine = frameObj.optString("tts_engine", "")
+                        val rawRole   = frameObj.optString("voice_role",  "")
+                        val (aEngine, aRole) = smartAssignTts(fType)
+                        BlackboardFrame(
+                            text             = frameObj.getString("text"),
+                            highlight        = hlArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                            speech           = frameObj.optString("speech", ""),
+                            durationMs       = frameObj.optLong("duration_ms", 2000),
+                            pauseAfterMs     = frameObj.optLong("pause_after_ms", 0),
+                            frameType        = fType,
+                            ttsEngine        = rawEngine.ifBlank { aEngine },
+                            voiceRole        = rawRole.ifBlank { aRole },
+                            quizAnswer       = frameObj.optString("quiz_answer", ""),
+                            quizOptions      = optsArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                            quizCorrectIndex = frameObj.optInt("quiz_correct_index", -1),
+                            quizModelAnswer  = frameObj.optString("quiz_model_answer", ""),
+                            quizKeywords     = kwArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                            fillBlanks       = fillArr?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                            quizCorrectOrder = orderArr?.let { a -> (0 until a.length()).map { a.getInt(it) } } ?: emptyList(),
+                            svgHtml          = frameObj.optString("svg_html", "")
+                        )
+                    }
+                    BlackboardStep(
+                        title                = stepObj.optString("title", ""),
+                        frames               = frames,
+                        languageTag          = langTag,
+                        image_description    = stepObj.optString("image_description", ""),
+                        imageConfidenceScore = stepObj.optDouble("image_show_confidencescore", 0.0).toFloat()
+                    )
+                }
+                if (steps.isNotEmpty()) { onSuccess(steps); return }
+            } catch (_: Exception) { /* corrupt cache — fall through to Firestore */ }
+        }
+
+        // ── Firestore fetch ────────────────────────────────────────────────────
         FirebaseFirestore.getInstance()
             .collection("users").document(userId)
             .collection("saved_bb_sessions_flat").document(sessionId)
@@ -900,6 +975,7 @@ $svgNote$lastFrameNote$langInstruction"""
                     latch.countDown()
                     return@addOnSuccessListener
                 }
+                writeSessionCache(context, sessionId, stepsJson)
                 try {
                     val arr = JSONArray(stepsJson)
                     val langFallback = preferredLanguageTag ?: "en-US"

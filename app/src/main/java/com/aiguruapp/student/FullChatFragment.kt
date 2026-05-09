@@ -399,6 +399,14 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         initializeUI(view)
         initializeChapterWorkspaceDrawer()
 
+        // Auto-show tour on first ever chat session
+        val activity = requireActivity()
+        if (ChatTourManager.shouldShow(activity)) {
+            view.postDelayed({
+                if (isAdded) ChatTourManager(activity).startTour()
+            }, 800)
+        }
+
         // Keep input bar above keyboard (API 35+ edge-to-edge: adjustResize no longer works)
         ViewCompat.setOnApplyWindowInsetsListener(chatMainContent) { v, insets ->
             val imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom

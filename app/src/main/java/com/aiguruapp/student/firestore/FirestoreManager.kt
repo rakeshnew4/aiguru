@@ -968,6 +968,72 @@ object FirestoreManager {
             .delete()
     }
 
+    // ── Friends ───────────────────────────────────────────────────────────────
+
+    /** Add or update a friend entry in users/{userId}/friends/{friendUid}. */
+    fun addFriend(
+        userId: String,
+        friendUid: String,
+        friendName: String,
+        friendCode: String,
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") { onFailure(null); return }
+        val data = mapOf(
+            "name"      to friendName,
+            "code"      to friendCode,
+            "added_at"  to System.currentTimeMillis()
+        )
+        db.collection("users").document(userId)
+            .collection("friends").document(friendUid)
+            .set(data, com.google.firebase.firestore.SetOptions.merge())
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    /** Load all friends for users/{userId}/friends/. */
+    fun loadFriends(
+        userId: String,
+        onSuccess: (List<Map<String, Any>>) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") { onSuccess(emptyList()); return }
+        db.collection("users").document(userId)
+            .collection("friends")
+            .orderBy("added_at", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .get()
+            .addOnSuccessListener { snap ->
+                val list = snap.documents.mapNotNull { doc ->
+                    val d = doc.data?.toMutableMap() ?: return@mapNotNull null
+                    d["friend_uid"] = doc.id
+                    d
+                }
+                onSuccess(list)
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+    // ── Shared With Me ────────────────────────────────────────────────────────
+
+    /** Load all sessions that others have shared with this user. */
+    fun loadSharedWithMe(
+        userId: String,
+        onSuccess: (List<Map<String, Any>>) -> Unit,
+        onFailure: (Exception?) -> Unit = {}
+    ) {
+        if (userId.isBlank() || userId == "guest_user") { onSuccess(emptyList()); return }
+        db.collection("users").document(userId)
+            .collection("shared_with_me")
+            .orderBy("shared_at", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .get()
+            .addOnSuccessListener { snap ->
+                val list = snap.documents.mapNotNull { it.data?.toMutableMap() }
+                onSuccess(list)
+            }
+            .addOnFailureListener { onFailure(it) }
+    }
+
     // ── Tasks ─────────────────────────────────────────────────────────────────
     // Path: school_tasks/{taskId}  (global, filtered by school_id + grade)
     // task_type: "bb_lesson" | "quiz" | "both"

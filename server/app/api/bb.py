@@ -60,7 +60,7 @@ async def grade_answer(
     )
 
     try:
-        result = generate_response(prompt=prompt, tier="faster", call_name="bb_grading")
+        result = generate_response(prompt=prompt, tier="faster", call_name="bb_grading", uid=auth.uid)
         response_text = result.get("text", "")
         # Track tokens from grading call
         tokens = result.get("tokens", {})

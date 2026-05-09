@@ -128,6 +128,7 @@
             android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize"/>
         <activity android:name=".BbSavedSessionsActivity" android:exported="false"/>
+        <activity android:name=".FriendsActivity" android:exported="false"/>
         <activity android:name=".TeacherChatReviewActivity" android:exported="false"
             android:windowSoftInputMode="adjustResize"/>
         <activity android:name=".TeacherSavedContentActivity" android:exported="false"/>

@@ -239,6 +239,7 @@
 
     <!-- ── TOP-RIGHT: Save + Publish + Close cluster ─────────────────────── -->
     <LinearLayout
+        android:id="@+id/bbTopRightCluster"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|end"
@@ -293,8 +294,8 @@
     <!-- Sits low, just above the media controls — doesn't cover board text -->
     <TextView
         android:id="@+id/bbSubtitleTv"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:layout_gravity="bottom|center_horizontal"
         android:layout_marginStart="6dp"
         android:layout_marginEnd="6dp"
@@ -471,8 +472,8 @@
     <!-- ── COMPLETION CELEBRATION CARD (overlay, shown at end of lesson) ──── -->
     <LinearLayout
         android:id="@+id/bbCompletionCard"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:gravity="center"
         android:background="#CC0A0A1C"
         android:orientation="vertical"

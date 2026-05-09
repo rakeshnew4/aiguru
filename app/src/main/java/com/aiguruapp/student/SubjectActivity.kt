@@ -75,6 +75,15 @@ class SubjectActivity : BaseActivity() {
         findViewById<MaterialButton>(R.id.addChapterButton).setOnClickListener {
             showManualChapterDialog()
         }
+
+        // Auto-show tour on first visit to any subject page
+        if (ChaptersTourManager.shouldShow(this)) {
+            window.decorView.post {
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    ChaptersTourManager(this).startTour()
+                }, 600)
+            }
+        }
     }
 
     private fun updateEmptyState() {

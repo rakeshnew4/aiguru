@@ -1281,7 +1281,8 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     # run it as a task so we can interleave keepalive pings.
                     _titles_task = asyncio.ensure_future(
                         get_titles(result["text"], extra_candidates=extra_wiki,
-                                   animations_enabled=req.bb_animations_enabled is not False)
+                                   animations_enabled=req.bb_animations_enabled is not False,
+                                   uid=uid)
                     )
                     while not _titles_task.done():
                         await asyncio.sleep(2)

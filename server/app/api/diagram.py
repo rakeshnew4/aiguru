@@ -46,7 +46,7 @@ async def generate_diagram_endpoint(
     - Falls back to LLM for complex or ambiguous questions.
     - Always returns a valid HTML string in `diagram_html`.
     """
-    result = generate_diagram(req.question.strip())
+    result = generate_diagram(req.question.strip(), uid=auth.uid)
     return DiagramResponse(
         diagram_type  = result["diagram_type"],
         explanation   = result["explanation"],

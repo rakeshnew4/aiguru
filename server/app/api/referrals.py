@@ -1,13 +1,16 @@
 """
 Referrals API
 
-POST /referrals/apply  — claim a referral code
-  Awards +5 BB sessions/day for 30 days to both the claimant and the referrer.
-  Atomic via Firestore transaction.  One-time per user (checked via referredBy field).
+POST /referrals/apply  — claim a referral code (one-time per user)
+  Awards bonus BB sessions/day for N days to both the claimant and the referrer.
+  Bonus amount + duration are read from Firestore app_config/referral_settings
+  so they can be tuned without a code deploy.
 
 Firestore:
-  referralCodes/{code}  — { ownerUserId, ownerName }
-  users_table/{uid}     — referredBy, referral_bb_bonus_per_day, referral_bb_bonus_expiry_at
+  referralCodes/{code}      — { ownerUserId, ownerName }
+  users_table/{uid}         — referredBy, referral_bb_bonus_per_day,
+                               referral_bb_bonus_expiry_at
+  app_config/referral_settings — { bonus_per_day: int, bonus_days: int }
 """
 
 from __future__ import annotations
@@ -25,8 +28,129 @@ from app.core.logger import get_logger
 logger = get_logger(__name__)
 router = APIRouter(prefix="/referrals", tags=["referrals"])
 
-REFERRAL_BB_BONUS_PER_DAY = 5
-REFERRAL_BONUS_DAYS = 30
+# Defaults — overridden by app_config/referral_settings in Firestore
+_DEFAULT_BONUS_PER_DAY = 3
+_DEFAULT_BONUS_DAYS    = 30
+
+
+def _now_ms() -> int:
+    return int(time.time() * 1000)
+
+
+def _get_referral_config(db) -> tuple[int, int]:
+    """Read bonus settings from Firestore; fall back to defaults on any error."""
+    try:
+        doc = db.collection("app_config").document("referral_settings").get()
+        if doc.exists:
+            data = doc.to_dict() or {}
+            bonus_per_day = int(data.get("bonus_per_day", _DEFAULT_BONUS_PER_DAY))
+            bonus_days    = int(data.get("bonus_days",    _DEFAULT_BONUS_DAYS))
+            return bonus_per_day, bonus_days
+    except Exception as exc:
+        logger.warning("_get_referral_config: failed to read Firestore config: %s", exc)
+    return _DEFAULT_BONUS_PER_DAY, _DEFAULT_BONUS_DAYS
+
+
+class ApplyReferralRequest(BaseModel):
+    code: str
+
+
+@router.post("/apply")
+async def apply_referral(
+    req: ApplyReferralRequest,
+    auth: AuthUser = Depends(require_auth),
+):
+    """
+    Claim a referral code (one-time per user).
+    Awards +N BB sessions/day for M days to both the claimant and the code owner.
+    N and M are read from app_config/referral_settings (defaults: 3 and 30).
+    """
+    uid = auth.uid
+    code = req.code.strip().upper()
+
+    if not code or len(code) != 8:
+        raise HTTPException(400, "Referral code must be exactly 8 characters")
+
+    db = get_firestore_db()
+    if db is None:
+        raise HTTPException(503, "Database unavailable")
+
+    # Read configurable bonus amounts
+    bonus, bonus_days = _get_referral_config(db)
+
+    code_ref     = db.collection("referralCodes").document(code)
+    claimant_ref = db.collection("users_table").document(uid)
+
+    try:
+        code_doc     = code_ref.get()
+        claimant_doc = claimant_ref.get()
+    except Exception as exc:
+        logger.warning("apply_referral: read failed uid=%s: %s", uid, exc)
+        raise HTTPException(500, "Failed to validate referral code")
+
+    if not code_doc.exists:
+        raise HTTPException(422, "Invalid referral code")
+
+    code_data = code_doc.to_dict() or {}
+    owner_uid  = code_data.get("ownerUserId", "")
+    owner_name = code_data.get("ownerName", "your friend")
+
+    if owner_uid == uid:
+        raise HTTPException(422, "You cannot use your own referral code")
+
+    claimant_data = claimant_doc.to_dict() if claimant_doc.exists else {}
+    if claimant_data.get("referredBy", ""):
+        raise HTTPException(400, "You have already used a referral code")
+
+    now    = _now_ms()
+    expiry = now + bonus_days * 24 * 60 * 60 * 1000
+
+    # Award claimant
+    try:
+        claimant_ref.set(
+            {
+                "referredBy":                  code,
+                "referral_bb_bonus_per_day":   bonus,
+                "referral_bb_bonus_expiry_at": expiry,
+            },
+            merge=True,
+        )
+    except Exception as exc:
+        logger.warning("apply_referral: claimant write failed uid=%s: %s", uid, exc)
+        raise HTTPException(500, "Failed to apply referral bonus")
+
+    # Award referrer (fire-and-forget)
+    if owner_uid:
+        try:
+            owner_ref = db.collection("users_table").document(owner_uid)
+            owner_doc = owner_ref.get()
+            if owner_doc.exists:
+                owner_data = owner_doc.to_dict() or {}
+                existing_expiry = int(owner_data.get("referral_bb_bonus_expiry_at") or 0)
+                # Extend expiry if bonus already active, else set fresh
+                new_expiry = max(existing_expiry, now) + bonus_days * 24 * 60 * 60 * 1000
+                owner_ref.set(
+                    {
+                        "referral_bb_bonus_per_day":   bonus,
+                        "referral_bb_bonus_expiry_at": new_expiry,
+                    },
+                    merge=True,
+                )
+        except Exception as exc:
+            logger.warning("apply_referral: referrer bonus write failed uid=%s: %s", owner_uid, exc)
+
+    logger.info(
+        "apply_referral: uid=%s claimed code=%s owner=%s bonus=%d/day for %dd",
+        uid, code, owner_uid, bonus, bonus_days,
+    )
+    return {
+        "ok":               True,
+        "referrer_name":    owner_name or "your friend",
+        "bonus_per_day":    bonus,
+        "bonus_days":       bonus_days,
+        "bonus_expires_at": expiry,
+    }
+
 
 
 def _now_ms() -> int:

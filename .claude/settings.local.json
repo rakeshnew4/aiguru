@@ -3,7 +3,8 @@
     "allow": [
       "Bash(python test_visual_desc_changes.py)",
       "Bash(set PYTHONIOENCODING=utf-8)",
-      "Bash(python -X utf8 validate_diagrams.py)"
+      "Bash(python -X utf8 validate_diagrams.py)",
+      "PowerShell(\\(Get-Content \"c:\\\\Users\\\\rakes\\\\OneDrive\\\\Desktop\\\\aiguru\\\\meta\\\\tracker.md\"\\).Count)"
     ]
   }
 }

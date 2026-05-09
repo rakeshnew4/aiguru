@@ -29,6 +29,7 @@ import com.aiguruapp.student.config.AccessGate
 import com.aiguruapp.student.config.AccessGate.Feature
 import com.aiguruapp.student.config.AdminConfigRepository
 import com.aiguruapp.student.config.PlanEnforcer
+import com.aiguruapp.student.config.ReferralManager
 import com.aiguruapp.student.models.AppUpdateConfig
 import com.aiguruapp.student.utils.AppUpdateBus
 import com.aiguruapp.student.utils.AppUpdateManager
@@ -150,6 +151,8 @@ class HomeActivity : BaseActivity() {
         userId = SessionManager.getFirestoreUserId(this)
         // Ensure stats document exists ASAP; also recover anonymous auth if session was lost
         ensureStatsProfile()
+        // Register referral code in Firestore so friends can look us up — fire-and-forget
+        if (userId != "guest_user") Thread { ReferralManager.codeForUser(userId) }.start()
         setupRecyclerView()
         loadSubjects()
         // Offers are gated by usage stats: see loadSmartHomeContent() — first-time
@@ -204,9 +207,9 @@ class HomeActivity : BaseActivity() {
             confirmLogout()
         }
 
-        // ? Help / guide button
+        // ? Help / guide button — launches interactive feature tour
         findViewById<View?>(R.id.helpGuideBtn)?.setOnClickListener {
-            showAppGuide()
+            HomeTourManager(this).startTour()
         }
 
         // Plan badge still navigates to subscription
@@ -223,6 +226,18 @@ class HomeActivity : BaseActivity() {
 
         // BB intro + smart cards: run after layout is settled
         loadSmartHomeContent()
+
+        // Auto-show feature tour on very first launch (waits for layout to settle)
+        if (HomeTourManager.shouldShowHome(this)) {
+            window.decorView.postDelayed({
+                HomeTourManager(this).startTour {
+                    // After the tour finishes, show the Blackboard intro bottom sheet
+                    window.decorView.postDelayed({
+                        BbIntroBottomSheet().show(supportFragmentManager, BbIntroBottomSheet.TAG)
+                    }, 400L)
+                }
+            }, 900L)
+        }
     }
 
     override fun onResume() {
@@ -783,17 +798,9 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
             runOnUiThread {
                 // Show streak badge in hero header
                 val streakBadge = findViewById<TextView?>(R.id.streakBadgeText)
-                val headerSubtitle = findViewById<TextView?>(R.id.homeHeaderSubtitle)
                 if (streakDays > 0) {
                     streakBadge?.visibility = View.VISIBLE
                     streakBadge?.text = "🔥 ${streakDays}d"
-                    if (streakDays >= 3) {
-                        headerSubtitle?.text = "🏆 Great streak! Keep going today"
-                    } else {
-                        headerSubtitle?.text = "Your visual lesson is waiting today"
-                    }
-                } else {
-                    headerSubtitle?.text = "Start your streak today"
                 }
 
                 // Show persistent nudge card until the user's first BB session
@@ -1815,6 +1822,17 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
                 else ProgressDashboardActivity::class.java
                 startActivity(Intent(this, target))
             }
+        }
+        findViewById<LinearLayout>(R.id.drawerItemHistory).setOnClickListener {
+            navigate {
+                startActivity(
+                    Intent(this, BbSavedSessionsActivity::class.java)
+                        .putExtra(BbSavedSessionsActivity.EXTRA_ALL_HISTORY, true)
+                )
+            }
+        }
+        findViewById<LinearLayout>(R.id.drawerItemFriends).setOnClickListener {
+            navigate { startActivity(Intent(this, FriendsActivity::class.java)) }
         }
         findViewById<LinearLayout>(R.id.drawerItemTeacher).setOnClickListener {
             navigate { startActivity(Intent(this, TeacherDashboardActivity::class.java)) }

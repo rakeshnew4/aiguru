@@ -376,14 +376,14 @@ _FALLBACK_RESPONSE = {
 }
 
 
-def _call_llm(question: str) -> dict:
+def _call_llm(question: str, uid: Optional[str] = None) -> dict:
     """
     Ask the LLM to classify + produce diagram data.
     Returns a validated dict or a hardcoded fallback on any failure.
     """
     full_prompt = f"{_SYSTEM_PROMPT}\n\nStudent question: {question[:500]}"
     try:
-        result = generate_response(prompt=full_prompt, tier="faster", call_name="diagram_generate")
+        result = generate_response(prompt=full_prompt, tier="faster", call_name="diagram_generate", uid=uid)
         raw    = result.get("text", "")
         # Extract first JSON object in response
         match  = re.search(r'\{.*\}', raw, re.DOTALL)
@@ -413,7 +413,7 @@ def _call_llm(question: str) -> dict:
 _diagram_cache: dict[str, dict] = {}
 
 
-def generate_diagram(question: str) -> dict:
+def generate_diagram(question: str, uid: Optional[str] = None) -> dict:
     """
     Full pipeline: auto-detect → (LLM if needed) → validate → render SVG.
 
@@ -457,7 +457,7 @@ def generate_diagram(question: str) -> dict:
             detected_type = None  # force LLM
 
     if not detected_type:
-        payload       = _call_llm(question)
+        payload       = _call_llm(question, uid=uid)
         detected_type = payload["diagram_type"]
         data          = payload["data"]
         explanation   = payload["explanation"]

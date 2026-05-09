@@ -407,3 +407,143 @@ async def get_quota_status(auth: AuthUser = Depends(require_auth)):
     if result is None:
         raise HTTPException(status_code=404, detail="User not found")
     return QuotaStatusResponse(**result)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Social — friend lookup + session sharing
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get("/lookup")
+async def lookup_user_by_code(code: str, auth: AuthUser = Depends(require_auth)):
+    """
+    Find a user by their 8-character share/referral code.
+    Returns { uid, name, code } so the client can add them as a friend.
+    The caller's own code is rejected.
+    """
+    code = code.strip().upper()
+    if not code or len(code) != 8:
+        raise HTTPException(400, "Share code must be exactly 8 characters")
+
+    db = user_service._get_db()
+    if db is None:
+        raise HTTPException(503, "Database unavailable")
+
+    try:
+        doc = db.collection("referralCodes").document(code).get()
+    except Exception as exc:
+        logger.warning("lookup_user_by_code: Firestore error code=%s: %s", code, exc)
+        raise HTTPException(500, "Lookup failed")
+
+    if not doc.exists:
+        raise HTTPException(404, "User not found with that code")
+
+    data = doc.to_dict() or {}
+    owner_uid  = data.get("ownerUserId", "")
+    owner_name = data.get("ownerName", "")
+
+    if owner_uid == auth.uid:
+        raise HTTPException(400, "That is your own code")
+
+    return {"uid": owner_uid, "name": owner_name or "Friend", "code": code}
+
+
+class ShareSessionRequest(BaseModel):
+    to_code: str          # Recipient's 8-char share code
+    session_id: str       # ID of the session in saved_bb_sessions_flat
+    topic: str
+    step_count: int       # Included so recipient sees it without reading steps_json
+    steps_json: str = ""  # Full steps blob (may be large — optional)
+    message_id: str = ""
+    conversation_id: str = ""
+
+
+@router.post("/share-session")
+async def share_session(req: ShareSessionRequest, auth: AuthUser = Depends(require_auth)):
+    """
+    Share a BB session with a friend by their share code.
+    Writes to users/{recipientUid}/shared_with_me/{session_id}.
+    Also adds the recipient to the sender's friends list (and vice-versa) if not present.
+    """
+    to_code = req.to_code.strip().upper()
+    if not to_code or len(to_code) != 8:
+        raise HTTPException(400, "Recipient share code must be 8 characters")
+    if not req.session_id or not req.topic:
+        raise HTTPException(400, "session_id and topic are required")
+
+    db = user_service._get_db()
+    if db is None:
+        raise HTTPException(503, "Database unavailable")
+
+    sender_uid = auth.uid
+
+    # Resolve recipient
+    try:
+        code_doc = db.collection("referralCodes").document(to_code).get()
+    except Exception as exc:
+        logger.warning("share_session: code lookup failed code=%s: %s", to_code, exc)
+        raise HTTPException(500, "Failed to find recipient")
+
+    if not code_doc.exists:
+        raise HTTPException(404, "Recipient not found with that code")
+
+    code_data    = code_doc.to_dict() or {}
+    recipient_uid = code_data.get("ownerUserId", "")
+    if not recipient_uid:
+        raise HTTPException(404, "Recipient user not found")
+    if recipient_uid == sender_uid:
+        raise HTTPException(400, "You cannot share a session with yourself")
+
+    # Resolve sender display name from users_table
+    sender_name = ""
+    try:
+        s_doc = db.collection("users_table").document(sender_uid).get()
+        if s_doc.exists:
+            sender_name = (s_doc.to_dict() or {}).get("name", "") or ""
+    except Exception:
+        pass
+
+    import time as _t
+    now = int(_t.time() * 1000)
+
+    # Write shared session to recipient's shared_with_me subcollection
+    try:
+        shared_ref = (
+            db.collection("users").document(recipient_uid)
+              .collection("shared_with_me").document(f"{sender_uid}_{req.session_id}")
+        )
+        shared_ref.set({
+            "session_id":      req.session_id,
+            "sender_uid":      sender_uid,
+            "sender_name":     sender_name or "A friend",
+            "topic":           req.topic,
+            "step_count":      req.step_count,
+            "steps_json":      req.steps_json,
+            "message_id":      req.message_id,
+            "conversation_id": req.conversation_id,
+            "shared_at":       now,
+        }, merge=True)
+    except Exception as exc:
+        logger.warning("share_session: write shared_with_me failed uid=%s: %s", recipient_uid, exc)
+        raise HTTPException(500, "Failed to share session")
+
+    # Mutual friend list (fire-and-forget both directions)
+    try:
+        recipient_name = code_data.get("ownerName", "") or "Friend"
+        db.collection("users").document(sender_uid).collection("friends").document(recipient_uid).set(
+            {"name": recipient_name, "code": to_code, "added_at": now}, merge=True
+        )
+        # Find sender's code from referralCodes by querying ownerUserId
+        sender_code = ""
+        s_code_docs = db.collection("referralCodes").where("ownerUserId", "==", sender_uid).limit(1).get()
+        for d in s_code_docs:
+            sender_code = d.id
+            break
+        db.collection("users").document(recipient_uid).collection("friends").document(sender_uid).set(
+            {"name": sender_name or "Friend", "code": sender_code, "added_at": now}, merge=True
+        )
+    except Exception as exc:
+        logger.warning("share_session: friends update failed: %s", exc)
+
+    logger.info("share_session: uid=%s shared session=%s to uid=%s", sender_uid, req.session_id, recipient_uid)
+    return {"ok": True, "recipient_uid": recipient_uid}
+

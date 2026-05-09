@@ -276,7 +276,7 @@ def _pick_by_word_overlap(steps: list, all_candidates: List[Dict[str, str]]) -> 
     return result
 
 
-def _pick_titles_sync(steps: list, all_candidates: List[Dict[str, str]]) -> Dict[int, str]:
+def _pick_titles_sync(steps: list, all_candidates: List[Dict[str, str]], uid: str = None) -> Dict[int, str]:
     """
     LLM-based image title picker (kept for reference — not called in production).
     all_candidates: list of {"title": ..., "url": ...} dicts.
@@ -346,7 +346,7 @@ def _pick_titles_sync(steps: list, all_candidates: List[Dict[str, str]]) -> Dict
         + '\n\nOutput example: {"0": "Photosynthesis diagram.svg", "3": null, "5": "Newton laws.png"}'
     )
     try:
-        raw = generate_response(picker_prompt, [], tier="faster", call_name="image_picker")
+        raw = generate_response(picker_prompt, [], tier="faster", call_name="image_picker", uid=uid)
         text = (raw.get("text") or "").strip()
         parsed = extract_json_safe(text)
         result: Dict[int, str] = {}
@@ -378,7 +378,7 @@ def _pick_titles_sync(steps: list, all_candidates: List[Dict[str, str]]) -> Dict
         return fallback
 
 
-async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, animations_enabled: bool = True) -> str:
+async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, animations_enabled: bool = True, uid: str = None) -> str:
     """
     Process BB JSON and attach the best Wikimedia image title to each high-confidence step.
     Uses LLM-based selection (much more accurate than word-overlap).
@@ -411,7 +411,7 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, a
         # Wikimedia: per-step image searches.
         # ALL run concurrently → near-zero extra wall-clock time.
 
-        enr_futs, diagram_refs = build_enrichment_tasks(data["steps"], loop)
+        enr_futs, diagram_refs = build_enrichment_tasks(data["steps"], loop, uid=uid)
 
         # Collect wikimedia descriptions
         descriptions = []
@@ -680,7 +680,7 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, a
         }
         # LLM-based image picker (more accurate). Falls back to word-overlap internally.
         picks = await loop.run_in_executor(
-            None, _pick_titles_sync, data["steps"], all_candidates
+            None, _pick_titles_sync, data["steps"], all_candidates, uid
         )
 
         for i, step in enumerate(data["steps"]):

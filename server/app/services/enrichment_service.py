@@ -180,6 +180,7 @@ def enrich_diagram_data(
     frame_text: str,
     frame_speech: str,
     existing_data: dict,
+    uid: str = None,
 ) -> dict:
     """
     Generate the optimal `data` dict for a diagram frame.
@@ -219,6 +220,7 @@ def enrich_diagram_data(
             tier="faster",
             system_prompt=_ENRICH_SYSTEM,
             call_name="bb_enrichment",
+            uid=uid,
         )
         text = (raw.get("text") or "").strip()
         if not text or raw.get("provider") == "error":
@@ -252,6 +254,7 @@ _MAX_DIAGRAM_ENRICHMENTS = 2   # cap LLM enrichment calls per session to save to
 def build_enrichment_tasks(
     steps: list,
     loop,
+    uid: str = None,
 ) -> tuple[list, list]:
     """
     Walk parsed BB steps and build diagram-enrichment futures.
@@ -290,6 +293,7 @@ def build_enrichment_tasks(
                         frame.get("text", ""),
                         frame.get("speech", ""),
                         dict(frame.get("data") or {}),
+                        uid,
                     ),
                 )
                 diagram_futs.append(fut)

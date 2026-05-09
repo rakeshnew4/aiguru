@@ -155,7 +155,7 @@ async def analyze_image(req: AnalyzeImageRequest, auth: AuthUser = Depends(requi
     last_exc: Exception | None = None
     for tier in ("power", "cheaper"):
         try:
-            result = generate_response(full_prompt, [image_uri], tier=tier, call_name="image_analyze")
+            result = generate_response(full_prompt, [image_uri], tier=tier, call_name="image_analyze", uid=auth.uid)
             raw_text: str = result.get("text", "")
             if not raw_text.strip():
                 raise ValueError("LLM returned empty response")

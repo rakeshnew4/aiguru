@@ -175,6 +175,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ── App-level config (server reads/writes only — no client access) ────────
+    // Stores referral_settings, feature flags, etc.
+    // Server reads via Admin SDK (bypasses rules); clients have no need to access.
+    match /app_config/{docId} {
+      allow read, write: if false;
+    }
+
     // ── Blackboard fallback cache (server-written, no client access) ──────────
     match /blackboard_cache/{docId} {
       allow read, write: if false;

@@ -13,6 +13,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.aiguruapp.student.firestore.FirestoreManager
 import com.aiguruapp.student.utils.SessionManager
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -24,8 +27,10 @@ import java.util.*
 class BbSavedSessionsActivity : BaseActivity() {
 
     companion object {
-        const val EXTRA_SUBJECT = "extra_subject"
-        const val EXTRA_CHAPTER = "extra_chapter"
+        const val EXTRA_SUBJECT      = "extra_subject"
+        const val EXTRA_CHAPTER      = "extra_chapter"
+        /** Set true when opening from the Watch History drawer item (no subject/chapter context). */
+        const val EXTRA_ALL_HISTORY  = "extra_all_history"
     }
 
     private lateinit var recyclerView: RecyclerView
@@ -33,7 +38,9 @@ class BbSavedSessionsActivity : BaseActivity() {
     private lateinit var adapter: SessionsAdapter
     private val sessions = mutableListOf<Map<String, Any>>()
     private val allSessions = mutableListOf<Map<String, Any>>()
+    private val sharedSessions = mutableListOf<Map<String, Any>>()
     private var activeFilter: String? = null
+    private var showingShared = false
 
     private lateinit var subject: String
     private lateinit var chapter: String
@@ -48,7 +55,19 @@ class BbSavedSessionsActivity : BaseActivity() {
         userId  = SessionManager.getFirestoreUserId(this)
 
         findViewById<ImageButton>(R.id.backBtn).setOnClickListener { finish() }
-        findViewById<TextView>(R.id.chapterSubtitle).text = "$subject › $chapter"
+        val isAllHistory = intent.getBooleanExtra(EXTRA_ALL_HISTORY, false)
+        val subtitle = if (isAllHistory) "All saved sessions" else "$subject › $chapter"
+        findViewById<TextView>(R.id.chapterSubtitle).text = subtitle
+
+        // Tab strip — only in Watch History mode
+        val tabStrip        = findViewById<android.view.View>(R.id.tabStrip)
+        val tabMySessions   = findViewById<TextView>(R.id.tabMySessions)
+        val tabSharedWithMe = findViewById<TextView>(R.id.tabSharedWithMe)
+        if (isAllHistory) {
+            tabStrip.visibility = android.view.View.VISIBLE
+            tabMySessions.setOnClickListener   { switchTab(false, tabMySessions, tabSharedWithMe) }
+            tabSharedWithMe.setOnClickListener { switchTab(true,  tabMySessions, tabSharedWithMe) }
+        }
 
         emptyState   = findViewById(R.id.emptyState)
         recyclerView = findViewById(R.id.sessionsList)
@@ -72,17 +91,72 @@ class BbSavedSessionsActivity : BaseActivity() {
         loadSessions()
     }
 
+    // ── Local cache helpers ───────────────────────────────────────────────────
+
+    private fun cacheFile(): File = File(cacheDir, "bb_sessions_${userId}.json")
+
+    @Suppress("UNCHECKED_CAST")
+    private fun readCache(): List<Map<String, Any>>? = try {
+        val f = cacheFile()
+        if (!f.exists()) null
+        else {
+            val arr = JSONArray(f.readText())
+            (0 until arr.length()).map { i ->
+                val obj = arr.getJSONObject(i)
+                obj.keys().asSequence().associateWith { k ->
+                    when (val v = obj.get(k)) {
+                        is JSONArray -> (0 until v.length()).map { v.getString(it) }
+                        else -> v
+                    }
+                }
+            }
+        }
+    } catch (_: Exception) { null }
+
+    private fun writeCache(list: List<Map<String, Any>>) {
+        try {
+            val arr = JSONArray()
+            list.forEach { map ->
+                val obj = JSONObject()
+                map.forEach { (k, v) ->
+                    when (v) {
+                        is List<*> -> obj.put(k, JSONArray(v))
+                        else -> obj.put(k, v)
+                    }
+                }
+                arr.put(obj)
+            }
+            cacheFile().writeText(arr.toString())
+        } catch (_: Exception) {}
+    }
+
+    private fun invalidateCache() = try { cacheFile().delete() } catch (_: Exception) {}
+
+    // ── Session loading ───────────────────────────────────────────────────────
+
     private fun loadSessions() {
+        // Show cached data immediately (instant UI)
+        val cached = readCache()
+        if (cached != null) {
+            allSessions.clear()
+            allSessions.addAll(cached)
+            applyFilter(activeFilter)
+            buildFilterChips()
+        }
+        // Refresh from Firestore in background; update + re-cache if changed
         FirestoreManager.loadAllSavedBbSessions(
             userId = userId,
             onSuccess = { list ->
+                writeCache(list)
                 allSessions.clear()
                 allSessions.addAll(list)
                 applyFilter(activeFilter)
                 buildFilterChips()
             },
             onFailure = {
-                Toast.makeText(this, "Couldn't load sessions", Toast.LENGTH_SHORT).show()
+                if (cached == null)
+                    Toast.makeText(this, "Couldn't load sessions", Toast.LENGTH_SHORT).show()
+                // else: silently use cached data — no toast if we already showed something
             }
         )
     }
@@ -137,9 +211,56 @@ class BbSavedSessionsActivity : BaseActivity() {
         subjects.forEach { container.addView(makeChip(it, it)) }
     }
 
+    // ── Tab switching ─────────────────────────────────────────────────────────
+
+    private fun switchTab(toShared: Boolean, tabMy: TextView, tabShared: TextView) {
+        if (toShared == showingShared) return
+        showingShared = toShared
+        tabMy.setBackgroundColor(if (toShared) 0xFF252840.toInt() else 0xFF3D1A6E.toInt())
+        tabMy.setTextColor(if (toShared) 0xFFAABBCC.toInt() else 0xFFFFFFFF.toInt())
+        tabShared.setBackgroundColor(if (toShared) 0xFF3D1A6E.toInt() else 0xFF252840.toInt())
+        tabShared.setTextColor(if (toShared) 0xFFFFFFFF.toInt() else 0xFFAABBCC.toInt())
+
+        val filterScroll = findViewById<android.widget.HorizontalScrollView>(R.id.filterScrollView)
+        filterScroll?.visibility = if (toShared) View.GONE else View.VISIBLE
+
+        if (toShared) {
+            if (sharedSessions.isEmpty()) loadSharedSessions()
+            else showSharedSessions()
+        } else {
+            applyFilter(activeFilter)
+            buildFilterChips()
+        }
+    }
+
+    private fun loadSharedSessions() {
+        FirestoreManager.loadSharedWithMe(
+            userId    = userId,
+            onSuccess = { list ->
+                runOnUiThread {
+                    sharedSessions.clear()
+                    sharedSessions.addAll(list)
+                    showSharedSessions()
+                }
+            },
+            onFailure = {
+                runOnUiThread { Toast.makeText(this, "Couldn't load shared sessions", Toast.LENGTH_SHORT).show() }
+            }
+        )
+    }
+
+    private fun showSharedSessions() {
+        sessions.clear()
+        sessions.addAll(sharedSessions)
+        adapter.notifyDataSetChanged()
+        val empty = sessions.isEmpty()
+        emptyState.visibility   = if (empty) View.VISIBLE else View.GONE
+        recyclerView.visibility = if (empty) View.GONE    else View.VISIBLE
+    }
+
     private fun replaySession(session: Map<String, Any>) {
-        val topic     = session["topic"] as? String ?: return
         val sessionId = session["session_id"] as? String ?: session["id"] as? String ?: ""
+        val topic     = session["topic"] as? String ?: ""
         val convId    = session["conversation_id"] as? String
         val msgId     = session["message_id"] as? String
         @Suppress("UNCHECKED_CAST")
@@ -161,14 +282,23 @@ class BbSavedSessionsActivity : BaseActivity() {
     }
 
     private fun shareSession(session: Map<String, Any>) {
-        val topic = session["topic"] as? String ?: return
-        val stepCount = (session["step_count"] as? Long)?.toInt() ?: (session["step_count"] as? Int) ?: 0
-        val steps = if (stepCount > 0) "$stepCount steps" else "BB Session"
-        val text = "I just studied \"$topic\" on AfterClass AI!\n\n📚 $steps covered step by step with AI lessons. 🎓"
-        startActivity(Intent.createChooser(
-            Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text) },
-            "Share lesson"
-        ))
+        val sessionId  = session["session_id"] as? String ?: session["id"] as? String ?: ""
+        val topic      = session["topic"] as? String ?: return
+        val stepCount  = (session["step_count"] as? Long)?.toInt() ?: (session["step_count"] as? Int) ?: 0
+        val stepsJson  = session["steps_json"] as? String ?: ""
+        val msgId      = session["message_id"] as? String ?: ""
+        val convId     = session["conversation_id"] as? String ?: ""
+
+        val intent = Intent(this, FriendsActivity::class.java).apply {
+            putExtra(FriendsActivity.EXTRA_SHARE_MODE,       true)
+            putExtra(FriendsActivity.EXTRA_SESSION_ID,       sessionId)
+            putExtra(FriendsActivity.EXTRA_SESSION_TOPIC,    topic)
+            putExtra(FriendsActivity.EXTRA_SESSION_STEPS,    stepsJson)
+            putExtra(FriendsActivity.EXTRA_SESSION_STEP_CNT, stepCount)
+            putExtra(FriendsActivity.EXTRA_SESSION_MSG_ID,   msgId)
+            putExtra(FriendsActivity.EXTRA_SESSION_CONV_ID,  convId)
+        }
+        startActivity(intent)
     }
 
     private fun confirmDelete(session: Map<String, Any>) {
@@ -196,6 +326,7 @@ class BbSavedSessionsActivity : BaseActivity() {
                             recyclerView.visibility = View.GONE
                         }
                         buildFilterChips()
+                        writeCache(allSessions)  // keep cache in sync after delete
                     },
                     onFailure = {
                         Toast.makeText(this, "Delete failed", Toast.LENGTH_SHORT).show()
@@ -235,17 +366,33 @@ class BbSavedSessionsActivity : BaseActivity() {
         override fun getItemCount() = sessions.size
 
         override fun onBindViewHolder(holder: VH, position: Int) {
-            val session = sessions[position]
+            val session   = sessions[position]
             val topic     = (session["topic"] as? String)?.trim() ?: "(no topic)"
             val stepCount = (session["step_count"] as? Long)?.toInt() ?: (session["step_count"] as? Int) ?: 0
-            val savedAt   = (session["saved_at"] as? Long) ?: 0L
+            val savedAt   = (session["saved_at"] as? Long)
+                ?: (session["shared_at"] as? Long) ?: 0L
+            val senderName = session["sender_name"] as? String
 
             holder.topic.text     = topic
             holder.stepCount.text = if (stepCount > 0) "📚 $stepCount steps" else "📚 BB Session"
-            holder.date.text      = if (savedAt > 0) dateFormat.format(Date(savedAt)) else ""
+            holder.date.text      = buildString {
+                if (savedAt > 0) append(dateFormat.format(Date(savedAt)))
+                if (senderName != null) {
+                    if (isNotEmpty()) append(" · ")
+                    append("From: $senderName")
+                }
+            }
             holder.replayBtn.setOnClickListener { onReplay(session) }
             holder.deleteBtn.setOnClickListener { onDelete(session) }
             holder.shareBtn.setOnClickListener  { onShare(session)  }
+            // Hide share + delete buttons for received shared sessions
+            if (senderName != null) {
+                holder.shareBtn.visibility  = View.GONE
+                holder.deleteBtn.visibility = View.GONE
+            } else {
+                holder.shareBtn.visibility  = View.VISIBLE
+                holder.deleteBtn.visibility = View.VISIBLE
+            }
         }
     }
 }

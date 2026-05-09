@@ -45,6 +45,40 @@
         android:textSize="13sp"
         android:text="" />
 
+    <!-- Tab strip — shown only in Watch History (EXTRA_ALL_HISTORY) mode -->
+    <LinearLayout
+        android:id="@+id/tabStrip"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:orientation="horizontal"
+        android:background="#252840"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tabMySessions"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="📚 My Sessions"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:background="#3D1A6E"/>
+
+        <TextView
+            android:id="@+id/tabSharedWithMe"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="📩 Shared with Me"
+            android:textColor="#AABBCC"
+            android:textSize="13sp"
+            android:background="#252840"/>
+
+    </LinearLayout>
+
     <!-- Subject filter chips — populated dynamically, hidden until data loads -->
     <HorizontalScrollView
         android:id="@+id/filterScrollView"
