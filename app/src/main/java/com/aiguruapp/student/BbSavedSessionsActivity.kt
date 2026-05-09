@@ -270,6 +270,16 @@ class BbSavedSessionsActivity : BaseActivity() {
         val msgId     = session["message_id"] as? String
         @Suppress("UNCHECKED_CAST")
         val ttsKeys = (session["tts_keys"] as? List<String>) ?: emptyList()
+        // Shared sessions live in shared_with_me (not saved_bb_sessions_flat), so
+        // loadFromSavedSession would look in the wrong Firestore collection.
+        // Seed the disk cache from steps_json so the cache hit bypasses Firestore entirely.
+        if (showingShared && sessionId.isNotBlank()) {
+            val stepsJson = session["steps_json"] as? String ?: ""
+            if (stepsJson.isNotBlank()) {
+                com.aiguruapp.student.chat.BlackboardGenerator.writeSessionCache(
+                    applicationContext, sessionId, stepsJson)
+            }
+        }
         val intent = Intent(this, BlackboardActivity::class.java).apply {
             putExtra(BlackboardActivity.EXTRA_MESSAGE, topic)
             putExtra(BlackboardActivity.EXTRA_USER_ID, userId)

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; overflow:hidden; }
+svg { width:160px; height:165px; }
+.label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+/* Submarine bobs up/down gently */
+#sub { animation: subBob 3s ease-in-out infinite; }
+@keyframes subBob {
+  0%,100% { transform:translateY(0); }
+  50%     { transform:translateY(-8px); }
+}
+/* Propeller spin */
+#prop { animation: propSpin 0.3s linear infinite; transform-origin: 28px 60px; }
+@keyframes propSpin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
+/* Bubbles rise */
+.bubble { animation: rise var(--bd) ease-in var(--bl) infinite; opacity:0; }
+@keyframes rise {
+  0%   { transform:translate(0,0); opacity:0.8; }
+  100% { transform:translate(var(--bx,0px),-70px) scale(2); opacity:0; }
+}
+/* Sonar ping */
+#sonar { animation: ping 2s ease-out infinite; }
+@keyframes ping {
+  0%   { r:0; stroke-opacity:0.8; }
+  100% { r:25; stroke-opacity:0; }
+}
+/* Fish swim by */
+#fish1 { animation: fishSwim1 6s linear infinite; }
+#fish2 { animation: fishSwim2 8s linear infinite 3s; }
+@keyframes fishSwim1 {
+  0%   { transform:translateX(160px); }
+  100% { transform:translateX(-30px); }
+}
+@keyframes fishSwim2 {
+  0%   { transform:translateX(170px); }
+  100% { transform:translateX(-40px); }
+}
+/* Water shimmer (light rays) */
+.ray { animation: rayShimmer var(--rd) ease-in-out infinite var(--rl); }
+@keyframes rayShimmer {
+  0%,100% { opacity:0.04; }
+  50%     { opacity:0.12; }
+}
+/* Periscope scanning line */
+#scanBeam { animation: scan 4s ease-in-out infinite; transform-origin: 62px 22px; }
+@keyframes scan {
+  0%,100% { transform:rotate(-30deg); }
+  50%     { transform:rotate(30deg); }
+}
+</style></head><body>
+<svg viewBox="0 0 120 130" style="overflow:hidden">
+  <defs>
+    <linearGradient id="waterG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#0A2840"/>
+      <stop offset="100%" stop-color="#030F1F"/>
+    </linearGradient>
+    <linearGradient id="subG" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#4A90D9"/>
+      <stop offset="100%" stop-color="#2A5090"/>
+    </linearGradient>
+    <radialGradient id="portG">
+      <stop offset="0%"   stop-color="#A0E8FF"/>
+      <stop offset="100%" stop-color="#3A8AB0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Water bg -->
+  <rect x="0" y="0" width="120" height="130" fill="url(#waterG)"/>
+
+  <!-- Light rays from surface -->
+  <polygon class="ray" points="10,0 30,0 55,130 35,130" fill="#4A90D9" style="--rd:2s;--rl:0s"/>
+  <polygon class="ray" points="45,0 60,0 80,130 65,130" fill="#4A90D9" style="--rd:2.5s;--rl:0.7s"/>
+  <polygon class="ray" points="85,0 100,0 110,130 95,130" fill="#4A90D9" style="--rd:3s;--rl:1.4s"/>
+
+  <!-- Water surface shimmer -->
+  <rect x="0" y="0" width="120" height="8" fill="#4A90D9" opacity="0.2"/>
+  <path d="M0,4 Q15,0 30,4 Q45,8 60,4 Q75,0 90,4 Q105,8 120,4" fill="none" stroke="#6AAAD9" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- Sonar rings from sub -->
+  <circle id="sonar" cx="68" cy="60" r="0" fill="none" stroke="#4ECDC4" stroke-width="1.5"/>
+
+  <!-- Bubbles -->
+  <circle class="bubble" cx="68" cy="50" r="3" fill="none" stroke="#A0E8FF" stroke-width="1.2" style="--bd:2.2s;--bl:0s;  --bx:-4px"/>
+  <circle class="bubble" cx="72" cy="50" r="2" fill="none" stroke="#A0E8FF" stroke-width="1" style="--bd:2.5s;--bl:0.5s;--bx:3px"/>
+  <circle class="bubble" cx="65" cy="50" r="2.5" fill="none" stroke="#A0E8FF" stroke-width="1" style="--bd:2.0s;--bl:1.0s;--bx:-6px"/>
+  <circle class="bubble" cx="70" cy="50" r="1.5" fill="none" stroke="#A0E8FF" stroke-width="0.8" style="--bd:2.8s;--bl:1.5s;--bx:5px"/>
+
+  <!-- Fish 1 -->
+  <g id="fish1">
+    <ellipse cx="20" cy="45" rx="9" ry="4.5" fill="#FF9040"/>
+    <polygon points="11,45 5,40 5,50" fill="#FF7020"/>
+    <circle cx="24" cy="43" r="1.5" fill="white"/>
+    <circle cx="24.5" cy="43" r="0.7" fill="#1A1A1A"/>
+    <line x1="14" y1="42" x2="14" y2="48" stroke="#FF7020" stroke-width="0.8"/>
+    <line x1="17" y1="41" x2="17" y2="49" stroke="#FF7020" stroke-width="0.8"/>
+  </g>
+  <!-- Fish 2 smaller -->
+  <g id="fish2">
+    <ellipse cx="20" cy="90" rx="6" ry="3" fill="#4ECDC4"/>
+    <polygon points="14,90 9,87 9,93" fill="#30A898"/>
+    <circle cx="23" cy="88.5" r="1" fill="white"/>
+    <circle cx="23.3" cy="88.5" r="0.5" fill="#1A1A1A"/>
+  </g>
+
+  <!-- Seaweed -->
+  <path d="M8,130 Q12,115 8,100 Q4,85 8,70" fill="none" stroke="#1A6A30" stroke-width="3" stroke-linecap="round"/>
+  <path d="M108,130 Q104,112 108,96 Q112,80 108,66" fill="none" stroke="#1A6A30" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Submarine -->
+  <g id="sub">
+    <!-- Periscope -->
+    <rect x="60" y="22" width="4" height="20" rx="2" fill="#3A5080"/>
+    <rect x="56" y="20" width="12" height="4" rx="2" fill="#4A6090"/>
+    <!-- Scan beam from periscope eye -->
+    <g id="scanBeam">
+      <polygon points="62,20 110,0 110,5 62,20" fill="#FFE44D" opacity="0.15"/>
+    </g>
+    <!-- Main hull -->
+    <ellipse cx="65" cy="60" rx="42" ry="18" fill="url(#subG)"/>
+    <!-- Conning tower -->
+    <rect x="52" y="40" width="22" height="22" rx="6" fill="#3A6090"/>
+    <!-- Portholes -->
+    <circle cx="45" cy="60" r="7" fill="url(#portG)" stroke="#2A5080" stroke-width="1.5"/>
+    <circle cx="45" cy="60" r="4" fill="#A0E8FF" opacity="0.6"/>
+    <circle cx="68" cy="60" r="6" fill="url(#portG)" stroke="#2A5080" stroke-width="1.5"/>
+    <circle cx="68" cy="60" r="3.5" fill="#A0E8FF" opacity="0.6"/>
+    <!-- Propeller -->
+    <g id="prop">
+      <ellipse cx="28" cy="56" rx="3" ry="8" fill="#2A4070"/>
+      <ellipse cx="28" cy="64" rx="3" ry="8" fill="#2A4070" transform="rotate(90,28,60)"/>
+      <circle cx="28" cy="60" r="3" fill="#4A90D9"/>
+    </g>
+    <!-- Rudder -->
+    <polygon points="23,60 18,52 18,68" fill="#2A4070"/>
+    <!-- Hull rivets -->
+    <circle cx="85" cy="58" r="1.5" fill="#1A3060" opacity="0.8"/>
+    <circle cx="90" cy="62" r="1.5" fill="#1A3060" opacity="0.8"/>
+    <circle cx="80" cy="65" r="1.5" fill="#1A3060" opacity="0.8"/>
+    <!-- Depth fin -->
+    <polygon points="65,78 50,95 80,95" fill="#2A5090"/>
+  </g>
+</svg>
+<div class="label">Diving deep for answers…</div>
+</body></html>

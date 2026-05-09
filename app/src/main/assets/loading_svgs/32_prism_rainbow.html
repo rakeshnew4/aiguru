@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; overflow:hidden; }
+svg { width:155px; height:165px; }
+.label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+#beam_in { animation: beamIn 2.5s ease-in-out infinite; stroke-dashoffset:60; }
+@keyframes beamIn {
+  0%   { stroke-dashoffset:60; opacity:0; }
+  20%  { opacity:1; }
+  60%  { stroke-dashoffset:0; opacity:1; }
+  100% { stroke-dashoffset:0; opacity:1; }
+}
+.rainbow { animation: rainbowDraw var(--d) ease-out infinite var(--dl); stroke-dashoffset:80; }
+@keyframes rainbowDraw {
+  0%,30% { stroke-dashoffset:80; opacity:0; }
+  50%    { opacity:1; }
+  100%   { stroke-dashoffset:0; opacity:var(--op); }
+}
+#prism { animation: prismGlow 2s ease-in-out infinite; }
+@keyframes prismGlow { 0%,100% { filter:drop-shadow(0 0 4px #8844FF); } 50% { filter:drop-shadow(0 0 12px #AA88FF); } }
+.particle { animation: sparkle var(--d) ease-in-out infinite var(--dl); opacity:0; }
+@keyframes sparkle {
+  0%,70% { opacity:0; transform:translate(0,0) scale(0); }
+  80%    { opacity:1; transform:translate(var(--px),var(--py)) scale(1); }
+  100%   { opacity:0; transform:translate(var(--px),var(--py)) scale(0.5); }
+}
+</style></head><body>
+<svg viewBox="0 0 120 130">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#080820"/>
+      <stop offset="100%" stop-color="#0D1117"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="120" height="130" fill="url(#bg)"/>
+
+  <!-- Incoming white light beam -->
+  <line id="beam_in" x1="5" y1="45" x2="48" y2="65"
+    stroke="white" stroke-width="3" stroke-linecap="round"
+    stroke-dasharray="60" opacity="0"/>
+
+  <!-- Prism triangle -->
+  <g id="prism">
+    <polygon points="48,35 80,85 16,85" fill="#0A1A2A" stroke="#4466AA" stroke-width="2"/>
+    <polygon points="48,35 80,85 16,85" fill="white" opacity="0.04"/>
+    <!-- Prism shine -->
+    <line x1="48" y1="35" x2="55" y2="55" stroke="white" stroke-width="1" opacity="0.3"/>
+  </g>
+
+  <!-- Rainbow beams out (right side) -->
+  <line class="rainbow" x1="80" y1="85" x2="115" y2="55"
+    stroke="#FF0000" stroke-width="2.5" stroke-linecap="round"
+    stroke-dasharray="80" style="--d:2.5s;--dl:0.4s;--op:0.9"/>
+  <line class="rainbow" x1="80" y1="85" x2="115" y2="63"
+    stroke="#FF8800" stroke-width="2.5" stroke-linecap="round"
+    stroke-dasharray="80" style="--d:2.5s;--dl:0.5s;--op:0.9"/>
+  <line class="rainbow" x1="80" y1="85" x2="115" y2="71"
+    stroke="#FFFF00" stroke-width="2.5" stroke-linecap="round"
+    stroke-dasharray="80" style="--d:2.5s;--dl:0.6s;--op:0.9"/>
+  <line class="rainbow" x1="80" y1="85" x2="112" y2="80"
+    stroke="#00FF44" stroke-width="2.5" stroke-linecap="round"
+    stroke-dasharray="80" style="--d:2.5s;--dl:0.7s;--op:0.9"/>
+  <line class="rainbow" x1="80" y1="85" x2="108" y2="90"
+    stroke="#0088FF" stroke-width="2.5" stroke-linecap="round"
+    stroke-dasharray="80" style="--d:2.5s;--dl:0.8s;--op:0.9"/>
+  <line class="rainbow" x1="80" y1="85" x2="104" y2="100"
+    stroke="#8800FF" stroke-width="2.5" stroke-linecap="round"
+    stroke-dasharray="80" style="--d:2.5s;--dl:0.9s;--op:0.9"/>
+
+  <!-- Sparkle particles at exit -->
+  <circle class="particle" cx="92" cy="70" r="2" fill="#FF0000" style="--d:2.5s;--dl:1.2s;--px:5px;--py:-4px"/>
+  <circle class="particle" cx="96" cy="78" r="2" fill="#FFFF00" style="--d:2.5s;--dl:1.4s;--px:4px;--py:-2px"/>
+  <circle class="particle" cx="94" cy="88" r="2" fill="#0088FF" style="--d:2.5s;--dl:1.6s;--px:3px;--py:4px"/>
+  <circle class="particle" cx="90" cy="98" r="2" fill="#8800FF" style="--d:2.5s;--dl:1.8s;--px:2px;--py:5px"/>
+
+  <!-- Label "LIGHT" entering -->
+  <text x="4" y="40" font-size="7" fill="#666A90" font-family="monospace">WHITE</text>
+  <text x="4" y="48" font-size="7" fill="#666A90" font-family="monospace">LIGHT</text>
+</svg>
+<div class="label">Breaking knowledge into colour…</div>
+</body></html>

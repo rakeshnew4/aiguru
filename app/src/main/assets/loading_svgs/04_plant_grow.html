@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; }
+  svg { width:150px; height:170px; }
+  .label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+  /* Each growth stage fades in then whole thing resets */
+  #seed      { animation: grow_stage 5s ease infinite; animation-delay:0.2s; }
+  #sprout    { animation: grow_stage 5s ease infinite; animation-delay:0.9s; }
+  #stem      { animation: grow_stage 5s ease infinite; animation-delay:1.6s; transform-origin: bottom center; }
+  #leaf_l    { animation: leaf_in 5s ease infinite; animation-delay:2.2s; transform-origin: right center; }
+  #leaf_r    { animation: leaf_in 5s ease infinite; animation-delay:2.6s; transform-origin: left center; }
+  #flower    { animation: bloom 5s ease infinite; animation-delay:3.2s; }
+
+  #all { animation: loop 5s linear infinite; }
+  @keyframes loop {
+    0%,88%  { opacity:1; }
+    90%,99% { opacity:0; }
+    100%    { opacity:1; }
+  }
+  @keyframes grow_stage {
+    0%,5%  { opacity:0; transform: scaleY(0.2); }
+    15%,85% { opacity:1; transform: scaleY(1); }
+    90%,100% { opacity:0; }
+  }
+  @keyframes leaf_in {
+    0%,5%  { opacity:0; transform: scale(0) rotate(-30deg); }
+    20%,85% { opacity:1; transform: scale(1) rotate(0deg); }
+    90%,100% { opacity:0; }
+  }
+  @keyframes bloom {
+    0%,5%  { opacity:0; transform: scale(0); }
+    20%,85% { opacity:1; transform: scale(1); }
+    90%,100% { opacity:0; }
+  }
+  #sun_ray { animation: sunRay 3s linear infinite; transform-origin: 95px 25px; }
+  @keyframes sunRay {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  #sun_pulse { animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse {
+    0%,100% { r: 10; }
+    50%     { r: 13; }
+  }
+  .petal { animation: petalPop 5s ease infinite; animation-delay: var(--pd); }
+  @keyframes petalPop {
+    0%,60% { opacity:0; transform: scale(0); }
+    75%,85% { opacity:1; transform: scale(1); }
+    90%,100% { opacity:0; }
+  }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 120 140">
+  <defs>
+    <linearGradient id="stemGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2ECC71"/>
+      <stop offset="100%" stop-color="#1A8A40"/>
+    </linearGradient>
+    <radialGradient id="flowerGrad">
+      <stop offset="0%"   stop-color="#FFD700"/>
+      <stop offset="100%" stop-color="#FF9500"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Sun -->
+  <g id="sun_ray">
+    <line x1="95" y1="8"  x2="95" y2="2"  stroke="#FFD700" stroke-width="1.5" opacity="0.6"/>
+    <line x1="95" y1="42" x2="95" y2="48" stroke="#FFD700" stroke-width="1.5" opacity="0.6"/>
+    <line x1="79" y1="25" x2="73" y2="25" stroke="#FFD700" stroke-width="1.5" opacity="0.6"/>
+    <line x1="111" y1="25" x2="117" y2="25" stroke="#FFD700" stroke-width="1.5" opacity="0.6"/>
+    <line x1="84" y1="13" x2="80" y2="9"   stroke="#FFD700" stroke-width="1.5" opacity="0.6"/>
+    <line x1="106" y1="37" x2="110" y2="41" stroke="#FFD700" stroke-width="1.5" opacity="0.6"/>
+    <line x1="106" y1="13" x2="110" y2="9"  stroke="#FFD700" stroke-width="1.5" opacity="0.6"/>
+    <line x1="84" y1="37"  x2="80"  y2="41" stroke="#FFD700" stroke-width="1.5" opacity="0.6"/>
+  </g>
+  <circle id="sun_pulse" cx="95" cy="25" r="10" fill="#FFD700" opacity="0.9"/>
+
+  <!-- Ground / Soil -->
+  <rect x="10" y="118" width="100" height="14" rx="4" fill="#3A2A1A"/>
+  <rect x="14" y="115" width="92" height="6"  rx="3" fill="#4A3520"/>
+
+  <g id="all">
+    <!-- Seed -->
+    <ellipse id="seed" cx="45" cy="118" rx="6" ry="4" fill="#8B6A3A"/>
+
+    <!-- Sprout (tiny green bump) -->
+    <ellipse id="sprout" cx="45" cy="114" rx="4" ry="5" fill="#2ECC71" opacity="0.8"/>
+
+    <!-- Stem -->
+    <rect id="stem" x="43" y="60" width="4" height="58" rx="2" fill="url(#stemGrad)"/>
+
+    <!-- Left leaf -->
+    <ellipse id="leaf_l" cx="32" cy="82" rx="15" ry="7" fill="#2ECC71" transform="rotate(-25,32,82)"/>
+    <!-- Right leaf -->
+    <ellipse id="leaf_r" cx="58" cy="70" rx="14" ry="6" fill="#27AE60" transform="rotate(20,58,70)"/>
+
+    <!-- Flower petals -->
+    <g id="flower">
+      <ellipse class="petal" cx="45" cy="48" rx="7" ry="10" fill="#FF69B4" style="--pd:3.2s" transform="rotate(0,  45,58)"/>
+      <ellipse class="petal" cx="45" cy="48" rx="7" ry="10" fill="#FF85C2" style="--pd:3.3s" transform="rotate(60, 45,58)"/>
+      <ellipse class="petal" cx="45" cy="48" rx="7" ry="10" fill="#FF69B4" style="--pd:3.4s" transform="rotate(120,45,58)"/>
+      <ellipse class="petal" cx="45" cy="68" rx="7" ry="10" fill="#FF85C2" style="--pd:3.5s" transform="rotate(180,45,58)"/>
+      <ellipse class="petal" cx="45" cy="68" rx="7" ry="10" fill="#FF69B4" style="--pd:3.6s" transform="rotate(240,45,58)"/>
+      <ellipse class="petal" cx="45" cy="68" rx="7" ry="10" fill="#FF85C2" style="--pd:3.7s" transform="rotate(300,45,58)"/>
+      <circle cx="45" cy="58" r="9" fill="url(#flowerGrad)"/>
+    </g>
+  </g>
+
+  <!-- Rain drops -->
+  <line x1="20" y1="0" x2="16" y2="12" stroke="#4A90D9" stroke-width="1.5" opacity="0.5" stroke-dasharray="3 6">
+    <animateTransform attributeName="transform" type="translate" values="0,0;0,130" dur="2s" repeatCount="indefinite"/>
+  </line>
+  <line x1="35" y1="0" x2="31" y2="12" stroke="#4A90D9" stroke-width="1.5" opacity="0.4" stroke-dasharray="3 8">
+    <animateTransform attributeName="transform" type="translate" values="0,-30;0,130" dur="2.5s" repeatCount="indefinite"/>
+  </line>
+</svg>
+<div class="label">Growing your lesson…</div>
+</body>
+</html>

@@ -14,3 +14,23 @@
 - When wasAlreadyPlaying=false: still calls setupBoard() + showFrame(0,0) as before.
 
 **Files:** server/app/services/llm_service.py (line ~237), BlackboardActivity.kt (onSuccess handler in generateChunk call, ~line 935)
+
+---
+
+## Session 16 — BB Shared Session Replay Bug Fix
+
+**Date:** 2025-01-31
+**Asked:** BB shared sessions not replaying correctly — message_id / blackboard session data missing for recipient
+
+**Root Cause Found:**
+- `BbSavedSessionsActivity.replaySession()` calls `loadFromSavedSession(sessionId, userId)`
+- `loadFromSavedSession` looks in `users/{recipientUid}/saved_bb_sessions_flat/{sessionId}` 
+- But shared sessions live in `users/{recipientUid}/shared_with_me/{senderUid}_{sessionId}` (written by server)
+- Result: "Saved session not found" → falls back to LLM regeneration (wrong topic, wrong content)
+- `loadSharedWithMe()` does NOT add `id` field (unlike other loaders) but `session_id` IS set as explicit field — so `session["session_id"]` is correct
+
+**Fix Applied:**
+- `BbSavedSessionsActivity.kt` `replaySession()` (~line 266): added block — when `showingShared == true` and `sessionId` is non-blank, reads `session["steps_json"]` from the loaded shared_with_me doc and writes it to disk cache via `BlackboardGenerator.writeSessionCache(applicationContext, sessionId, stepsJson)`
+- Cache hit in `loadFromSavedSession` then bypasses Firestore entirely — correct content plays
+
+**Files changed:** app/src/main/java/com/aiguruapp/student/BbSavedSessionsActivity.kt (~line 266, added 9 lines before intent creation)

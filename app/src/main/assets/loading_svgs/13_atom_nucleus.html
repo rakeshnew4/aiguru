@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; }
+svg { width:160px; height:160px; }
+.label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+/* Electrons orbit the nucleus */
+#orbit1 { animation: orbit1 1.8s linear infinite; transform-origin: 60px 60px; }
+#orbit2 { animation: orbit2 2.6s linear infinite; transform-origin: 60px 60px; }
+#orbit3 { animation: orbit3 3.4s linear infinite; transform-origin: 60px 60px; }
+@keyframes orbit1 { from { transform:rotate(0deg); }  to { transform:rotate(360deg); } }
+@keyframes orbit2 { from { transform:rotate(60deg); } to { transform:rotate(420deg); } }
+@keyframes orbit3 { from { transform:rotate(120deg); }to { transform:rotate(480deg); } }
+
+/* Nucleus pulse */
+#nucleus { animation: nucPulse 1.5s ease-in-out infinite; }
+@keyframes nucPulse {
+  0%,100% { r:14; filter:drop-shadow(0 0 4px #FF9500); }
+  50%     { r:16; filter:drop-shadow(0 0 12px #FFD700); }
+}
+/* Proton/neutron wobble inside nucleus */
+.proton { animation: wobble 0.8s ease-in-out infinite var(--pw); }
+@keyframes wobble {
+  0%,100% { transform:translate(0,0); }
+  50%     { transform:translate(1.5px,-1.5px); }
+}
+/* Energy ring flash */
+.ering { animation: eflash 1.8s ease-out infinite var(--ef); opacity:0; }
+@keyframes eflash {
+  0%    { transform:scale(0.5); opacity:0.8; }
+  100%  { transform:scale(2.5); opacity:0; }
+}
+/* Stars bg */
+.star { animation: twinkle var(--d) ease-in-out infinite var(--dl); }
+@keyframes twinkle {
+  0%,100% { opacity:0.2; } 50% { opacity:1; }
+}
+</style></head><body>
+<svg viewBox="0 0 120 120">
+  <defs>
+    <radialGradient id="nucGrad">
+      <stop offset="0%"   stop-color="#FFE44D"/>
+      <stop offset="50%"  stop-color="#FF9500"/>
+      <stop offset="100%" stop-color="#FF5500"/>
+    </radialGradient>
+    <radialGradient id="eGrad">
+      <stop offset="0%"   stop-color="#4ECDC4"/>
+      <stop offset="100%" stop-color="#2A8A8A"/>
+    </radialGradient>
+    <radialGradient id="e2Grad">
+      <stop offset="0%"   stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#AA2020"/>
+    </radialGradient>
+    <radialGradient id="e3Grad">
+      <stop offset="0%"   stop-color="#B08AFF"/>
+      <stop offset="100%" stop-color="#5B30CC"/>
+    </radialGradient>
+  </defs>
+
+  <!-- BG stars -->
+  <circle class="star" cx="8"   cy="8"   r="1" fill="white" style="--d:1.8s;--dl:0s"/>
+  <circle class="star" cx="110" cy="15"  r="1" fill="white" style="--d:2.1s;--dl:0.5s"/>
+  <circle class="star" cx="5"   cy="95"  r="1" fill="white" style="--d:1.6s;--dl:0.9s"/>
+  <circle class="star" cx="115" cy="100" r="1" fill="white" style="--d:2.3s;--dl:0.3s"/>
+
+  <!-- Orbit ellipses (static visual guides) -->
+  <ellipse cx="60" cy="60" rx="40" ry="18" fill="none" stroke="#3D1A6E" stroke-width="1" transform="rotate(0,60,60)"/>
+  <ellipse cx="60" cy="60" rx="40" ry="18" fill="none" stroke="#3D1A6E" stroke-width="1" transform="rotate(60,60,60)"/>
+  <ellipse cx="60" cy="60" rx="40" ry="18" fill="none" stroke="#3D1A6E" stroke-width="1" transform="rotate(120,60,60)"/>
+
+  <!-- Energy flash rings -->
+  <circle class="ering" cx="60" cy="60" r="14" fill="none" stroke="#FFD700" stroke-width="1.5" style="--ef:0s"/>
+  <circle class="ering" cx="60" cy="60" r="14" fill="none" stroke="#FF6B6B" stroke-width="1" style="--ef:0.9s"/>
+
+  <!-- Orbit 1 group: electron on ellipse -->
+  <g id="orbit1">
+    <ellipse cx="60" cy="60" rx="40" ry="18" fill="none" stroke="none"/>
+    <circle cx="100" cy="60" r="5" fill="url(#eGrad)"/>
+    <circle cx="100" cy="60" r="2" fill="white" opacity="0.5"/>
+  </g>
+  <!-- Orbit 2 -->
+  <g id="orbit2" transform="rotate(60,60,60)">
+    <circle cx="100" cy="60" r="5" fill="url(#e2Grad)"/>
+    <circle cx="100" cy="60" r="2" fill="white" opacity="0.5"/>
+  </g>
+  <!-- Orbit 3 -->
+  <g id="orbit3" transform="rotate(120,60,60)">
+    <circle cx="100" cy="60" r="5" fill="url(#e3Grad)"/>
+    <circle cx="100" cy="60" r="2" fill="white" opacity="0.5"/>
+  </g>
+
+  <!-- Nucleus -->
+  <circle id="nucleus" cx="60" cy="60" r="14" fill="url(#nucGrad)"/>
+  <circle class="proton" cx="56" cy="57" r="4" fill="#FFE44D" style="--pw:0s"/>
+  <circle class="proton" cx="63" cy="60" r="3.5" fill="#FF6B6B" style="--pw:0.2s"/>
+  <circle class="proton" cx="58" cy="64" r="4" fill="#FFE44D" style="--pw:0.4s"/>
+  <circle class="proton" cx="64" cy="55" r="3" fill="#FF6B6B" style="--pw:0.1s"/>
+
+  <!-- Labels -->
+  <text x="60" y="115" text-anchor="middle" font-size="7" fill="#7B9CC8" font-family="sans-serif">e⁻  e⁻  e⁻</text>
+</svg>
+<div class="label">Splitting atoms of wisdom…</div>
+</body></html>

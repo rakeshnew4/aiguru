@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; overflow:hidden; }
+svg { width:155px; height:175px; }
+.label { color:#7B9CC8; font-size:13px; margin-top:10px; letter-spacing:1px; }
+
+/* Balloon rises slowly */
+#balloon { animation: rise 5s ease-in-out infinite; }
+@keyframes rise {
+  0%,100% { transform:translateY(0); }
+  50%     { transform:translateY(-18px); }
+}
+/* Balloon sways side to side */
+#balloonBody { animation: sway 3s ease-in-out infinite; transform-origin: 65px 50px; }
+@keyframes sway {
+  0%,100% { transform:rotate(-4deg); }
+  50%     { transform:rotate(4deg); }
+}
+/* Flame flicker in basket burner */
+#flame { animation: flicker 0.3s ease-in-out infinite; transform-origin: 65px 90px; }
+@keyframes flicker {
+  0%,100% { transform:scaleY(1)   scaleX(1); fill:#FF8800; }
+  33%     { transform:scaleY(1.3) scaleX(0.8); fill:#FFD700; }
+  66%     { transform:scaleY(0.9) scaleX(1.2); fill:#FF4400; }
+}
+/* Clouds drift */
+#cloud1 { animation: drift1 8s linear infinite; }
+#cloud2 { animation: drift2 10s linear infinite 3s; }
+@keyframes drift1 {
+  0%   { transform:translateX(170px); }
+  100% { transform:translateX(-80px); }
+}
+@keyframes drift2 {
+  0%   { transform:translateX(170px); }
+  100% { transform:translateX(-80px); }
+}
+/* Birds fly */
+#birds { animation: birdFly 7s linear infinite 1s; }
+@keyframes birdFly {
+  0%   { transform:translate(160px, 0px); }
+  100% { transform:translate(-50px, -20px); }
+}
+/* Stars twinkle (high altitude) */
+.star { animation: tw var(--d) ease-in-out infinite var(--dl); }
+@keyframes tw { 0%,100% { opacity:0.15; } 50% { opacity:0.7; } }
+/* Sun glow pulse */
+#sun { animation: sunGlow 4s ease-in-out infinite; }
+@keyframes sunGlow {
+  0%,100% { r:14; filter:drop-shadow(0 0 4px #FFD700); }
+  50%     { r:16; filter:drop-shadow(0 0 12px #FFA500); }
+}
+/* Rope sway follows balloon */
+#ropes { animation: ropeSway 3s ease-in-out infinite; transform-origin: 65px 78px; }
+@keyframes ropeSway {
+  0%,100% { transform:rotate(-4deg); }
+  50%     { transform:rotate(4deg); }
+}
+</style></head><body>
+<svg viewBox="0 0 130 140" style="overflow:hidden">
+  <defs>
+    <linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#0A1A40"/>
+      <stop offset="60%"  stop-color="#1A4080"/>
+      <stop offset="100%" stop-color="#3A70C0"/>
+    </linearGradient>
+    <radialGradient id="ballG">
+      <stop offset="0%"   stop-color="#FF9040"/>
+      <stop offset="40%"  stop-color="#FF4400"/>
+      <stop offset="100%" stop-color="#AA2200"/>
+    </radialGradient>
+    <radialGradient id="sunG">
+      <stop offset="0%"   stop-color="#FFE44D"/>
+      <stop offset="100%" stop-color="#FFA500"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Sky gradient -->
+  <rect x="0" y="0" width="130" height="140" fill="url(#skyG)"/>
+
+  <!-- Stars (high altitude) -->
+  <circle class="star" cx="8"   cy="8"   r="1" fill="white" style="--d:2s;--dl:0s"/>
+  <circle class="star" cx="120" cy="12"  r="1" fill="white" style="--d:2.5s;--dl:0.5s"/>
+  <circle class="star" cx="60"  cy="5"   r="1" fill="white" style="--d:1.8s;--dl:1s"/>
+  <circle class="star" cx="100" cy="25"  r="1" fill="white" style="--d:2.2s;--dl:0.3s"/>
+
+  <!-- Sun -->
+  <circle id="sun" cx="110" cy="30" r="14" fill="url(#sunG)"/>
+  <!-- Sun rays -->
+  <line x1="110" y1="10" x2="110" y2="5"  stroke="#FFD700" stroke-width="2" opacity="0.6"/>
+  <line x1="126" y1="16" x2="130" y2="12" stroke="#FFD700" stroke-width="2" opacity="0.6"/>
+  <line x1="130" y1="30" x2="135" y2="30" stroke="#FFD700" stroke-width="2" opacity="0.6"/>
+  <line x1="126" y1="44" x2="130" y2="48" stroke="#FFD700" stroke-width="2" opacity="0.6"/>
+
+  <!-- Clouds -->
+  <g id="cloud1" opacity="0.85">
+    <ellipse cx="20" cy="45" rx="20" ry="10" fill="#E8F0FF"/>
+    <ellipse cx="8"  cy="48" rx="12" ry="8"  fill="#E8F0FF"/>
+    <ellipse cx="32" cy="48" rx="14" ry="8"  fill="#E8F0FF"/>
+  </g>
+  <g id="cloud2" opacity="0.7">
+    <ellipse cx="20" cy="80" rx="14" ry="7"  fill="#C0D0F0"/>
+    <ellipse cx="10" cy="83" rx="9"  ry="6"  fill="#C0D0F0"/>
+    <ellipse cx="30" cy="83" rx="10" ry="6"  fill="#C0D0F0"/>
+  </g>
+
+  <!-- Birds (simple V shapes) -->
+  <g id="birds">
+    <path d="M0,0 Q5,-4 10,0" fill="none" stroke="#1A2A4A" stroke-width="1.5"/>
+    <path d="M14,-2 Q19,-6 24,-2" fill="none" stroke="#1A2A4A" stroke-width="1.5"/>
+    <path d="M28,2 Q33,-2 38,2" fill="none" stroke="#1A2A4A" stroke-width="1"/>
+  </g>
+
+  <!-- Balloon assembly (rises together) -->
+  <g id="balloon">
+    <!-- Balloon body with panels -->
+    <g id="balloonBody">
+      <!-- Main balloon ellipse -->
+      <ellipse cx="65" cy="52" rx="32" ry="38" fill="url(#ballG)"/>
+      <!-- Vertical panel lines -->
+      <path d="M65,14 Q80,20 90,52 Q80,84 65,90" fill="none" stroke="#CC3300" stroke-width="1.5" opacity="0.5"/>
+      <path d="M65,14 Q50,20 40,52 Q50,84 65,90" fill="none" stroke="#CC3300" stroke-width="1.5" opacity="0.5"/>
+      <path d="M65,14 Q75,28 72,52 Q70,76 65,90" fill="none" stroke="#FF6600" stroke-width="1" opacity="0.4"/>
+      <path d="M65,14 Q55,28 58,52 Q60,76 65,90" fill="none" stroke="#FF6600" stroke-width="1" opacity="0.4"/>
+      <!-- Highlight -->
+      <ellipse cx="54" cy="36" rx="10" ry="14" fill="white" opacity="0.12"/>
+    </g>
+
+    <!-- Ropes from balloon to basket -->
+    <g id="ropes">
+      <line x1="45" y1="88" x2="48" y2="108" stroke="#C0A060" stroke-width="1.2"/>
+      <line x1="85" y1="88" x2="82" y2="108" stroke="#C0A060" stroke-width="1.2"/>
+      <line x1="55" y1="90" x2="52" y2="108" stroke="#C0A060" stroke-width="1"/>
+      <line x1="75" y1="90" x2="78" y2="108" stroke="#C0A060" stroke-width="1"/>
+    </g>
+
+    <!-- Basket -->
+    <rect x="47" y="106" width="36" height="22" rx="4" fill="#8B6530" stroke="#6A4820" stroke-width="1.5"/>
+    <!-- Basket weave lines -->
+    <line x1="58" y1="106" x2="58" y2="128" stroke="#6A4820" stroke-width="1"/>
+    <line x1="72" y1="106" x2="72" y2="128" stroke="#6A4820" stroke-width="1"/>
+    <line x1="47" y1="114" x2="83" y2="114" stroke="#6A4820" stroke-width="1"/>
+    <line x1="47" y1="120" x2="83" y2="120" stroke="#6A4820" stroke-width="1"/>
+    <!-- Flame / burner -->
+    <ellipse cx="65" cy="106" rx="5" ry="2" fill="#3A2010"/>
+    <ellipse id="flame" cx="65" cy="102" rx="4" ry="6" fill="#FF8800"/>
+    <ellipse cx="65" cy="100" rx="2.5" ry="3.5" fill="#FFE44D"/>
+  </g>
+
+  <!-- Ground/horizon at very bottom -->
+  <rect x="0" y="130" width="130" height="10" fill="#0A2A10"/>
+  <path d="M0,130 Q32,125 65,130 Q98,135 130,130" fill="#1A4A20"/>
+</svg>
+<div class="label">Floating up with your lesson…</div>
+</body></html>

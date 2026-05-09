@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; }
+svg { width:160px; height:165px; }
+.label { color:#7B9CC8; font-size:13px; margin-top:10px; letter-spacing:1px; }
+
+/* Crystal arms grow from seed outward */
+#arm1  { animation: armGrow 5s ease-out infinite;        stroke-dasharray:50; stroke-dashoffset:50; }
+#arm2  { animation: armGrow 5s ease-out infinite 0.3s;   stroke-dasharray:45; stroke-dashoffset:45; }
+#arm3  { animation: armGrow 5s ease-out infinite 0.6s;   stroke-dasharray:38; stroke-dashoffset:38; }
+#arm4  { animation: armGrow 5s ease-out infinite 0.9s;   stroke-dasharray:42; stroke-dashoffset:42; }
+#arm5  { animation: armGrow 5s ease-out infinite 1.2s;   stroke-dasharray:35; stroke-dashoffset:35; }
+#arm6  { animation: armGrow 5s ease-out infinite 1.5s;   stroke-dasharray:48; stroke-dashoffset:48; }
+@keyframes armGrow {
+  0%,2%  { stroke-dashoffset:50; opacity:0; }
+  40%,75%{ stroke-dashoffset:0;  opacity:1; }
+  90%,100%{ stroke-dashoffset:50; opacity:0; }
+}
+/* Branch facets appear after arms */
+.facet { animation: facetGrow 5s ease-out infinite var(--fd); stroke-dasharray:20; stroke-dashoffset:20; opacity:0; }
+@keyframes facetGrow {
+  0%,30%  { stroke-dashoffset:20; opacity:0; }
+  60%,78% { stroke-dashoffset:0;  opacity:0.85; }
+  90%,100%{ stroke-dashoffset:20; opacity:0; }
+}
+/* Gem facets fill with color */
+.gemFace { animation: gemFill 5s ease-in-out infinite var(--gd); opacity:0; }
+@keyframes gemFill {
+  0%,50%  { opacity:0; }
+  65%,78% { opacity:0.7; }
+  90%,100%{ opacity:0; }
+}
+/* Seed glow */
+#seed { animation: seedGlow 5s ease-in-out infinite; }
+@keyframes seedGlow {
+  0%,2%   { r:4; fill:#A0D8FF; }
+  40%,78% { r:7; fill:white; filter:drop-shadow(0 0 8px #A0D8FF); }
+  90%,100%{ r:4; fill:#A0D8FF; filter:none; }
+}
+/* Sparkles at crystal tips */
+.sparkle { animation: sparkle 5s ease-in-out infinite var(--sd); opacity:0; }
+@keyframes sparkle {
+  0%,55%  { opacity:0; transform:scale(0.5); }
+  68%     { opacity:1; transform:scale(1.4); }
+  78%,100%{ opacity:0; transform:scale(0.2); }
+}
+/* Overall rotate slowly */
+#crystal { animation: crystalRotate 5s linear infinite; transform-origin: 65px 62px; }
+@keyframes crystalRotate {
+  0%    { transform:rotate(0deg); }
+  80%   { transform:rotate(20deg); }
+  100%  { transform:rotate(0deg); }
+}
+</style></head><body>
+<svg viewBox="0 0 130 130">
+  <defs>
+    <linearGradient id="arm1g" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#A0D8FF"/>
+      <stop offset="100%" stop-color="#4A90D9"/>
+    </linearGradient>
+    <linearGradient id="arm2g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#9B70FF"/>
+      <stop offset="100%" stop-color="#4A2DA0"/>
+    </linearGradient>
+    <linearGradient id="arm3g" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%"   stop-color="#4ECDC4"/>
+      <stop offset="100%" stop-color="#1A7A75"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background glow -->
+  <radialGradient id="bgG" cx="50%" cy="50%">
+    <stop offset="0%"  stop-color="#1A1040" stop-opacity="0.8"/>
+    <stop offset="100%" stop-color="#0D1117" stop-opacity="1"/>
+  </radialGradient>
+  <rect x="0" y="0" width="130" height="130" fill="url(#bgG)"/>
+
+  <!-- Crystal growing from seed at (65,62) -->
+  <g id="crystal">
+    <!-- 6 main arms -->
+    <line id="arm1" x1="65" y1="62" x2="65" y2="16"  stroke="url(#arm1g)" stroke-width="3" stroke-linecap="round"/>
+    <line id="arm2" x1="65" y1="62" x2="65" y2="108" stroke="url(#arm1g)" stroke-width="3" stroke-linecap="round"/>
+    <line id="arm3" x1="65" y1="62" x2="25" y2="38"  stroke="url(#arm2g)" stroke-width="3" stroke-linecap="round"/>
+    <line id="arm4" x1="65" y1="62" x2="105" y2="86" stroke="url(#arm2g)" stroke-width="3" stroke-linecap="round"/>
+    <line id="arm5" x1="65" y1="62" x2="25" y2="86"  stroke="url(#arm3g)" stroke-width="3" stroke-linecap="round"/>
+    <line id="arm6" x1="65" y1="62" x2="105" y2="38" stroke="url(#arm3g)" stroke-width="3" stroke-linecap="round"/>
+
+    <!-- Facet branches on arm 1 (up) -->
+    <line class="facet" x1="65" y1="36" x2="55" y2="28" stroke="#A0D8FF" stroke-width="1.8" stroke-linecap="round" style="--fd:0.8s"/>
+    <line class="facet" x1="65" y1="36" x2="75" y2="28" stroke="#A0D8FF" stroke-width="1.8" stroke-linecap="round" style="--fd:0.8s"/>
+    <line class="facet" x1="65" y1="24" x2="59" y2="18" stroke="#A0D8FF" stroke-width="1.4" stroke-linecap="round" style="--fd:1s"/>
+    <line class="facet" x1="65" y1="24" x2="71" y2="18" stroke="#A0D8FF" stroke-width="1.4" stroke-linecap="round" style="--fd:1s"/>
+    <!-- Facets on arm 3 (upper left) -->
+    <line class="facet" x1="48" y1="52" x2="40" y2="44" stroke="#9B70FF" stroke-width="1.6" stroke-linecap="round" style="--fd:1.1s"/>
+    <line class="facet" x1="48" y1="52" x2="42" y2="58" stroke="#9B70FF" stroke-width="1.6" stroke-linecap="round" style="--fd:1.1s"/>
+    <!-- Facets on arm 6 (upper right) -->
+    <line class="facet" x1="82" y1="52" x2="90" y2="44" stroke="#4ECDC4" stroke-width="1.6" stroke-linecap="round" style="--fd:1.3s"/>
+    <line class="facet" x1="82" y1="52" x2="88" y2="58" stroke="#4ECDC4" stroke-width="1.6" stroke-linecap="round" style="--fd:1.3s"/>
+
+    <!-- Gem facets (coloured fill polygons) at crystal centre -->
+    <polygon class="gemFace" points="65,62 65,36 52,50" fill="#9B70FF" style="--gd:1.5s"/>
+    <polygon class="gemFace" points="65,62 65,36 78,50" fill="#4A90D9" style="--gd:1.6s"/>
+    <polygon class="gemFace" points="65,62 65,88 52,74" fill="#4ECDC4" style="--gd:1.7s"/>
+    <polygon class="gemFace" points="65,62 65,88 78,74" fill="#A0D8FF" style="--gd:1.8s"/>
+    <polygon class="gemFace" points="65,62 25,38 45,62" fill="#C080FF" style="--gd:1.9s"/>
+    <polygon class="gemFace" points="65,62 105,86 85,62" fill="#FFD700" style="--gd:2.0s"/>
+
+    <!-- Sparkles at arm tips -->
+    <text class="sparkle" x="62" y="16" font-size="8" fill="#A0D8FF" style="--sd:1.8s">✦</text>
+    <text class="sparkle" x="62" y="112" font-size="8" fill="#A0D8FF" style="--sd:2.0s">✦</text>
+    <text class="sparkle" x="20" y="40" font-size="7" fill="#9B70FF" style="--sd:2.1s">✦</text>
+    <text class="sparkle" x="100" y="90" font-size="7" fill="#9B70FF" style="--sd:2.2s">✦</text>
+    <text class="sparkle" x="20" y="90" font-size="7" fill="#4ECDC4" style="--sd:2.3s">✦</text>
+    <text class="sparkle" x="100" y="40" font-size="7" fill="#4ECDC4" style="--sd:2.4s">✦</text>
+
+    <!-- Seed point -->
+    <circle id="seed" cx="65" cy="62" r="4" fill="#A0D8FF"/>
+  </g>
+
+  <text x="65" y="122" text-anchor="middle" font-size="8" fill="#7B9CC8" font-family="sans-serif">Crystal growing…</text>
+</svg>
+<div class="label">Forming your knowledge gem…</div>
+</body></html>

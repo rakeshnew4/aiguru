@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; }
+svg { width:160px; height:160px; }
+.label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+/* Snowflake arms grow from center */
+.arm { animation: armGrow 3s ease-in-out infinite; transform-origin: 60px 60px; stroke-dasharray:40; stroke-dashoffset:40; }
+@keyframes armGrow {
+  0%,5%    { stroke-dashoffset:40; opacity:0; }
+  30%,70%  { stroke-dashoffset:0;  opacity:1; }
+  90%,100% { stroke-dashoffset:40; opacity:0; }
+}
+.branch { animation: branchGrow 3s ease-in-out infinite var(--bd,0.4s); stroke-dasharray:18; stroke-dashoffset:18; opacity:0; }
+@keyframes branchGrow {
+  0%,15%   { stroke-dashoffset:18; opacity:0; }
+  40%,70%  { stroke-dashoffset:0;  opacity:1; }
+  90%,100% { stroke-dashoffset:18; opacity:0; }
+}
+/* Center crystal pulsing */
+#center { animation: centerPulse 3s ease-in-out infinite; }
+@keyframes centerPulse {
+  0%,100% { r:4; fill:#A0D8FF; }
+  50%     { r:7; fill:white; }
+}
+/* Whole flake spins slowly */
+#flake { animation: flakeSpin 6s linear infinite; transform-origin: 60px 60px; }
+@keyframes flakeSpin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
+/* Falling snowflakes */
+.snowfall { animation: fall var(--fd) linear infinite var(--fl); }
+@keyframes fall {
+  0%   { transform:translateY(-20px); opacity:0.7; }
+  100% { transform:translateY(140px); opacity:0; }
+}
+/* Glitter sparks at crystal tips */
+.glitter { animation: glitter 3s ease-in-out infinite var(--gd); opacity:0; }
+@keyframes glitter {
+  0%,30% { opacity:0; }
+  50%    { opacity:1; transform:scale(1.5); }
+  70%,100% { opacity:0; transform:scale(0.5); }
+}
+</style></head><body>
+<svg viewBox="0 0 120 130">
+  <defs>
+    <linearGradient id="iceG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#A0E8FF"/>
+      <stop offset="100%" stop-color="#4A90D9"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Falling tiny snowflakes in background -->
+  <circle class="snowfall" cx="15"  cy="0" r="2" fill="white" opacity="0.5" style="--fd:3s;  --fl:0s"/>
+  <circle class="snowfall" cx="40"  cy="0" r="1.5" fill="#A0E8FF" opacity="0.4" style="--fd:4s;--fl:0.8s"/>
+  <circle class="snowfall" cx="80"  cy="0" r="2" fill="white" opacity="0.5" style="--fd:3.5s;--fl:1.5s"/>
+  <circle class="snowfall" cx="105" cy="0" r="1.5" fill="#A0E8FF" opacity="0.4" style="--fd:2.8s;--fl:2.2s"/>
+  <circle class="snowfall" cx="60"  cy="0" r="1" fill="white" opacity="0.3" style="--fd:4.5s;--fl:0.3s"/>
+
+  <!-- Main snowflake -->
+  <g id="flake">
+    <!-- 6 arms at 60° each -->
+    <line class="arm" x1="60" y1="60" x2="60" y2="20"  stroke="url(#iceG)" stroke-width="2.5" stroke-linecap="round" style="animation-delay:0.0s"/>
+    <line class="arm" x1="60" y1="60" x2="60" y2="100" stroke="url(#iceG)" stroke-width="2.5" stroke-linecap="round" style="animation-delay:0.0s"/>
+    <line class="arm" x1="60" y1="60" x2="25" y2="40"  stroke="url(#iceG)" stroke-width="2.5" stroke-linecap="round" style="animation-delay:0.05s"/>
+    <line class="arm" x1="60" y1="60" x2="95" y2="80"  stroke="url(#iceG)" stroke-width="2.5" stroke-linecap="round" style="animation-delay:0.05s"/>
+    <line class="arm" x1="60" y1="60" x2="25" y2="80"  stroke="url(#iceG)" stroke-width="2.5" stroke-linecap="round" style="animation-delay:0.1s"/>
+    <line class="arm" x1="60" y1="60" x2="95" y2="40"  stroke="url(#iceG)" stroke-width="2.5" stroke-linecap="round" style="animation-delay:0.1s"/>
+
+    <!-- Branches on top arm -->
+    <line class="branch" x1="60" y1="42" x2="50" y2="35" stroke="#A0E8FF" stroke-width="1.5" stroke-linecap="round" style="--bd:0.5s"/>
+    <line class="branch" x1="60" y1="42" x2="70" y2="35" stroke="#A0E8FF" stroke-width="1.5" stroke-linecap="round" style="--bd:0.5s"/>
+    <line class="branch" x1="60" y1="30" x2="54" y2="25" stroke="#A0E8FF" stroke-width="1.5" stroke-linecap="round" style="--bd:0.7s"/>
+    <line class="branch" x1="60" y1="30" x2="66" y2="25" stroke="#A0E8FF" stroke-width="1.5" stroke-linecap="round" style="--bd:0.7s"/>
+
+    <!-- Branches on bottom arm -->
+    <line class="branch" x1="60" y1="78" x2="50" y2="85" stroke="#A0E8FF" stroke-width="1.5" stroke-linecap="round" style="--bd:0.5s"/>
+    <line class="branch" x1="60" y1="78" x2="70" y2="85" stroke="#A0E8FF" stroke-width="1.5" stroke-linecap="round" style="--bd:0.5s"/>
+    <line class="branch" x1="60" y1="90" x2="54" y2="95" stroke="#A0E8FF" stroke-width="1.5" stroke-linecap="round" style="--bd:0.7s"/>
+    <line class="branch" x1="60" y1="90" x2="66" y2="95" stroke="#A0E8FF" stroke-width="1.5" stroke-linecap="round" style="--bd:0.7s"/>
+
+    <!-- Diamond accents at arm midpoints -->
+    <polygon points="60,38 62,42 60,46 58,42" fill="#C0F0FF" opacity="0.8" class="glitter" style="--gd:0.6s"/>
+    <polygon points="60,74 62,78 60,82 58,78" fill="#C0F0FF" opacity="0.8" class="glitter" style="--gd:0.8s"/>
+
+    <!-- Center -->
+    <circle id="center" cx="60" cy="60" r="4" fill="#A0D8FF"/>
+  </g>
+
+  <!-- Temperature label -->
+  <text x="60" y="122" text-anchor="middle" font-size="8" fill="#7B9CC8" font-family="sans-serif">❄  −18°C</text>
+</svg>
+<div class="label">Crystallising your lesson…</div>
+</body></html>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; overflow:hidden; }
+svg { width:155px; height:165px; }
+.label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+.piece { animation: fall var(--d) ease-in forwards var(--dl); transform:translateY(-60px); opacity:0; }
+@keyframes fall {
+  0%   { transform:translateY(-60px) rotate(var(--r0)); opacity:0; }
+  20%  { opacity:1; }
+  80%  { transform:translateY(var(--fy)) rotate(var(--r1)); opacity:1; }
+  100% { transform:translateY(var(--fy)) rotate(var(--r1)); opacity:1; }
+}
+.placed { animation: placedFlash 0.4s ease-out var(--dl) both; opacity:0; }
+@keyframes placedFlash {
+  0%   { opacity:0; transform:scale(1.1); }
+  50%  { opacity:1; transform:scale(0.95); }
+  100% { opacity:1; transform:scale(1); }
+}
+.flash { animation: lineFlash 3s ease-in-out infinite var(--dl); }
+@keyframes lineFlash { 0%,85%,100% { opacity:0.7; } 88%,95% { opacity:1; fill:#FFFFFF; } }
+.ghost { animation: ghostBlink 1.2s ease-in-out infinite; }
+@keyframes ghostBlink { 0%,100% { opacity:0.15; } 50% { opacity:0.3; } }
+</style></head><body>
+<svg viewBox="0 0 120 130">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#08080E"/>
+      <stop offset="100%" stop-color="#0D1117"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="120" height="130" fill="url(#bg)"/>
+
+  <!-- Tetris grid border -->
+  <rect x="25" y="10" width="70" height="112" rx="3" fill="#0A0F18" stroke="#1A2A3A" stroke-width="1.5"/>
+
+  <!-- Grid lines -->
+  <line x1="25" y1="24" x2="95" y2="24" stroke="#111A28" stroke-width="0.5"/>
+  <line x1="25" y1="38" x2="95" y2="38" stroke="#111A28" stroke-width="0.5"/>
+  <line x1="25" y1="52" x2="95" y2="52" stroke="#111A28" stroke-width="0.5"/>
+  <line x1="25" y1="66" x2="95" y2="66" stroke="#111A28" stroke-width="0.5"/>
+  <line x1="25" y1="80" x2="95" y2="80" stroke="#111A28" stroke-width="0.5"/>
+  <line x1="25" y1="94" x2="95" y2="94" stroke="#111A28" stroke-width="0.5"/>
+  <line x1="25" y1="108" x2="95" y2="108" stroke="#111A28" stroke-width="0.5"/>
+  <line x1="39" y1="10" x2="39" y2="122" stroke="#111A28" stroke-width="0.5"/>
+  <line x1="53" y1="10" x2="53" y2="122" stroke="#111A28" stroke-width="0.5"/>
+  <line x1="67" y1="10" x2="67" y2="122" stroke="#111A28" stroke-width="0.5"/>
+  <line x1="81" y1="10" x2="81" y2="122" stroke="#111A28" stroke-width="0.5"/>
+
+  <!-- Already-placed blocks at bottom (static) -->
+  <!-- Row 1 (bottom) y=108-->
+  <rect class="placed" x="26" y="109" width="13" height="13" rx="1" fill="#0088FF" stroke="#0066CC" stroke-width="0.5" style="--dl:0.1s"/>
+  <rect class="placed" x="40" y="109" width="13" height="13" rx="1" fill="#FF4400" stroke="#CC3300" stroke-width="0.5" style="--dl:0.15s"/>
+  <rect class="placed" x="54" y="109" width="13" height="13" rx="1" fill="#FFDD00" stroke="#CCA000" stroke-width="0.5" style="--dl:0.2s"/>
+  <rect class="placed" x="68" y="109" width="13" height="13" rx="1" fill="#00CC44" stroke="#009933" stroke-width="0.5" style="--dl:0.25s"/>
+  <rect class="placed" x="82" y="109" width="12" height="13" rx="1" fill="#AA00FF" stroke="#7700CC" stroke-width="0.5" style="--dl:0.3s"/>
+
+  <!-- Row 2 y=95 (incomplete) -->
+  <rect class="placed" x="26" y="95" width="13" height="13" rx="1" fill="#FF4400" stroke="#CC3300" stroke-width="0.5" style="--dl:0.35s"/>
+  <rect class="placed" x="40" y="95" width="13" height="13" rx="1" fill="#00CC44" stroke="#009933" stroke-width="0.5" style="--dl:0.4s"/>
+  <rect class="placed" x="68" y="95" width="13" height="13" rx="1" fill="#0088FF" stroke="#0066CC" stroke-width="0.5" style="--dl:0.45s"/>
+  <rect class="placed" x="82" y="95" width="12" height="13" rx="1" fill="#FFDD00" stroke="#CCA000" stroke-width="0.5" style="--dl:0.5s"/>
+
+  <!-- Row 3 y=81 -->
+  <rect class="placed" x="26" y="81" width="13" height="13" rx="1" fill="#00CC44" stroke="#009933" stroke-width="0.5" style="--dl:0.55s"/>
+  <rect class="placed" x="54" y="81" width="13" height="13" rx="1" fill="#AA00FF" stroke="#7700CC" stroke-width="0.5" style="--dl:0.6s"/>
+  <rect class="placed" x="82" y="81" width="12" height="13" rx="1" fill="#FF4400" stroke="#CC3300" stroke-width="0.5" style="--dl:0.65s"/>
+
+  <!-- Falling I-piece (4 tall) -->
+  <g class="piece" style="--d:0.5s;--dl:1.0s;--fy:42px;--r0:0deg;--r1:0deg">
+    <rect x="54" y="14" width="13" height="13" rx="1" fill="#00DDFF" stroke="#009AB0" stroke-width="0.5"/>
+    <rect x="54" y="28" width="13" height="13" rx="1" fill="#00DDFF" stroke="#009AB0" stroke-width="0.5"/>
+  </g>
+
+  <!-- Ghost piece (where next will land) -->
+  <rect class="ghost" x="54" y="95" width="13" height="13" rx="1" fill="none" stroke="#00DDFF" stroke-width="1" stroke-dasharray="3"/>
+
+  <!-- Score display -->
+  <text x="27" y="8" font-size="6" fill="#2A4A6A" font-family="monospace">SCORE: 1440</text>
+</svg>
+<div class="label">Fitting pieces together…</div>
+</body></html>

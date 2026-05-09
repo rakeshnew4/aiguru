@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; overflow:hidden; }
+svg { width:155px; height:165px; }
+.label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+.curtain { animation: sway var(--d) ease-in-out infinite var(--dl); transform-origin: 60px 0px; }
+@keyframes sway {
+  0%,100% { transform: skewX(0deg) scaleY(1); opacity: var(--op); }
+  33%      { transform: skewX(var(--sk)) scaleY(1.08); opacity: calc(var(--op) * 0.6); }
+  66%      { transform: skewX(calc(var(--sk) * -0.6)) scaleY(0.95); opacity: var(--op); }
+}
+.star { animation: tw var(--d) ease-in-out infinite var(--dl); }
+@keyframes tw { 0%,100% { opacity:0.2; } 50% { opacity:1; } }
+#moon { animation: moonGlow 3s ease-in-out infinite; }
+@keyframes moonGlow { 0%,100% { filter:drop-shadow(0 0 4px #E8F4FD); } 50% { filter:drop-shadow(0 0 10px #C8DCFF); } }
+</style></head><body>
+<svg viewBox="0 0 120 130">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#040820"/>
+      <stop offset="100%" stop-color="#0D1117"/>
+    </linearGradient>
+    <linearGradient id="a1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#00FF88" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#00FF88" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="a2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#AA00FF" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#AA00FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="a3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#00CCFF" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#00CCFF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="a4" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#FF88AA" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#FF88AA" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="snow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#B0C8E8"/>
+      <stop offset="100%" stop-color="#7090B8"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="120" height="130" fill="url(#sky)"/>
+
+  <!-- Stars -->
+  <circle class="star" cx="8"   cy="10" r="0.8" fill="white" style="--d:1.9s;--dl:0s"/>
+  <circle class="star" cx="30"  cy="6"  r="1"   fill="white" style="--d:2.3s;--dl:0.3s"/>
+  <circle class="star" cx="55"  cy="14" r="0.7" fill="white" style="--d:1.6s;--dl:0.7s"/>
+  <circle class="star" cx="80"  cy="5"  r="0.9" fill="white" style="--d:2.1s;--dl:0.1s"/>
+  <circle class="star" cx="108" cy="12" r="0.8" fill="white" style="--d:1.7s;--dl:0.5s"/>
+  <circle class="star" cx="95"  cy="22" r="0.6" fill="white" style="--d:2.4s;--dl:0.9s"/>
+
+  <!-- Moon -->
+  <circle id="moon" cx="100" cy="20" r="9" fill="#E8F0FF"/>
+  <circle cx="104" cy="17" r="7" fill="#040820"/>
+
+  <!-- Aurora curtains -->
+  <rect class="curtain" x="5"  y="0" width="18" height="75" rx="9" fill="url(#a1)" style="--d:4.2s;--dl:0s;  --sk:8deg; --op:0.85"/>
+  <rect class="curtain" x="20" y="0" width="14" height="85" rx="7" fill="url(#a2)" style="--d:3.8s;--dl:0.5s;--sk:-6deg;--op:0.75"/>
+  <rect class="curtain" x="32" y="0" width="20" height="70" rx="10" fill="url(#a3)" style="--d:4.5s;--dl:1s;  --sk:10deg;--op:0.9"/>
+  <rect class="curtain" x="50" y="0" width="16" height="80" rx="8" fill="url(#a1)" style="--d:3.6s;--dl:0.3s;--sk:-9deg;--op:0.7"/>
+  <rect class="curtain" x="64" y="0" width="22" height="65" rx="11" fill="url(#a4)" style="--d:4.8s;--dl:0.8s;--sk:7deg; --op:0.8"/>
+  <rect class="curtain" x="84" y="0" width="15" height="78" rx="7" fill="url(#a2)" style="--d:4.0s;--dl:1.4s;--sk:-5deg;--op:0.85"/>
+
+  <!-- Snow-covered ground -->
+  <ellipse cx="60" cy="122" rx="62" ry="14" fill="url(#snow)"/>
+  <ellipse cx="60" cy="118" rx="62" ry="8"  fill="#C8DCF0"/>
+  <!-- Pine trees silhouette -->
+  <polygon points="25,118 30,95 35,118" fill="#0A1520"/>
+  <polygon points="27,108 30,90 33,108" fill="#0D1A28"/>
+  <polygon points="82,118 87,92 92,118" fill="#0A1520"/>
+  <polygon points="84,106 87,88 90,106" fill="#0D1A28"/>
+</svg>
+<div class="label">Illuminating your answer…</div>
+</body></html>

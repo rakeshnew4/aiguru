@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; }
+svg { width:165px; height:165px; }
+.label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+/* Ball 1 – classic bounce with squash/stretch */
+#b1 { animation: bounce1 1.1s cubic-bezier(.33,0,.66,1) infinite; transform-origin: 30px 95px; }
+@keyframes bounce1 {
+  0%,100% { transform:translateY(0)      scaleY(1)    scaleX(1); }
+  10%      { transform:translateY(0)      scaleY(0.6)  scaleX(1.4); }  /* squash at bottom */
+  25%      { transform:translateY(-55px)  scaleY(1.2)  scaleX(0.85); } /* stretch going up */
+  50%      { transform:translateY(-60px)  scaleY(1)    scaleX(1); }    /* top */
+  75%      { transform:translateY(-30px)  scaleY(1.15) scaleX(0.9); }  /* coming down */
+  90%      { transform:translateY(0)      scaleY(0.65) scaleX(1.35); } /* squash landing */
+}
+/* Ball 2 – offset timing */
+#b2 { animation: bounce2 1.3s cubic-bezier(.33,0,.66,1) infinite 0.2s; transform-origin: 60px 95px; }
+@keyframes bounce2 {
+  0%,100% { transform:translateY(0)      scaleY(1)    scaleX(1); }
+  10%      { transform:translateY(0)      scaleY(0.6)  scaleX(1.4); }
+  25%      { transform:translateY(-45px)  scaleY(1.2)  scaleX(0.85); }
+  50%      { transform:translateY(-50px)  scaleY(1)    scaleX(1); }
+  90%      { transform:translateY(0)      scaleY(0.65) scaleX(1.35); }
+}
+/* Ball 3 */
+#b3 { animation: bounce3 0.9s cubic-bezier(.33,0,.66,1) infinite 0.45s; transform-origin: 90px 95px; }
+@keyframes bounce3 {
+  0%,100% { transform:translateY(0)      scaleY(1)    scaleX(1); }
+  10%      { transform:translateY(0)      scaleY(0.55) scaleX(1.45); }
+  25%      { transform:translateY(-65px)  scaleY(1.25) scaleX(0.8); }
+  50%      { transform:translateY(-70px)  scaleY(1)    scaleX(1); }
+  90%      { transform:translateY(0)      scaleY(0.6)  scaleX(1.4); }
+}
+/* Ball 4 – small slow ball */
+#b4 { animation: bounce4 1.6s cubic-bezier(.33,0,.66,1) infinite 0.7s; transform-origin: 115px 95px; }
+@keyframes bounce4 {
+  0%,100% { transform:translateY(0)      scaleY(1)    scaleX(1); }
+  10%      { transform:translateY(0)      scaleY(0.65) scaleX(1.35); }
+  50%      { transform:translateY(-35px)  scaleY(1)    scaleX(1); }
+  90%      { transform:translateY(0)      scaleY(0.65) scaleX(1.35); }
+}
+/* Shadows shrink/grow with ball height */
+.shadow { animation: shadow var(--sd) ease-in-out infinite var(--so); transform-origin: center; }
+@keyframes shadow {
+  0%,100% { transform:scaleX(1.4); opacity:0.5; }
+  50%     { transform:scaleX(0.5); opacity:0.15; }
+}
+/* Trail dots fade behind ball */
+.trail { animation: trailFade var(--td) ease-out infinite var(--to); opacity:0; }
+@keyframes trailFade {
+  0%    { opacity:0.6; transform:translateY(0) scale(1); }
+  100%  { opacity:0;   transform:translateY(-10px) scale(0.4); }
+}
+/* Floor shimmer on impact */
+.impact { animation: impactFlash var(--id) ease-out infinite var(--io); opacity:0; }
+@keyframes impactFlash {
+  0%,8% { opacity:0; }
+  10%   { opacity:0.8; }
+  30%,100% { opacity:0; }
+}
+</style></head><body>
+<svg viewBox="0 0 145 115">
+  <defs>
+    <radialGradient id="b1g"><stop offset="0%"  stop-color="#FF6B6B"/><stop offset="100%" stop-color="#AA2020"/></radialGradient>
+    <radialGradient id="b2g"><stop offset="0%"  stop-color="#FFD700"/><stop offset="100%" stop-color="#AA8800"/></radialGradient>
+    <radialGradient id="b3g"><stop offset="0%"  stop-color="#4ECDC4"/><stop offset="100%" stop-color="#1A7A75"/></radialGradient>
+    <radialGradient id="b4g"><stop offset="0%"  stop-color="#9B70FF"/><stop offset="100%" stop-color="#4A2DA0"/></radialGradient>
+    <linearGradient id="floorG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#2A3050"/>
+      <stop offset="100%" stop-color="#1A2040"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Floor -->
+  <rect x="0" y="95" width="145" height="20" rx="4" fill="url(#floorG)"/>
+  <line x1="0" y1="95" x2="145" y2="95" stroke="#3A4060" stroke-width="1.5"/>
+
+  <!-- Impact flashes on floor -->
+  <ellipse class="impact" cx="30"  cy="95" rx="14" ry="4" fill="#FF6B6B" style="--id:1.1s;--io:0s"/>
+  <ellipse class="impact" cx="60"  cy="95" rx="13" ry="4" fill="#FFD700" style="--id:1.3s;--io:0.2s"/>
+  <ellipse class="impact" cx="90"  cy="95" rx="15" ry="4" fill="#4ECDC4" style="--id:0.9s;--io:0.45s"/>
+  <ellipse class="impact" cx="115" cy="95" rx="11" ry="3" fill="#9B70FF" style="--id:1.6s;--io:0.7s"/>
+
+  <!-- Shadows -->
+  <ellipse class="shadow" cx="30"  cy="96" rx="10" ry="3" fill="#FF6B6B" opacity="0.4" style="--sd:1.1s;--so:0s"/>
+  <ellipse class="shadow" cx="60"  cy="96" rx="9"  ry="3" fill="#FFD700" opacity="0.4" style="--sd:1.3s;--so:0.2s"/>
+  <ellipse class="shadow" cx="90"  cy="96" rx="11" ry="3" fill="#4ECDC4" opacity="0.4" style="--sd:0.9s;--so:0.45s"/>
+  <ellipse class="shadow" cx="115" cy="96" rx="8"  ry="2" fill="#9B70FF" opacity="0.4" style="--sd:1.6s;--so:0.7s"/>
+
+  <!-- Ball 1 (red) -->
+  <g id="b1">
+    <circle cx="30" cy="85" r="11" fill="url(#b1g)"/>
+    <circle cx="27" cy="81" r="3.5" fill="white" opacity="0.3"/>
+  </g>
+  <!-- Ball 2 (yellow) -->
+  <g id="b2">
+    <circle cx="60" cy="85" r="9" fill="url(#b2g)"/>
+    <circle cx="57" cy="81" r="3" fill="white" opacity="0.3"/>
+  </g>
+  <!-- Ball 3 (teal) -->
+  <g id="b3">
+    <circle cx="90" cy="85" r="12" fill="url(#b3g)"/>
+    <circle cx="86" cy="80" r="4" fill="white" opacity="0.3"/>
+  </g>
+  <!-- Ball 4 (purple) smaller -->
+  <g id="b4">
+    <circle cx="115" cy="85" r="8" fill="url(#b4g)"/>
+    <circle cx="113" cy="82" r="2.5" fill="white" opacity="0.3"/>
+  </g>
+
+  <!-- Labels -->
+  <text x="72" y="110" text-anchor="middle" font-size="8" fill="#4A5070" font-family="sans-serif">Momentum loading…</text>
+</svg>
+<div class="label">Ideas bouncing into place…</div>
+</body></html>

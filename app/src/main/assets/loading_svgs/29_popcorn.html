@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; overflow:hidden; }
+svg { width:165px; height:158px; }
+.label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+/* Popcorn kernels pop (scale up + fly out) */
+.kernel { animation: pop var(--kd) cubic-bezier(.2,1.5,.5,1) infinite var(--kl); opacity:0; transform-origin: var(--kox) var(--koy); }
+@keyframes pop {
+  0%    { transform:scale(0.3) translate(0,0); opacity:0; }
+  5%    { opacity:1; transform:scale(1) translate(0,0); }
+  15%   { transform:scale(1.2) translate(var(--kx),var(--ky)); opacity:1; }
+  40%   { transform:scale(0.9) translate(var(--kx),calc(var(--ky) + 8px)); opacity:0.9; }
+  70%   { transform:scale(0.8) translate(calc(var(--kx)*0.8), calc(var(--ky) + 20px)); opacity:0; }
+  100%  { opacity:0; }
+}
+/* Pot jiggles */
+#pot { animation: potJiggle 0.5s ease-in-out infinite; transform-origin: 65px 85px; }
+@keyframes potJiggle {
+  0%,100% { transform:rotate(0deg) translateY(0); }
+  25%     { transform:rotate(-2deg) translateY(-1px); }
+  75%     { transform:rotate(2deg) translateY(1px); }
+}
+/* Lid bounces up/down */
+#lid { animation: lidBounce 0.6s ease-in-out infinite; transform-origin: 65px 60px; }
+@keyframes lidBounce {
+  0%,100% { transform:translateY(0); }
+  50%     { transform:translateY(-8px); }
+}
+/* Heat shimmer lines */
+.heat { animation: heatShimmer 1s ease-in-out infinite var(--hd); opacity:0; }
+@keyframes heatShimmer {
+  0%,100% { opacity:0;   transform:translateY(0)   scaleX(1); }
+  30%,70% { opacity:0.6; transform:translateY(-5px) scaleX(0.8); }
+}
+/* Steam puffs from lid edge */
+.steam { animation: steamRise 1.5s ease-out infinite var(--sd); opacity:0; }
+@keyframes steamRise {
+  0%   { transform:translate(0,0) scale(0.5); opacity:0.7; }
+  100% { transform:translate(var(--sx,0px),-30px) scale(2); opacity:0; }
+}
+/* Stars bg */
+.star { animation: tw var(--d) ease-in-out infinite var(--dl); }
+@keyframes tw { 0%,100% { opacity:0.2; } 50% { opacity:0.8; } }
+</style></head><body>
+<svg viewBox="0 0 130 125" style="overflow:hidden">
+  <defs>
+    <linearGradient id="potBodyG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#8B6530"/>
+      <stop offset="100%" stop-color="#5A3A10"/>
+    </linearGradient>
+    <radialGradient id="cornG">
+      <stop offset="0%"   stop-color="#FFFACD"/>
+      <stop offset="100%" stop-color="#FFD700"/>
+    </radialGradient>
+    <radialGradient id="corn2G">
+      <stop offset="0%"   stop-color="#FFFACD"/>
+      <stop offset="100%" stop-color="#FF9800"/>
+    </radialGradient>
+    <linearGradient id="lidG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#A07840"/>
+      <stop offset="100%" stop-color="#6A4820"/>
+    </linearGradient>
+    <radialGradient id="flameG">
+      <stop offset="0%"   stop-color="#FFD700"/>
+      <stop offset="50%"  stop-color="#FF8800"/>
+      <stop offset="100%" stop-color="#FF2200"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Stars bg -->
+  <circle class="star" cx="15"  cy="10" r="1" fill="white" style="--d:2s;--dl:0s"/>
+  <circle class="star" cx="115" cy="8"  r="1" fill="white" style="--d:1.8s;--dl:0.5s"/>
+  <circle class="star" cx="65"  cy="5"  r="1" fill="white" style="--d:2.2s;--dl:1s"/>
+
+  <!-- Heat shimmer lines below pot -->
+  <line class="heat" x1="45" y1="110" x2="55" y2="100" stroke="#FF8800" stroke-width="1" style="--hd:0s"/>
+  <line class="heat" x1="65" y1="112" x2="65" y2="102" stroke="#FF8800" stroke-width="1" style="--hd:0.2s"/>
+  <line class="heat" x1="85" y1="110" x2="75" y2="100" stroke="#FF8800" stroke-width="1" style="--hd:0.4s"/>
+
+  <!-- Flame under pot -->
+  <ellipse cx="65" cy="108" rx="18" ry="10" fill="url(#flameG)" opacity="0.9"/>
+  <ellipse cx="65" cy="105" rx="12" ry="7"  fill="#FFD700" opacity="0.8"/>
+  <ellipse cx="65" cy="103" rx="6"  ry="4"  fill="white"   opacity="0.4"/>
+
+  <!-- Stove rings (burner) -->
+  <ellipse cx="65" cy="109" rx="22" ry="5" fill="#2A2030" stroke="#4A3050" stroke-width="1"/>
+  <ellipse cx="65" cy="109" rx="18" ry="4" fill="#1A1020"/>
+  <ellipse cx="65" cy="109" rx="12" ry="3" fill="none" stroke="#FF4400" stroke-width="1" opacity="0.6"/>
+
+  <!-- Popped popcorn pieces flying out -->
+  <g class="kernel" style="--kd:1.1s;--kl:0s;   --kox:50px; --koy:70px; --kx:-30px; --ky:-45px">
+    <ellipse cx="50" cy="70" rx="8" ry="6" fill="url(#cornG)"/>
+    <path d="M48,65 Q52,60 55,65" fill="white" opacity="0.4"/>
+  </g>
+  <g class="kernel" style="--kd:1.3s;--kl:0.15s; --kox:80px; --koy:68px; --kx:30px;  --ky:-50px">
+    <ellipse cx="80" cy="68" rx="9" ry="7" fill="url(#corn2G)"/>
+    <path d="M78,63 Q82,58 86,63" fill="white" opacity="0.4"/>
+  </g>
+  <g class="kernel" style="--kd:1.0s;--kl:0.3s;  --kox:65px; --koy:65px; --kx:-5px;  --ky:-55px">
+    <ellipse cx="65" cy="65" rx="10" ry="7" fill="url(#cornG)"/>
+    <path d="M62,60 Q65,55 68,60" fill="white" opacity="0.4"/>
+  </g>
+  <g class="kernel" style="--kd:1.4s;--kl:0.45s; --kox:40px; --koy:72px; --kx:-35px; --ky:-38px">
+    <ellipse cx="40" cy="72" rx="7" ry="5" fill="url(#corn2G)"/>
+  </g>
+  <g class="kernel" style="--kd:1.2s;--kl:0.6s;  --kox:90px; --koy:70px; --kx:32px;  --ky:-42px">
+    <ellipse cx="90" cy="70" rx="8" ry="6" fill="url(#cornG)"/>
+    <path d="M87,65 Q91,60 94,65" fill="white" opacity="0.4"/>
+  </g>
+  <g class="kernel" style="--kd:1.0s;--kl:0.75s; --kox:55px; --koy:63px; --kx:-22px; --ky:-58px">
+    <ellipse cx="55" cy="63" rx="9" ry="6" fill="url(#cornG)"/>
+  </g>
+  <g class="kernel" style="--kd:1.3s;--kl:0.9s;  --kox:75px; --koy:63px; --kx:22px;  --ky:-55px">
+    <ellipse cx="75" cy="63" rx="8" ry="6" fill="url(#corn2G)"/>
+    <path d="M73,58 Q77,53 80,58" fill="white" opacity="0.4"/>
+  </g>
+  <g class="kernel" style="--kd:1.1s;--kl:1.05s; --kox:60px; --koy:60px; --kx:-10px; --ky:-60px">
+    <ellipse cx="60" cy="60" rx="7" ry="5" fill="url(#cornG)"/>
+  </g>
+
+  <!-- Steam from lid gap -->
+  <circle class="steam" cx="52" cy="65" r="5" fill="#8888AA" style="--sd:0s;  --sx:-5px"/>
+  <circle class="steam" cx="65" cy="63" r="6" fill="#8888AA" style="--sd:0.4s;--sx:2px"/>
+  <circle class="steam" cx="78" cy="65" r="5" fill="#8888AA" style="--sd:0.8s;--sx:6px"/>
+
+  <!-- Pot body -->
+  <g id="pot">
+    <!-- Side handles -->
+    <rect x="22" y="78" width="12" height="8" rx="4" fill="#6A4820" stroke="#8B6530" stroke-width="1"/>
+    <rect x="96" y="78" width="12" height="8" rx="4" fill="#6A4820" stroke="#8B6530" stroke-width="1"/>
+    <!-- Main body -->
+    <rect x="30" y="68" width="70" height="40" rx="8" fill="url(#potBodyG)" stroke="#6A4820" stroke-width="1.5"/>
+    <!-- Pot interior (top opening when lid bounces) -->
+    <ellipse cx="65" cy="68" rx="33" ry="7" fill="#3A1A05"/>
+    <!-- Pot sheen -->
+    <ellipse cx="50" cy="75" rx="12" ry="4" fill="white" opacity="0.08" transform="rotate(-10,50,75)"/>
+    <!-- Popcorn pile inside pot -->
+    <ellipse cx="65" cy="68" rx="28" ry="6" fill="#FFD700" opacity="0.6"/>
+    <ellipse cx="50" cy="67" rx="8" ry="4" fill="#FFFACD" opacity="0.7"/>
+    <ellipse cx="75" cy="67" rx="9" ry="4" fill="#FFFACD" opacity="0.6"/>
+  </g>
+
+  <!-- Lid (bounces separately) -->
+  <g id="lid">
+    <ellipse cx="65" cy="67" rx="35" ry="8"  fill="url(#lidG)" stroke="#8B6530" stroke-width="1.5"/>
+    <ellipse cx="65" cy="66" rx="30" ry="6"  fill="#A07840"/>
+    <ellipse cx="65" cy="65" rx="20" ry="4"  fill="#B08A50"/>
+    <!-- Lid knob -->
+    <ellipse cx="65" cy="60" rx="8"  ry="5"  fill="#8B6530"/>
+    <circle  cx="65" cy="58" r="5"          fill="#6A4820" stroke="#8B6530" stroke-width="1"/>
+    <circle  cx="63" cy="56" r="2" fill="white" opacity="0.2"/>
+  </g>
+</svg>
+<div class="label">Pop! Ideas are bursting out…</div>
+</body></html>

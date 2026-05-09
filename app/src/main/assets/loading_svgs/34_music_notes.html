@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; overflow:hidden; }
+svg { width:155px; height:165px; }
+.label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+.note { animation: float var(--d) ease-in-out infinite var(--dl); }
+@keyframes float {
+  0%   { transform:translate(0,0) rotate(0deg); opacity:0; }
+  10%  { opacity:1; }
+  80%  { opacity:0.8; }
+  100% { transform:translate(var(--nx),var(--ny)) rotate(var(--nr)); opacity:0; }
+}
+.staff { animation: staffPulse 2s ease-in-out infinite; }
+@keyframes staffPulse { 0%,100% { opacity:0.4; } 50% { opacity:0.7; } }
+#treble { animation: trebleGlow 1.5s ease-in-out infinite; }
+@keyframes trebleGlow { 0%,100% { fill:#8833FF; } 50% { fill:#CC66FF; } }
+.dot { animation: dotBounce var(--d) ease-in-out infinite var(--dl); }
+@keyframes dotBounce {
+  0%,100% { transform:translateY(0); }
+  50%     { transform:translateY(-6px); }
+}
+</style></head><body>
+<svg viewBox="0 0 120 130">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#08081C"/>
+      <stop offset="100%" stop-color="#0D1117"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="120" height="130" fill="url(#bg)"/>
+
+  <!-- Staff lines -->
+  <line class="staff" x1="10" y1="68" x2="110" y2="68" stroke="#2A3A5A" stroke-width="1.2"/>
+  <line class="staff" x1="10" y1="75" x2="110" y2="75" stroke="#2A3A5A" stroke-width="1.2"/>
+  <line class="staff" x1="10" y1="82" x2="110" y2="82" stroke="#2A3A5A" stroke-width="1.2"/>
+  <line class="staff" x1="10" y1="89" x2="110" y2="89" stroke="#2A3A5A" stroke-width="1.2"/>
+  <line class="staff" x1="10" y1="96" x2="110" y2="96" stroke="#2A3A5A" stroke-width="1.2"/>
+
+  <!-- Treble clef -->
+  <text id="treble" x="12" y="100" font-size="42" font-family="serif" fill="#8833FF">𝄞</text>
+
+  <!-- Static notes on staff -->
+  <ellipse cx="55" cy="75" rx="5" ry="3.5" fill="#AA55FF" transform="rotate(-15 55 75)"/>
+  <line x1="60" y1="75" x2="60" y2="55" stroke="#AA55FF" stroke-width="1.5"/>
+  <!-- Flag on note -->
+  <path d="M60,55 Q70,60 65,70" fill="none" stroke="#AA55FF" stroke-width="1.5"/>
+
+  <ellipse cx="75" cy="82" rx="5" ry="3.5" fill="#8844EE" transform="rotate(-15 75 82)"/>
+  <line x1="80" y1="82" x2="80" y2="62" stroke="#8844EE" stroke-width="1.5"/>
+
+  <ellipse cx="92" cy="68" rx="5" ry="3.5" fill="#CC77FF" transform="rotate(-15 92 68)"/>
+  <line x1="97" y1="68" x2="97" y2="48" stroke="#CC77FF" stroke-width="1.5"/>
+
+  <!-- Floating notes (animated) -->
+  <g class="note" style="--d:2.8s;--dl:0s;  --nx:-20px;--ny:-55px;--nr:15deg">
+    <text x="30" y="75" font-size="18" fill="#FF88CC" font-family="serif">♪</text>
+  </g>
+  <g class="note" style="--d:3.2s;--dl:0.5s;--nx:15px; --ny:-65px;--nr:-10deg">
+    <text x="60" y="65" font-size="22" fill="#88FFCC" font-family="serif">♫</text>
+  </g>
+  <g class="note" style="--d:2.6s;--dl:1.0s;--nx:25px; --ny:-50px;--nr:20deg">
+    <text x="75" y="80" font-size="16" fill="#FFCC44" font-family="serif">♩</text>
+  </g>
+  <g class="note" style="--d:3.0s;--dl:1.5s;--nx:-10px;--ny:-60px;--nr:-15deg">
+    <text x="45" y="90" font-size="20" fill="#88CCFF" font-family="serif">♪</text>
+  </g>
+  <g class="note" style="--d:2.4s;--dl:2.0s;--nx:10px; --ny:-45px;--nr:8deg">
+    <text x="88" y="72" font-size="18" fill="#FF8844" font-family="serif">♫</text>
+  </g>
+
+  <!-- Bouncing equalizer dots at bottom -->
+  <rect class="dot" x="25" y="108" width="6" height="14" rx="3" fill="#8833FF" style="--d:0.5s;--dl:0s"/>
+  <rect class="dot" x="35" y="110" width="6" height="12" rx="3" fill="#AA55FF" style="--d:0.6s;--dl:0.1s"/>
+  <rect class="dot" x="45" y="106" width="6" height="16" rx="3" fill="#CC77FF" style="--d:0.4s;--dl:0.2s"/>
+  <rect class="dot" x="55" y="109" width="6" height="13" rx="3" fill="#8833FF" style="--d:0.55s;--dl:0.15s"/>
+  <rect class="dot" x="65" y="107" width="6" height="15" rx="3" fill="#AA55FF" style="--d:0.45s;--dl:0.05s"/>
+  <rect class="dot" x="75" y="111" width="6" height="11" rx="3" fill="#CC77FF" style="--d:0.65s;--dl:0.25s"/>
+  <rect class="dot" x="85" y="108" width="6" height="14" rx="3" fill="#8833FF" style="--d:0.5s;--dl:0.35s"/>
+</svg>
+<div class="label">Tuning your answer…</div>
+</body></html>

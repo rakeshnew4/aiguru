@@ -261,7 +261,7 @@ class SubscriptionActivity : BaseActivity(), PaymentResultWithDataListener {
                 btn.setOnClickListener { startFirestorePlanSelection(plan, btn) }
             }
             else -> {
-                btn.text = "Subscribe  ${plan.displayPrice} →"
+                btn.text = "Boost ${plan.displayPrice} →"
                 btn.backgroundTintList = ColorStateList.valueOf(accentColor)
                 btn.isEnabled = true
                 btn.alpha = 1f

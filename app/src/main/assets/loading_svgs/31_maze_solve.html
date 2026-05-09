@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; overflow:hidden; }
+svg { width:155px; height:165px; }
+.label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+#solver { animation: solve 4s linear infinite; }
+@keyframes solve {
+  0%   { offset-distance:0%;   }
+  100% { offset-distance:100%; }
+}
+#trail { animation: trailDraw 4s linear infinite; stroke-dashoffset:340; }
+@keyframes trailDraw {
+  0%   { stroke-dashoffset:340; }
+  100% { stroke-dashoffset:0; }
+}
+.wallFlash { animation: wf 4s ease-in-out infinite; }
+@keyframes wf { 0%,100% { opacity:1; } 50% { opacity:0.6; } }
+#goal { animation: goalPulse 1s ease-in-out infinite; }
+@keyframes goalPulse {
+  0%,100% { transform:scale(1); fill:#FFD700; }
+  50%     { transform:scale(1.3); fill:#FFA500; }
+}
+</style></head><body>
+<svg viewBox="0 0 120 130">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#0A0E1A"/>
+      <stop offset="100%" stop-color="#0D1117"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="120" height="130" fill="url(#bg)"/>
+
+  <!-- Maze outer border -->
+  <rect x="10" y="12" width="100" height="100" rx="3" fill="none" stroke="#1E3A5A" stroke-width="2.5"/>
+
+  <!-- Maze walls (grid style, 10px cells, 10x10 grid in 100x100) -->
+  <!-- Horizontal walls -->
+  <line class="wallFlash" x1="10"  y1="22" x2="60"  y2="22" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="70"  y1="22" x2="110" y2="22" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="10"  y1="32" x2="30"  y2="32" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="50"  y1="32" x2="80"  y2="32" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="20"  y1="42" x2="70"  y2="42" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="80"  y1="42" x2="110" y2="42" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="10"  y1="52" x2="40"  y2="52" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="60"  y1="52" x2="90"  y2="52" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="10"  y1="62" x2="50"  y2="62" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="70"  y1="62" x2="110" y2="62" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="30"  y1="72" x2="80"  y2="72" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="10"  y1="82" x2="40"  y2="82" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="60"  y1="82" x2="110" y2="82" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="20"  y1="92" x2="70"  y2="92" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="80"  y1="92" x2="110" y2="92" stroke="#1E3A5A" stroke-width="2"/>
+
+  <!-- Vertical walls -->
+  <line class="wallFlash" x1="30" y1="12"  x2="30"  y2="42" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="50" y1="22"  x2="50"  y2="52" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="70" y1="12"  x2="70"  y2="32" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="90" y1="22"  x2="90"  y2="62" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="20" y1="42"  x2="20"  y2="72" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="40" y1="52"  x2="40"  y2="82" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="60" y1="62"  x2="60"  y2="92" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="80" y1="72"  x2="80"  y2="112" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="30" y1="82"  x2="30"  y2="112" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="50" y1="92"  x2="50"  y2="112" stroke="#1E3A5A" stroke-width="2"/>
+  <line class="wallFlash" x1="70" y1="92"  x2="70"  y2="112" stroke="#1E3A5A" stroke-width="2"/>
+
+  <!-- Solution path trail (drawn over time) -->
+  <path id="trail"
+    d="M15,17 H25 V47 H45 V37 H65 V27 H75 V57 H55 V77 H65 V87 H45 V97 V107 H65 V97 H85 V107 H105 V87 H95 V77 H105 V67 H95 V57 H105 V47 H95 V27 H105"
+    fill="none" stroke="#00FFAA" stroke-width="2" stroke-linecap="round"
+    stroke-dasharray="340" stroke-dashoffset="340" opacity="0.7"/>
+
+  <!-- Entry marker -->
+  <circle cx="15" cy="17" r="4" fill="#4488FF"/>
+  <text x="12" y="10" font-size="7" fill="#4488FF" font-family="sans-serif">IN</text>
+
+  <!-- Goal star -->
+  <circle id="goal" cx="105" cy="22" r="5" fill="#FFD700" transform-origin="105 22"/>
+  <text x="97" y="10" font-size="7" fill="#FFD700" font-family="sans-serif">OUT</text>
+
+  <!-- Solver dot -->
+  <circle r="4" fill="#FF4488">
+    <animateMotion dur="4s" repeatCount="indefinite"
+      path="M15,17 H25 V47 H45 V37 H65 V27 H75 V57 H55 V77 H65 V87 H45 V97 V107 H65 V97 H85 V107 H105 V87 H95 V77 H105 V67 H95 V57 H105 V47 H95 V27 H105"/>
+  </circle>
+</svg>
+<div class="label">Finding the smartest path…</div>
+</body></html>

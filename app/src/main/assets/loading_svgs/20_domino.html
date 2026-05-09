@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; }
+svg { width:165px; height:155px; }
+.label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+/* Dominos fall sequentially via animation-delay */
+.tile { animation: fall var(--fd,0.4s) ease-in forwards var(--fl,0s); transform-origin: var(--px) var(--py); }
+@keyframes fall {
+  0%   { transform:rotate(0deg); }
+  40%  { transform:rotate(70deg); }
+  100% { transform:rotate(70deg); }
+}
+/* Each tile also triggers a ripple at its base */
+.ripple { animation: ripple 0.5s ease-out forwards var(--rl); opacity:0; }
+@keyframes ripple {
+  0%   { transform:scale(0.3); opacity:0.8; }
+  100% { transform:scale(2);   opacity:0; }
+}
+/* Reset / re-run loop: each tile resets after full cycle */
+.tile { animation: fall 0.4s ease-in forwards var(--fl), reset 5s step-start infinite var(--fl); }
+@keyframes reset {
+  0%,99% { transform:rotate(70deg); }
+  100%   { transform:rotate(0deg); }
+}
+
+/* Overall group re-starts loop */
+#dominos { animation: groupReset 5s linear infinite; }
+@keyframes groupReset {
+  0%,100% { opacity:1; }
+}
+
+/* Dust puffs at impact */
+.dust { animation: dustPuff 0.5s ease-out forwards var(--dl); opacity:0; transform-origin: center bottom; }
+@keyframes dustPuff {
+  0%   { transform:scale(0.5); opacity:0.8; }
+  100% { transform:scale(2.5); opacity:0; }
+}
+
+/* Stars bg */
+.star { animation: tw var(--d) ease-in-out infinite var(--sdl); }
+@keyframes tw { 0%,100% { opacity:0.2; } 50% { opacity:0.9; } }
+</style></head><body>
+<svg viewBox="0 0 140 120">
+  <defs>
+    <linearGradient id="tileG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#9B70FF"/>
+      <stop offset="100%" stop-color="#4A2DA0"/>
+    </linearGradient>
+    <linearGradient id="tableG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#2A3040"/>
+      <stop offset="100%" stop-color="#1A2030"/>
+    </linearGradient>
+  </defs>
+
+  <!-- BG stars -->
+  <circle class="star" cx="12"  cy="10" r="1"   fill="white" style="--d:2s;--sdl:0s"/>
+  <circle class="star" cx="130" cy="8"  r="1"   fill="white" style="--d:1.8s;--sdl:0.5s"/>
+  <circle class="star" cx="65"  cy="5"  r="0.8" fill="white" style="--d:2.2s;--sdl:1s"/>
+
+  <!-- Table surface -->
+  <rect x="5" y="95" width="130" height="8" rx="3" fill="url(#tableG)"/>
+
+  <!-- Dust puffs at each tile fall point -->
+  <ellipse class="dust" cx="24" cy="95" rx="8" ry="4" fill="#5A4080" style="--dl:0.4s"/>
+  <ellipse class="dust" cx="41" cy="95" rx="8" ry="4" fill="#5A4080" style="--dl:0.8s"/>
+  <ellipse class="dust" cx="58" cy="95" rx="8" ry="4" fill="#5A4080" style="--dl:1.2s"/>
+  <ellipse class="dust" cx="75" cy="95" rx="8" ry="4" fill="#5A4080" style="--dl:1.6s"/>
+  <ellipse class="dust" cx="92" cy="95" rx="8" ry="4" fill="#5A4080" style="--dl:2.0s"/>
+  <ellipse class="dust" cx="109" cy="95" rx="8" ry="4" fill="#5A4080" style="--dl:2.4s"/>
+  <ellipse class="dust" cx="126" cy="95" rx="8" ry="4" fill="#5A4080" style="--dl:2.8s"/>
+
+  <!-- Domino tiles (7 in a row) -->
+  <g id="dominos">
+    <!-- Tile 1 -->
+    <g class="tile" style="--fl:0s;--px:20px;--py:95px">
+      <rect x="16" y="55" width="14" height="40" rx="2" fill="url(#tileG)" stroke="#7B52CC" stroke-width="1"/>
+      <circle cx="23" cy="64" r="2" fill="white"/>
+      <circle cx="23" cy="74" r="2" fill="white"/>
+      <circle cx="23" cy="84" r="2" fill="white"/>
+      <line x1="16" y1="75" x2="30" y2="75" stroke="#7B52CC" stroke-width="0.8" opacity="0.7"/>
+    </g>
+    <!-- Tile 2 -->
+    <g class="tile" style="--fl:0.35s;--px:37px;--py:95px">
+      <rect x="33" y="55" width="14" height="40" rx="2" fill="url(#tileG)" stroke="#7B52CC" stroke-width="1"/>
+      <circle cx="40" cy="64" r="2" fill="white"/>
+      <circle cx="40" cy="84" r="2" fill="white"/>
+      <line x1="33" y1="75" x2="47" y2="75" stroke="#7B52CC" stroke-width="0.8" opacity="0.7"/>
+    </g>
+    <!-- Tile 3 -->
+    <g class="tile" style="--fl:0.7s;--px:54px;--py:95px">
+      <rect x="50" y="55" width="14" height="40" rx="2" fill="url(#tileG)" stroke="#7B52CC" stroke-width="1"/>
+      <circle cx="57" cy="61" r="2" fill="white"/>
+      <circle cx="57" cy="70" r="2" fill="white"/>
+      <circle cx="57" cy="80" r="2" fill="white"/>
+      <circle cx="57" cy="89" r="2" fill="white"/>
+      <line x1="50" y1="75" x2="64" y2="75" stroke="#7B52CC" stroke-width="0.8" opacity="0.7"/>
+    </g>
+    <!-- Tile 4 -->
+    <g class="tile" style="--fl:1.05s;--px:71px;--py:95px">
+      <rect x="67" y="55" width="14" height="40" rx="2" fill="url(#tileG)" stroke="#7B52CC" stroke-width="1"/>
+      <circle cx="74" cy="64" r="2" fill="white"/>
+      <circle cx="74" cy="84" r="2" fill="white"/>
+      <circle cx="72" cy="74" r="2" fill="white"/>
+      <circle cx="76" cy="74" r="2" fill="white"/>
+      <line x1="67" y1="75" x2="81" y2="75" stroke="#7B52CC" stroke-width="0.8" opacity="0.7"/>
+    </g>
+    <!-- Tile 5 -->
+    <g class="tile" style="--fl:1.4s;--px:88px;--py:95px">
+      <rect x="84" y="55" width="14" height="40" rx="2" fill="url(#tileG)" stroke="#7B52CC" stroke-width="1"/>
+      <circle cx="91" cy="62" r="2" fill="white"/>
+      <circle cx="91" cy="74" r="2" fill="white"/>
+      <circle cx="91" cy="88" r="2" fill="white"/>
+      <circle cx="89" cy="68" r="2" fill="white"/>
+      <circle cx="93" cy="80" r="2" fill="white"/>
+      <line x1="84" y1="75" x2="98" y2="75" stroke="#7B52CC" stroke-width="0.8" opacity="0.7"/>
+    </g>
+    <!-- Tile 6 -->
+    <g class="tile" style="--fl:1.75s;--px:105px;--py:95px">
+      <rect x="101" y="55" width="14" height="40" rx="2" fill="url(#tileG)" stroke="#7B52CC" stroke-width="1"/>
+      <circle cx="108" cy="62" r="2" fill="white"/>
+      <circle cx="108" cy="88" r="2" fill="white"/>
+      <circle cx="106" cy="75" r="2" fill="white"/>
+      <circle cx="110" cy="75" r="2" fill="white"/>
+      <circle cx="106" cy="68" r="2" fill="white"/>
+      <circle cx="110" cy="82" r="2" fill="white"/>
+      <line x1="101" y1="75" x2="115" y2="75" stroke="#7B52CC" stroke-width="0.8" opacity="0.7"/>
+    </g>
+    <!-- Tile 7 -->
+    <g class="tile" style="--fl:2.1s;--px:122px;--py:95px">
+      <rect x="118" y="55" width="14" height="40" rx="2" fill="url(#tileG)" stroke="#9B70FF" stroke-width="1.5"/>
+      <circle cx="125" cy="62" r="2" fill="#FFD700"/>
+      <circle cx="125" cy="74" r="2" fill="#FFD700"/>
+      <circle cx="125" cy="88" r="2" fill="#FFD700"/>
+      <circle cx="123" cy="68" r="2" fill="#FFD700"/>
+      <circle cx="127" cy="80" r="2" fill="#FFD700"/>
+      <line x1="118" y1="75" x2="132" y2="75" stroke="#9B70FF" stroke-width="0.8" opacity="0.7"/>
+    </g>
+  </g>
+
+  <!-- Score label -->
+  <text x="70" y="110" text-anchor="middle" font-size="7" fill="#7B9CC8" font-family="sans-serif">Chain reaction loading…</text>
+</svg>
+<div class="label">Setting up your lesson…</div>
+</body></html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; overflow:hidden; }
+svg { width:170px; height:160px; }
+.label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+/* Train moves right-to-left and loops */
+#train { animation: trainMove 5s linear infinite; }
+@keyframes trainMove {
+  0%   { transform:translateX(180px); }
+  100% { transform:translateX(-200px); }
+}
+/* Wheels spin */
+.wheel { animation: spin 0.6s linear infinite; }
+@keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
+/* Smoke puffs */
+.puff { animation: puff 1.2s ease-out infinite var(--pd); }
+@keyframes puff {
+  0%   { transform:translate(0,0) scale(0.3); opacity:0.8; }
+  100% { transform:translate(-20px,-30px) scale(2); opacity:0; }
+}
+/* Scenery trees scroll */
+#scene { animation: sceneScroll 5s linear infinite; }
+@keyframes sceneScroll {
+  0%   { transform:translateX(0); }
+  100% { transform:translateX(-120px); }
+}
+/* Track sparkle under wheels */
+.spark { animation: trailSpark 0.4s linear infinite var(--sp); opacity:0; }
+@keyframes trailSpark {
+  0%,50% { opacity:0; }
+  55%    { opacity:1; transform:translate(-2px,-2px); }
+  100%   { opacity:0; transform:translate(-6px,2px); }
+}
+/* Cloud bob */
+.cloud { animation: cloudBob var(--cb) ease-in-out infinite var(--cd); }
+@keyframes cloudBob {
+  0%,100% { transform:translateY(0); }
+  50%     { transform:translateY(-4px); }
+}
+</style></head><body>
+<svg viewBox="0 0 150 120" style="overflow:hidden">
+  <defs>
+    <linearGradient id="skyG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#0D1535"/>
+      <stop offset="100%" stop-color="#1A2850"/>
+    </linearGradient>
+    <linearGradient id="trainG" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#7B52CC"/>
+      <stop offset="100%" stop-color="#4A2DA0"/>
+    </linearGradient>
+    <linearGradient id="grassG" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#1A6A30"/>
+      <stop offset="100%" stop-color="#0D3A18"/>
+    </linearGradient>
+    <clipPath id="sceneClip"><rect x="0" y="0" width="150" height="120"/></clipPath>
+  </defs>
+
+  <!-- Sky -->
+  <rect x="0" y="0" width="150" height="120" fill="url(#skyG)"/>
+
+  <!-- Moon -->
+  <circle cx="125" cy="18" r="10" fill="#E8E8C0"/>
+  <circle cx="129" cy="15" r="8" fill="#0D1535"/><!-- crescent bite -->
+
+  <!-- Stars -->
+  <circle cx="20"  cy="10" r="1" fill="white" opacity="0.8"/>
+  <circle cx="50"  cy="6"  r="1" fill="white" opacity="0.6"/>
+  <circle cx="80"  cy="15" r="1" fill="white" opacity="0.7"/>
+  <circle cx="100" cy="8"  r="1" fill="white" opacity="0.5"/>
+
+  <!-- Scrolling scene (trees, hills) -->
+  <g id="scene" clip-path="url(#sceneClip)">
+    <!-- Ground -->
+    <rect x="0" y="85" width="270" height="35" fill="url(#grassG)"/>
+    <!-- Hill -->
+    <ellipse cx="50"  cy="86" rx="40" ry="20" fill="#155A25"/>
+    <ellipse cx="170" cy="86" rx="35" ry="18" fill="#155A25"/>
+    <ellipse cx="240" cy="86" rx="40" ry="22" fill="#1A6A30"/>
+    <!-- Trees -->
+    <polygon points="30,86 36,60 42,86"  fill="#1A3A1A"/>
+    <rect x="33" y="82" width="6" height="6" fill="#3A2010"/>
+    <polygon points="80,86 86,55 92,86"  fill="#1E4A1E"/>
+    <rect x="83" y="82" width="6" height="6" fill="#3A2010"/>
+    <polygon points="150,86 157,58 164,86" fill="#1A3A1A"/>
+    <rect x="153" y="82" width="7" height="6" fill="#3A2010"/>
+    <polygon points="200,86 207,62 214,86" fill="#1E4A1E"/>
+    <rect x="203" y="82" width="7" height="6" fill="#3A2010"/>
+    <polygon points="250,86 257,56 264,86" fill="#1A3A1A"/>
+    <rect x="253" y="82" width="7" height="6" fill="#3A2010"/>
+  </g>
+
+  <!-- Tracks (static) -->
+  <rect x="0" y="90" width="150" height="3" fill="#4A3820"/>
+  <rect x="0" y="88" width="150" height="1" rx="0.5" fill="#6A5030"/>
+  <!-- Sleepers -->
+  <rect x="10" y="86" width="4" height="8" rx="1" fill="#5A4028"/>
+  <rect x="30" y="86" width="4" height="8" rx="1" fill="#5A4028"/>
+  <rect x="50" y="86" width="4" height="8" rx="1" fill="#5A4028"/>
+  <rect x="70" y="86" width="4" height="8" rx="1" fill="#5A4028"/>
+  <rect x="90" y="86" width="4" height="8" rx="1" fill="#5A4028"/>
+  <rect x="110" y="86" width="4" height="8" rx="1" fill="#5A4028"/>
+  <rect x="130" y="86" width="4" height="8" rx="1" fill="#5A4028"/>
+
+  <!-- Clouds -->
+  <g class="cloud" style="--cb:3s;--cd:0s">
+    <ellipse cx="40" cy="30" rx="18" ry="8"  fill="#1E2D4A" opacity="0.8"/>
+    <ellipse cx="30" cy="33" rx="12" ry="7"  fill="#1E2D4A" opacity="0.8"/>
+    <ellipse cx="52" cy="33" rx="10" ry="6"  fill="#1E2D4A" opacity="0.8"/>
+  </g>
+
+  <!-- Train -->
+  <g id="train">
+    <!-- Smoke puffs from chimney -->
+    <g transform="translate(-6,0)">
+      <circle class="puff" cx="18" cy="40" r="7" fill="#4A5070" style="--pd:0s"/>
+      <circle class="puff" cx="18" cy="40" r="6" fill="#5A6080" style="--pd:0.4s"/>
+      <circle class="puff" cx="18" cy="40" r="8" fill="#3A4060" style="--pd:0.8s"/>
+    </g>
+    <!-- Locomotive body -->
+    <rect x="0"  y="55" width="70" height="32" rx="4" fill="url(#trainG)"/>
+    <rect x="4"  y="50" width="35" height="12" rx="3" fill="#5B30CC"/><!-- cab -->
+    <rect x="65" y="58" width="15" height="22" rx="2" fill="#7B52CC"/><!-- tender -->
+    <!-- Windows -->
+    <rect x="8"  y="52" width="12" height="8"  rx="2" fill="#A0C8FF" opacity="0.8"/>
+    <rect x="22" y="52" width="12" height="8"  rx="2" fill="#A0C8FF" opacity="0.8"/>
+    <!-- Chimney -->
+    <rect x="12" y="44" width="8" height="10" rx="2" fill="#3D1A6E"/>
+    <rect x="10" y="42" width="12" height="4" rx="2" fill="#5B30CC"/>
+    <!-- Boiler dome -->
+    <ellipse cx="45" cy="57" rx="10" ry="7" fill="#6B3FCC"/>
+    <!-- Headlamp -->
+    <circle cx="80" cy="65" r="5" fill="#FFE44D" opacity="0.9"/>
+    <circle cx="80" cy="65" r="3" fill="white"/>
+    <!-- Beam of light -->
+    <polygon points="85,62 110,48 110,82 85,68" fill="#FFE44D" opacity="0.12"/>
+    <!-- Coupler -->
+    <rect x="80" y="70" width="8" height="4" rx="2" fill="#5A4030"/>
+    <!-- Wheels -->
+    <g class="wheel" style="transform-origin:16px 88px"><circle cx="16" cy="88" r="10" fill="none" stroke="#C0A0FF" stroke-width="2.5"/><line x1="6" y1="88" x2="26" y2="88" stroke="#C0A0FF" stroke-width="1.5"/><line x1="16" y1="78" x2="16" y2="98" stroke="#C0A0FF" stroke-width="1.5"/><circle cx="16" cy="88" r="3" fill="#FFD700"/></g>
+    <g class="wheel" style="transform-origin:36px 88px"><circle cx="36" cy="88" r="10" fill="none" stroke="#C0A0FF" stroke-width="2.5"/><line x1="26" y1="88" x2="46" y2="88" stroke="#C0A0FF" stroke-width="1.5"/><line x1="36" y1="78" x2="36" y2="98" stroke="#C0A0FF" stroke-width="1.5"/><circle cx="36" cy="88" r="3" fill="#FFD700"/></g>
+    <g class="wheel" style="transform-origin:56px 88px"><circle cx="56" cy="88" r="8" fill="none" stroke="#A080EE" stroke-width="2"/><line x1="48" y1="88" x2="64" y2="88" stroke="#A080EE" stroke-width="1.5"/><line x1="56" y1="80" x2="56" y2="96" stroke="#A080EE" stroke-width="1.5"/><circle cx="56" cy="88" r="2.5" fill="#FFD700"/></g>
+    <g class="wheel" style="transform-origin:70px 86px"><circle cx="70" cy="86" r="6" fill="none" stroke="#A080EE" stroke-width="1.5"/><circle cx="70" cy="86" r="2" fill="#FFD700"/></g>
+    <!-- Connecting rod -->
+    <rect x="16" y="86" width="40" height="3" rx="1.5" fill="#FFD700" opacity="0.7"/>
+  </g>
+</svg>
+<div class="label">Express lesson on the way…</div>
+</body></html>

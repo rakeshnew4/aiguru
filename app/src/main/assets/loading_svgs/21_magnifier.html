@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; }
+svg { width:160px; height:160px; }
+.label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+/* Magnifier sweeps left to right and back */
+#magnifier { animation: sweep 3.5s ease-in-out infinite; }
+@keyframes sweep {
+  0%,100% { transform:translate(-25px, -10px) rotate(-15deg); }
+  50%     { transform:translate(25px, 10px)  rotate(15deg); }
+}
+/* Text symbols fade in as lens passes over them */
+.sym { animation: reveal 3.5s ease-in-out infinite var(--sd); opacity:0.1; }
+@keyframes reveal {
+  0%,10%  { opacity:0.1; fill:#4A5070; }
+  40%,60% { opacity:1;   fill:var(--sc,#9B70FF); }
+  90%,100% { opacity:0.1; fill:#4A5070; }
+}
+/* Scan line inside lens */
+#scanLine { animation: scanInLens 1s ease-in-out infinite; }
+@keyframes scanInLens {
+  0%,100% { transform:translateY(-14px); opacity:0.4; }
+  50%     { transform:translateY(14px);  opacity:0.8; }
+}
+/* Lens glow */
+#lensGlow { animation: lensGlowPulse 3.5s ease-in-out infinite; }
+@keyframes lensGlowPulse {
+  0%,100% { filter:drop-shadow(0 0 4px #7B52CC); }
+  50%     { filter:drop-shadow(0 0 12px #A080FF); }
+}
+/* Handle shine */
+#handle { animation: handleShine 3.5s ease-in-out infinite; }
+@keyframes handleShine {
+  0%,100% { stroke:#6A4A90; }
+  50%     { stroke:#C090FF; }
+}
+/* Spark dots when symbol is found */
+.spark { animation: sparkFly 3.5s ease-out infinite var(--spd); opacity:0; }
+@keyframes sparkFly {
+  0%,45%   { opacity:0; transform:translate(0,0); }
+  55%      { opacity:1; transform:translate(var(--spx),var(--spy)); }
+  70%,100% { opacity:0; transform:translate(calc(var(--spx)*2),calc(var(--spy)*2)); }
+}
+</style></head><body>
+<svg viewBox="0 0 120 120">
+  <defs>
+    <radialGradient id="lensG">
+      <stop offset="0%"   stop-color="#2A1A50" stop-opacity="0.5"/>
+      <stop offset="80%"  stop-color="#1A0A38" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#0D0520" stop-opacity="0.9"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background "paper" with faint grid -->
+  <rect x="5" y="5" width="110" height="110" rx="6" fill="#12182A" stroke="#2A3050" stroke-width="1"/>
+  <line x1="5"  y1="30" x2="115" y2="30" stroke="#2A3050" stroke-width="0.5"/>
+  <line x1="5"  y1="50" x2="115" y2="50" stroke="#2A3050" stroke-width="0.5"/>
+  <line x1="5"  y1="70" x2="115" y2="70" stroke="#2A3050" stroke-width="0.5"/>
+  <line x1="5"  y1="90" x2="115" y2="90" stroke="#2A3050" stroke-width="0.5"/>
+
+  <!-- Symbols / text on the "page" -->
+  <text class="sym" x="20" y="28"  font-size="12" font-family="monospace" style="--sd:0s;   --sc:#FFD700">∑</text>
+  <text class="sym" x="40" y="28"  font-size="10" font-family="monospace" style="--sd:0.2s; --sc:#4ECDC4">π</text>
+  <text class="sym" x="60" y="28"  font-size="11" font-family="monospace" style="--sd:0.4s; --sc:#FF6B6B">∫</text>
+  <text class="sym" x="78" y="28"  font-size="10" font-family="monospace" style="--sd:0.6s; --sc:#9B70FF">λ</text>
+  <text class="sym" x="96" y="28"  font-size="12" font-family="monospace" style="--sd:0.8s; --sc:#FFD700">Δ</text>
+  <text class="sym" x="15" y="48"  font-size="9"  font-family="monospace" style="--sd:0.1s; --sc:#4ECDC4">E=mc²</text>
+  <text class="sym" x="65" y="48"  font-size="9"  font-family="monospace" style="--sd:0.5s; --sc:#FF6B6B">F=ma</text>
+  <text class="sym" x="18" y="68"  font-size="10" font-family="monospace" style="--sd:0.3s; --sc:#9B70FF">√x</text>
+  <text class="sym" x="42" y="68"  font-size="10" font-family="monospace" style="--sd:0.7s; --sc:#FFD700">θ</text>
+  <text class="sym" x="62" y="68"  font-size="10" font-family="monospace" style="--sd:0.9s; --sc:#4ECDC4">∞</text>
+  <text class="sym" x="80" y="68"  font-size="10" font-family="monospace" style="--sd:1.1s; --sc:#FF6B6B">φ</text>
+  <text class="sym" x="20" y="88"  font-size="8"  font-family="monospace" style="--sd:0.4s; --sc:#9B70FF">2+2=4</text>
+  <text class="sym" x="65" y="88"  font-size="8"  font-family="monospace" style="--sd:0.8s; --sc:#FFD700">ax²+bx</text>
+  <text class="sym" x="20" y="106" font-size="8"  font-family="monospace" style="--sd:0.6s; --sc:#4ECDC4">sin²+cos²=1</text>
+
+  <!-- Spark dots at discovery -->
+  <circle class="spark" cx="60" cy="60" r="3" fill="#FFD700" style="--spd:1.5s;--spx:-20px;--spy:-15px"/>
+  <circle class="spark" cx="60" cy="60" r="2" fill="#4ECDC4" style="--spd:1.7s;--spx:18px; --spy:-12px"/>
+  <circle class="spark" cx="60" cy="60" r="2.5" fill="#FF6B6B" style="--spd:1.9s;--spx:-10px;--spy:-22px"/>
+
+  <!-- Magnifier group moves as a unit -->
+  <g id="magnifier">
+    <!-- Lens glow circle -->
+    <g id="lensGlow">
+      <circle cx="65" cy="55" r="28" fill="none" stroke="#7B52CC" stroke-width="2" opacity="0.8"/>
+    </g>
+    <!-- Lens fill -->
+    <circle cx="65" cy="55" r="26" fill="url(#lensG)"/>
+    <!-- Scan line inside lens -->
+    <clipPath id="lensClip"><circle cx="65" cy="55" r="25"/></clipPath>
+    <line id="scanLine" x1="42" y1="55" x2="88" y2="55" stroke="#7B52CC" stroke-width="1.5" opacity="0.6" clip-path="url(#lensClip)"/>
+    <!-- Cross-hair -->
+    <line x1="65" y1="35" x2="65" y2="75" stroke="#9B70FF" stroke-width="0.5" opacity="0.4"/>
+    <line x1="42" y1="55" x2="88" y2="55" stroke="#9B70FF" stroke-width="0.5" opacity="0.4"/>
+    <!-- Handle -->
+    <line id="handle" x1="84" y1="74" x2="105" y2="100" stroke="#6A4A90" stroke-width="7" stroke-linecap="round"/>
+    <line x1="84" y1="74" x2="105" y2="100" stroke="#C090FF" stroke-width="3" stroke-linecap="round" opacity="0.3"/>
+  </g>
+</svg>
+<div class="label">Scanning for the answer…</div>
+</body></html>

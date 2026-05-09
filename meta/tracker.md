@@ -1476,13 +1476,252 @@ Books with ALL 404 (English/SS for Class 6/9) kept as-is — likely IP-blocked f
 
 **Files read:** `meta/android_index.md` (lines 1–60), `BlackboardActivity.kt:3836–3847`, `HomeActivity.kt:1620–1631`, `FullChatFragment.kt:1139–1150`, `app/build.gradle` (SDK versions + dependencies)
 
-## 2026-05-09 (admin.py bugfix)
+---
 
-**Asked:** Fix `AttributeError: 'list' object has no attribute 'items'` in `/analytics` endpoint.
+## Session 16b — BB Loading SVG Animations
 
-**Root cause:** `litellm_service.get_all_usage_stats()` calls `/user/list` and returns the raw response, which is a list of user objects (or `{"users": [...]}` shaped), not the `{uid: stats}` dict my analytics code assumed. The `or {}` guard doesn't help because a non-empty list is truthy.
+**Date:** 2025-05-09
+**Asked:** Create 10 SVG animations shown below the spinner while BB session loads (10–15s wait)
+
+**Files created:**
+- `app/src/main/assets/loading_svgs/01_water_glass.html` — Water filling a glass
+- `app/src/main/assets/loading_svgs/02_house_build.html` — House construction (walls, roof, chimney)
+- `app/src/main/assets/loading_svgs/03_rocket_launch.html` — Rocket launching into space
+- `app/src/main/assets/loading_svgs/04_plant_grow.html` — Seed → sprout → flower
+- `app/src/main/assets/loading_svgs/05_gears.html` — 3 interlocking spinning gears with sparks
+- `app/src/main/assets/loading_svgs/06_constellation.html` — Stars connecting into a constellation
+- `app/src/main/assets/loading_svgs/07_lightbulb.html` — Lightbulb turning on with idea sparks
+- `app/src/main/assets/loading_svgs/08_pencil_write.html` — Pencil writing equations on paper
+- `app/src/main/assets/loading_svgs/09_brain_neurons.html` — Brain with firing neural connections
+- `app/src/main/assets/loading_svgs/10_solar_system.html` — Planets orbiting the sun
+
+**Files modified:**
+- `app/src/main/res/layout/activity_blackboard.xml` — Added `<WebView android:id="@+id/bbLoadingWebView" 200×220dp` inside loadingGroup below loadingText
+- `app/src/main/java/com/aiguruapp/student/widget/BbLoadingAnimator.kt` — NEW: singleton with `start(webView)` picks random animation, `stop(webView)` clears it
+- `app/src/main/java/com/aiguruapp/student/BlackboardActivity.kt`:
+  - Added `private lateinit var bbLoadingWebView: android.webkit.WebView` field (~line 173)
+  - `onCreate`: `bbLoadingWebView = findViewById(R.id.bbLoadingWebView)` (~line 315)
+  - `generateSteps()`: `BbLoadingAnimator.start(bbLoadingWebView)` at top (~line 851)
+  - `loadFromGlobalCache()`: start at top (~line 1263)
+  - `loadFromSavedSession()`: start at top (~line 1308)
+  - All 9 `loadingGroup.visibility = View.GONE` sites: `BbLoadingAnimator.stop(bbLoadingWebView)` added before each
+
+**Notes:**
+- Each HTML is self-contained SVG+CSS animation, dark-themed (#0D1117 bg), purple/blue palette
+- Loaded via `file:///android_asset/loading_svgs/NN_name.html` into WebView
+- Random selection each time via `Math.random()` in BbLoadingAnimator
+- WebView transparent background, no JS security issues (no external URLs, no DOM storage)
+
+---
+
+## 2026-05-09 (Session 16c — 29 more SVG animations + 5-per-session picker)
+
+**Asked (part 1):** Add 20+ more entertaining loading animations + fix repeat bug (same one kept showing)
+
+**Files created (animations 13–29):**
+- `app/src/main/assets/loading_svgs/13_atom_nucleus.html` — Bohr model: 3 coloured electrons on elliptical orbits, glowing nucleus
+- `app/src/main/assets/loading_svgs/14_book_open.html` — Book opening, pages flip, equations float out
+- `app/src/main/assets/loading_svgs/15_volcano.html` — Volcano erupting: lava blobs fly, smoke puffs, lava flows
+- `app/src/main/assets/loading_svgs/16_snowflake.html` — Snowflake arms crystallise from centre, falling snowflakes bg
+- `app/src/main/assets/loading_svgs/17_train.html` — Side-scrolling night train, smoke puffs, tree scene scrolls
+- `app/src/main/assets/loading_svgs/18_submarine.html` — Submarine bobs with propeller spin, sonar ping, bubbles, fish
+- `app/src/main/assets/loading_svgs/19_hot_air_balloon.html` — Balloon rises/sways, flame flicker, drifting clouds, birds
+- `app/src/main/assets/loading_svgs/20_domino.html` — 7 domino tiles fall sequentially with dust puffs
+- `app/src/main/assets/loading_svgs/21_magnifier.html` — Magnifying glass scans over equations, symbols reveal
+- `app/src/main/assets/loading_svgs/22_bouncing_balls.html` — 4 coloured balls bounce with squash/stretch + shadows
+- `app/src/main/assets/loading_svgs/23_typewriter.html` — Typewriter types equations line by line, cursor blinks, bell
+- `app/src/main/assets/loading_svgs/24_wave_interference.html` — Two wave sources, constructive/destructive interference nodes
+- `app/src/main/assets/loading_svgs/25_crystal_grow.html` — Geometric crystal grows from seed, gem facets fill
+- `app/src/main/assets/loading_svgs/26_clock.html` — Analog clock with swinging pendulum, 3 hands sweep
+- `app/src/main/assets/loading_svgs/27_lightning.html` — Storm cloud, dual lightning bolts flash, rain falls, puddle ripples
+- `app/src/main/assets/loading_svgs/28_telescope.html` — Telescope scans sky, stars appear in view, shooting star
+- `app/src/main/assets/loading_svgs/29_popcorn.html` — Popcorn kernels pop and fly out of jiggly pot, flame below
+
+(Note: files 27_aurora, 28_butterfly, 29_tornado, 30_chemistry, 31_maze_solve, 32_prism_rainbow, 33_sandcastle, 34_music_notes, 35_fish_jump also exist in the folder from prior sessions)
+
+**Asked (part 2):** Pick 5 random SVGs per session (not cycle all 37)
 
 **Changed:**
-- `server/app/api/admin.py:189–215` — replaced hardcoded `llm_raw.get("users")` dict assumption with a normaliser that handles: plain list, `{"users": [...]}`, `{"data": [...]}`, or existing `{uid: stats}` dict shapes. Also maps LiteLLM field names (`spend` → `total_cost`, `total_requests_made` → `total_requests`).
+- `BbLoadingAnimator.kt` — Complete rewrite:
+  - `ALL_ANIMATIONS` array: all 38 filenames (01–35 + duplicates)
+  - `SESSION_SIZE = 5`
+  - `sessionQueue`: mutable list of 5 randomly chosen filenames
+  - `refreshSession()`: shuffles all, takes first 5, resets index
+  - `nextAnimation()`: serves from queue, auto-refreshes when exhausted
+  - `start()`: calls `nextAnimation()` instead of `Math.random()` 
+  - Session persists across calls until all 5 are shown, then new 5 picked
 
-**Files read:** `server/app/services/litellm_service.py:163–185` (get_all_usage_stats implementation), `server/app/api/admin.py:169–200`
+
+---
+
+## Session 17 — BB Loading SVG Animations (Batch 2)
+
+**Date:** 2026-05-09
+**Asked:** Create 10 more loading SVG animations (entertaining, dark-themed, same style as 01–26)
+
+**Files created:**
+- `app/src/main/assets/loading_svgs/27_aurora.html` — Northern lights curtains over snowy pine trees
+- `app/src/main/assets/loading_svgs/28_butterfly.html` — Chrysalis cracking open, butterfly emerging & flapping
+- `app/src/main/assets/loading_svgs/29_tornado.html` — Spinning funnel with lightning, debris orbiting base
+- `app/src/main/assets/loading_svgs/30_chemistry.html` — Bubbling beaker over bunsen flame with rising steam
+- `app/src/main/assets/loading_svgs/31_maze_solve.html` — Dot solving a maze with animateMotion + trail draw
+- `app/src/main/assets/loading_svgs/32_prism_rainbow.html` — White light beam entering prism, splitting into 6 colours
+- `app/src/main/assets/loading_svgs/33_sandcastle.html` — Blocks dropping one-by-one to build a sandcastle
+- `app/src/main/assets/loading_svgs/34_music_notes.html` — Floating notes + bouncing equalizer bars
+- `app/src/main/assets/loading_svgs/35_fish_jump.html` — Fish jumping moonlit water arc with splashes & ripples
+- `app/src/main/assets/loading_svgs/36_tetris.html` — Tetris blocks falling into a grid with ghost piece
+
+**Files modified:**
+- `app/src/main/java/com/aiguruapp/student/widget/BbLoadingAnimator.kt` — Added 36_tetris.html to ALL_ANIMATIONS array (now 39 total animations)
+
+**Notes:**
+- Animator already upgraded to session-queue strategy (5 random per session, no repeats)
+- Files 27_lightning, 28_telescope, 29_popcorn already existed from a prior session
+- Total pool: 39 animations
+
+---
+
+## Session 18 — BB Loading Animator: rotation + no white flash
+
+**Date:** 2026-05-09
+**Asked:** Currently first SVG repeats (loops forever for the entire 10–15s wait) and a blank white screen flashes before render. Add cycling and remove the white flash.
+
+**Root cause:**
+- `start()` only loaded ONE animation; CSS keyframes use `infinite`, so user saw the same animation looping the entire wait.
+- WebView bg was `0x00000000` (transparent) → parent layout's white showed through during the brief window before HTML rendered.
+
+**Files modified:**
+- `app/src/main/java/com/aiguruapp/student/widget/BbLoadingAnimator.kt` — full rewrite of strategy:
+  - Added `Handler` + `rotateRunnable` for time-based rotation
+  - `WARMUP_ASSET = 22_bouncing_balls.html`, `WARMUP_MS = 2000L` — guaranteed-fast first frame
+  - `ROTATE_INTERVAL_MS = 2500L` — swap to next session animation every 2.5s after warmup
+  - `setBackgroundColor(0xFF0D1117)` instead of transparent — matches SVG bg, eliminates flash
+  - `cancelRotation()` called from both new `start()` and `stop()` to prevent stale callbacks
+  - Each `start()` call calls `refreshSession()` so new BB sessions get fresh random 5
+  - `activeWebView` reference check inside Runnables guards against firing on a stopped WebView
+
+**Flow:**
+1. `start()` → set dark bg, show WARMUP_ASSET immediately
+2. After 2s → switch to `nextAnimation()` from session queue, start 2.5s rotation
+3. After ~14.5s (2 + 5×2.5) → session exhausted → refresh + continue
+4. `stop()` → cancel rotation, blank WebView, hide
+
+**Notes:**
+- Pool is 39 animations; session picks 5 random distinct.
+- Call sites unchanged: `BlackboardActivity.kt:851, 1263, 1308` (start), 9 stop sites. No changes to BlackboardActivity needed.
+
+---
+
+## 2026-05-09 (Session 18 — Subscription plan features from Firestore)
+
+**Asked:** Plan descriptions in SubscriptionActivity are hardcoded; load from Firestore instead.
+
+**Investigation:**
+- `FirestoreManager.kt` ~L258–290: `features` was a `buildList {}` derived from plan limits (credits, tokens, tts, image flags) — ignored the Firestore `features` array field entirely.
+- `FirestorePlan.kt` already has `val features: List<String>` field.
+- `SubscriptionActivity.kt` already renders `plan.features.joinToString("\n") { "✓  $it" }` — UI was correct.
+- `seed_firestore.py` seeds `features` array in Firestore documents.
+
+**Fix:**
+- `app/src/main/java/com/aiguruapp/student/firestore/FirestoreManager.kt` ~L258:
+  - Read `doc.get("features")` → `List<String>` first.
+  - If non-empty → use it directly (Firestore-driven descriptions).
+  - If empty → fall back to the old `buildList {}` from limits (unchanged fallback logic).
+
+**Files changed:**
+- `FirestoreManager.kt` — `features` block replaced with `run { ... }` that checks Firestore first (~L258–300)
+
+---
+
+## 2026-05-09 (Session 18b — Watch History local cache + Save button UI)
+
+**Asked:**
+1. Watch History not showing in BbSavedSessionsActivity — save it in Android local cache
+2. Save button shows ⭐ icon — restore visible save button; show "Saved to My Sessions" as notification
+
+**Root cause (watch history):**
+- `BlackboardActivity` called `FirestoreManager.recordBbHistory()` but never wrote to the local JSON cache.
+- `BbSavedSessionsActivity` reads `bb_watch_history_<userId>.json` on open; if Firestore is slow/offline, list was empty.
+
+**Fix 1 — Watch history local cache:**
+- `BlackboardActivity.kt`: Added `appendLocalWatchHistory()` private helper (~line 1260).
+  - Reads `cacheDir/bb_watch_history_<userId>.json` (same file BbSavedSessionsActivity uses).
+  - Prepends new entry as JSONObject with fields: session_id, id, subject, chapter, topic, step_count, steps_json, conversation_id, message_id, created_at.
+  - Caps at 50 entries; newest first.
+- Called immediately after `writeSessionCache()` in the auto-history block (~line 955), before `recordBbHistory()`.
+
+**Fix 2 — Save button:**
+- `activity_blackboard.xml` (`saveSessionBtn`): Changed from 36dp icon-only (⭐) to pill button with `wrap_content` width, `@drawable/bg_save_btn`, text "💾 Save", textSize 12sp.
+- Created `app/src/main/res/drawable/bg_save_btn.xml` — rounded rectangle, dark bg `#1A2A3A`, stroke `#4A7FA5`.
+- `BlackboardActivity.kt` `saveCurrentSession()`:
+  - Spinner: "⏳ Saving…" (was "⏳ Adding…")
+  - Success: button disabled, text "✓ Saved", color `#A0FFD0` + Snackbar "Saved to My Sessions" (was toast)
+  - Failure: button re-enabled, text "💾 Save", color reset to `#9ABBD8`
+
+**Files changed:**
+- `BlackboardActivity.kt` — `appendLocalWatchHistory()` new function; `saveCurrentSession()` text + Snackbar; auto-history block now calls `appendLocalWatchHistory()` first
+- `activity_blackboard.xml` — saveSessionBtn layout changed
+- `app/src/main/res/drawable/bg_save_btn.xml` — new drawable
+
+**Files read (no changes):**
+- `models/FirestorePlan.kt` L1–55: data class with `features: List<String>`, `isFree`, `displayPrice`
+- `SubscriptionActivity.kt` L200–360: `bindFirestorePlanCard()` reads `plan.features`, `bindPlanCard()` reads `plan.features`
+- `models/SubscriptionPlan.kt` L1–40: separate data class used by `AdminConfigRepository` — not the same as `FirestorePlan`
+- `config/AdminConfigRepository.kt` L200–250: `planFromDoc()` also missing `features` field — but this is a separate code path (not used by SubscriptionActivity display)
+
+**Also changed this session:**
+- `BlackboardActivity.kt` ~L2517: 600ms `postDelayed` before auto-advance in `continueAfterFrame()` and `continueAfterSpeech()` — slows down fast-paced automatic lesson progression
+- `BbLoadingAnimator.kt`: Added `clearCache(true)` + timestamp URL fragment in `start()` to fix WebView caching repeat-animation bug
+
+---
+
+## Session 19 — BB Loading Animator: in-memory cache + slowdown + 4s interval
+
+**Date:** 2026-05-09
+**Asked:** Keep all SVGs in Android (avoid switch-delay), 4s per animation, animations themselves are too fast.
+
+**Files modified:**
+- `app/src/main/java/com/aiguruapp/student/widget/BbLoadingAnimator.kt`:
+  - `WARMUP_MS = 4000L`, `ROTATE_INTERVAL_MS = 4000L` (was 2000/2500)
+  - `SLOW_FACTOR = 1.6` constant — applied to every CSS `animation-duration`
+  - `htmlCache: MutableMap<String,String>` — pre-loads all 39 HTML assets into memory on first `start()` via `ensureCached(ctx)` using `ctx.assets.open(path).bufferedReader()`
+  - `injectSlowdown(html)` — appends a `<script>` before `</body>` that on `window.load` walks every element, reads `getComputedStyle(...).animationDuration`, splits on commas, multiplies each numeric token by `SLOW_FACTOR`, and writes back via inline style
+  - `loadAsset()` now uses `webView.loadDataWithBaseURL("file:///android_asset/", cached, ...)` when cached (no disk I/O); falls back to `loadUrl(file://...)` if asset wasn't cacheable
+  - All other plumbing (warmup → rotation, dark bg, session-of-5, cancellation guards) unchanged from session 18
+
+**Why this avoids the switch delay:**
+- Disk read happens once at first `start()`, not on every 4s rotation
+- `loadDataWithBaseURL` has no URL→file resolution cost
+- Combined with `setBackgroundColor(0xFF0D1117)`, the brief WebView reflow is invisible (dark→dark)
+
+**Tuning knobs (single-line edits at top of object):**
+- `SLOW_FACTOR = 1.6` — bump to 2.0 for slower, 1.3 for milder
+- `ROTATE_INTERVAL_MS = 4000L` — per-animation display time
+- `WARMUP_ASSET` / `WARMUP_MS` — first-frame default and its duration
+
+---
+
+## Session 20 — Home page made scrollable
+
+**Date:** 2026-05-09
+**Asked:** On small phones, content below the BB card / daily challenge is pushed off-screen and unreachable. Make the home page scrollable.
+
+**Root cause:** Top sections (hero, BB CTA, quota strip, daily challenge, smart suggestions) were stacked in a vertical LinearLayout with `wrap_content` heights, then the subjects RecyclerView was given `weight=1` for the remainder. On short displays, weight=1 collapsed to 0 and the subjects list became invisible.
+
+**Files modified:**
+- `app/src/main/res/layout/activity_home.xml`:
+  - After the top nav `</LinearLayout>` at L129, wrapped everything below in: `FrameLayout (weight=1) > SwipeRefreshLayout (id=homeSwipeRefresh) > NestedScrollView (fillViewport=true) > LinearLayout (vertical, bg=colorBackground)` (new opens at L133–148)
+  - Removed the redundant inner `FrameLayout (weight=1) > LinearLayout` (was around the subjects area) — its purpose moved to the outer FrameLayout
+  - Removed the inner `SwipeRefreshLayout` that was wrapping the RecyclerView (id moved to outer wrapper, kept name `homeSwipeRefresh`)
+  - RecyclerView changed from `match_parent` height + weight to `wrap_content` + `android:nestedScrollingEnabled="false"` so it lays out all subject cards inside the parent NestedScrollView
+  - calcFab + feedbackChip remain as the outer FrameLayout's overlay siblings (gravity bottom|end and bottom|start) — still float over the scrollable area
+  - New closings at L888–890 (LinearLayout, NestedScrollView, SwipeRefreshLayout); existing `</FrameLayout>` at L932 now closes the new outer FrameLayout
+
+**No Kotlin changes:** All IDs preserved (`homeSwipeRefresh`, `subjectsRecyclerView`, `calcFab`, `feedbackChip`, all section ids).
+
+**Tradeoff:** RecyclerView no longer recycles (lays out all items at once). Acceptable — subjects list is small (typically 5–15 items per student).
+
+**Layout-tag balance** (verified):
+- Wrappers added: 1 FrameLayout, 1 SwipeRefreshLayout, 1 NestedScrollView, 1 LinearLayout
+- Wrappers removed: 1 FrameLayout, 1 LinearLayout, 1 SwipeRefreshLayout
+- Net: +1 NestedScrollView; closings match 1:1

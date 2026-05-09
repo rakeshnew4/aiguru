@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; overflow:hidden; }
+svg { width:155px; height:165px; }
+.label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+#fish { animation: jump 2.4s cubic-bezier(.4,0,.6,1) infinite; transform-origin:60px 90px; }
+@keyframes jump {
+  0%,10%  { transform:translate(0,0) rotate(0deg); }
+  30%     { transform:translate(-5px,-55px) rotate(-45deg); }
+  50%     { transform:translate(5px,-65px) rotate(0deg); }
+  70%     { transform:translate(12px,-40px) rotate(45deg); }
+  85%,100%{ transform:translate(0,0) rotate(0deg); }
+}
+.splash { animation: splash 2.4s ease-out infinite; opacity:0; }
+@keyframes splash {
+  0%,75%  { opacity:0; transform:scale(0.2); }
+  80%     { opacity:1; transform:scale(1); }
+  100%    { opacity:0; transform:scale(1.5); }
+}
+.ripple { animation: ripple var(--d) ease-out infinite var(--dl); opacity:0; }
+@keyframes ripple {
+  0%   { transform:scale(0.3); opacity:0.8; }
+  100% { transform:scale(2); opacity:0; }
+}
+.wave { animation: wave 2s ease-in-out infinite var(--dl); }
+@keyframes wave {
+  0%,100% { transform:translateX(0); }
+  50%     { transform:translateX(var(--wx)); }
+}
+.bubble { animation: bub var(--d) linear infinite var(--dl); opacity:0; }
+@keyframes bub {
+  0%   { transform:translateY(0); opacity:0.7; }
+  100% { transform:translateY(-30px); opacity:0; }
+}
+#star { animation: starSpin 3s linear infinite; transform-origin:60px 30px; }
+@keyframes starSpin { 100% { transform:rotate(360deg); } }
+</style></head><body>
+<svg viewBox="0 0 120 130">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#040C18"/>
+      <stop offset="100%" stop-color="#0A1828"/>
+    </linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#0A3A6A"/>
+      <stop offset="100%" stop-color="#041020"/>
+    </linearGradient>
+    <radialGradient id="moon">
+      <stop offset="0%"   stop-color="#FFFADC"/>
+      <stop offset="100%" stop-color="#F0D060"/>
+    </radialGradient>
+    <linearGradient id="fishG" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#FF6644"/>
+      <stop offset="100%" stop-color="#FFAA22"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="120" height="130" fill="url(#sky)"/>
+
+  <!-- Moon -->
+  <circle cx="95" cy="22" r="12" fill="url(#moon)" opacity="0.9"/>
+  <circle cx="99" cy="19" r="10" fill="url(#sky)"/>
+  <!-- Moon reflection in water -->
+  <ellipse cx="95" cy="88" rx="6" ry="8" fill="#F0D060" opacity="0.15"/>
+
+  <!-- Stars -->
+  <circle cx="15" cy="12" r="1" fill="white" opacity="0.7"/>
+  <circle cx="35" cy="8"  r="0.8" fill="white" opacity="0.6"/>
+  <circle cx="55" cy="15" r="0.9" fill="white" opacity="0.5"/>
+  <circle cx="72" cy="6"  r="0.7" fill="white" opacity="0.8"/>
+
+  <!-- Sea surface waves -->
+  <g class="wave" style="--dl:0s;--wx:-4px">
+    <path d="M0,82 Q15,77 30,82 Q45,87 60,82 Q75,77 90,82 Q105,87 120,82 L120,130 L0,130 Z" fill="url(#sea)"/>
+  </g>
+  <g class="wave" style="--dl:0.5s;--wx:4px">
+    <path d="M0,85 Q20,80 40,85 Q60,90 80,85 Q100,80 120,85" fill="none" stroke="#1A5A8A" stroke-width="1.5"/>
+  </g>
+  <path d="M0,88 Q30,84 60,88 Q90,92 120,88" fill="none" stroke="#0A3A6A" stroke-width="1" opacity="0.5"/>
+
+  <!-- Underwater bubbles -->
+  <circle class="bubble" cx="45" cy="100" r="2"   fill="none" stroke="#2A6A9A" stroke-width="0.8" style="--d:2s;--dl:0.5s"/>
+  <circle class="bubble" cx="55" cy="105" r="1.5" fill="none" stroke="#2A6A9A" stroke-width="0.8" style="--d:1.8s;--dl:1s"/>
+  <circle class="bubble" cx="70" cy="102" r="2.5" fill="none" stroke="#2A6A9A" stroke-width="0.8" style="--d:2.2s;--dl:0s"/>
+
+  <!-- Water ripples where fish jumps from -->
+  <ellipse class="ripple" cx="60" cy="84" rx="12" ry="4" fill="none" stroke="#4A8AB0" stroke-width="1" style="--d:2.4s;--dl:1.8s"/>
+  <ellipse class="ripple" cx="60" cy="84" rx="8"  ry="3" fill="none" stroke="#4A8AB0" stroke-width="1.2" style="--d:2.4s;--dl:1.9s"/>
+
+  <!-- Splash drops -->
+  <g class="splash">
+    <circle cx="50" cy="80" r="2" fill="#4AB0D0"/>
+    <circle cx="70" cy="79" r="1.5" fill="#4AB0D0"/>
+    <circle cx="55" cy="76" r="1.8" fill="#6AC0E0"/>
+    <circle cx="66" cy="77" r="2" fill="#4AB0D0"/>
+  </g>
+
+  <!-- Fish -->
+  <g id="fish">
+    <!-- Tail -->
+    <polygon points="42,88 30,80 30,96" fill="#FF6644"/>
+    <!-- Body -->
+    <ellipse cx="55" cy="88" rx="16" ry="9" fill="url(#fishG)"/>
+    <!-- Belly -->
+    <ellipse cx="56" cy="91" rx="13" ry="5" fill="#FFCC88" opacity="0.6"/>
+    <!-- Eye -->
+    <circle cx="65" cy="86" r="3" fill="white"/>
+    <circle cx="66" cy="86" r="1.5" fill="#0A1828"/>
+    <circle cx="67" cy="85" r="0.5" fill="white"/>
+    <!-- Fin -->
+    <path d="M52,80 Q60,72 65,80" fill="#FF8833" opacity="0.8"/>
+    <!-- Scales -->
+    <path d="M52,86 Q56,82 60,86" fill="none" stroke="#FF4422" stroke-width="0.8" opacity="0.5"/>
+    <path d="M48,89 Q52,85 56,89" fill="none" stroke="#FF4422" stroke-width="0.8" opacity="0.5"/>
+  </g>
+
+  <!-- Shooting star -->
+  <g id="star">
+    <line x1="60" y1="20" x2="75" y2="12" stroke="#FFFAAA" stroke-width="1" opacity="0.6"/>
+    <circle cx="60" cy="20" r="1.5" fill="#FFFAAA" opacity="0.7"/>
+  </g>
+</svg>
+<div class="label">Making a splash for you…</div>
+</body></html>

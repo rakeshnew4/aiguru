@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; }
+  svg { width:160px; height:160px; }
+  .label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+  /* Ground */
+  #ground { animation: appear 0.5s ease forwards; opacity:0; animation-delay:0s; }
+  /* Foundation */
+  #foundation { animation: rise 0.6s ease forwards; opacity:0; animation-delay:0.3s; }
+  /* Walls */
+  #wall_l { animation: riseLeft 0.7s ease forwards; opacity:0; animation-delay:0.9s; }
+  #wall_r { animation: riseRight 0.7s ease forwards; opacity:0; animation-delay:0.9s; }
+  #wall_f { animation: rise 0.6s ease forwards; opacity:0; animation-delay:0.9s; }
+  /* Door */
+  #door { animation: appear 0.4s ease forwards; opacity:0; animation-delay:1.7s; }
+  /* Window */
+  #win { animation: appear 0.4s ease forwards; opacity:0; animation-delay:2.0s; }
+  /* Roof */
+  #roof { animation: dropDown 0.6s cubic-bezier(.3,1.4,.5,1) forwards; opacity:0; animation-delay:2.5s; }
+  /* Chimney */
+  #chimney { animation: rise 0.4s ease forwards; opacity:0; animation-delay:3.0s; }
+  /* Smoke */
+  #smoke1 { animation: smoke 2s ease-out infinite; animation-delay:3.5s; }
+  #smoke2 { animation: smoke 2s ease-out infinite 0.7s; animation-delay:3.5s; }
+  #smoke3 { animation: smoke 2s ease-out infinite 1.4s; animation-delay:3.5s; }
+
+  /* Loop: hide everything and restart */
+  #house_group { animation: loop 5.5s linear infinite; }
+  @keyframes loop {
+    0%,91%  { opacity:1; }
+    92%     { opacity:0; }
+    99%     { opacity:0; }
+    100%    { opacity:1; }
+  }
+
+  @keyframes appear {
+    from { opacity:0; }
+    to   { opacity:1; }
+  }
+  @keyframes rise {
+    from { transform: scaleY(0); transform-origin: bottom center; opacity:0; }
+    to   { transform: scaleY(1); transform-origin: bottom center; opacity:1; }
+  }
+  @keyframes riseLeft {
+    from { transform: scaleX(0); transform-origin: right center; opacity:0; }
+    to   { transform: scaleX(1); transform-origin: right center; opacity:1; }
+  }
+  @keyframes riseRight {
+    from { transform: scaleX(0); transform-origin: left center; opacity:0; }
+    to   { transform: scaleX(1); transform-origin: left center; opacity:1; }
+  }
+  @keyframes dropDown {
+    from { transform: translateY(-30px); opacity:0; }
+    to   { transform: translateY(0);     opacity:1; }
+  }
+  @keyframes smoke {
+    0%   { transform: translate(0,0) scale(0.5); opacity:0.8; }
+    60%  { opacity:0.4; }
+    100% { transform: translate(-8px,-25px) scale(1.5); opacity:0; }
+  }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 120 120">
+  <defs>
+    <linearGradient id="wallGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7B52CC"/>
+      <stop offset="100%" stop-color="#4A2DA0"/>
+    </linearGradient>
+    <linearGradient id="roofGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A374FF"/>
+      <stop offset="100%" stop-color="#6B3FCC"/>
+    </linearGradient>
+  </defs>
+
+  <g id="house_group">
+    <!-- Ground -->
+    <rect id="ground" x="10" y="100" width="100" height="4" rx="2" fill="#2A3C5E"/>
+
+    <!-- Foundation -->
+    <rect id="foundation" x="25" y="95" width="70" height="8" rx="1" fill="#3A4E7A"/>
+
+    <!-- Walls -->
+    <rect id="wall_f"  x="25" y="60" width="70" height="36" fill="url(#wallGrad)"/>
+    <rect id="wall_l"  x="22" y="62" width="5"  height="34" fill="#4A2DA0"/>
+    <rect id="wall_r"  x="93" y="62" width="5"  height="34" fill="#4A2DA0"/>
+
+    <!-- Door -->
+    <rect id="door" x="51" y="74" width="18" height="22" rx="9 9 0 0" fill="#1A0D33"/>
+    <circle cx="66" cy="85" r="1.5" fill="#FFD700" id="door"/>
+
+    <!-- Window -->
+    <rect id="win" x="32" y="68" width="16" height="14" rx="2" fill="#1E3A5F" stroke="#7B52CC" stroke-width="1.5"/>
+    <line x1="40" y1="68" x2="40" y2="82" stroke="#7B52CC" stroke-width="1" opacity="0.6"/>
+    <line x1="32" y1="75" x2="48" y2="75" stroke="#7B52CC" stroke-width="1" opacity="0.6"/>
+
+    <!-- Roof -->
+    <polygon id="roof" points="15,62 60,30 105,62" fill="url(#roofGrad)"/>
+    <polygon points="15,62 60,30 105,62" fill="none" stroke="#B08AFF" stroke-width="1.5"/>
+
+    <!-- Chimney -->
+    <rect id="chimney" x="74" y="35" width="10" height="20" rx="1" fill="#4A2DA0" stroke="#7B52CC" stroke-width="1"/>
+
+    <!-- Smoke puffs -->
+    <circle id="smoke1" cx="79" cy="33" r="4" fill="#5A6080" opacity="0"/>
+    <circle id="smoke2" cx="79" cy="33" r="5" fill="#4A5070" opacity="0"/>
+    <circle id="smoke3" cx="79" cy="33" r="3.5" fill="#5A6080" opacity="0"/>
+  </g>
+</svg>
+<div class="label">Building your lesson…</div>
+</body>
+</html>

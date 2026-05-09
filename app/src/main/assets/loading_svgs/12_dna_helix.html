@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html><head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0D1117; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:sans-serif; }
+svg { width:140px; height:190px; }
+.label { color:#7B9CC8; font-size:13px; margin-top:12px; letter-spacing:1px; }
+
+/* Two strands spiral by rotating a container */
+#dna { animation: spin 4s linear infinite; transform-origin: 60px 85px; }
+@keyframes spin { from { transform:rotateY(0deg); } to { transform:rotateY(360deg); } }
+
+/* Strand dots undulate */
+.dot-l { animation: undulateL 2s ease-in-out infinite; }
+.dot-r { animation: undulateR 2s ease-in-out infinite; }
+@keyframes undulateL {
+  0%,100% { transform: translateX(0); }
+  50%     { transform: translateX(12px); }
+}
+@keyframes undulateR {
+  0%,100% { transform: translateX(0); }
+  50%     { transform: translateX(-12px); }
+}
+
+/* Base pair rungs fade in */
+.rung { animation: rungPop 2s ease-in-out infinite var(--rd); }
+@keyframes rungPop {
+  0%,40%  { opacity:0.15; stroke:#3D1A6E; }
+  50%,90% { opacity:1;    stroke:var(--rc, #7B52CC); }
+  100%    { opacity:0.15; }
+}
+
+/* Whole helix pulses */
+#helix_glow { animation: helix_pulse 2s ease-in-out infinite; }
+@keyframes helix_pulse {
+  0%,100% { filter: drop-shadow(0 0 4px #5B30CC); }
+  50%     { filter: drop-shadow(0 0 12px #C0A0FF); }
+}
+
+/* Left strand nodes */
+.ln { animation: ln_move var(--ld, 2s) ease-in-out infinite var(--lo, 0s); }
+@keyframes ln_move {
+  0%,100% { cx: var(--x0); }
+  50%     { cx: var(--x1); }
+}
+</style></head><body>
+<svg viewBox="0 0 120 160">
+  <defs>
+    <linearGradient id="strand1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#FF3D9A"/>
+    </linearGradient>
+    <linearGradient id="strand2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#4ECDC4"/>
+      <stop offset="100%" stop-color="#44A8C7"/>
+    </linearGradient>
+  </defs>
+
+  <g id="helix_glow">
+  <!-- Left strand (sinusoidal path) -->
+  <path d="M40,15 Q52,30 40,45 Q28,60 40,75 Q52,90 40,105 Q28,120 40,135 Q52,150 40,160"
+        fill="none" stroke="url(#strand1)" stroke-width="3" stroke-linecap="round"/>
+  <!-- Right strand -->
+  <path d="M80,15 Q68,30 80,45 Q92,60 80,75 Q68,90 80,105 Q92,120 80,135 Q68,150 80,160"
+        fill="none" stroke="url(#strand2)" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Base pair rungs (horizontal connectors) -->
+  <line class="rung" x1="40" y1="15"  x2="80" y2="15"  stroke-width="2" style="--rd:0s;   --rc:#FF6B6B"/>
+  <line class="rung" x1="52" y1="30"  x2="68" y2="30"  stroke-width="1.5" style="--rd:0.2s;--rc:#4ECDC4"/>
+  <line class="rung" x1="40" y1="45"  x2="80" y2="45"  stroke-width="2" style="--rd:0.4s;--rc:#FFD700"/>
+  <line class="rung" x1="28" y1="60"  x2="92" y2="60"  stroke-width="1.5" style="--rd:0.6s;--rc:#FF6B6B"/>
+  <line class="rung" x1="40" y1="75"  x2="80" y2="75"  stroke-width="2" style="--rd:0.8s;--rc:#4ECDC4"/>
+  <line class="rung" x1="52" y1="90"  x2="68" y2="90"  stroke-width="1.5" style="--rd:1.0s;--rc:#FFD700"/>
+  <line class="rung" x1="40" y1="105" x2="80" y2="105" stroke-width="2" style="--rd:1.2s;--rc:#FF6B6B"/>
+  <line class="rung" x1="28" y1="120" x2="92" y2="120" stroke-width="1.5" style="--rd:1.4s;--rc:#4ECDC4"/>
+  <line class="rung" x1="40" y1="135" x2="80" y2="135" stroke-width="2" style="--rd:1.6s;--rc:#FFD700"/>
+  <line class="rung" x1="52" y1="150" x2="68" y2="150" stroke-width="1.5" style="--rd:1.8s;--rc:#FF6B6B"/>
+
+  <!-- Node dots on strands -->
+  <circle cx="40" cy="15"  r="4" fill="#FF6B6B"/>
+  <circle cx="52" cy="30"  r="3" fill="#FF3D9A"/>
+  <circle cx="40" cy="45"  r="4" fill="#FF6B6B"/>
+  <circle cx="28" cy="60"  r="3" fill="#FF3D9A"/>
+  <circle cx="40" cy="75"  r="4" fill="#FF6B6B"/>
+  <circle cx="52" cy="90"  r="3" fill="#FF3D9A"/>
+  <circle cx="40" cy="105" r="4" fill="#FF6B6B"/>
+  <circle cx="28" cy="120" r="3" fill="#FF3D9A"/>
+  <circle cx="40" cy="135" r="4" fill="#FF6B6B"/>
+  <circle cx="52" cy="150" r="3" fill="#FF3D9A"/>
+
+  <circle cx="80" cy="15"  r="4" fill="#4ECDC4"/>
+  <circle cx="68" cy="30"  r="3" fill="#44A8C7"/>
+  <circle cx="80" cy="45"  r="4" fill="#4ECDC4"/>
+  <circle cx="92" cy="60"  r="3" fill="#44A8C7"/>
+  <circle cx="80" cy="75"  r="4" fill="#4ECDC4"/>
+  <circle cx="68" cy="90"  r="3" fill="#44A8C7"/>
+  <circle cx="80" cy="105" r="4" fill="#4ECDC4"/>
+  <circle cx="92" cy="120" r="3" fill="#44A8C7"/>
+  <circle cx="80" cy="135" r="4" fill="#4ECDC4"/>
+  <circle cx="68" cy="150" r="3" fill="#44A8C7"/>
+  </g>
+</svg>
+<div class="label">Decoding knowledge…</div>
+</body></html>
