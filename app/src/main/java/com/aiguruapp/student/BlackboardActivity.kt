@@ -629,6 +629,18 @@ class BlackboardActivity : AppCompatActivity() {
                         planExpiryDate       = planExpiryDate
                     )
 
+                    // Load TTS credit balance from user_credits so checkAiTtsQuota can fall
+                    // back to credits when the plan's daily character quota is exhausted.
+                    if (!userId.isNullOrBlank()) {
+                        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                            .collection("user_credits").document(userId)
+                            .get()
+                            .addOnSuccessListener { creditDoc ->
+                                val ttsCredits = creditDoc.getLong("tts_balance")?.toInt() ?: 0
+                                cachedMetadata = cachedMetadata.copy(ttsCreditBalance = ttsCredits)
+                            }
+                    }
+
                     AdminConfigRepository.resolveEffectiveLimitsAsync(cachedMetadata.planId, cachedMetadata.planLimits) { limits ->
                         runOnUiThread {
                             updateBbQuotaChip(userId)

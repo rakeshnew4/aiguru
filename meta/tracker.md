@@ -1725,3 +1725,32 @@ Books with ALL 404 (English/SS for Class 6/9) kept as-is — likely IP-blocked f
 - Wrappers added: 1 FrameLayout, 1 SwipeRefreshLayout, 1 NestedScrollView, 1 LinearLayout
 - Wrappers removed: 1 FrameLayout, 1 LinearLayout, 1 SwipeRefreshLayout
 - Net: +1 NestedScrollView; closings match 1:1
+
+---
+
+## Session 21 — TTS daily-quota vs credits fallback
+
+**Date:** 2026-07-17
+**Asked:** TTS shows "quota exhausted for today" even when user has tts_balance credits available. Where is the limit defined and why isn't the credit fallback working?
+
+**Root cause:** Two independent TTS quota systems that didn't talk to each other:
+1. **Server-side** (`users.py` `/quota/status`): correctly checks `tts_balance` from `user_credits/{uid}` and returns `tts_mode="ai_credit"` when free quota is exhausted but credits remain.
+2. **Android-side** (`PlanEnforcer.checkAiTtsQuota`): only compares `metadata.aiTtsCharsUsedToday` against `limits.aiTtsQuotaChars` (the plan's daily char cap, e.g. 5000 for basic). Never looked at `tts_balance` → always returned `allowed=false` when daily cap hit, before the server could even be called.
+- Also, `UserMetadata` had no `ttsCreditBalance` field, so even if the check had wanted to use credits, the data wasn't available.
+
+**Files modified:**
+
+- `app/src/main/java/com/aiguruapp/student/models/UserMetadata.kt` (after line ~148):
+  - Added `val ttsCreditBalance: Int = 0` — no Firestore annotation (not in users_table; set manually from user_credits collection)
+
+- `app/src/main/java/com/aiguruapp/student/BlackboardActivity.kt` (after cachedMetadata.copy() ~line 620):
+  - Added fire-and-forget Firestore fetch of `user_credits/{userId}.tts_balance`; on success sets `cachedMetadata = cachedMetadata.copy(ttsCreditBalance = ttsCredits)`
+
+- `app/src/main/java/com/aiguruapp/student/config/PlanEnforcer.kt` (checkAiTtsQuota, ~line 517):
+  - Before returning `allowed=false` for exceeded quota, checks `metadata.ttsCreditBalance > 0` → if so, returns `CheckResult(allowed = true)` (credit mode; server deducts from tts_balance)
+  - `getAiTtsCharsRemaining()`: if planRemaining==0 but `ttsCreditBalance > 0`, returns -1 (unlimited) so UI doesn't show "0 chars left"
+
+- `app/src/main/java/com/aiguruapp/student/validators/AiVoiceQuotaValidator.kt`:
+  - Updated doc comment to describe credit fallback behavior
+
+**Key insight:** The Android-side quota check is a fast pre-flight to avoid unnecessary server calls. When credits are available, we let it through — the server is still the authoritative deduction point (deducts from tts_balance). The Android check just needed to know about credits.

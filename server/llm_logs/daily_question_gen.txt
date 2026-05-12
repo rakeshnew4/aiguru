@@ -1,11 +1,11 @@
-=== DAILY_QUESTION_GEN | 2026-05-08 11:19:13 | session=none ===
+=== DAILY_QUESTION_GEN | 2026-05-12 14:41:56 | session=none ===
 
 === PROMPT ===
 Generate exactly 3 engaging daily learning questions for a student.
 
-Student's top subjects: General, Biology, Neuroscience
-Recent topics studied: Bioluminescence, Cognitive Science, Photosynthesis, Explain Heart Pumping, Water Cycle, Atom, DNA, Why do some deep-sea creatures create their own light in total darkness?, How do our brains distinguish between a real memory and a vivid dream?, Newton's Laws of Motion
-Topics already used today (AVOID these): Cardiovascular System, Biomimicry, Neuroanatomy, Physics, Cardiovascular Physiology, Neuroplasticity, Photobiology, Sleep Mechanisms, Consciousness, Evolutionary Adaptation
+Student's top subjects: Science, Math, History
+Recent topics studied: basic concepts
+Topics already used today (AVOID these): Geometry of Nature, Time Calculation, Technological Impact
 
 Rules:
 - Each question must be thought-provoking and curiosity-driven (not "what is X")
@@ -27,24 +27,24 @@ hook: one-line real-world curiosity fact related to the question (under 12 words
 === RESPONSE ===
 [
   {
-    "question": "Why do plants change the color of their leaves in autumn?",
-    "subject": "Biology",
-    "topic": "Botany",
+    "question": "Why do some animals change color to blend into their surroundings?",
+    "subject": "Science",
+    "topic": "Biology",
     "difficulty": 1,
-    "hook": "Leaves contain hidden colors revealed only when chlorophyll fades away."
+    "hook": "Chameleons change color partly to regulate their body temperature."
   },
   {
-    "question": "How does the brain decide which memories are important enough to keep?",
-    "subject": "Neuroscience",
-    "topic": "Memory Consolidation",
+    "question": "How would the world change if humans used base-12 instead of base-10?",
+    "subject": "Math",
+    "topic": "Number Systems",
     "difficulty": 2,
-    "hook": "Your brain constantly deletes trivial information to save precious storage space."
+    "hook": "Base-12 is divisible by more numbers than base-10."
   },
   {
-    "question": "What would happen to Earth's atmosphere if all photosynthesis suddenly stopped?",
-    "subject": "General Science",
-    "topic": "Ecology",
+    "question": "What would happen if the Silk Road had never been established?",
+    "subject": "History",
+    "topic": "Ancient Trade",
     "difficulty": 3,
-    "hook": "Plants are the primary reason our atmosphere contains breathable oxygen."
+    "hook": "The Silk Road connected civilizations for over 1,500 years."
   }
 ]

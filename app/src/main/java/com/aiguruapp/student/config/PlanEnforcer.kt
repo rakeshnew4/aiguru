@@ -516,6 +516,11 @@ object PlanEnforcer {
         val charsRemaining = (quotaLimit - charsUsedToday).coerceAtLeast(0)
 
         if (charsAboutToUse > charsRemaining) {
+            // Before blocking, check if the user has TTS credits (purchased/awarded balance).
+            // If so, allow — the server will deduct from tts_balance when the request is made.
+            if (metadata.ttsCreditBalance > 0) {
+                return CheckResult(allowed = true)
+            }
             return CheckResult(
                 allowed        = false,
                 reason         = "AI TTS quota exceeded ($charsUsedToday / $quotaLimit chars)",
@@ -537,6 +542,9 @@ object PlanEnforcer {
             utcDayOf(metadata.aiTtsUpdatedAt) == utcDayOf(System.currentTimeMillis())
 
         val charsUsedToday = if (isSameDay) metadata.aiTtsCharsUsedToday else 0
-        return (quotaLimit - charsUsedToday).coerceAtLeast(0)
+        val planRemaining = (quotaLimit - charsUsedToday).coerceAtLeast(0)
+        // If plan quota exhausted but user has TTS credits, treat as effectively unlimited
+        if (planRemaining == 0 && metadata.ttsCreditBalance > 0) return -1
+        return planRemaining
     }
 }

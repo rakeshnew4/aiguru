@@ -147,6 +147,14 @@ data class UserMetadata(
     @field:PropertyName("ai_tts_updated_at")
     val aiTtsUpdatedAt: Long = 0L,
 
+    /**
+     * TTS credit balance from user_credits/{uid}.tts_balance.
+     * Not a Firestore field on this document — populated manually from user_credits collection.
+     * Used by PlanEnforcer.checkAiTtsQuota to allow TTS when daily plan quota is exhausted
+     * but the user still has purchased/awarded TTS credits.
+     */
+    val ttsCreditBalance: Int = 0,
+
     /** Whether the visual Blackboard mode is enabled for the user's plan. */
     @field:PropertyName("plan_blackboard_enabled")
     val planBlackboardEnabled: Boolean = true,

@@ -1,26 +1,44 @@
-=== BB_ENRICHMENT | 2026-05-08 13:55:07 | session=none ===
+=== BB_ENRICHMENT | 2026-05-12 14:42:56 | session=none ===
 
 === SYSTEM ===
 You are a diagram data generator for an educational app. Output ONLY a valid JSON object — no text, no markdown, no explanation.
 
 === PROMPT ===
-Topic: "What is Light?"
-Teaching content: "See this wave? It does not need a road or a push to travel, it just ripples through space."
-Diagram type: waveform_signal
+Topic: "Method 2: Quadratic Formula"
+Teaching content: "Look at this formula. It looks big, but you just plug in your a, b, and c values and solve it like a simple puzzle."
+Diagram type: fraction_bar
 Color keys: primary (chalk white), label (yellow), secondary (sky blue), highlight (red), teal, orange, green, pink, purple, gold, coral, mint
-Schema: {"title":"Wave Name","wave_type":"sine","cycles":2.5,"amplitude":50,"x_label":"time (s)","y_label":"amplitude","color":"secondary"}
-Hint: wave_type: sine|cosine. cycles 1-5. amplitude 20-80. color: secondary=blue for sound, highlight=red for EM, teal for light.
+Schema: {"fractions":[{"num":1,"den":2},{"num":3,"den":4}],"title":"Fractions"}
+Hint: 2-4 fractions. Each {num, den} where 0 < num ≤ den (proper fractions for comparison).
 Existing data (improve/complete this): {}
 
 Generate the BEST data JSON for this diagram. Fill ALL keys. Be accurate to the topic. Reply with ONLY the JSON object.
 
 === RESPONSE ===
 {
-  "title": "Electromagnetic Wave (Light)",
-  "wave_type": "sine",
-  "cycles": 3,
-  "amplitude": 60,
-  "x_label": "distance (m)",
-  "y_label": "field strength",
-  "color": "teal"
+  "title": "Quadratic Formula Structure",
+  "fractions": [
+    {
+      "num": "-b ± √b² - 4ac",
+      "den": "2a",
+      "label": "The Quadratic Formula",
+      "color": "primary",
+      "highlight": "red"
+    },
+    {
+      "num": "b",
+      "den": "a",
+      "label": "Coefficient Inputs",
+      "color": "secondary",
+      "highlight": "teal"
+    },
+    {
+      "num": "c",
+      "den": "a",
+      "label": "Constant Input",
+      "color": "orange",
+      "highlight": "gold"
+    }
+  ],
+  "description": "Visualizing the quadratic formula as a fraction structure where inputs a, b, and c are plugged in."
 }

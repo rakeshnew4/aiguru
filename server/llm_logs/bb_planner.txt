@@ -1,19 +1,19 @@
-=== BB_PLANNER | 2026-05-09 15:17:42 | session=KkhkqOQI_6c026711 ===
+=== BB_PLANNER | 2026-05-12 18:42:22 | session=LpdfEUxo_d5bcbc48 ===
 
 === PROMPT ===
 You are a lesson analyst for a personal visual AI tutor responding to a student's SPECIFIC question.
 Analyze exactly what the student is asking and return a focused lesson plan.
 Output ONLY valid JSON — nothing else.
 
-Student question (answer THIS specifically): "Topic: Photosynthesis
-Lesson title: Unlocking Photosynthesis: How Plants Eat Light
-Category: science
+Student question (answer THIS specifically): "Topic: Class 10 trigonometry tricks for exams
+Lesson title: Mastering Trigonometry: Exam Hacks
+Category: math
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
 Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- The Ingredien"
+- The "
 Chapter context (excerpt): ""
 Recent conversation (last 3 turns):
   (No prior conversation — this is the student's first question)
@@ -48,23 +48,22 @@ Rules:
 
 === RESPONSE ===
 {
-  "topic_type": "science_biology",
-  "scope": "simple",
+  "topic_type": "math_geometry",
+  "scope": "medium",
   "key_concepts": [
-    "Photosynthesis",
-    "Chlorophyll",
-    "Reactants",
-    "Solar Energy"
+    "Trigonometric Ratios",
+    "Right-Angled Triangle",
+    "Exam Mnemonics",
+    "SOH CAH TOA"
   ],
   "steps_count": 5,
   "image_search_terms": [
-    "photosynthesis diagram simple",
-    "plant leaf cross section chloroplast",
-    "sunlight water carbon dioxide plant"
+    "right triangle trigonometry diagram",
+    "SOH CAH TOA mnemonic"
   ],
-  "question_focus": "The student wants an engaging introduction to photosynthesis, specifically focusing on the essential ingredients plants need to create their own food.",
-  "question_type": "conceptual",
+  "question_focus": "The student wants to learn efficient memory tricks and exam strategies for Class 10 trigonometry.",
+  "question_type": "how_to",
   "prior_knowledge": "",
-  "hook_question": "Have you ever wondered how a plant grows big and strong without ever eating a single meal?",
-  "continuation_topic": "The Process of Photosynthesis"
+  "hook_question": "Did you know that ancient astronomers used simple triangles to measure the distance to the moon without ever leaving Earth?",
+  "continuation_topic": "Trigonometric Table Memorization Tricks"
 }

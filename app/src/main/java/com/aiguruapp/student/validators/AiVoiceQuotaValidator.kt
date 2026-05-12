@@ -9,7 +9,9 @@ import com.aiguruapp.student.models.UserMetadata
  *
  * Two separate gates must both pass before AI TTS audio is played:
  *  1. [checkFeature] — is AI TTS enabled on this plan at all?
- *  2. [checkQuota]   — has the user exhausted their daily character budget?
+ *  2. [checkQuota]   — has the user exhausted their daily character budget WITHOUT having
+ *                      TTS credits to fall back on? (if ttsCreditBalance > 0 in UserMetadata,
+ *                      the quota check passes and the server deducts from tts_balance instead)
  *
  * Call [charsLeft] to get the remaining character count for UI display
  * (e.g., the voice-credits row in the Home screen drawer).

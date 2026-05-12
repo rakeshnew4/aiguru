@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-05-09 15:17:52 | session=KkhkqOQI_6c026711 ===
+=== BB_MAIN | 2026-05-12 18:42:36 | session=LpdfEUxo_d5bcbc48 ===
 
 === SYSTEM ===
 You are GURU — a warm, funny, wildly effective AI teacher inside a visual blackboard app.
@@ -97,41 +97,43 @@ RULES:
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: Photosynthesis
-Lesson title: Unlocking Photosynthesis: How Plants Eat Light
-Category: science
+Student's EXACT question: Topic: Class 10 trigonometry tricks for exams
+Lesson title: Mastering Trigonometry: Exam Hacks
+Category: math
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
 Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- The Ingredients: Water, CO2, and Sunlight
-- The Chloroplast Factory: Where Magic Happens
-- Light-Dependent Reactions: Capturing Energy
-- The Calvin Cycle: Building Glucose
-- Why It Matters: Oxygen and the Food Web
+- The Hand Trick for Sine and Cosine Values
+- Memorizing Identities with Hexagon Diagrams
+- Identifying Complementary Angle Shortcuts
+- Solving Height and Distance Problems Visually
+- Common Exam Pitfalls and How to Avoid Them
 
 This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants an engaging introduction to photosynthesis, specifically focusing on the essential ingredients plants need to create their own food.
-Question type: conceptual
+What the student specifically wants: The student wants to learn efficient memory tricks and exam strategies for Class 10 trigonometry.
+Question type: how_to
 Student level: Class 5
 GRADE SPEECH STYLE: Technical words WITH plain-English gloss. Relatable humor (games, snacks). ≤35 words/frame.
-Topic type: science_biology | Scope: simple
-Key concepts to cover (ALL of these): Photosynthesis, Chlorophyll, Reactants, Solar Energy
+Topic type: math_geometry | Scope: medium
+Key concepts to cover (ALL of these): Trigonometric Ratios, Right-Angled Triangle, Exam Mnemonics, SOH CAH TOA
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-DIAGRAM RECOMMENDATION: This topic likely needs a "leaf_anatomy" diagram (confidence 98%). Use diagram_type="leaf_anatomy" for your diagram frame(s).
+DIAGRAM RECOMMENDATION: This topic likely needs a "angle" diagram (confidence 98%). Use diagram_type="angle" for your diagram frame(s).
 
-SUBJECT GUIDANCE (Science — Biology):
-• For life cycles/processes (mitosis, photosynthesis, cell division): use diagram_type=custom so the LLM draws the actual process, NOT diagram_type=cycle.
-• Use PATH 2 (diagram_type=custom) for anatomy cross-sections (heart, leaf, kidney).
-• Concept frames: function → structure → real-body example.
-• End with a summary frame.
+SUBJECT GUIDANCE (Math — Geometry):
+• Use diagram_type: triangle, right_angle, polygon, polygon_formation, circle_geometry, angle, or coordinate_plane.
+• right_angle: two perpendicular lines with square marker — use for 90° angle topics.
+• polygon_formation: shows triangle→square→pentagon→hexagon progression with interior angle formula.
+• Show labelled measurements in the diagram data (a_val, b_val, show_angles, etc.).
+• Concept frames: state property → prove/derive → example with numbers.
+• End with a summary frame of key properties.
 
 ---END LESSON BRIEF---
 
@@ -141,197 +143,199 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
 {
   "steps": [
     {
-      "title": "The Ingredients",
+      "title": "The Hand Trick",
       "lang": "en-US",
-      "image_description": "plant photosynthesis ingredients diagram",
-      "image_show_confidencescore": 0.85,
+      "image_description": "human hand with angles labeled on fingers for trigonometry",
+      "image_show_confidencescore": 0.9,
       "frames": [
         {
           "frame_type": "hook",
-          "text": "Eating **Sunlight**?",
-          "speech": "Imagine if you could eat sunlight for lunch instead of a sandwich. Plants do exactly that using a process called photosynthesis, which is just a fancy word for making food out of light.",
+          "text": "The **Hand Trick**",
+          "speech": "Need to solve trig values without a calculator? Use your own hand.",
           "tts_engine": "android",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        },
+        {
+          "frame_type": "concept",
+          "text": "Fingers = **0°, 30°, 45°, 60°, 90°**",
+          "speech": "Hold your palm towards you. Assign your fingers as zero, thirty, forty-five, sixty, and ninety degrees from thumb to pinky.",
+          "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 4000
         },
         {
-          "frame_type": "concept",
-          "text": "The **Reactants**",
-          "speech": "To make this meal, plants need three simple ingredients, or reactants. They take in water from the roots, carbon dioxide from the air, and energy from the sun.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3500
-        },
-        {
           "frame_type": "diagram",
-          "text": "Sun + Water + CO2",
-          "speech": "Look at how these ingredients enter the plant. Water travels up from the soil, while carbon dioxide enters through tiny holes in the leaves.",
+          "text": "Visualizing **Hand Angles**",
+          "speech": "Look at the diagram. Counting fingers below the bent finger gives you sine, and above gives you cosine.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3000,
-          "diagram_type": "custom",
+          "duration_ms": 3500,
+          "diagram_type": "angle",
           "diagram_data": {
-            "title": "Plant Input",
-            "parts": ["Sunlight", "Water", "CO2"]
-          },
-          "visual_description": "A simple diagram showing sunlight, water, and CO2 entering a plant leaf."
+            "labels": ["0", "30", "45", "60", "90"],
+            "show_angles": true
+          }
         }
       ]
     },
     {
-      "title": "The Chloroplast Factory",
+      "title": "Hexagon Identities",
       "lang": "en-US",
-      "image_description": "leaf anatomy chloroplast diagram",
+      "image_description": "trigonometric hexagon identity diagram",
       "image_show_confidencescore": 0.95,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "Inside the **Chloroplast**",
-          "speech": "Inside every leaf, there are millions of tiny kitchens called chloroplasts. These are the factories where the actual cooking happens.",
+          "text": "The **Trig Hexagon**",
+          "speech": "Draw a hexagon with sine, cosine, tangent, cotangent, secant, and cosecant at the corners. It is a cheat sheet for all identities.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3000
+          "duration_ms": 4000
         },
         {
           "frame_type": "diagram",
-          "text": "Leaf **Anatomy**",
-          "speech": "Notice the layers here. The chloroplasts are packed with chlorophyll, which gives plants their green color and acts like a solar panel.",
+          "text": "Hexagon **Relationships**",
+          "speech": "Follow the lines in the diagram. Any function is equal to the product of its two neighbors, like a map of connections.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3000,
-          "diagram_type": "leaf_anatomy",
-          "visual_description": "Cross-section of a leaf showing chloroplasts inside the cells."
-        },
-        {
-          "frame_type": "joke",
-          "text": "Green **Thumb**",
-          "speech": "Why are plants so good at math? Because they know exactly how to use their roots to square up the sun. Okay, that was a bit cheesy, but chlorophyll is definitely the star of the show.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3500
-        }
-      ]
-    },
-    {
-      "title": "Light-Dependent Reactions",
-      "lang": "en-US",
-      "image_description": "chlorophyll solar energy absorption diagram",
-      "image_show_confidencescore": 0.8,
-      "frames": [
-        {
-          "frame_type": "concept",
-          "text": "Capturing **Solar Energy**",
-          "speech": "In the first stage, the chlorophyll catches sunlight and uses that power to split water molecules apart. It is basically charging up tiny batteries for the plant.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3500
-        },
-        {
-          "frame_type": "question",
-          "text": "What happens if we block the **Light**?",
-          "speech": "What do you think happens to the plant factory if we suddenly block all the light?",
-          "tts_engine": "android",
-          "voice_role": "teacher",
-          "duration_ms": 2000
-        },
-        {
-          "frame_type": "reveal",
-          "text": "The **Shutdown**",
-          "speech": "Actually, it is like a power cut. The whole factory shuts down because there is no electricity to keep the machines running.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000
-        }
-      ]
-    },
-    {
-      "title": "The Calvin Cycle",
-      "lang": "en-US",
-      "image_description": "calvin cycle sugar production diagram",
-      "image_show_confidencescore": 0.75,
-      "frames": [
-        {
-          "frame_type": "concept",
-          "text": "Building **Glucose**",
-          "speech": "Now for the magic. The plant takes the energy from the previous step and uses it to turn carbon dioxide into glucose, which is simple plant sugar.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3500
+          "duration_ms": 4000,
+          "diagram_type": "polygon",
+          "diagram_data": {
+            "sides": 6,
+            "labels": ["sin", "cos", "tan", "cot", "sec", "csc"]
+          }
         },
         {
           "frame_type": "memory",
-          "text": "The **Sugar Factory**",
-          "speech": "Think of the Calvin Cycle as the final assembly line in a candy factory, where the ingredients are finally turned into delicious, sweet glucose.",
+          "text": "**Tan = Sin / Cos**",
+          "speech": "Remember, tangent is the hero, always leading sine divided by cosine.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
-        },
-        {
-          "frame_type": "diagram",
-          "text": "Cycle **Process**",
-          "speech": "This diagram shows how the cycle keeps spinning to pump out sugar, using the energy we collected earlier.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500,
-          "diagram_type": "custom",
-          "diagram_data": {
-            "title": "Calvin Cycle",
-            "flow": ["Energy In", "CO2 In", "Glucose Out"]
-          },
-          "visual_description": "A circular flow chart showing CO2 and Energy entering, and Glucose exiting."
         }
       ]
     },
     {
-      "title": "Why It Matters",
+      "title": "Complementary Angles",
       "lang": "en-US",
-      "image_description": "oxygen cycle and food web diagram",
-      "image_show_confidencescore": 0.8,
+      "image_description": "right triangle showing complementary angles",
+      "image_show_confidencescore": 0.9,
       "frames": [
         {
-          "frame_type": "apply",
-          "text": "Our **Oxygen** source",
-          "speech": "This is why plants are amazing. They do not just make food for themselves, they release oxygen as a byproduct, which we need to breathe.",
+          "frame_type": "concept",
+          "text": "**Complementary Angles**",
+          "speech": "Complementary angles are two angles that add up to ninety degrees. Sine of one angle always equals cosine of the other.",
           "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 4000
+        },
+        {
+          "frame_type": "question",
+          "text": "Quick Check!",
+          "speech": "If sine of thirty degrees is one half, what is cosine of sixty degrees?",
+          "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 3000
         },
         {
-          "frame_type": "curiosity",
-          "text": "The **Food Web**",
-          "speech": "Without this process, the entire food web would collapse. Have you ever wondered what would happen if the sun disappeared for a whole month?",
+          "frame_type": "reveal",
+          "text": "Answer: **1/2**",
+          "speech": "Actually, it is also one half. They are like mirror images of each other.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
+        }
+      ]
+    },
+    {
+      "title": "Height and Distance",
+      "lang": "en-US",
+      "image_description": "right triangle for height and distance problems",
+      "image_show_confidencescore": 0.9,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "Sketch the **Triangle**",
+          "speech": "When solving height problems, sketch a right triangle. Identify the height, the distance, and the angle of elevation.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 4000
+        },
+        {
+          "frame_type": "diagram",
+          "text": "Triangle **Setup**",
+          "speech": "See how the vertical side is height and the bottom is distance. Use tangent to link them.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500,
+          "diagram_type": "right_angle",
+          "diagram_data": {
+            "show_labels": true,
+            "height_label": "H",
+            "base_label": "D"
+          }
+        },
+        {
+          "frame_type": "apply",
+          "text": "Ninja **Math**",
+          "speech": "Think of it like a shadow game. Your height is the vertical side, and your shadow is the base.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500
+        }
+      ]
+    },
+    {
+      "title": "Exam Hacks & Summary",
+      "lang": "en-US",
+      "image_description": "mathematical summary concept map",
+      "image_show_confidencescore": 0.6,
+      "frames": [
+        {
+          "frame_type": "joke",
+          "text": "Math **Humor**",
+          "speech": "Why did the triangle go to therapy? Because it had too many issues with its angles.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
+          "frame_type": "apply",
+          "text": "**SOH CAH TOA**",
+          "speech": "Avoid pitfalls by checking your units and using the SOH CAH TOA mnemonic. Sine is opposite over hypotenuse, cosine is adjacent over hypotenuse, and tangent is opposite over adjacent.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 5000
         },
         {
           "frame_type": "summary",
-          "text": "Photosynthesis **Recap**",
-          "speech": "So, photosynthesis is how plants turn sunlight, water, and carbon dioxide into sugar and oxygen. It is the foundation of life on Earth, feeding the planet and letting us breathe.",
+          "text": "**Lesson Summary**",
+          "speech": "We mastered trig using hand tricks, hexagon maps, and complementary shortcuts. Remember to sketch your triangles first to conquer any exam problem.",
           "tts_engine": "google",
           "voice_role": "assistant",
-          "duration_ms": 4000
+          "duration_ms": 5000
         }
       ],
       "followup_questions": [
         {
-          "question": "Why are leaves green?",
-          "speech": "Why do you think leaves are green? Think about what we said about chlorophyll."
+          "question": "Does the hand trick work for all angles?",
+          "speech": "Does the hand trick work for all angles, or just the main ones?"
         },
         {
-          "question": "What if plants stopped?",
-          "speech": "What would happen to humans if all plants suddenly stopped doing photosynthesis?"
+          "question": "Why is tangent called the hero?",
+          "speech": "Why is tangent called the hero in our hexagon map?"
         },
         {
-          "question": "Can plants live in dark?",
-          "speech": "Could a plant survive in a room with absolutely no light? Why or why not?"
+          "question": "Can we use trig for circles?",
+          "speech": "Can we use these same trig tricks for circles?"
         }
       ],
-      "session_theme": "Photosynthesis: The Solar Powered Life",
-      "video_search_query": "how photosynthesis works for kids",
+      "session_theme": "Mastering Trigonometry Tricks",
+      "video_search_query": "trigonometry hand trick and hexagon identities class 10",
       "preferred_channels": [
-        "Khan Academy India",
-        "Physics Wallah"
+        "Physics Wallah",
+        "Khan Academy India"
       ]
     }
   ]
