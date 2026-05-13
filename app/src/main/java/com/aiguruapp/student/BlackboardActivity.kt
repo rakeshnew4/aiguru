@@ -947,6 +947,17 @@ class BlackboardActivity : AppCompatActivity() {
                                 }
                             }
                         },
+                        onBbStep = { newStep, stepIdx ->
+                            // Steps 2..N arrive progressively — append and update dots so user
+                            // can see the lesson grow while the LLM is still generating.
+                            lifecycleScope.launch(Dispatchers.Main) {
+                                if (stepIdx > 0 && stepIdx == steps.size && contentGroup.visibility == View.VISIBLE) {
+                                    steps = steps + newStep
+                                    buildDots()
+                                    preloadUpcoming(currentStepIdx, currentFrameIdx, count = 2)
+                                }
+                            }
+                        },
                         onSuccess = { generated ->
                             if (recordSession && !userId.isNullOrBlank()) {
                                 // Server already incremented the quota counter via check_and_record_quota().

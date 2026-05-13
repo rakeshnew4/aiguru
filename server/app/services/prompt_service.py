@@ -216,6 +216,7 @@ BB_PLANNER_PROMPT = (
     "Analyze exactly what the student is asking and return a focused lesson plan.\n"
     "Output ONLY valid JSON — nothing else.\n\n"
     'Student question (answer THIS specifically): "{question}"\n'
+    '{image_context}'
     'Chapter context (excerpt): "{context_snippet}"\n'
     'Recent conversation (last 3 turns):\n{recent_history}\n'
     "Student class: {level}\n\n"
@@ -605,6 +606,7 @@ def build_bb_planner_prompt(
     context: str,
     history: list,
     level: int,
+    has_image: bool = False,
 ) -> str:
     """Returns the formatted BB planner prompt for the 'faster' model tier."""
     ctx_snippet = (context or "")[:500].strip()
@@ -617,8 +619,10 @@ def build_bb_planner_prompt(
     recent = "\n".join(_fmt_h(h) for h in (history or [])[-6:])
     if not recent:
         recent = "  (No prior conversation — this is the student's first question)"
+    image_context = "Student has attached an image (e.g. a problem screenshot or diagram). Treat this as the PRIMARY source — the question text may be brief or absent.\n" if has_image else ""
     return BB_PLANNER_PROMPT.format(
         question=question[:300],
+        image_context=image_context,
         context_snippet=ctx_snippet,
         recent_history=recent,
         level=level or 5,

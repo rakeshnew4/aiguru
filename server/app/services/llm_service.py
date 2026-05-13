@@ -1,6 +1,6 @@
 import base64
 import json
-from typing import List, Literal, Optional, Dict, Any
+from typing import AsyncGenerator, List, Literal, Optional, Dict, Any
 
 import httpx
 from google import genai
@@ -359,3 +359,155 @@ def generate_response(
                 logger.warning("generate_response: token record failed uid=%s: %s", uid, exc)
 
     return result
+
+
+# ── Streaming variant (used by BB main for early step emission) ───────────────
+async def stream_generate_response(
+    prompt: str,
+    images: Optional[List[str]] = None,
+    tier: Literal["power", "cheaper", "faster"] = "faster",
+    system_prompt: Optional[str] = None,
+    uid: Optional[str] = None,
+    call_name: str = "llm_call",
+    session_id: Optional[str] = None,
+    charge_credits: bool = True,
+) -> AsyncGenerator:
+    """
+    Async generator that streams LLM response chunk by chunk.
+    Yields str chunks as text arrives, then a final sentinel dict:
+      {"_stream_done": True, "tokens": {...}, "model": "..."}
+    Falls back to non-streaming (single yield of full text) when the proxy is
+    unavailable or if streaming fails before any text has been emitted.
+    """
+    model_config = settings.get_model_config(tier)
+
+    if not settings.USE_LITELLM_PROXY:
+        # Non-streaming fallback
+        result = generate_response(
+            prompt, images, tier=tier, system_prompt=system_prompt,
+            uid=uid, call_name=call_name, session_id=session_id,
+            charge_credits=charge_credits,
+        )
+        yield result.get("text", "")
+        yield {"_stream_done": True, "tokens": result.get("tokens", {}), "model": result.get("model", "")}
+        return
+
+    # Build messages (same layout as _call_litellm_proxy)
+    messages = []
+    if system_prompt:
+        messages.append({
+            "role": "system",
+            "content": system_prompt,
+            "cache_control": {"type": "ephemeral"},
+        })
+    if images:
+        content: Any = (
+            [{"type": "image_url", "image_url": {"url": img}} for img in images]
+            + [{"type": "text", "text": prompt}]
+        )
+    else:
+        content = prompt
+    messages.append({"role": "user", "content": content})
+
+    auth_key = settings.LITELLM_MASTER_KEY
+    if uid and uid != "guest_user":
+        user_key = get_or_create_litellm_key(uid)
+        if user_key:
+            auth_key = user_key
+
+    model = model_config.model_id
+    full_text = ""
+    usage: Dict[str, Any] = {}
+
+    try:
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            async with client.stream(
+                "POST",
+                f"{settings.LITELLM_PROXY_URL}/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {auth_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "messages": messages,
+                    "temperature": model_config.temperature,
+                    "max_tokens": model_config.max_tokens,
+                    "stream": True,
+                    "stream_options": {"include_usage": True},
+                    "cache": {"no-cache": False},
+                    "user": uid or "guest",
+                    "metadata": {
+                        "call_name": call_name,
+                        "uid": uid or "guest",
+                        "session_id": session_id or "",
+                    },
+                },
+            ) as resp:
+                if resp.status_code != 200:
+                    body = await resp.aread()
+                    raise RuntimeError(
+                        f"LiteLLM proxy stream error {resp.status_code}: {body[:300]}"
+                    )
+                async for line in resp.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    payload = line[6:].strip()
+                    if payload == "[DONE]":
+                        break
+                    try:
+                        chunk_data = json.loads(payload)
+                        delta = chunk_data["choices"][0]["delta"].get("content", "")
+                        if delta:
+                            full_text += delta
+                            yield delta
+                        # Usage arrives in final chunk when stream_options.include_usage=True
+                        chunk_usage = chunk_data.get("usage")
+                        if chunk_usage:
+                            usage = chunk_usage
+                    except Exception:
+                        continue
+
+        _log_llm_call(call_name, prompt, system_prompt, full_text, session_id=session_id)
+        tokens = {
+            "inputTokens":  usage.get("prompt_tokens", 0),
+            "outputTokens": usage.get("completion_tokens", 0),
+            "totalTokens":  usage.get("total_tokens", 0),
+            "cachedTokens": usage.get("prompt_tokens_details", {}).get("cached_tokens", 0),
+        }
+        logger.info("LiteLLM stream done: model=%s uid=%s tokens=%d",
+                    model, uid, tokens["totalTokens"])
+        if uid and uid != "guest_user" and charge_credits and tokens["totalTokens"] > 0:
+            try:
+                from app.services.user_service import record_tokens as _record_tokens
+                import threading
+                threading.Thread(
+                    target=_record_tokens,
+                    args=(uid, tokens["inputTokens"], tokens["outputTokens"], tokens["totalTokens"]),
+                    daemon=True,
+                ).start()
+            except Exception as exc:
+                logger.warning("stream_generate_response: token record failed uid=%s: %s", uid, exc)
+        yield {"_stream_done": True, "tokens": tokens, "model": model}
+
+    except Exception as exc:
+        logger.error(
+            "LiteLLM streaming FAILED (tier=%s uid=%s call=%s): %s — falling back",
+            tier, uid, call_name, exc,
+        )
+        if not full_text:
+            # Nothing emitted yet — do a normal blocking call as full fallback
+            try:
+                result = _call_litellm_proxy(
+                    prompt, model_config, images,
+                    system_prompt=system_prompt, uid=uid,
+                    call_name=call_name, session_id=session_id,
+                )
+                yield result.get("text", "")
+                yield {"_stream_done": True, "tokens": result.get("tokens", {}), "model": result.get("model", "")}
+            except Exception as exc2:
+                logger.error("Non-streaming fallback also failed: %s", exc2)
+                yield {"_stream_done": True, "tokens": {}, "model": model, "error": str(exc2)}
+        else:
+            # Partial text already yielded — just signal done with what we have
+            yield {"_stream_done": True, "tokens": {}, "model": model}

@@ -112,6 +112,7 @@ class ServerProxyClient(
         onSuggestBlackboard: ((Boolean) -> Unit)? = null,
         onStatus: ((String, Int) -> Unit)? = null,
         onFirstStep: ((String) -> Unit)? = null,
+        onBbStep: ((String, Int) -> Unit)? = null,
         onToken: (String) -> Unit,
         onDone: (inputTokens: Int, outputTokens: Int, totalTokens: Int) -> Unit,
         onError: (String) -> Unit
@@ -134,7 +135,7 @@ class ServerProxyClient(
             "ServerProxyClient",
             "streamChat → imageData=${if (imageData != null) "present (${imageData.optString("transcript", "").take(40)}…)" else "none"}, imageBase64=${if (imageBase64.isNullOrBlank()) "none" else "present(${imageBase64.length})"}"
         )
-        executeStream(json, onPageTranscript, onSuggestBlackboard, onStatus, onFirstStep, onToken, onDone, onError)
+        executeStream(json, onPageTranscript, onSuggestBlackboard, onStatus, onFirstStep, onBbStep, onToken, onDone, onError)
     }
 
     override fun streamWithImage(
@@ -157,6 +158,7 @@ class ServerProxyClient(
         onSuggestBlackboard: ((Boolean) -> Unit)? = null,
         onStatus: ((String, Int) -> Unit)? = null,
         onFirstStep: ((String) -> Unit)? = null,
+        onBbStep: ((String, Int) -> Unit)? = null,
         onToken: (String) -> Unit,
         onDone: (inputTokens: Int, outputTokens: Int, totalTokens: Int) -> Unit,
         onError: (String) -> Unit
@@ -164,13 +166,13 @@ class ServerProxyClient(
         // Try with cached token; on 401 force-refresh and retry once.
         val retried = executeStreamInternal(
             json, forceRefresh = false,
-            onPageTranscript, onSuggestBlackboard, onStatus, onFirstStep, onToken, onDone, onError
+            onPageTranscript, onSuggestBlackboard, onStatus, onFirstStep, onBbStep, onToken, onDone, onError
         )
         if (retried == RETRY_NEEDED) {
             Log.w("ServerProxyClient", "401 received — refreshing Firebase token and retrying")
             executeStreamInternal(
                 json, forceRefresh = true,
-                onPageTranscript, onSuggestBlackboard, onStatus, onFirstStep, onToken, onDone, onError
+                onPageTranscript, onSuggestBlackboard, onStatus, onFirstStep, onBbStep, onToken, onDone, onError
             )
         }
     }
@@ -183,6 +185,7 @@ class ServerProxyClient(
         onSuggestBlackboard: ((Boolean) -> Unit)?,
         onStatus: ((String, Int) -> Unit)?,
         onFirstStep: ((String) -> Unit)?,
+        onBbStep: ((String, Int) -> Unit)?,
         onToken: (String) -> Unit,
         onDone: (inputTokens: Int, outputTokens: Int, totalTokens: Int) -> Unit,
         onError: (String) -> Unit
@@ -234,6 +237,9 @@ class ServerProxyClient(
                         if (pageTranscript.isNotBlank()) onPageTranscript?.invoke(pageTranscript)
                         val firstStepObj = obj.optJSONObject("first_step")
                         if (firstStepObj != null) onFirstStep?.invoke(firstStepObj.toString())
+                        val bbStepObj = obj.optJSONObject("bb_step")
+                        val bbStepIdx = obj.optInt("step_idx", -1)
+                        if (bbStepObj != null && bbStepIdx >= 0) onBbStep?.invoke(bbStepObj.toString(), bbStepIdx)
                         if (obj.optBoolean("done", false)) {
                             inputTokens  = obj.optInt("inputTokens",  0)
                             outputTokens = obj.optInt("outputTokens", 0)

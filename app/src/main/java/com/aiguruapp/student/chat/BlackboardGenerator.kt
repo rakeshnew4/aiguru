@@ -234,6 +234,7 @@ object BlackboardGenerator {
         bbFeatures: Map<String, Boolean> = emptyMap(),
         onStatus: ((String, Int) -> Unit)? = null,
         onFirstStep: ((List<BlackboardStep>) -> Unit)? = null,
+        onBbStep: ((List<BlackboardStep>, Int) -> Unit)? = null,
         onSuccess: (List<BlackboardStep>) -> Unit,
         onError: (String) -> Unit
     ) {
@@ -297,6 +298,13 @@ $svgNote$lastFrameNote$langInstruction"""
                     val arr = JSONArray().put(JSONObject(stepJson))
                     val steps = parseStepsArray(arr, preferredLanguageTag)
                     if (steps.isNotEmpty()) onFirstStep(steps)
+                } catch (_: Exception) { }
+            } else null,
+            onBbStep     = if (onBbStep != null) { stepJson, stepIdx ->
+                try {
+                    val arr = JSONArray().put(JSONObject(stepJson))
+                    val steps = parseStepsArray(arr, preferredLanguageTag)
+                    if (steps.isNotEmpty()) onBbStep(steps, stepIdx)
                 } catch (_: Exception) { }
             } else null,
             onDone       = { _, _, _ -> latch.countDown() },

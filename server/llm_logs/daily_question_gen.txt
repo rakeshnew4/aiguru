@@ -1,11 +1,11 @@
-=== DAILY_QUESTION_GEN | 2026-05-12 14:41:56 | session=none ===
+=== DAILY_QUESTION_GEN | 2026-05-13 06:56:45 | session=none ===
 
 === PROMPT ===
 Generate exactly 3 engaging daily learning questions for a student.
 
-Student's top subjects: Science, Math, History
-Recent topics studied: basic concepts
-Topics already used today (AVOID these): Geometry of Nature, Time Calculation, Technological Impact
+Student's top subjects: General, Biology, Physics
+Recent topics studied: How to solve rubic cube?, Photosynthesis, Why do some plants leave theri leaves in the night?, Atmospheric Optics, Entomology, Newton's Laws of Motion
+Topics already used today (AVOID these): Celestial Mechanics, Atmospheric Optics, Entomology, Sound Propagation, Thermoregulation, Oceanography, Cognitive Perception, Global Logistics, Surface Tension, Memory Consolidation
 
 Rules:
 - Each question must be thought-provoking and curiosity-driven (not "what is X")
@@ -27,24 +27,24 @@ hook: one-line real-world curiosity fact related to the question (under 12 words
 === RESPONSE ===
 [
   {
-    "question": "Why do some animals change color to blend into their surroundings?",
-    "subject": "Science",
-    "topic": "Biology",
+    "question": "How do plants 'know' when to close their leaves at night?",
+    "subject": "Biology",
+    "topic": "Nyctinasty",
     "difficulty": 1,
-    "hook": "Chameleons change color partly to regulate their body temperature."
+    "hook": "Some plants sleep just like humans do every single night."
   },
   {
-    "question": "How would the world change if humans used base-12 instead of base-10?",
-    "subject": "Math",
-    "topic": "Number Systems",
+    "question": "Could a Rubik's Cube be solved using only Newton's Laws?",
+    "subject": "Physics",
+    "topic": "Newton's Laws of Motion",
     "difficulty": 2,
-    "hook": "Base-12 is divisible by more numbers than base-10."
+    "hook": "Every twist of a cube involves complex force and friction."
   },
   {
-    "question": "What would happen if the Silk Road had never been established?",
-    "subject": "History",
-    "topic": "Ancient Trade",
+    "question": "What would happen to photosynthesis if the sun's light spectrum shifted?",
+    "subject": "Biology",
+    "topic": "Photosynthesis",
     "difficulty": 3,
-    "hook": "The Silk Road connected civilizations for over 1,500 years."
+    "hook": "Plants primarily use red and blue light to create energy."
   }
 ]

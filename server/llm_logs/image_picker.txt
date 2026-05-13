@@ -1,4 +1,4 @@
-=== IMAGE_PICKER | 2026-05-12 18:42:40 | session=none ===
+=== IMAGE_PICKER | 2026-05-13 07:00:07 | session=none ===
 
 === PROMPT ===
 You are selecting the best matching Wikimedia Commons image for each blackboard lesson step.
@@ -8,32 +8,51 @@ When a Visual layout is provided, prefer images that match the described visual 
 Output ONLY valid JSON mapping step index (string key) to the EXACT title string or null.
 
 Steps needing images:
-[0] Step "The Hand Trick" — topic: "human hand with angles labeled on fingers for trigonometry"
-[1] Step "Hexagon Identities" — topic: "trigonometric hexagon identity diagram"
-[2] Step "Complementary Angles" — topic: "right triangle showing complementary angles"
-[3] Step "Height and Distance" — topic: "right triangle for height and distance problems"
-[4] Step "Exam Hacks & Summary" — topic: "mathematical summary concept map"
+[0] Step "The Root Detector" — topic: "quadratic equation discriminant formula"
+[1] Step "Visualizing the Gap" — topic: "parabola graph not touching x-axis"
+[2] Step "The Impossible Root" — topic: "square root of negative number"
+[3] Step "Enter the Imaginary" — topic: "imaginary unit i"
+[4] Step "Wrapping Up" — topic: "complex number plane summary"
 
 Available Wikimedia titles:
-- JOSA-Vol 06-06.djvu
-- A candidate reference frame for the body of knowledge of mathematics.png
-- Math School.svg
-- Braid category triangle.svg
-- Euler diagram of triangle types.svg
-- Golden-triangles-pentagram.svg
-- Jiärdukulmásâš kuulmâčievâg smn.svg
-- The essentials of plane and spherical trigonometry (1887, Webster Wells).djvu
-- TrigTriangle.svg
-- مثلث قائم‌الزاویه.svg
-- Academ Base of trigonometry.svg
+- Quadratic Equation Solution Cases (Discriminant & Quadratic Formula).jpg
+- Quadratic equation a minus d minus.png
+- Quadratic equation a minus d zero.png
+- Quadratic equation a plus d zero.png
+- Quadratic equation coefficients.png
+- Quadratic equation coefficients with standard ranges.png
+- Quadratic function graph complex roots.svg
+- Quadratic function graph key values.svg
+- 1935 Connecticut.jpg
+- 3-root of imaginary unit,.svg
+- Circled greek capital letter ι.svg
+- Complex Plane number -i by rotation 1 by -90 degrees.svg
+- Complex Plane number i and 1.svg
+- Grond van Waterlooplein in Amsterdam wordt bouwrijp gemaakt voor bouw Stadhuisth, Bestanddeelnr 931-9637.jpg
+- Царква Сьвятой Ганны (Ялова). Бакавы фасад..jpg
+- Starr-061105-1366-Citrus jambhiri-fruit-Makawao-Maui (24841894686).jpg
+- Complex Plane number -2 by rotation of 2i by 90 degrees.svg
+- Complex Plane number -2i by rotation of -2 by 90 degrees.svg
+- Complex Plane number 2i by rotation 2 by 90 degrees.svg
+- Complex Plane number i by rotation 1 by -90 degrees.svg
+- Complex Plane number i by rotation 1 by 90 degrees.svg
+- Number plane - Complex number.svg
+- Complex plane basic example.svg
+- Icuadrada.png
+- Imaginary War-2.jpg
+- Mathjoke.jpg
+- Numero imaginario-real IBO.jpg
+- Pi-day-funny-math-be-rational-get-real.jpg
+- Plan complexe1.ggb.png
+- Plus+plusminus+minusplus-sign-in-arial+timesnewroman+cambriamath+linuxlibertine+garamond+eversonmono+andron.svg
 
 Output example: {"0": "Photosynthesis diagram.svg", "3": null, "5": "Newton laws.png"}
 
 === RESPONSE ===
 {
-  "0": null,
-  "1": null,
-  "2": "مثلث قائم‌الزاویه.svg",
-  "3": "TrigTriangle.svg",
-  "4": "A candidate reference frame for the body of knowledge of mathematics.png"
+  "0": "Quadratic Equation Solution Cases (Discriminant & Quadratic Formula).jpg",
+  "1": "Quadratic function graph complex roots.svg",
+  "2": null,
+  "3": "Complex Plane number i and 1.svg",
+  "4": "Number plane - Complex number.svg"
 }

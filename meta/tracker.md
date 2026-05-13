@@ -1754,3 +1754,106 @@ Books with ALL 404 (English/SS for Class 6/9) kept as-is — likely IP-blocked f
   - Updated doc comment to describe credit fallback behavior
 
 **Key insight:** The Android-side quota check is a fast pre-flight to avoid unnecessary server calls. When credits are available, we let it through — the server is still the authoritative deduction point (deducts from tts_balance). The Android check just needed to know about credits.
+
+---
+
+## Session 22 — Fix BB planner image bug
+
+**Date:** 2026-05-12
+**Asked:** Review Claude agent analysis about BB pipeline. Agent identified that `_bb_plan()` never received images — planner always saw text only, giving bad plans for math screenshots.
+
+**Bug confirmed:** `chat.py:217` — `generate_response(planner_prompt, [], ...)` hardcoded empty images list. `normalized_images` was set at line 1037 but never passed to `_bb_plan()`.
+
+**Why keeping 2 calls (not merging):** Planner output feeds parallel `_prefetch_wikimedia()` + `_youtube_task` started while main LLM runs. Merging to 1 call would lose that parallelism and add latency.
+
+**Files modified:**
+
+- `server/app/services/prompt_service.py`:
+  - `BB_PLANNER_PROMPT`: added `{image_context}` placeholder between question and context_snippet
+  - `build_bb_planner_prompt()`: added `has_image: bool = False` param; sets `image_context` string "Student has attached an image..." when True; passes to `.format()`
+
+- `server/app/api/chat.py`:
+  - `_bb_plan()` signature: added `images: list = None` param
+  - `_bb_plan()` body: `build_bb_planner_prompt(..., has_image=bool(images))`; `generate_response(planner_prompt, _planner_images, ...)` — no longer hardcoded `[]`
+  - call site (~line 1052): added `images=normalized_images` to `_bb_plan()` call
+
+**Agent analysis verdict:** Correct on the bug. Correct that Strands/LangGraph is overkill. Disagree on merge — 2-call split is right for the parallelism reasons above.
+
+---
+
+## Session 23 — BB pipeline: parallel SVG + parallel image picker
+
+**Date:** 2026-05-13
+**Asked:** Implement SVG parallelization + image picker parallelization (changes 2 and 3 from the plan).
+
+**What changed in `server/app/api/image_search_titles.py` (get_titles):**
+
+**Phase ordering restructured:**
+- Moved `all_candidates` assembly (previously Phase 4) to immediately after Phase 2
+- `original_descs` + `url_to_width` setup also moved earlier
+- Image picker (`_pick_titles_sync`) started as `loop.run_in_executor` future (`_picker_fut`) BEFORE Phase 3 starts → runs concurrently with all Phase 3 work
+
+**Phase 3 — LLM SVG calls now parallel:**
+- All 3 `build_llm_svg()` call sites changed from direct blocking calls to `loop.run_in_executor` futures collected into `_llm_svg_tasks: list[(frame, future)]`
+- After the Phase 3 loop: `asyncio.gather(*_svg_futs)` runs all LLM SVG calls concurrently; results applied to frames
+- Sync builders (atom, JS engine, SMIL) still run inline (they are fast, no change)
+
+**Phase 4 — image picker just awaits:**
+- Old code: assembled all_candidates + ran `await loop.run_in_executor(_pick_titles_sync, ...)`
+- New code: `picks = await _picker_fut` (already running since before Phase 3)
+- In practice _picker_fut will be done before the await since Phase 3 takes ~2-4s and picker takes ~500ms
+
+**Timing improvement:**
+- Before: 3 LLM SVGs serial = 3-9s + picker 500ms sequential = ~4-10s total post-LLM
+- After:  3 LLM SVGs parallel = max(individual SVG time) ~1-3s + picker 0ms (already done) = ~1-3s total
+- Expected savings: 3-6s off the post-processing phase
+
+---
+
+## Session 24 — BB streaming: emit steps as LLM generates them (server + Android)
+
+**Date:** 2026-05-13
+**Asked:** Stream bb_main LLM output and have Android accept progressive step events.
+
+### Server: `server/app/services/llm_service.py`
+- Added `AsyncGenerator` to imports
+- New `stream_generate_response(prompt, images, tier, system_prompt, uid, call_name, session_id, charge_credits)` async generator
+  - Hits LiteLLM proxy with `stream=True` + `stream_options: {include_usage: true}`
+  - Yields str text chunks as they arrive
+  - Yields final sentinel dict `{"_stream_done": True, "tokens": {...}, "model": "..."}` at end
+  - Falls back to non-streaming `_call_litellm_proxy()` if streaming fails before any text emitted
+  - Handles token recording in background thread after stream completes
+
+### Server: `server/app/api/chat.py`
+- Added `stream_generate_response` to imports from llm_service
+- New `_BbStepScanner` class (after `_try_extract_first_step`): incremental brace-counting JSON scanner
+  - `__init__`: `_pos, _in_arr, _step_start, _depth, _in_str, count`
+  - `feed(text)` → returns list of newly completed step dicts; handles escaped chars + nested braces correctly
+- BB main LLM call split: `if req.mode == "blackboard":` uses `stream_generate_response` async for loop
+  - Emits `{"first_step": step}` SSE for step index 0 as soon as step 1 closes in stream
+  - Emits `{"bb_step": step, "step_idx": N}` SSE for steps N=1..K as they close
+  - Tracks `_bb_emitted` counter
+  - After loop: assembles `result = {"text": _bb_text, "tokens": ..., "provider": "litellm", ...}`
+  - Non-BB (`chat_main`) keeps old blocking `run_in_executor` path unchanged
+- `first_step` emission block changed to fallback: only emits if `_bb_emitted == 0` (streaming error/fallback case)
+
+### Android: `app/.../chat/ServerProxyClient.kt`
+- `streamChat(...)`: added `onBbStep: ((String, Int) -> Unit)? = null` param
+- `executeStream(...)`: added `onBbStep` param, passes to `executeStreamInternal`
+- `executeStreamInternal(...)`: added `onBbStep` param
+- In SSE loop: parses `bb_step` JSON object + `step_idx` int → calls `onBbStep?.invoke(bbStepObj.toString(), bbStepIdx)`
+
+### Android: `app/.../chat/BlackboardGenerator.kt`
+- `generateChunk(...)`: added `onBbStep: ((List<BlackboardStep>, Int) -> Unit)? = null` param
+- Wired `onBbStep` to `server.streamChat`'s `onBbStep`: wraps stepJson in JSONArray, calls `parseStepsArray`, passes result + idx to callback
+
+### Android: `app/.../BlackboardActivity.kt` (first `generateChunk` call site ~line 918)
+- Added `onBbStep = { newStep, stepIdx ->` callback after `onFirstStep`
+- Guard: `stepIdx > 0 && stepIdx == steps.size && contentGroup.visibility == View.VISIBLE`
+- Action: appends `newStep` to `steps`, calls `buildDots()`, `preloadUpcoming(currentStepIdx, currentFrameIdx, count=2)`
+- Second `generateChunk` call site (~line 1168, continuation chunks) left unchanged — no onBbStep needed
+
+**Latency impact:**
+- Step 1 on screen: ~2-4s (was 9-16s — stream closes step 1 JSON ~2s in)
+- Step 2 on screen: ~4-6s (user can navigate to it while lesson is still generating)
+- No quality change — same LLM, same prompts, same images; streaming just emits earlier

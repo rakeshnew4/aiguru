@@ -18,7 +18,7 @@ from app.services.prompt_service import (
     build_normal_mode_user_content,
     build_blackboard_mode_user_content,
 )
-from app.services.llm_service import generate_response
+from app.services.llm_service import generate_response, stream_generate_response
 from app.services.strands_agent import run_agent
 from app.services import user_service
 from app.core.config import settings
@@ -193,7 +193,7 @@ def _classify_intent(question: str, has_image: bool, last_reply: str, uid: Optio
         return {"intent": "explain", "complexity": "medium"}
 
 
-async def _bb_plan(question: str, context: str, history: list, level: int, uid: Optional[str] = None, session_id: Optional[str] = None, charge_credits: bool = True) -> dict:
+async def _bb_plan(question: str, context: str, history: list, level: int, images: list = None, uid: Optional[str] = None, session_id: Optional[str] = None, charge_credits: bool = True) -> dict:
     """
     Fast BB lesson planner (~150ms, 'faster' model).
     Returns plan dict with topic_type, scope, steps_count, key_concepts,
@@ -211,10 +211,11 @@ async def _bb_plan(question: str, context: str, history: list, level: int, uid: 
         "prior_knowledge": "",
     }
     try:
-        planner_prompt = build_bb_planner_prompt(question, context, history, level)
+        planner_prompt = build_bb_planner_prompt(question, context, history, level, has_image=bool(images))
+        _planner_images = list(images) if images else []
         loop = asyncio.get_event_loop()
         raw = await loop.run_in_executor(
-            None, lambda: generate_response(planner_prompt, [], tier="faster", uid=uid, call_name="bb_planner", session_id=session_id, charge_credits=charge_credits)
+            None, lambda: generate_response(planner_prompt, _planner_images, tier="faster", uid=uid, call_name="bb_planner", session_id=session_id, charge_credits=charge_credits)
         )
         text = (raw.get("text") or "").strip()
         plan = extract_json_safe(text)
@@ -905,7 +906,7 @@ def _status_frame(message: str, progress: int) -> str:
 def _try_extract_first_step(text: str) -> Optional[dict]:
     """
     Try to extract the first step object from a raw BB LLM response.
-    Used to emit step 1 immediately to the client (before slow image-matching).
+    Used as a fallback when streaming did not capture step 1.
     Returns the step dict, or None if parsing fails.
     """
     try:
@@ -926,6 +927,79 @@ def _try_extract_first_step(text: str) -> Optional[dict]:
         return steps[0]
     except Exception:
         return None
+
+
+class _BbStepScanner:
+    """
+    Incrementally scan BB LLM JSON output for complete step objects.
+    Call feed(accumulated_text) after each chunk; receive newly-finished steps.
+    """
+    __slots__ = ("_pos", "_in_arr", "_step_start", "_depth", "_in_str", "count")
+
+    def __init__(self) -> None:
+        self._pos = 0           # scan cursor in accumulated text
+        self._in_arr = False    # True once we have seen '"steps":['
+        self._step_start = -1   # index of '{' opening the current step
+        self._depth = 0         # brace depth inside the current step
+        self._in_str = False    # are we inside a JSON string?
+        self.count = 0          # total steps completed so far
+
+    def feed(self, text: str) -> list:
+        """Return list of newly-completed step dicts (may be empty)."""
+        done: list = []
+        i = self._pos
+
+        if not self._in_arr:
+            marker = '"steps"'
+            idx = text.find(marker, i)
+            if idx < 0:
+                self._pos = max(0, len(text) - len(marker))
+                return done
+            bracket = text.find('[', idx + len(marker))
+            if bracket < 0:
+                self._pos = idx
+                return done
+            self._in_arr = True
+            i = bracket + 1
+
+        while i < len(text):
+            c = text[i]
+            if self._step_start == -1:
+                if c == '{':
+                    self._step_start = i
+                    self._depth = 1
+                    self._in_str = False
+                elif c == ']':
+                    break
+                i += 1
+                continue
+            # Inside a step object
+            if self._in_str:
+                if c == '\\':
+                    i += 2
+                    continue
+                if c == '"':
+                    self._in_str = False
+            else:
+                if c == '"':
+                    self._in_str = True
+                elif c == '{':
+                    self._depth += 1
+                elif c == '}':
+                    self._depth -= 1
+                    if self._depth == 0:
+                        try:
+                            done.append(json.loads(text[self._step_start:i + 1]))
+                        except Exception:
+                            pass
+                        self._step_start = -1
+                        self._depth = 0
+                        self._in_str = False
+                        self.count += 1
+            i += 1
+
+        self._pos = i
+        return done
 
 
 def _attach_video_clips(text_content: str, yt_clips: list) -> str:
@@ -1054,6 +1128,7 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                     str(context) if context else "",
                     req.history or [],
                     req.student_level or 5,
+                    images=normalized_images,
                     uid=_uid,
                     session_id=_session_id,
                     charge_credits=_credit_mode,
@@ -1194,27 +1269,65 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                             animations_enabled=req.bb_animations_enabled is not False,
                         )
                     
-                    # Run the LLM in the background and emit SSE keepalive pings
-                    # every 3 s so Android's read-timeout doesn't fire while we wait.
-                    # (BB model typically takes 8-15 s; normal is 2-5 s.)
-                    _llm_future = loop.run_in_executor(
-                        None,
-                        lambda: generate_response(
-                            user_content,
-                            normalized_images,
-                            tier=model_tier,
-                            system_prompt=system_prompt,
-                            uid=_uid,
-                            call_name="bb_main" if req.mode == "blackboard" else "chat_main",
-                            session_id=_session_id,
-                            charge_credits=_credit_mode,
-                        ),
-                    )
-                    while not _llm_future.done():
-                        await asyncio.sleep(3)
-                        if not _llm_future.done():
-                            yield ": ping\n\n"  # SSE comment = keepalive, invisible to app
-                    result: Dict[str, Any] = await _llm_future
+                    if req.mode == "blackboard":
+                        # ── Streaming: emit each step as LLM produces it ───────────────
+                        _scanner = _BbStepScanner()
+                        _bb_text = ""
+                        _bb_tokens: Dict[str, Any] = {}
+                        _bb_model = model_tier
+                        _bb_emitted = 0
+                        try:
+                            async for _chunk in stream_generate_response(
+                                user_content,
+                                normalized_images,
+                                tier=model_tier,
+                                system_prompt=system_prompt,
+                                uid=_uid,
+                                call_name="bb_main",
+                                session_id=_session_id,
+                                charge_credits=_credit_mode,
+                            ):
+                                if isinstance(_chunk, dict):
+                                    _bb_tokens = _chunk.get("tokens", {})
+                                    _bb_model  = _chunk.get("model", _bb_model)
+                                else:
+                                    _bb_text += _chunk
+                                    for _step in _scanner.feed(_bb_text):
+                                        if _bb_emitted == 0:
+                                            yield f"data: {json.dumps({'first_step': _step})}\n\n"
+                                            logger.info("BB streaming: first_step emitted")
+                                        else:
+                                            yield f"data: {json.dumps({'bb_step': _step, 'step_idx': _bb_emitted})}\n\n"
+                                            logger.info("BB streaming: bb_step %d emitted", _bb_emitted)
+                                        _bb_emitted += 1
+                        except Exception as _se:
+                            logger.error("BB streaming error after %d chars: %s", len(_bb_text), _se)
+                        result = {
+                            "text": _bb_text,
+                            "tokens": _bb_tokens,
+                            "provider": "litellm",
+                            "model": _bb_model,
+                        }
+                    else:
+                        # ── Non-BB: blocking call with keepalive pings ────────────────
+                        _llm_future = loop.run_in_executor(
+                            None,
+                            lambda: generate_response(
+                                user_content,
+                                normalized_images,
+                                tier=model_tier,
+                                system_prompt=system_prompt,
+                                uid=_uid,
+                                call_name="chat_main",
+                                session_id=_session_id,
+                                charge_credits=_credit_mode,
+                            ),
+                        )
+                        while not _llm_future.done():
+                            await asyncio.sleep(3)
+                            if not _llm_future.done():
+                                yield ": ping\n\n"  # SSE comment = keepalive, invisible to app
+                        result: Dict[str, Any] = await _llm_future
                 
                 # Check for valid response structure
                 if not result or not isinstance(result, dict):
@@ -1254,16 +1367,15 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
             
             # BB post-processing: image title matching (LLM-powered + pre-fetched Wikimedia)
             if req.mode == "blackboard":
-                # ── Early first-step emission ──────────────────────────────────────────
-                # Emit step 1 immediately (no image-matching yet) so Android can start
-                # playing the lesson while we run the slower Wikimedia/LLM image pipeline.
+                # ── first_step fallback: emit only if streaming didn't get step 1 ──────
                 try:
-                    first_step = _try_extract_first_step(result.get("text", ""))
-                    if first_step is not None:
-                        yield f"data: {json.dumps({'first_step': first_step})}\n\n"
-                        logger.info("BB first_step frame emitted early")
+                    if _bb_emitted == 0:
+                        first_step = _try_extract_first_step(result.get("text", ""))
+                        if first_step is not None:
+                            yield f"data: {json.dumps({'first_step': first_step})}\n\n"
+                            logger.info("BB first_step emitted via fallback parse")
                 except Exception as _e:
-                    logger.debug("first_step early emit failed: %s", _e)
+                    logger.debug("first_step fallback failed: %s", _e)
 
                 yield _status_frame("🖼️ Matching visuals to your lesson...", 87)
                 try:

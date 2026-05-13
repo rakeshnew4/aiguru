@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-05-12 18:42:36 | session=LpdfEUxo_d5bcbc48 ===
+=== BB_MAIN | 2026-05-13 07:00:03 | session=YXnhFuOF_48db4cc5 ===
 
 === SYSTEM ===
 You are GURU — a warm, funny, wildly effective AI teacher inside a visual blackboard app.
@@ -97,43 +97,41 @@ RULES:
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: Class 10 trigonometry tricks for exams
-Lesson title: Mastering Trigonometry: Exam Hacks
-Category: math
+Student's EXACT question: Topic: What if b squared minus 4ac is negative?
+
+[Speech context from previous lesson: Ever wonder how to predict the path of a basketball? It is all about quadratic equations. The standard form is a x squared plus b x plus c equals zero. Think of a, b, and c as secret codes that define the shape. Here is that curve, the parabola, on a graph. It is the signature shape of every quadratic equation. Factoring is like reverse multiplication. We break the equation into two simpler parts, like unzipping a jacket. For x squared minus 5x plus 6, we need numbers that multiply to 6 and add to minus 5. Those are minus 2 and minus 3. Since the factors are x minus 2 and x minus 3, the answers are simply 2 and 3. Easy, right? When factoring is too hard, use the heavy duty tool. This formula solves any quadratic, no matter how messy. It is negative b plus or minus the square root of b squared minus 4ac, all divided by 2a. Just identify your a, b, and c numbers from your equation, and plug them into this machine. It never fails. Which method should you try first when the numbers look simple? Actually, factoring is way faster. It is like picking the low hanging fruit before climbing the tree. Think of the formula like a heavy duty crane. Only use it when you absolutely cannot lift th]
+Lesson title: What if b squared minus 4ac is negative?
+
+[Speech context fr
+Category: general
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
-Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
+Generate EXACTLY 0 steps with APPROXIMATELY 4 frames each.
 Steps to generate in this batch:
-- The Hand Trick for Sine and Cosine Values
-- Memorizing Identities with Hexagon Diagrams
-- Identifying Complementary Angle Shortcuts
-- Solving Height and Distance Problems Visually
-- Common Exam Pitfalls and How to Avoid Them
 
-This topic benefits from SVG diagrams — use at least one diagram frame per step.
+
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants to learn efficient memory tricks and exam strategies for Class 10 trigonometry.
-Question type: how_to
+What the student specifically wants: The student wants to understand the geometric and algebraic meaning when the discriminant of a quadratic equation is less than zero.
+Question type: conceptual
 Student level: Class 5
 GRADE SPEECH STYLE: Technical words WITH plain-English gloss. Relatable humor (games, snacks). ≤35 words/frame.
-Topic type: math_geometry | Scope: medium
-Key concepts to cover (ALL of these): Trigonometric Ratios, Right-Angled Triangle, Exam Mnemonics, SOH CAH TOA
+Topic type: math_formula | Scope: medium
+What student already knows (DO NOT repeat this): The student knows the standard form of a quadratic equation (ax^2 + bx + c = 0) and that a, b, and c define the shape of the parabola.
+Key concepts to cover (ALL of these): discriminant, complex numbers, imaginary unit i, no real roots
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-DIAGRAM RECOMMENDATION: This topic likely needs a "angle" diagram (confidence 98%). Use diagram_type="angle" for your diagram frame(s).
+DIAGRAM RECOMMENDATION: This topic likely needs a "graph_function" diagram (confidence 97%). Use diagram_type="graph_function" for your diagram frame(s).
 
-SUBJECT GUIDANCE (Math — Geometry):
-• Use diagram_type: triangle, right_angle, polygon, polygon_formation, circle_geometry, angle, or coordinate_plane.
-• right_angle: two perpendicular lines with square marker — use for 90° angle topics.
-• polygon_formation: shows triangle→square→pentagon→hexagon progression with interior angle formula.
-• Show labelled measurements in the diagram data (a_val, b_val, show_angles, etc.).
-• Concept frames: state property → prove/derive → example with numbers.
-• End with a summary frame of key properties.
+SUBJECT GUIDANCE (Math — Formula/Algebra):
+• Lead with the formula in a concept frame. Show what each variable means.
+• Dedicate 2 concept frames to worked substitution (step-by-step numbers).
+• Prefer diagram_type: graph_function, fraction_bar, number_line, or pythagoras.
+• End with a summary frame recapping key takeaways.
 
 ---END LESSON BRIEF---
 
@@ -143,143 +141,31 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
 {
   "steps": [
     {
-      "title": "The Hand Trick",
+      "title": "The Root Detector",
       "lang": "en-US",
-      "image_description": "human hand with angles labeled on fingers for trigonometry",
-      "image_show_confidencescore": 0.9,
+      "image_description": "quadratic equation discriminant formula",
+      "image_show_confidencescore": 0.8,
       "frames": [
         {
           "frame_type": "hook",
-          "text": "The **Hand Trick**",
-          "speech": "Need to solve trig values without a calculator? Use your own hand.",
+          "text": "The **Discriminant** Trap",
+          "speech": "Ever tried to solve a puzzle, but the pieces just refused to fit? That is exactly what happens when the discriminant is negative.",
           "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 3000
         },
         {
           "frame_type": "concept",
-          "text": "Fingers = **0°, 30°, 45°, 60°, 90°**",
-          "speech": "Hold your palm towards you. Assign your fingers as zero, thirty, forty-five, sixty, and ninety degrees from thumb to pinky.",
+          "text": "b squared - 4ac",
+          "speech": "That part under the square root, b squared minus 4ac, is called the discriminant. It is like a secret weather forecast for your equation.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 4000
-        },
-        {
-          "frame_type": "diagram",
-          "text": "Visualizing **Hand Angles**",
-          "speech": "Look at the diagram. Counting fingers below the bent finger gives you sine, and above gives you cosine.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3500,
-          "diagram_type": "angle",
-          "diagram_data": {
-            "labels": ["0", "30", "45", "60", "90"],
-            "show_angles": true
-          }
-        }
-      ]
-    },
-    {
-      "title": "Hexagon Identities",
-      "lang": "en-US",
-      "image_description": "trigonometric hexagon identity diagram",
-      "image_show_confidencescore": 0.95,
-      "frames": [
-        {
-          "frame_type": "concept",
-          "text": "The **Trig Hexagon**",
-          "speech": "Draw a hexagon with sine, cosine, tangent, cotangent, secant, and cosecant at the corners. It is a cheat sheet for all identities.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 4000
-        },
-        {
-          "frame_type": "diagram",
-          "text": "Hexagon **Relationships**",
-          "speech": "Follow the lines in the diagram. Any function is equal to the product of its two neighbors, like a map of connections.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 4000,
-          "diagram_type": "polygon",
-          "diagram_data": {
-            "sides": 6,
-            "labels": ["sin", "cos", "tan", "cot", "sec", "csc"]
-          }
+          "duration_ms": 3500
         },
         {
           "frame_type": "memory",
-          "text": "**Tan = Sin / Cos**",
-          "speech": "Remember, tangent is the hero, always leading sine divided by cosine.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000
-        }
-      ]
-    },
-    {
-      "title": "Complementary Angles",
-      "lang": "en-US",
-      "image_description": "right triangle showing complementary angles",
-      "image_show_confidencescore": 0.9,
-      "frames": [
-        {
-          "frame_type": "concept",
-          "text": "**Complementary Angles**",
-          "speech": "Complementary angles are two angles that add up to ninety degrees. Sine of one angle always equals cosine of the other.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 4000
-        },
-        {
-          "frame_type": "question",
-          "text": "Quick Check!",
-          "speech": "If sine of thirty degrees is one half, what is cosine of sixty degrees?",
-          "tts_engine": "android",
-          "voice_role": "teacher",
-          "duration_ms": 3000
-        },
-        {
-          "frame_type": "reveal",
-          "text": "Answer: **1/2**",
-          "speech": "Actually, it is also one half. They are like mirror images of each other.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000
-        }
-      ]
-    },
-    {
-      "title": "Height and Distance",
-      "lang": "en-US",
-      "image_description": "right triangle for height and distance problems",
-      "image_show_confidencescore": 0.9,
-      "frames": [
-        {
-          "frame_type": "concept",
-          "text": "Sketch the **Triangle**",
-          "speech": "When solving height problems, sketch a right triangle. Identify the height, the distance, and the angle of elevation.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 4000
-        },
-        {
-          "frame_type": "diagram",
-          "text": "Triangle **Setup**",
-          "speech": "See how the vertical side is height and the bottom is distance. Use tangent to link them.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3500,
-          "diagram_type": "right_angle",
-          "diagram_data": {
-            "show_labels": true,
-            "height_label": "H",
-            "base_label": "D"
-          }
-        },
-        {
-          "frame_type": "apply",
-          "text": "Ninja **Math**",
-          "speech": "Think of it like a shadow game. Your height is the vertical side, and your shadow is the base.",
+          "text": "Math Weather Forecast",
+          "speech": "Think of it this way. Positive means sunshine, zero is a drizzle, and a negative discriminant is a total math storm where real answers disappear.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3500
@@ -287,55 +173,141 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ]
     },
     {
-      "title": "Exam Hacks & Summary",
+      "title": "Visualizing the Gap",
       "lang": "en-US",
-      "image_description": "mathematical summary concept map",
-      "image_show_confidencescore": 0.6,
+      "image_description": "parabola graph not touching x-axis",
+      "image_show_confidencescore": 0.95,
       "frames": [
         {
-          "frame_type": "joke",
-          "text": "Math **Humor**",
-          "speech": "Why did the triangle go to therapy? Because it had too many issues with its angles.",
+          "frame_type": "diagram",
+          "text": "Graphing the Gap",
+          "speech": "Look at this curve. It is a parabola floating high above the x-axis. Because it never touches the line, it has no real roots.",
           "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 4000,
+          "diagram_type": "graph_function",
+          "diagram_data": {
+            "equation": "y = x^2 + 2x + 5",
+            "show_axes": true
+          },
+          "visual_description": "A parabola opening upwards, floating completely above the horizontal x-axis."
+        },
+        {
+          "frame_type": "concept",
+          "text": "No Real Roots",
+          "speech": "When the discriminant is negative, the graph never crosses the horizontal line. This means there are no real numbers that make the equation equal zero.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 4000
+        }
+      ]
+    },
+    {
+      "title": "The Impossible Root",
+      "lang": "en-US",
+      "image_description": "square root of negative number",
+      "image_show_confidencescore": 0.7,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "Square root of negative",
+          "speech": "If you try to find the square root of a negative number on a calculator, it usually gives you an error. We call that math territory impossible.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500
+        },
+        {
+          "frame_type": "question",
+          "text": "Thinking Check",
+          "speech": "If the discriminant is negative, does the graph cross the x-axis?",
+          "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 2500
         },
         {
-          "frame_type": "apply",
-          "text": "**SOH CAH TOA**",
-          "speech": "Avoid pitfalls by checking your units and using the SOH CAH TOA mnemonic. Sine is opposite over hypotenuse, cosine is adjacent over hypotenuse, and tangent is opposite over adjacent.",
+          "frame_type": "reveal",
+          "text": "The Answer",
+          "speech": "Actually, it is a no! Since the result is negative, the graph stays floating in the air and never touches the ground.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 5000
+          "duration_ms": 3500
+        }
+      ]
+    },
+    {
+      "title": "Enter the Imaginary",
+      "lang": "en-US",
+      "image_description": "imaginary unit i",
+      "image_show_confidencescore": 0.85,
+      "frames": [
+        {
+          "frame_type": "joke",
+          "text": "Invisible Friends",
+          "speech": "Imaginary numbers are like that one friend who promises to come to the party but never actually shows up in real life.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        },
+        {
+          "frame_type": "concept",
+          "text": "The letter i",
+          "speech": "We use a tiny letter i to stand for the square root of negative one. It is our way of handling the impossible so the math keeps working.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 4000
+        }
+      ]
+    },
+    {
+      "title": "Wrapping Up",
+      "lang": "en-US",
+      "image_description": "complex number plane summary",
+      "image_show_confidencescore": 0.7,
+      "frames": [
+        {
+          "frame_type": "apply",
+          "text": "Real World Use",
+          "speech": "Engineers actually use these imaginary numbers to design things like electricity circuits and Wi-Fi signals that keep your phone connected.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 4000
+        },
+        {
+          "frame_type": "curiosity",
+          "text": "What comes next?",
+          "speech": "Ever wonder how we actually calculate with these invisible numbers without breaking our brains?",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
         },
         {
           "frame_type": "summary",
-          "text": "**Lesson Summary**",
-          "speech": "We mastered trig using hand tricks, hexagon maps, and complementary shortcuts. Remember to sketch your triangles first to conquer any exam problem.",
+          "text": "Summary",
+          "speech": "So, a negative discriminant means no real roots because the graph floats above the axis. We use imaginary numbers, represented by i, to solve equations that seem impossible.",
           "tts_engine": "google",
           "voice_role": "assistant",
-          "duration_ms": 5000
+          "duration_ms": 4000
         }
       ],
       "followup_questions": [
         {
-          "question": "Does the hand trick work for all angles?",
-          "speech": "Does the hand trick work for all angles, or just the main ones?"
+          "question": "What is the letter i?",
+          "speech": "The letter i represents the square root of negative one, which helps us solve impossible math problems."
         },
         {
-          "question": "Why is tangent called the hero?",
-          "speech": "Why is tangent called the hero in our hexagon map?"
+          "question": "Where does the graph go?",
+          "speech": "When the discriminant is negative, the graph floats above the x-axis and never touches it."
         },
         {
-          "question": "Can we use trig for circles?",
-          "speech": "Can we use these same trig tricks for circles?"
+          "question": "Are imaginary numbers real?",
+          "speech": "They are a real concept we use in science and engineering to describe things like electricity and waves."
         }
       ],
-      "session_theme": "Mastering Trigonometry Tricks",
-      "video_search_query": "trigonometry hand trick and hexagon identities class 10",
+      "session_theme": "The Discriminant and Imaginary Numbers",
+      "video_search_query": "what is the discriminant in quadratic equations",
       "preferred_channels": [
-        "Physics Wallah",
-        "Khan Academy India"
+        "Khan Academy India",
+        "Physics Wallah"
       ]
     }
   ]

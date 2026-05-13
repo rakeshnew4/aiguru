@@ -453,7 +453,58 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, a
             if isinstance(r, dict) and r:
                 frame["data"] = r
 
+        # ── Assemble all_candidates now (needed to start picker before Phase 3) ─
+        all_candidates: List[Dict[str, str]] = []
+        for _r in per_step_results:
+            if isinstance(_r, list):
+                all_candidates.extend(_r)
+        if extra_candidates:
+            for item in extra_candidates:
+                if isinstance(item, dict):
+                    all_candidates.append(item)
+        # Deduplicate by URL
+        seen_urls: set = set()
+        deduped: List[Dict[str, str]] = []
+        for item in all_candidates:
+            url = item.get("url", "")
+            if url and url not in seen_urls:
+                seen_urls.add(url)
+                deduped.append(item)
+        all_candidates = deduped
+
+        # Save original LLM search phrases before we overwrite with URLs.
+        original_descs: Dict[int, str] = {
+            i: (step.get("image_description") or "").strip()
+            for i, step in enumerate(data["steps"])
+            if isinstance(step, dict)
+        }
+        for i, step in enumerate(data["steps"]):
+            if not isinstance(step, dict):
+                continue
+            score = step.get("image_show_confidencescore") or 0
+            if score >= 0.35 and not original_descs.get(i):
+                fallback = (step.get("title") or "").strip()
+                if fallback:
+                    step["image_description"] = fallback
+                    original_descs[i] = fallback
+
+        # Start image picker as background future — runs concurrently with Phase 3 SVG building.
+        url_to_width: Dict[str, int] = {
+            item["url"]: item.get("orig_width", 0)
+            for item in all_candidates
+            if isinstance(item, dict) and item.get("url")
+        }
+        _picker_fut = (
+            loop.run_in_executor(None, _pick_titles_sync, data["steps"], all_candidates, uid)
+            if all_candidates else None
+        )
+
         # ── Phase 3: Build SVG diagrams (using enriched data) ─────────────────
+        # Sync builders (atom, JS engine, SMIL) run inline — they are fast CPU work.
+        # LLM SVG calls are collected as executor futures and awaited together at the
+        # end of this phase so they all run in parallel instead of serially.
+        _llm_svg_tasks: list = []   # list of (frame, future)
+
         for step in data["steps"]:
             if not isinstance(step, dict):
                 continue
@@ -491,18 +542,16 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, a
                     intent = d_data.get("intent", "") if isinstance(d_data, dict) else ""
                     step_title = step.get("title", "")
                     frame_speech = frame.get("speech", "")
-                    html = build_llm_svg(
-                        diagram_type="custom",
-                        data={},
-                        topic=step_title,
+                    _kw = dict(
+                        diagram_type="custom", data={}, topic=step_title,
                         speech=frame_speech,
                         visual_description=intent or visual_desc or step_title,
                         uid=uid,
                     )
-                    if html:
-                        logger.info("Built LLM SVG (custom intent) for step '%s'", step_title)
-                    if html:
-                        frame["svg_html"] = html
+                    _llm_svg_tasks.append(
+                        (frame, loop.run_in_executor(None, lambda kw=_kw: build_llm_svg(**kw)))
+                    )
+                    logger.info("Queued LLM SVG (custom intent) for step '%s'", step_title)
                     frame.pop("svg_elements", None)
                     frame.pop("diagram_type", None)
                     frame.pop("data", None)
@@ -566,19 +615,21 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, a
                     # Also handles circular layout types (cycle, labeled) —
                     # LLM produces a meaningful visual instead of boxes-in-a-ring.
                     if not html:
-                        html = build_llm_svg(
-                            diagram_type=d_type,
-                            data=d_data,
-                            topic=step_title,
-                            speech=frame_speech,
-                            visual_description=visual_desc,
-                            uid=uid,
+                        _kw = dict(
+                            diagram_type=d_type, data=d_data, topic=step_title,
+                            speech=frame_speech, visual_description=visual_desc, uid=uid,
                         )
-                        if html and d_type.lower() in _CIRCULAR_LAYOUT_TYPES:
-                            logger.info(
-                                "Built LLM SVG (circular type=%s redirected) for step '%s'",
-                                d_type, step_title,
-                            )
+                        _llm_svg_tasks.append(
+                            (frame, loop.run_in_executor(None, lambda kw=_kw: build_llm_svg(**kw)))
+                        )
+                        logger.info(
+                            "Queued LLM SVG (type=%s) for step '%s'", d_type, step_title,
+                        )
+                        frame.pop("svg_elements", None)
+                        frame.pop("diagram_type", None)
+                        frame.pop("data", None)
+                        frame.pop("visual_description", None)
+                        continue
 
                     # ── Fallback: Python SMIL builder (geometric, no LLM) ────
                     # Skip for circular layout types — no circular SMIL fallback.
@@ -596,19 +647,21 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, a
                 if not html and force_override:
                     step_title = step.get("title", "")
                     frame_speech = frame.get("speech", "")
-                    html = build_llm_svg(
-                        diagram_type=d_type,
-                        data=d_data,
-                        topic=step_title,
-                        speech=frame_speech,
-                        visual_description=visual_desc,
-                        uid=uid,
+                    _kw = dict(
+                        diagram_type=d_type, data=d_data, topic=step_title,
+                        speech=frame_speech, visual_description=visual_desc, uid=uid,
                     )
-                    if html:
-                        logger.info(
-                            "Built LLM SVG (force override, type=%s) for step '%s'",
-                            d_type, step_title,
-                        )
+                    _llm_svg_tasks.append(
+                        (frame, loop.run_in_executor(None, lambda kw=_kw: build_llm_svg(**kw)))
+                    )
+                    logger.info(
+                        "Queued LLM SVG (force override, type=%s) for step '%s'", d_type, step_title,
+                    )
+                    frame.pop("svg_elements", None)
+                    frame.pop("diagram_type", None)
+                    frame.pop("data", None)
+                    frame.pop("visual_description", None)
+                    continue
 
                 if not html:
                     # Path 2: legacy raw svg_elements fallback
@@ -631,60 +684,30 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, a
                 frame.pop("data", None)
                 frame.pop("visual_description", None)
 
-        # ── Phase 4: Image title selection from wikimedia results ─────────────
-        # all_candidates: list of {"title": ..., "url": ...} dicts
-        all_candidates: List[Dict[str, str]] = []
-        for result in per_step_results:
-            if isinstance(result, list):
-                all_candidates.extend(result)
-        if extra_candidates:
-            # extra_candidates may be dicts (from _prefetch_wikimedia) or legacy strings
-            for item in extra_candidates:
-                if isinstance(item, dict):
-                    all_candidates.append(item)
-        # Deduplicate by URL
-        seen_urls: set = set()
-        deduped: List[Dict[str, str]] = []
-        for item in all_candidates:
-            url = item.get("url", "")
-            if url and url not in seen_urls:
-                seen_urls.add(url)
-                deduped.append(item)
-        all_candidates = deduped
+        # ── Gather all LLM SVG futures in parallel ─────────────────────────────
+        # _picker_fut has been running concurrently while the sync SVG work above ran.
+        if _llm_svg_tasks:
+            _svg_futs = [t[1] for t in _llm_svg_tasks]
+            _svg_results = await asyncio.gather(*_svg_futs, return_exceptions=True)
+            for (frame, _), svg_html in zip(_llm_svg_tasks, _svg_results):
+                if isinstance(svg_html, str) and svg_html:
+                    frame["svg_html"] = svg_html
+            logger.info(
+                "Phase 3 parallel SVG: %d/%d tasks produced html",
+                sum(1 for r in _svg_results if isinstance(r, str) and r),
+                len(_svg_results),
+            )
 
-        # Save original LLM search phrases before we overwrite with URLs.
-        # When no Wikimedia URL is found we fall back to the phrase so Android
-        # always has something (phrase → it can search itself; URL → show directly).
-        original_descs: Dict[int, str] = {
-            i: (step.get("image_description") or "").strip()
-            for i, step in enumerate(data["steps"])
-            if isinstance(step, dict)
-        }
-        # Also ensure every high-confidence step without a description gets the step title.
-        for i, step in enumerate(data["steps"]):
-            if not isinstance(step, dict):
-                continue
-            score = step.get("image_show_confidencescore") or 0
-            if score >= 0.35 and not original_descs.get(i):
-                fallback = (step.get("title") or "").strip()
-                if fallback:
-                    step["image_description"] = fallback
-                    original_descs[i] = fallback
-
+        # ── Phase 4: Apply image picker results ────────────────────────────────
+        # _picker_fut was started before Phase 3 — it has been running in background.
+        # Await it now; in most cases it will already be done.
         if not all_candidates:
             logger.info("No Wikimedia candidates found — keeping original search phrases")
             return json.dumps(data)
 
-        # Build URL→orig_width lookup so we can apply size-based score cap later
-        url_to_width: Dict[str, int] = {
-            item["url"]: item.get("orig_width", 0)
-            for item in all_candidates
-            if isinstance(item, dict) and item.get("url")
-        }
-        # LLM-based image picker (more accurate). Falls back to word-overlap internally.
-        picks = await loop.run_in_executor(
-            None, _pick_titles_sync, data["steps"], all_candidates, uid
-        )
+        picks: Dict[int, str] = {}
+        if _picker_fut is not None:
+            picks = await _picker_fut or {}
 
         for i, step in enumerate(data["steps"]):
             if not isinstance(step, dict):

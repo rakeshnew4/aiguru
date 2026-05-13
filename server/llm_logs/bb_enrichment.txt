@@ -1,44 +1,48 @@
-=== BB_ENRICHMENT | 2026-05-12 14:42:56 | session=none ===
+=== BB_ENRICHMENT | 2026-05-13 07:00:06 | session=none ===
 
 === SYSTEM ===
 You are a diagram data generator for an educational app. Output ONLY a valid JSON object — no text, no markdown, no explanation.
 
 === PROMPT ===
-Topic: "Method 2: Quadratic Formula"
-Teaching content: "Look at this formula. It looks big, but you just plug in your a, b, and c values and solve it like a simple puzzle."
-Diagram type: fraction_bar
+Topic: "Visualizing the Gap"
+Teaching content: "Look at this curve. It is a parabola floating high above the x-axis. Because it never touches the line, it has no real roots."
+Diagram type: graph_function
 Color keys: primary (chalk white), label (yellow), secondary (sky blue), highlight (red), teal, orange, green, pink, purple, gold, coral, mint
-Schema: {"fractions":[{"num":1,"den":2},{"num":3,"den":4}],"title":"Fractions"}
-Hint: 2-4 fractions. Each {num, den} where 0 < num ≤ den (proper fractions for comparison).
+Schema: {"function":"quadratic","a":1,"b":0,"c":0,"x_range":[-4,4],"label":"y = x²","color":"secondary"}
+Hint: function: quadratic|linear|cubic|sine|cosine|abs. a,b,c: real coefficients. x_range: [-N, N] centered at 0. label: LaTeX-free equation string.
 Existing data (improve/complete this): {}
 
 Generate the BEST data JSON for this diagram. Fill ALL keys. Be accurate to the topic. Reply with ONLY the JSON object.
 
 === RESPONSE ===
 {
-  "title": "Quadratic Formula Structure",
-  "fractions": [
-    {
-      "num": "-b ± √b² - 4ac",
-      "den": "2a",
-      "label": "The Quadratic Formula",
-      "color": "primary",
-      "highlight": "red"
-    },
-    {
-      "num": "b",
-      "den": "a",
-      "label": "Coefficient Inputs",
-      "color": "secondary",
-      "highlight": "teal"
-    },
-    {
-      "num": "c",
-      "den": "a",
-      "label": "Constant Input",
-      "color": "orange",
-      "highlight": "gold"
-    }
+  "function": "quadratic",
+  "a": 1,
+  "b": 0,
+  "c": 2,
+  "x_range": [
+    -4,
+    4
   ],
-  "description": "Visualizing the quadratic formula as a fraction structure where inputs a, b, and c are plugged in."
+  "label": "y = x² + 2",
+  "color": "secondary",
+  "show_axes": true,
+  "show_grid": true,
+  "highlight_elements": [
+    {
+      "type": "line",
+      "equation": "y = 0",
+      "color": "primary",
+      "label": "x-axis"
+    },
+    {
+      "type": "annotation",
+      "text": "No real roots (no intersection)",
+      "position": [
+        0,
+        3
+      ],
+      "color": "highlight"
+    }
+  ]
 }
