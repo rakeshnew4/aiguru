@@ -1286,6 +1286,7 @@ async def chat_stream(req: ChatRequest, auth: AuthUser = Depends(require_auth)):
                                 call_name="bb_main",
                                 session_id=_session_id,
                                 charge_credits=_credit_mode,
+                                max_tokens=5000,
                             ):
                                 if isinstance(_chunk, dict):
                                     _bb_tokens = _chunk.get("tokens", {})

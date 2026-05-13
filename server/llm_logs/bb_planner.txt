@@ -1,13 +1,19 @@
-=== BB_PLANNER | 2026-05-13 06:59:53 | session=YXnhFuOF_48db4cc5 ===
+=== BB_PLANNER | 2026-05-13 08:01:50 | session=YXnhFuOF_7156d0fe ===
 
 === PROMPT ===
 You are a lesson analyst for a personal visual AI tutor responding to a student's SPECIFIC question.
 Analyze exactly what the student is asking and return a focused lesson plan.
 Output ONLY valid JSON — nothing else.
 
-Student question (answer THIS specifically): "Topic: What if b squared minus 4ac is negative?
+Student question (answer THIS specifically): "Topic: Photosynthesis
+Lesson title: The Magic of Photosynthesis
+Category: science
 
-[Speech context from previous lesson: Ever wonder how to predict the path of a basketball? It is all about quadratic equations. The standard form is a x squared plus b x plus c equals zero. Think of a, b, and c as secret codes that define the shape. H"
+This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
+
+Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
+Steps to generate in this batch:
+- The Ingredients: Sunlight, Water"
 Chapter context (excerpt): ""
 Recent conversation (last 3 turns):
   (No prior conversation — this is the student's first question)
@@ -42,23 +48,22 @@ Rules:
 
 === RESPONSE ===
 {
-  "topic_type": "math_formula",
-  "scope": "medium",
+  "topic_type": "science_biology",
+  "scope": "simple",
   "key_concepts": [
-    "discriminant",
-    "complex numbers",
-    "imaginary unit i",
-    "no real roots"
+    "photosynthesis",
+    "solar energy",
+    "water absorption"
   ],
   "steps_count": 5,
   "image_search_terms": [
-    "quadratic formula discriminant graph",
-    "complex number plane",
-    "imaginary number i"
+    "sunlight shining on green leaves",
+    "plant roots absorbing water from soil",
+    "photosynthesis diagram sunlight water"
   ],
-  "question_focus": "The student wants to understand the geometric and algebraic meaning when the discriminant of a quadratic equation is less than zero.",
+  "question_focus": "The student wants an engaging introduction to photosynthesis focusing specifically on the role of sunlight and water as the initial ingredients.",
   "question_type": "conceptual",
-  "prior_knowledge": "The student knows the standard form of a quadratic equation (ax^2 + bx + c = 0) and that a, b, and c define the shape of the parabola.",
-  "hook_question": "Have you ever tried to square a number and get a negative result, which seems impossible in normal math?",
-  "continuation_topic": "Introduction to Complex Numbers"
+  "prior_knowledge": "",
+  "hook_question": "Have you ever wondered how plants eat without having a mouth?",
+  "continuation_topic": "Carbon Dioxide and Glucose Production"
 }

@@ -1,4 +1,4 @@
-=== BB_SVG_BUILDER | 2026-05-12 20:00:43 | session=none ===
+=== BB_SVG_BUILDER | 2026-05-13 08:02:05 | session=none ===
 
 === SYSTEM ===
 You are an SVG diagram artist for an educational app. Draw accurate diagrams as raw SVG.
@@ -31,14 +31,53 @@ DRAW REAL STRUCTURES (never flowcharts with boxes/arrows):
 Draw this educational diagram as SVG:
 
   Diagram type : custom
-  Topic/title  : Activation Energy
-  Context      : See that big hump? That is the energy you must add first, before the reaction can release or absorb the rest.
+  Topic/title  : The Calvin Cycle
+  Context      : This diagram shows how the plant takes gas from the air and turns it into energy-packed sugar.
   Data hints   : none
-  Visual layout: Activation Energy
+  Visual layout: A simple flow chart showing CO2 entering and glucose exiting a cycle.
   Follow this layout exactly — positions, arrows, and labels as described above.
 
-Draw "Activation Energy" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
+Draw "The Calvin Cycle" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
 Animate each part appearing sequentially.  Output ONLY the <svg> element.
 
 === RESPONSE ===
-<svg viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#1A2B1A"/><text x="200" y="25" font-family="serif" fill="#F0EDD0" font-size="13" font-weight="bold" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0s"/>Activation Energy</text><path d="M50 220 L350 220" stroke="#8BAB8B" stroke-width="2" fill="none" stroke-dasharray="300" stroke-dashoffset="300"><animate attributeName="stroke-dashoffset" values="300;0" dur="0.6s" fill="freeze" begin="0.3s"/></path><path d="M50 220 L50 80" stroke="#8BAB8B" stroke-width="2" fill="none" stroke-dasharray="140" stroke-dashoffset="140"><animate attributeName="stroke-dashoffset" values="140;0" dur="0.6s" fill="freeze" begin="0.6s"/></path><path d="M70 180 C 120 180, 150 80, 200 80 C 250 80, 280 150, 330 150" stroke="#4FC3F7" stroke-width="3" fill="none" stroke-dasharray="350" stroke-dashoffset="350"><animate attributeName="stroke-dashoffset" values="350;0" dur="0.6s" fill="freeze" begin="0.9s"/></path><line x1="200" y1="80" x2="200" y2="180" stroke="#FF6B6B" stroke-width="2" stroke-dasharray="4 4" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.5s"/></line><text x="205" y="130" font-family="serif" fill="#FF6B6B" font-size="11" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.5s"/>Activation Energy</text><text x="70" y="170" font-family="serif" fill="#F0EDD0" font-size="11" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.8s"/>Reactants</text><text x="300" y="140" font-family="serif" fill="#F0EDD0" font-size="11" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="2.1s"/>Products</text><text x="20" y="70" font-family="serif" fill="#8BAB8B" font-size="11" text-anchor="middle" transform="rotate(-90 20 70)" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="2.4s"/>Energy</text><text x="200" y="240" font-family="serif" fill="#8BAB8B" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="2.7s"/>Reaction Progress</text></svg>
+<svg viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#1A2B1A"/>
+  <defs>
+    <style>
+      .anim-path { stroke-dasharray: 500; stroke-dashoffset: 500; animation: draw 0.6s forwards; }
+      .anim-text { opacity: 0; animation: fade 0.35s forwards; }
+      @keyframes draw { to { stroke-dashoffset: 0; } }
+      @keyframes fade { to { opacity: 1; } }
+    </style>
+  </defs>
+
+  <text x="200" y="25" text-anchor="middle" font-family="serif" fill="#F0EDD0" font-size="13" font-weight="bold" class="anim-text" style="animation-delay: 0.1s">The Calvin Cycle</text>
+
+  <!-- Cycle Circle -->
+  <circle cx="200" cy="160" r="80" fill="none" stroke="#8BAB8B" stroke-width="3" stroke-dasharray="4 4" class="anim-path" style="animation-delay: 0.3s"/>
+
+  <!-- CO2 Input -->
+  <path d="M 80 160 L 120 160" stroke="#4FC3F7" stroke-width="3" class="anim-path" style="animation-delay: 0.6s"/>
+  <text x="70" y="150" font-family="serif" fill="#4FC3F7" font-size="11" class="anim-text" style="animation-delay: 0.9s">CO2 In</text>
+
+  <!-- Glucose Output -->
+  <path d="M 280 160 L 320 160" stroke="#FFB74D" stroke-width="3" class="anim-path" style="animation-delay: 1.2s"/>
+  <text x="330" y="165" font-family="serif" fill="#FFB74D" font-size="11" class="anim-text" style="animation-delay: 1.5s">Glucose</text>
+
+  <!-- ATP/NADPH Input -->
+  <path d="M 200 250 L 200 230" stroke="#81C784" stroke-width="3" class="anim-path" style="animation-delay: 1.8s"/>
+  <text x="205" y="245" font-family="serif" fill="#81C784" font-size="11" class="anim-text" style="animation-delay: 2.1s">ATP/NADPH</text>
+
+  <!-- ADP/NADP Output -->
+  <path d="M 200 70 L 200 90" stroke="#FF6B6B" stroke-width="3" class="anim-path" style="animation-delay: 2.4s"/>
+  <text x="205" y="80" font-family="serif" fill="#FF6B6B" font-size="11" class="anim-text" style="animation-delay: 2.7s">ADP/NADP+</text>
+
+  <!-- RuBP Molecule (Representation) -->
+  <ellipse cx="200" cy="160" rx="20" ry="15" fill="#CE93D8" fill-opacity="0.4" stroke="#CE93D8" stroke-width="2" class="anim-path" style="animation-delay: 3.0s"/>
+  <text x="200" y="165" text-anchor="middle" font-family="serif" fill="#F0EDD0" font-size="10" class="anim-text" style="animation-delay: 3.3s">RuBP</text>
+
+  <!-- Arrows on cycle -->
+  <path d="M 200 80 A 80 80 0 0 1 280 160" fill="none" stroke="#F5E3A0" stroke-width="2" marker-end="url(#arrowhead)" class="anim-path" style="animation-delay: 3.6s"/>
+  <path d="M 200 240 A 80 80 0 0 0 120 160" fill="none" stroke="#F5E3A0" stroke-width="2" class="anim-path" style="animation-delay: 3.9s"/>
+</svg>

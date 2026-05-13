@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-05-13 07:00:03 | session=YXnhFuOF_48db4cc5 ===
+=== BB_MAIN | 2026-05-13 08:01:59 | session=YXnhFuOF_7156d0fe ===
 
 === SYSTEM ===
 You are GURU — a warm, funny, wildly effective AI teacher inside a visual blackboard app.
@@ -97,41 +97,41 @@ RULES:
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: What if b squared minus 4ac is negative?
-
-[Speech context from previous lesson: Ever wonder how to predict the path of a basketball? It is all about quadratic equations. The standard form is a x squared plus b x plus c equals zero. Think of a, b, and c as secret codes that define the shape. Here is that curve, the parabola, on a graph. It is the signature shape of every quadratic equation. Factoring is like reverse multiplication. We break the equation into two simpler parts, like unzipping a jacket. For x squared minus 5x plus 6, we need numbers that multiply to 6 and add to minus 5. Those are minus 2 and minus 3. Since the factors are x minus 2 and x minus 3, the answers are simply 2 and 3. Easy, right? When factoring is too hard, use the heavy duty tool. This formula solves any quadratic, no matter how messy. It is negative b plus or minus the square root of b squared minus 4ac, all divided by 2a. Just identify your a, b, and c numbers from your equation, and plug them into this machine. It never fails. Which method should you try first when the numbers look simple? Actually, factoring is way faster. It is like picking the low hanging fruit before climbing the tree. Think of the formula like a heavy duty crane. Only use it when you absolutely cannot lift th]
-Lesson title: What if b squared minus 4ac is negative?
-
-[Speech context fr
-Category: general
+Student's EXACT question: Topic: Photosynthesis
+Lesson title: The Magic of Photosynthesis
+Category: science
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
-Generate EXACTLY 0 steps with APPROXIMATELY 4 frames each.
+Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
+- The Ingredients: Sunlight, Water, and CO2
+- Inside the Chloroplast: The Solar Factory
+- The Light-Dependent Reactions
+- The Calvin Cycle: Making Glucose
+- Why Plants Matter: Oxygen and Energy
 
-
+This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants to understand the geometric and algebraic meaning when the discriminant of a quadratic equation is less than zero.
+What the student specifically wants: The student wants an engaging introduction to photosynthesis focusing specifically on the role of sunlight and water as the initial ingredients.
 Question type: conceptual
 Student level: Class 5
 GRADE SPEECH STYLE: Technical words WITH plain-English gloss. Relatable humor (games, snacks). ≤35 words/frame.
-Topic type: math_formula | Scope: medium
-What student already knows (DO NOT repeat this): The student knows the standard form of a quadratic equation (ax^2 + bx + c = 0) and that a, b, and c define the shape of the parabola.
-Key concepts to cover (ALL of these): discriminant, complex numbers, imaginary unit i, no real roots
+Topic type: science_biology | Scope: simple
+Key concepts to cover (ALL of these): photosynthesis, solar energy, water absorption
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-DIAGRAM RECOMMENDATION: This topic likely needs a "graph_function" diagram (confidence 97%). Use diagram_type="graph_function" for your diagram frame(s).
+DIAGRAM RECOMMENDATION: This topic likely needs a "leaf_anatomy" diagram (confidence 98%). Use diagram_type="leaf_anatomy" for your diagram frame(s).
 
-SUBJECT GUIDANCE (Math — Formula/Algebra):
-• Lead with the formula in a concept frame. Show what each variable means.
-• Dedicate 2 concept frames to worked substitution (step-by-step numbers).
-• Prefer diagram_type: graph_function, fraction_bar, number_line, or pythagoras.
-• End with a summary frame recapping key takeaways.
+SUBJECT GUIDANCE (Science — Biology):
+• For life cycles/processes (mitosis, photosynthesis, cell division): use diagram_type=custom so the LLM draws the actual process, NOT diagram_type=cycle.
+• Use PATH 2 (diagram_type=custom) for anatomy cross-sections (heart, leaf, kidney).
+• Concept frames: function → structure → real-body example.
+• End with a summary frame.
 
 ---END LESSON BRIEF---
 
@@ -141,149 +141,169 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
 {
   "steps": [
     {
-      "title": "The Root Detector",
+      "title": "The Ingredients of Photosynthesis",
       "lang": "en-US",
-      "image_description": "quadratic equation discriminant formula",
-      "image_show_confidencescore": 0.8,
+      "image_description": "sunlight shining on green leaves",
+      "image_show_confidencescore": 0.7,
       "frames": [
         {
           "frame_type": "hook",
-          "text": "The **Discriminant** Trap",
-          "speech": "Ever tried to solve a puzzle, but the pieces just refused to fit? That is exactly what happens when the discriminant is negative.",
+          "text": "Photosynthesis: **Sunlight to Sugar**",
+          "speech": "What if you could turn sunlight into a snack? That is basically the superpower plants have called photosynthesis.",
           "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 3000
         },
         {
           "frame_type": "concept",
-          "text": "b squared - 4ac",
-          "speech": "That part under the square root, b squared minus 4ac, is called the discriminant. It is like a secret weather forecast for your equation.",
+          "text": "Ingredients: **Sunlight, Water, CO2**",
+          "speech": "Photosynthesis is how plants make their own food using sunlight, water, and carbon dioxide, which is just the gas we breathe out.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3500
         },
         {
           "frame_type": "memory",
-          "text": "Math Weather Forecast",
-          "speech": "Think of it this way. Positive means sunshine, zero is a drizzle, and a negative discriminant is a total math storm where real answers disappear.",
+          "text": "The **Plant Recipe**",
+          "speech": "Think of it like a recipe: Sunlight plus water plus air equals sweet sugar for the plant to grow.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3500
+          "duration_ms": 3000
         }
       ]
     },
     {
-      "title": "Visualizing the Gap",
+      "title": "Inside the Chloroplast",
       "lang": "en-US",
-      "image_description": "parabola graph not touching x-axis",
-      "image_show_confidencescore": 0.95,
-      "frames": [
-        {
-          "frame_type": "diagram",
-          "text": "Graphing the Gap",
-          "speech": "Look at this curve. It is a parabola floating high above the x-axis. Because it never touches the line, it has no real roots.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 4000,
-          "diagram_type": "graph_function",
-          "diagram_data": {
-            "equation": "y = x^2 + 2x + 5",
-            "show_axes": true
-          },
-          "visual_description": "A parabola opening upwards, floating completely above the horizontal x-axis."
-        },
-        {
-          "frame_type": "concept",
-          "text": "No Real Roots",
-          "speech": "When the discriminant is negative, the graph never crosses the horizontal line. This means there are no real numbers that make the equation equal zero.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 4000
-        }
-      ]
-    },
-    {
-      "title": "The Impossible Root",
-      "lang": "en-US",
-      "image_description": "square root of negative number",
-      "image_show_confidencescore": 0.7,
+      "image_description": "plant leaf anatomy cross section",
+      "image_show_confidencescore": 0.98,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "Square root of negative",
-          "speech": "If you try to find the square root of a negative number on a calculator, it usually gives you an error. We call that math territory impossible.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3500
-        },
-        {
-          "frame_type": "question",
-          "text": "Thinking Check",
-          "speech": "If the discriminant is negative, does the graph cross the x-axis?",
-          "tts_engine": "android",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
-        {
-          "frame_type": "reveal",
-          "text": "The Answer",
-          "speech": "Actually, it is a no! Since the result is negative, the graph stays floating in the air and never touches the ground.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3500
-        }
-      ]
-    },
-    {
-      "title": "Enter the Imaginary",
-      "lang": "en-US",
-      "image_description": "imaginary unit i",
-      "image_show_confidencescore": 0.85,
-      "frames": [
-        {
-          "frame_type": "joke",
-          "text": "Invisible Friends",
-          "speech": "Imaginary numbers are like that one friend who promises to come to the party but never actually shows up in real life.",
+          "text": "The **Chloroplast Kitchen**",
+          "speech": "Plants have tiny green kitchens inside their leaves called chloroplasts, where all the magic happens.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
         },
         {
-          "frame_type": "concept",
-          "text": "The letter i",
-          "speech": "We use a tiny letter i to stand for the square root of negative one. It is our way of handling the impossible so the math keeps working.",
+          "frame_type": "diagram",
+          "text": "Leaf Anatomy: **Chloroplasts**",
+          "speech": "Look closely at this leaf cross-section. See those tiny green dots? Those are the chloroplasts, the solar-powered factories of the plant.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 4000
+          "duration_ms": 3500,
+          "diagram_type": "leaf_anatomy",
+          "diagram_data": {
+            "label": "Chloroplasts inside leaf cells"
+          },
+          "visual_description": "A cross-section of a leaf showing cells with green chloroplasts inside."
+        },
+        {
+          "frame_type": "apply",
+          "text": "Solar **Power**",
+          "speech": "These chloroplasts are like solar panels on a roof, soaking up energy from the sun to power the whole plant.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
         }
       ]
     },
     {
-      "title": "Wrapping Up",
+      "title": "Light-Dependent Reactions",
       "lang": "en-US",
-      "image_description": "complex number plane summary",
-      "image_show_confidencescore": 0.7,
+      "image_description": "chloroplast light dependent reaction diagram",
+      "image_show_confidencescore": 0.85,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "Splitting **Water**",
+          "speech": "First, the plant traps sunlight to split water molecules apart. It is a high-energy process.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        },
+        {
+          "frame_type": "question",
+          "text": "What happens to **Water**?",
+          "speech": "If sunlight is the power source, what do you think happens to that water when it hits the chloroplast?",
+          "tts_engine": "android",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        },
+        {
+          "frame_type": "reveal",
+          "text": "Actually, it **Splits**!",
+          "speech": "Actually, it splits the water into tiny parts to get the energy needed for the next step. Good thinking!",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500
+        }
+      ]
+    },
+    {
+      "title": "The Calvin Cycle",
+      "lang": "en-US",
+      "image_description": "calvin cycle plant biology diagram",
+      "image_show_confidencescore": 0.8,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "Making **Glucose**",
+          "speech": "Next, the plant uses carbon dioxide from the air to build glucose, which is a simple sugar the plant uses for energy.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500
+        },
+        {
+          "frame_type": "joke",
+          "text": "Nature's **Baker**",
+          "speech": "Plants are like the best bakers ever. But instead of flour, they use thin air and sunshine to make their treats.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        },
+        {
+          "frame_type": "diagram",
+          "text": "Calvin Cycle: **Sugar Factory**",
+          "speech": "This diagram shows how the plant takes gas from the air and turns it into energy-packed sugar.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500,
+          "diagram_type": "custom",
+          "diagram_data": {
+            "flow": "CO2 + Energy -> Glucose"
+          },
+          "visual_description": "A simple flow chart showing CO2 entering and glucose exiting a cycle."
+        }
+      ]
+    },
+    {
+      "title": "Why Plants Matter",
+      "lang": "en-US",
+      "image_description": "plant oxygen release diagram",
+      "image_show_confidencescore": 0.75,
       "frames": [
         {
           "frame_type": "apply",
-          "text": "Real World Use",
-          "speech": "Engineers actually use these imaginary numbers to design things like electricity circuits and Wi-Fi signals that keep your phone connected.",
+          "text": "The **Oxygen** Gift",
+          "speech": "We need plants because they release oxygen, the gas we need to breathe, as a leftover from making their food.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 4000
+          "duration_ms": 3500
         },
         {
           "frame_type": "curiosity",
-          "text": "What comes next?",
-          "speech": "Ever wonder how we actually calculate with these invisible numbers without breaking our brains?",
+          "text": "What if plants **vanished**?",
+          "speech": "But, what would happen to Earth if all the plants suddenly stopped working tomorrow?",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
         },
         {
           "frame_type": "summary",
-          "text": "Summary",
-          "speech": "So, a negative discriminant means no real roots because the graph floats above the axis. We use imaginary numbers, represented by i, to solve equations that seem impossible.",
+          "text": "Photosynthesis **Summary**",
+          "speech": "Photosynthesis turns sunlight, water, and gas into energy and oxygen. It is the reason we have food to eat and air to breathe.",
           "tts_engine": "google",
           "voice_role": "assistant",
           "duration_ms": 4000
@@ -291,20 +311,20 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ],
       "followup_questions": [
         {
-          "question": "What is the letter i?",
-          "speech": "The letter i represents the square root of negative one, which helps us solve impossible math problems."
+          "question": "Do plants need sunlight at night?",
+          "speech": "Do plants need sunlight at night to survive, or do they store energy?"
         },
         {
-          "question": "Where does the graph go?",
-          "speech": "When the discriminant is negative, the graph floats above the x-axis and never touches it."
+          "question": "Can plants live without water?",
+          "speech": "Can plants live without water, or is it a required ingredient?"
         },
         {
-          "question": "Are imaginary numbers real?",
-          "speech": "They are a real concept we use in science and engineering to describe things like electricity and waves."
+          "question": "Why are leaves usually green?",
+          "speech": "Why are most leaves green instead of another color like blue or red?"
         }
       ],
-      "session_theme": "The Discriminant and Imaginary Numbers",
-      "video_search_query": "what is the discriminant in quadratic equations",
+      "session_theme": "The Magic of Photosynthesis",
+      "video_search_query": "how photosynthesis works for kids",
       "preferred_channels": [
         "Khan Academy India",
         "Physics Wallah"

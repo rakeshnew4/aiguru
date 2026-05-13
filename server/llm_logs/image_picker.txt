@@ -1,4 +1,4 @@
-=== IMAGE_PICKER | 2026-05-13 07:00:07 | session=none ===
+=== IMAGE_PICKER | 2026-05-13 08:04:43 | session=none ===
 
 === PROMPT ===
 You are selecting the best matching Wikimedia Commons image for each blackboard lesson step.
@@ -8,51 +8,36 @@ When a Visual layout is provided, prefer images that match the described visual 
 Output ONLY valid JSON mapping step index (string key) to the EXACT title string or null.
 
 Steps needing images:
-[0] Step "The Root Detector" — topic: "quadratic equation discriminant formula"
-[1] Step "Visualizing the Gap" — topic: "parabola graph not touching x-axis"
-[2] Step "The Impossible Root" — topic: "square root of negative number"
-[3] Step "Enter the Imaginary" — topic: "imaginary unit i"
-[4] Step "Wrapping Up" — topic: "complex number plane summary"
+[0] Step "The Ingredients of Photosynthesis" — topic: "sunlight shining on green leaves"
+[1] Step "Inside the Chloroplast" — topic: "plant leaf anatomy cross section"
+        Visual layout: "A cross-section of a leaf showing cells with green chloroplasts inside."
+[2] Step "Light-Dependent Reactions" — topic: "chloroplast light dependent reaction diagram"
+[3] Step "The Calvin Cycle" — topic: "calvin cycle plant biology diagram"
+        Visual layout: "A simple flow chart showing CO2 entering and glucose exiting a cycle."
+[4] Step "Why Plants Matter" — topic: "plant oxygen release diagram"
 
 Available Wikimedia titles:
-- Quadratic Equation Solution Cases (Discriminant & Quadratic Formula).jpg
-- Quadratic equation a minus d minus.png
-- Quadratic equation a minus d zero.png
-- Quadratic equation a plus d zero.png
-- Quadratic equation coefficients.png
-- Quadratic equation coefficients with standard ranges.png
-- Quadratic function graph complex roots.svg
-- Quadratic function graph key values.svg
-- 1935 Connecticut.jpg
-- 3-root of imaginary unit,.svg
-- Circled greek capital letter ι.svg
-- Complex Plane number -i by rotation 1 by -90 degrees.svg
-- Complex Plane number i and 1.svg
-- Grond van Waterlooplein in Amsterdam wordt bouwrijp gemaakt voor bouw Stadhuisth, Bestanddeelnr 931-9637.jpg
-- Царква Сьвятой Ганны (Ялова). Бакавы фасад..jpg
-- Starr-061105-1366-Citrus jambhiri-fruit-Makawao-Maui (24841894686).jpg
-- Complex Plane number -2 by rotation of 2i by 90 degrees.svg
-- Complex Plane number -2i by rotation of -2 by 90 degrees.svg
-- Complex Plane number 2i by rotation 2 by 90 degrees.svg
-- Complex Plane number i by rotation 1 by -90 degrees.svg
-- Complex Plane number i by rotation 1 by 90 degrees.svg
-- Number plane - Complex number.svg
-- Complex plane basic example.svg
-- Icuadrada.png
-- Imaginary War-2.jpg
-- Mathjoke.jpg
-- Numero imaginario-real IBO.jpg
-- Pi-day-funny-math-be-rational-get-real.jpg
-- Plan complexe1.ggb.png
-- Plus+plusminus+minusplus-sign-in-arial+timesnewroman+cambriamath+linuxlibertine+garamond+eversonmono+andron.svg
+- Shining leaves.jpg
+- Cross Section of Leaf under microscope.jpg
+- Leaf anatomy-ar.svg
+- Leaf anatomy es.svg
+- Leaf anatomy ru.svg
+- Leaf anatomy sr.svg
+- Leaf anatomy universal.png
+- Leaf anatomy universal.svg
+- Zea mays leaf Kranz anatomy 1 200×.png
+- Oxyfuel CCS fossil fuel power plant operation.png
+- OxygenLevel-1000ma.svg
+- Oxygen fluctuation.png
+- Photosynthesis en.svg
 
 Output example: {"0": "Photosynthesis diagram.svg", "3": null, "5": "Newton laws.png"}
 
 === RESPONSE ===
 {
-  "0": "Quadratic Equation Solution Cases (Discriminant & Quadratic Formula).jpg",
-  "1": "Quadratic function graph complex roots.svg",
-  "2": null,
-  "3": "Complex Plane number i and 1.svg",
-  "4": "Number plane - Complex number.svg"
+  "0": "Shining leaves.jpg",
+  "1": "Leaf anatomy universal.svg",
+  "2": "Photosynthesis en.svg",
+  "3": "Photosynthesis en.svg",
+  "4": null
 }

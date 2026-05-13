@@ -4454,7 +4454,21 @@ class BlackboardActivity : AppCompatActivity() {
         val lessonTopic = steps.firstOrNull()?.title
             ?: intent.getStringExtra(EXTRA_MESSAGE)?.take(100)
             ?: "this lesson"
-        val history = mutableListOf("system: Lesson topic: $lessonTopic").apply { addAll(bbChatHistory) }
+        // Compact lesson-so-far summary: step titles + first frame text of each step.
+        // Capped at 800 chars so the server context block stays small.
+        val lessonSummary = buildString {
+            append("Lesson already taught (summary):\n")
+            steps.forEachIndexed { i, step ->
+                append("Step ${i + 1}: ${step.title}")
+                val firstText = step.frames.firstOrNull()?.text?.take(80)
+                if (!firstText.isNullOrBlank()) append(" — $firstText")
+                append("\n")
+            }
+        }.take(800).trimEnd()
+        val history = mutableListOf(
+            "system: Topic: $lessonTopic",
+            "system: $lessonSummary",
+        ).apply { addAll(bbChatHistory) }
         val userId = intent.getStringExtra(EXTRA_USER_ID) ?: ""
         val pageId = intent.getStringExtra(EXTRA_CONVERSATION_ID) ?: "bb_chat"
         val client = ServerProxyClient(

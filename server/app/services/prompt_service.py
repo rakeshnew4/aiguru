@@ -609,14 +609,14 @@ def build_bb_planner_prompt(
     has_image: bool = False,
 ) -> str:
     """Returns the formatted BB planner prompt for the 'faster' model tier."""
-    ctx_snippet = (context or "")[:500].strip()
-    # Pass the last 3 turns of conversation (not just last reply) so the planner
-    # can understand what was already taught and what the student already knows.
+    ctx_snippet = (context or "")[:150].strip()
+    # Pass the last 3 turns of conversation so the planner can understand what
+    # was already taught and what the student already knows.
     def _fmt_h(h: str) -> str:
-        if h.startswith("user:"):      return f"  Student: {h[5:120].strip()}"
-        if h.startswith("assistant:"): return f"  Teacher: {h[10:120].strip()}"
-        return f"  {h[:120].strip()}"
-    recent = "\n".join(_fmt_h(h) for h in (history or [])[-6:])
+        if h.startswith("user:"):      return f"  Student: {h[5:80].strip()}"
+        if h.startswith("assistant:"): return f"  Teacher: {h[10:80].strip()}"
+        return f"  {h[:80].strip()}"
+    recent = "\n".join(_fmt_h(h) for h in (history or [])[-3:])
     if not recent:
         recent = "  (No prior conversation — this is the student's first question)"
     image_context = "Student has attached an image (e.g. a problem screenshot or diagram). Treat this as the PRIMARY source — the question text may be brief or absent.\n" if has_image else ""

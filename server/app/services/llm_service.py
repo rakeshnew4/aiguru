@@ -371,6 +371,7 @@ async def stream_generate_response(
     call_name: str = "llm_call",
     session_id: Optional[str] = None,
     charge_credits: bool = True,
+    max_tokens: Optional[int] = None,
 ) -> AsyncGenerator:
     """
     Async generator that streams LLM response chunk by chunk.
@@ -432,7 +433,7 @@ async def stream_generate_response(
                     "model": model,
                     "messages": messages,
                     "temperature": model_config.temperature,
-                    "max_tokens": model_config.max_tokens,
+                    "max_tokens": max_tokens if max_tokens is not None else model_config.max_tokens,
                     "stream": True,
                     "stream_options": {"include_usage": True},
                     "cache": {"no-cache": False},

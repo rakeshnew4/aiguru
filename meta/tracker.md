@@ -1857,3 +1857,32 @@ Books with ALL 404 (English/SS for Class 6/9) kept as-is — likely IP-blocked f
 - Step 1 on screen: ~2-4s (was 9-16s — stream closes step 1 JSON ~2s in)
 - Step 2 on screen: ~4-6s (user can navigate to it while lesson is still generating)
 - No quality change — same LLM, same prompts, same images; streaming just emits earlier
+
+---
+
+## Session 25 — Cost + context fixes: max_tokens cap, planner trim, BB inline chat context
+
+**Date:** 2026-05-13
+**Asked:** 1) Is BB inline chat getting lesson context? 2) bb_main max_tokens cap 3) Trim planner input
+
+### `server/app/services/llm_service.py`
+- `stream_generate_response()`: added `max_tokens: Optional[int] = None` param
+- In JSON body: `"max_tokens": max_tokens if max_tokens is not None else model_config.max_tokens`
+
+### `server/app/api/chat.py`
+- bb_main `stream_generate_response` call: added `max_tokens=5000` (was implicitly 14096)
+- Saves ~65% of unused max_tokens capacity; 5-step lesson never exceeds ~3500 tokens
+
+### `server/app/services/prompt_service.py` — `build_bb_planner_prompt()`
+- `ctx_snippet`: `[:500]` → `[:150]` (planner only needs topic hint, not full chapter)
+- `history` slice: `[-6:]` → `[-3:]` (3 turns enough to know prior knowledge)
+- Per-turn truncation: `[:120]` → `[:80]` for both user and assistant turns
+- Saves ~250-400 planner input tokens per BB session (~$0.0002/session)
+
+### `app/.../BlackboardActivity.kt` — inline chat (`askQuestion` / `sendBbChat`)
+- **Was:** `history = ["system: Lesson topic: <title>"] + bbChatHistory`
+  - `context_service` explicitly excludes `bb_chat` pageId → inline chat had NO lesson content
+- **Now:** builds `lessonSummary` from current `steps`:
+  - "Step 1: <title> — <first frame text[:80]>\nStep 2: ..." capped at 800 chars total
+  - Injected as second `system:` history entry before bbChatHistory
+- Result: inline chat now knows what was taught, can answer "explain step 2 more" etc.
