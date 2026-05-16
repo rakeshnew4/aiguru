@@ -1792,10 +1792,10 @@ class BlackboardActivity : AppCompatActivity() {
         }
         // Small badge label for pedagogical frame types — no tapping needed, purely informational
         val frameBadgeText = when (frame.frameType) {
-            "hook"      -> "💡  Hook"
+            "hook"      -> ""
             "reinforce" -> "✓  Recap"
-            "apply"     -> "🌍  Real World"
-            "curiosity" -> "🔮  Think About It"
+            "apply"     -> ""
+            "curiosity" -> ""
             else        -> null
         }
         if (frameBadgeText != null) {
