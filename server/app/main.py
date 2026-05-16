@@ -60,7 +60,7 @@ _allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
 _allowed_origins: list[str] = (
     [o.strip() for o in _allowed_origins_env.split(",") if o.strip()]
     if _allowed_origins_env
-    else ["http://108.181.187.227:8003"]  # default: own server only
+    else ["https://vkpremium.art"]  # default: own domain
 )
 app.add_middleware(
     CORSMiddleware,
@@ -91,9 +91,21 @@ _static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.isdir(_static_dir):
     app.mount("/static", StaticFiles(directory=_static_dir), name="static")
 
+@app.get("/", include_in_schema=False)
+async def homepage():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "static", "index.html"))
+
 @app.get("/admin", include_in_schema=False)
 async def admin_portal():
     return FileResponse(os.path.join(os.path.dirname(__file__), "static", "admin", "index.html"))
+
+@app.get("/delete/account", include_in_schema=False)
+async def delete_account_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "static", "delete-account.html"))
+
+@app.get("/privacy", include_in_schema=False)
+async def privacy_policy():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "static", "privacy.html"))
 
 @app.get("/health")
 async def health():

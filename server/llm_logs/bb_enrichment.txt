@@ -1,11 +1,11 @@
-=== BB_ENRICHMENT | 2026-05-13 07:00:06 | session=none ===
+=== BB_ENRICHMENT | 2026-05-16 10:12:17 | session=none ===
 
 === SYSTEM ===
 You are a diagram data generator for an educational app. Output ONLY a valid JSON object — no text, no markdown, no explanation.
 
 === PROMPT ===
-Topic: "Visualizing the Gap"
-Teaching content: "Look at this curve. It is a parabola floating high above the x-axis. Because it never touches the line, it has no real roots."
+Topic: "Standard Form Equations"
+Teaching content: "This graph shows the curve. The solutions are where the line hits the horizontal axis."
 Diagram type: graph_function
 Color keys: primary (chalk white), label (yellow), secondary (sky blue), highlight (red), teal, orange, green, pink, purple, gold, coral, mint
 Schema: {"function":"quadratic","a":1,"b":0,"c":0,"x_range":[-4,4],"label":"y = x²","color":"secondary"}
@@ -16,33 +16,40 @@ Generate the BEST data JSON for this diagram. Fill ALL keys. Be accurate to the 
 
 === RESPONSE ===
 {
-  "function": "quadratic",
-  "a": 1,
-  "b": 0,
-  "c": 2,
-  "x_range": [
-    -4,
-    4
-  ],
-  "label": "y = x² + 2",
-  "color": "secondary",
-  "show_axes": true,
-  "show_grid": true,
-  "highlight_elements": [
-    {
-      "type": "line",
-      "equation": "y = 0",
-      "color": "primary",
-      "label": "x-axis"
+  "diagram_type": "graph_function",
+  "data": {
+    "function": "quadratic",
+    "a": 1,
+    "b": 0,
+    "c": -4,
+    "x_range": [
+      -4,
+      4
+    ],
+    "label": "y = x² - 4",
+    "color": "secondary",
+    "points_of_interest": [
+      {
+        "x": -2,
+        "y": 0,
+        "label": "Solution",
+        "color": "highlight"
+      },
+      {
+        "x": 2,
+        "y": 0,
+        "label": "Solution",
+        "color": "highlight"
+      }
+    ],
+    "axes": {
+      "x_axis_label": "x",
+      "y_axis_label": "y",
+      "color": "primary"
     },
-    {
-      "type": "annotation",
-      "text": "No real roots (no intersection)",
-      "position": [
-        0,
-        3
-      ],
-      "color": "highlight"
+    "grid": {
+      "show": true,
+      "color": "primary"
     }
-  ]
+  }
 }

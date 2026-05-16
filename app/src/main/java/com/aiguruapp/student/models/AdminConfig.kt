@@ -18,7 +18,7 @@ data class AdminConfig(
      * Firestore value will override this after the first fetch.
      */
     @field:PropertyName("server_url")
-    val serverUrl: String = "http://108.181.187.227:8003",
+    val serverUrl: String = "https://vkpremium.art",
 
     /** Optional API key for the server. Empty = no auth header. */
     @field:PropertyName("server_api_key")

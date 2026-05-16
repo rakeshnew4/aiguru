@@ -38,10 +38,10 @@ def get_cache(page_id: str, question: str) -> dict | None:
     return None
 
 
-def set_cache(page_id: str, question: str, value: dict) -> None:
+def set_cache(page_id: str, question: str, value: dict, ttl: int = 60 * 60 * 24 * 30) -> None:
     try:
         key = _make_key(page_id, question)
-        _get_client().set(key, json.dumps(value), ex=60 * 60 * 24 * 30)  # 30 days
-        logger.info("Cache SET for page_id=%s", page_id)
+        _get_client().set(key, json.dumps(value), ex=ttl)
+        logger.info("Cache SET for page_id=%s ttl=%ds", page_id, ttl)
     except redis.RedisError as exc:
         logger.warning("Redis set failed: %s", exc)

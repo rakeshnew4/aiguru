@@ -1,11 +1,11 @@
-=== DAILY_QUESTION_GEN | 2026-05-13 06:56:45 | session=none ===
+=== DAILY_QUESTION_GEN | 2026-05-16 10:11:46 | session=none ===
 
 === PROMPT ===
 Generate exactly 3 engaging daily learning questions for a student.
 
-Student's top subjects: General, Biology, Physics
-Recent topics studied: How to solve rubic cube?, Photosynthesis, Why do some plants leave theri leaves in the night?, Atmospheric Optics, Entomology, Newton's Laws of Motion
-Topics already used today (AVOID these): Celestial Mechanics, Atmospheric Optics, Entomology, Sound Propagation, Thermoregulation, Oceanography, Cognitive Perception, Global Logistics, Surface Tension, Memory Consolidation
+Student's top subjects: Science, Math, History
+Recent topics studied: basic concepts
+Topics already used today (AVOID these): none
 
 Rules:
 - Each question must be thought-provoking and curiosity-driven (not "what is X")
@@ -27,24 +27,24 @@ hook: one-line real-world curiosity fact related to the question (under 12 words
 === RESPONSE ===
 [
   {
-    "question": "How do plants 'know' when to close their leaves at night?",
-    "subject": "Biology",
-    "topic": "Nyctinasty",
+    "question": "Why do shadows change length throughout the day?",
+    "subject": "Science",
+    "topic": "Light and Shadows",
     "difficulty": 1,
-    "hook": "Some plants sleep just like humans do every single night."
+    "hook": "Shadows are longest during sunrise and sunset."
   },
   {
-    "question": "Could a Rubik's Cube be solved using only Newton's Laws?",
-    "subject": "Physics",
-    "topic": "Newton's Laws of Motion",
+    "question": "How would our number system change without the concept of zero?",
+    "subject": "Math",
+    "topic": "Number Theory",
     "difficulty": 2,
-    "hook": "Every twist of a cube involves complex force and friction."
+    "hook": "Ancient Romans did not have a symbol for zero."
   },
   {
-    "question": "What would happen to photosynthesis if the sun's light spectrum shifted?",
-    "subject": "Biology",
-    "topic": "Photosynthesis",
+    "question": "What if the printing press had never been invented?",
+    "subject": "History",
+    "topic": "The Renaissance",
     "difficulty": 3,
-    "hook": "Plants primarily use red and blue light to create energy."
+    "hook": "Books were hand-copied by monks before the printing press."
   }
 ]

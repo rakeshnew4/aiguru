@@ -304,7 +304,7 @@ object AiTtsProvider {
     fun serverTts(
         text: String,
         languageCode: String = "en-US",
-        serverUrl: String    = "",      // e.g. "http://108.181.187.227:8003"
+        serverUrl: String    = "",      // e.g. "https://vkpremium.art"
         authToken: String    = "",      // Firebase ID token (without "Bearer " prefix)
         ttsEngine: String    = "google",// android | gemini | google
         voiceRole: String    = "teacher",

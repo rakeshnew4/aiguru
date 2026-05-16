@@ -5,6 +5,7 @@ import re
 import asyncio
 from typing import List, Dict, Optional
 from app.core.logger import get_logger
+from app.services.cache_service import get_cache, set_cache
 
 logger = get_logger(__name__)
 
@@ -404,6 +405,21 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, a
         from app.utils.diagram_router import classify_diagram_need
         from app.services.enrichment_service import build_enrichment_tasks
 
+        def _build_llm_svg_cached(**kw) -> str:
+            """Sync wrapper: check cache, call build_llm_svg on miss, write cache on hit."""
+            _svg_cache_q = (
+                f"{kw.get('diagram_type','')}|{kw.get('visual_description','')}|"
+                f"{json.dumps(kw.get('data') or {}, sort_keys=True)}"
+            )
+            _cached = get_cache("svg", _svg_cache_q)
+            if _cached:
+                logger.info("SVG cache HIT for type=%s", kw.get('diagram_type', ''))
+                return _cached.get("svg", "")
+            result = build_llm_svg(**kw)
+            if result:
+                set_cache("svg", _svg_cache_q, {"svg": result}, ttl=24 * 3600)
+            return result
+
         loop = asyncio.get_event_loop()
 
         # ── Phase 1: Launch enrichment tasks + wikimedia searches in parallel ──
@@ -549,7 +565,7 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, a
                         uid=uid,
                     )
                     _llm_svg_tasks.append(
-                        (frame, loop.run_in_executor(None, lambda kw=_kw: build_llm_svg(**kw)))
+                        (frame, loop.run_in_executor(None, lambda kw=_kw: _build_llm_svg_cached(**kw)))
                     )
                     logger.info("Queued LLM SVG (custom intent) for step '%s'", step_title)
                     frame.pop("svg_elements", None)
@@ -620,7 +636,7 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, a
                             speech=frame_speech, visual_description=visual_desc, uid=uid,
                         )
                         _llm_svg_tasks.append(
-                            (frame, loop.run_in_executor(None, lambda kw=_kw: build_llm_svg(**kw)))
+                            (frame, loop.run_in_executor(None, lambda kw=_kw: _build_llm_svg_cached(**kw)))
                         )
                         logger.info(
                             "Queued LLM SVG (type=%s) for step '%s'", d_type, step_title,
@@ -652,7 +668,7 @@ async def get_titles(query: str, extra_candidates: Optional[List[str]] = None, a
                         speech=frame_speech, visual_description=visual_desc, uid=uid,
                     )
                     _llm_svg_tasks.append(
-                        (frame, loop.run_in_executor(None, lambda kw=_kw: build_llm_svg(**kw)))
+                        (frame, loop.run_in_executor(None, lambda kw=_kw: _build_llm_svg_cached(**kw)))
                     )
                     logger.info(
                         "Queued LLM SVG (force override, type=%s) for step '%s'", d_type, step_title,

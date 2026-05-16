@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-05-13 08:01:59 | session=YXnhFuOF_7156d0fe ===
+=== BB_MAIN | 2026-05-16 10:12:15 | session=BHnjD451_fbd4b648 ===
 
 === SYSTEM ===
 You are GURU — a warm, funny, wildly effective AI teacher inside a visual blackboard app.
@@ -97,41 +97,41 @@ RULES:
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: Photosynthesis
-Lesson title: The Magic of Photosynthesis
-Category: science
+Student's EXACT question: Topic: Explain how to solve quadratic equations ax² + bx + c = 0 step by step. Show 2 clear examples: one using the quadratic formula and one using factoring. Include a tip on when to use each method.
+Lesson title: Mastering Quadratic Equations
+Category: math
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
 Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- The Ingredients: Sunlight, Water, and CO2
-- Inside the Chloroplast: The Solar Factory
-- The Light-Dependent Reactions
-- The Calvin Cycle: Making Glucose
-- Why Plants Matter: Oxygen and Energy
+- Understanding the Standard Form ax² + bx + c = 0
+- Method 1: Factoring to Find Roots
+- Method 2: Applying the Quadratic Formula
+- Comparing Methods: When to Factor vs. Use the Formula
+- Practice Problems and Verification
 
 This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants an engaging introduction to photosynthesis focusing specifically on the role of sunlight and water as the initial ingredients.
-Question type: conceptual
+What the student specifically wants: The student wants to learn the step-by-step process for solving quadratic equations using both the quadratic formula and factoring, along with guidance on when to choose each method.
+Question type: how_to
 Student level: Class 5
 GRADE SPEECH STYLE: Technical words WITH plain-English gloss. Relatable humor (games, snacks). ≤35 words/frame.
-Topic type: science_biology | Scope: simple
-Key concepts to cover (ALL of these): photosynthesis, solar energy, water absorption
+Topic type: math_formula | Scope: medium
+Key concepts to cover (ALL of these): Quadratic Formula, Factoring Trinomials, Zero Product Property, Discriminant
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-DIAGRAM RECOMMENDATION: This topic likely needs a "leaf_anatomy" diagram (confidence 98%). Use diagram_type="leaf_anatomy" for your diagram frame(s).
+DIAGRAM RECOMMENDATION: This topic likely needs a "graph_function" diagram (confidence 98%). Use diagram_type="graph_function" for your diagram frame(s).
 
-SUBJECT GUIDANCE (Science — Biology):
-• For life cycles/processes (mitosis, photosynthesis, cell division): use diagram_type=custom so the LLM draws the actual process, NOT diagram_type=cycle.
-• Use PATH 2 (diagram_type=custom) for anatomy cross-sections (heart, leaf, kidney).
-• Concept frames: function → structure → real-body example.
-• End with a summary frame.
+SUBJECT GUIDANCE (Math — Formula/Algebra):
+• Lead with the formula in a concept frame. Show what each variable means.
+• Dedicate 2 concept frames to worked substitution (step-by-step numbers).
+• Prefer diagram_type: graph_function, fraction_bar, number_line, or pythagoras.
+• End with a summary frame recapping key takeaways.
 
 ---END LESSON BRIEF---
 
@@ -141,190 +141,200 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
 {
   "steps": [
     {
-      "title": "The Ingredients of Photosynthesis",
+      "title": "Standard Form Equations",
       "lang": "en-US",
-      "image_description": "sunlight shining on green leaves",
-      "image_show_confidencescore": 0.7,
+      "image_description": "parabola graph function",
+      "image_show_confidencescore": 0.9,
       "frames": [
         {
           "frame_type": "hook",
-          "text": "Photosynthesis: **Sunlight to Sugar**",
-          "speech": "What if you could turn sunlight into a snack? That is basically the superpower plants have called photosynthesis.",
+          "text": "The **Parabola** shape",
+          "speech": "Ever seen a fountain arc or a basketball shot? That curve is a quadratic equation in action.",
           "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 3000
         },
         {
           "frame_type": "concept",
-          "text": "Ingredients: **Sunlight, Water, CO2**",
-          "speech": "Photosynthesis is how plants make their own food using sunlight, water, and carbon dioxide, which is just the gas we breathe out.",
+          "text": "ax² + bx + c = 0",
+          "speech": "We write these as a x squared plus b x plus c equals zero. The letters a, b, and c are just numbers.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3500
         },
         {
-          "frame_type": "memory",
-          "text": "The **Plant Recipe**",
-          "speech": "Think of it like a recipe: Sunlight plus water plus air equals sweet sugar for the plant to grow.",
+          "frame_type": "diagram",
+          "text": "y = ax² + bx + c",
+          "speech": "This graph shows the curve. The solutions are where the line hits the horizontal axis.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3000
+          "duration_ms": 3000,
+          "diagram_type": "graph_function",
+          "diagram_data": {
+            "function": "x^2 - 4"
+          },
+          "visual_description": "A graph showing a U-shaped parabola crossing the x-axis."
         }
       ]
     },
     {
-      "title": "Inside the Chloroplast",
+      "title": "Method 1: Factoring",
       "lang": "en-US",
-      "image_description": "plant leaf anatomy cross section",
-      "image_show_confidencescore": 0.98,
+      "image_description": "factoring trinomials math",
+      "image_show_confidencescore": 0.7,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "The **Chloroplast Kitchen**",
-          "speech": "Plants have tiny green kitchens inside their leaves called chloroplasts, where all the magic happens.",
+          "text": "Factoring Trinomials",
+          "speech": "Factoring is like breaking a big LEGO set into two smaller, easier parts.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
+          "frame_type": "diagram",
+          "text": "(x - 3)(x - 2) = 0",
+          "speech": "We rewrite the equation as two parentheses multiplied together, like x minus three times x minus two equals zero.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500,
+          "diagram_type": "custom",
+          "diagram_data": {
+            "expression": "(x-3)(x-2)=0"
+          },
+          "visual_description": "The equation split into two factors."
+        },
+        {
+          "frame_type": "concept",
+          "text": "Zero Product Property",
+          "speech": "Here is the trick. If two things multiply to zero, one of them must be zero. So, x equals three or x equals two.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500
+        }
+      ]
+    },
+    {
+      "title": "Method 2: Quadratic Formula",
+      "lang": "en-US",
+      "image_description": "quadratic formula math text",
+      "image_show_confidencescore": 0.8,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "x = (-b ± √(b² - 4ac)) / 2a",
+          "speech": "The quadratic formula is the ultimate tool. It works even when factoring is impossible.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
         },
         {
           "frame_type": "diagram",
-          "text": "Leaf Anatomy: **Chloroplasts**",
-          "speech": "Look closely at this leaf cross-section. See those tiny green dots? Those are the chloroplasts, the solar-powered factories of the plant.",
+          "text": "Formula Breakdown",
+          "speech": "The part under the square root, b squared minus four a c, is called the discriminant. It tells us how many answers we have.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3500,
-          "diagram_type": "leaf_anatomy",
+          "duration_ms": 4000,
+          "diagram_type": "custom",
           "diagram_data": {
-            "label": "Chloroplasts inside leaf cells"
+            "formula": "x = (-b ± sqrt(b^2 - 4ac)) / 2a"
           },
-          "visual_description": "A cross-section of a leaf showing cells with green chloroplasts inside."
+          "visual_description": "The quadratic formula written clearly."
         },
         {
-          "frame_type": "apply",
-          "text": "Solar **Power**",
-          "speech": "These chloroplasts are like solar panels on a roof, soaking up energy from the sun to power the whole plant.",
+          "frame_type": "joke",
+          "text": "Math Cheat Code",
+          "speech": "Memorizing this formula is like learning a secret cheat code in a video game, except this code solves math problems instead of unlocking new levels.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3000
+          "duration_ms": 1500
         }
       ]
     },
     {
-      "title": "Light-Dependent Reactions",
+      "title": "When to Use Which",
       "lang": "en-US",
-      "image_description": "chloroplast light dependent reaction diagram",
-      "image_show_confidencescore": 0.85,
+      "image_description": "decision tree math",
+      "image_show_confidencescore": 0.6,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "Splitting **Water**",
-          "speech": "First, the plant traps sunlight to split water molecules apart. It is a high-energy process.",
+          "text": "Factoring vs Formula",
+          "speech": "Factor when the numbers are friendly and small. Use the formula when the numbers are big or messy decimals.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
         },
         {
           "frame_type": "question",
-          "text": "What happens to **Water**?",
-          "speech": "If sunlight is the power source, what do you think happens to that water when it hits the chloroplast?",
+          "text": "Which method is best?",
+          "speech": "If you have a really messy equation with big decimals, which method wins?",
           "tts_engine": "android",
           "voice_role": "teacher",
-          "duration_ms": 3000
+          "duration_ms": 2500
         },
         {
           "frame_type": "reveal",
-          "text": "Actually, it **Splits**!",
-          "speech": "Actually, it splits the water into tiny parts to get the energy needed for the next step. Good thinking!",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3500
-        }
-      ]
-    },
-    {
-      "title": "The Calvin Cycle",
-      "lang": "en-US",
-      "image_description": "calvin cycle plant biology diagram",
-      "image_show_confidencescore": 0.8,
-      "frames": [
-        {
-          "frame_type": "concept",
-          "text": "Making **Glucose**",
-          "speech": "Next, the plant uses carbon dioxide from the air to build glucose, which is a simple sugar the plant uses for energy.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3500
-        },
-        {
-          "frame_type": "joke",
-          "text": "Nature's **Baker**",
-          "speech": "Plants are like the best bakers ever. But instead of flour, they use thin air and sunshine to make their treats.",
+          "text": "Formula Wins!",
+          "speech": "Actually, it is the formula! It handles messy numbers like a champion every single time.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
-        },
-        {
-          "frame_type": "diagram",
-          "text": "Calvin Cycle: **Sugar Factory**",
-          "speech": "This diagram shows how the plant takes gas from the air and turns it into energy-packed sugar.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3500,
-          "diagram_type": "custom",
-          "diagram_data": {
-            "flow": "CO2 + Energy -> Glucose"
-          },
-          "visual_description": "A simple flow chart showing CO2 entering and glucose exiting a cycle."
         }
       ]
     },
     {
-      "title": "Why Plants Matter",
+      "title": "Practice and Review",
       "lang": "en-US",
-      "image_description": "plant oxygen release diagram",
-      "image_show_confidencescore": 0.75,
+      "image_description": "math equation solved",
+      "image_show_confidencescore": 0.5,
       "frames": [
         {
           "frame_type": "apply",
-          "text": "The **Oxygen** Gift",
-          "speech": "We need plants because they release oxygen, the gas we need to breathe, as a leftover from making their food.",
+          "text": "Solve x² - 5x + 6 = 0",
+          "speech": "Try solving x squared minus 5x plus 6 equals zero. We need two numbers that add to negative five and multiply to positive six.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3500
+          "duration_ms": 4000
         },
         {
-          "frame_type": "curiosity",
-          "text": "What if plants **vanished**?",
-          "speech": "But, what would happen to Earth if all the plants suddenly stopped working tomorrow?",
+          "frame_type": "diagram",
+          "text": "x = 2, x = 3",
+          "speech": "The numbers are negative two and negative three. So the answers are two and three.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3000
+          "duration_ms": 3000,
+          "diagram_type": "custom",
+          "diagram_data": {
+            "result": "x=2, x=3"
+          },
+          "visual_description": "The factors (x-2)(x-3)=0 shown."
         },
         {
           "frame_type": "summary",
-          "text": "Photosynthesis **Summary**",
-          "speech": "Photosynthesis turns sunlight, water, and gas into energy and oxygen. It is the reason we have food to eat and air to breathe.",
+          "text": "Lesson Summary",
+          "speech": "Quadratic equations define curves. Factor for simple numbers, use the quadratic formula for everything else. You've got this.",
           "tts_engine": "google",
           "voice_role": "assistant",
-          "duration_ms": 4000
+          "duration_ms": 3000
         }
       ],
       "followup_questions": [
         {
-          "question": "Do plants need sunlight at night?",
-          "speech": "Do plants need sunlight at night to survive, or do they store energy?"
+          "question": "What if the discriminant is zero?",
+          "speech": "What happens to the curve if that special part under the square root equals zero?"
         },
         {
-          "question": "Can plants live without water?",
-          "speech": "Can plants live without water, or is it a required ingredient?"
+          "question": "Can I use the formula for everything?",
+          "speech": "Is it okay to just use the quadratic formula for every single problem?"
         },
         {
-          "question": "Why are leaves usually green?",
-          "speech": "Why are most leaves green instead of another color like blue or red?"
+          "question": "Why is it called quadratic?",
+          "speech": "Why do we call these equations quadratic instead of just calling them curves?"
         }
       ],
-      "session_theme": "The Magic of Photosynthesis",
-      "video_search_query": "how photosynthesis works for kids",
+      "session_theme": "Mastering Quadratic Equations",
+      "video_search_query": "how to solve quadratic equations for beginners",
       "preferred_channels": [
         "Khan Academy India",
         "Physics Wallah"
