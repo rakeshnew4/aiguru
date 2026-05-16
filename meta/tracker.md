@@ -999,6 +999,50 @@ Run to start seeding:
 
 ---
 
+## 2025-07-13 — Voice wake-word interruption (both BB + Chat)
+
+**Task:** Implement "madam/teacher/sir/stop/question/wait" wake word detection for both BB lessons and chat voice mode. Replace old single-cycle interrupt listener with self-restarting `onResults`-only loop.
+
+**VoiceManager.kt** (utils/VoiceManager.kt):
+- Added `startWakeWordLoop(wakeWords, onDetected, language)` — creates new `SpeechRecognizer` each cycle, uses `onResults` only (no partial results), self-restarts with per-error delays: BUSY→1500ms, AUDIO→800ms, no-match→200ms, other→300ms
+- Added `stopWakeWordLoop()` — cancels Handler callbacks, destroys recognizer, sets `wakeWordActive=false`
+- Added private `_runWakeWordCycle()` — actual loop body with Handler.postDelayed
+- `destroy()` now calls `stopWakeWordLoop()` first
+- Old `startInterruptListening`/`stopInterruptListening` kept intact for backward compat
+
+**server/app/api/bb.py**:
+- Added `DoubtRequest` model (question, speech_context, step_title, lesson_topic, student_level, language_tag)
+- Added `DoubtResponse` model (answer, answer_speech, follow_up)
+- Added `POST /bb/doubt_solve` endpoint — builds context-aware prompt, calls `generate_response(tier="faster", call_name="bb_doubt")`, parses JSON response, records tokens, fallback on error
+
+**chat/ServerProxyClient.kt**:
+- Added `DoubtSolveResponse` data class (answer, answerSpeech, followUp) at file end
+- Added `postDoubtSolve()` companion function — same attempt(forceRefresh)/retry pattern as registerWithServer, POSTs to `$base/bb/doubt_solve`, fallback DoubtSolveResponse on failure
+
+**BlackboardActivity.kt**:
+- Added fields: `bbDoubtCardView: android.view.View?`, `bbWakeWordLoopRunning: Boolean`, `BB_WAKE_WORDS` list
+- `onPause()`: added `stopBbWakeWordLoop()` call
+- Added `onResume()` override: restarts loop if lesson was playing
+- `onDestroy()`: added `stopBbWakeWordLoop()`, `bbDoubtCardView = null` before bbVoiceManager.destroy()
+- `togglePause()`: when pausing adds `stopBbWakeWordLoop()`, when resuming adds `startBbWakeWordLoop()`
+- `speakFrame()`: added `startBbWakeWordLoop()` after quiz guard (non-quiz frames only)
+- Added `startBbWakeWordLoop()` — guarded by `bbWakeWordLoopRunning`, `isPaused`, `bbDoubtCardView`
+- Added `stopBbWakeWordLoop()` — resets flag, calls `bbVoiceManager.stopWakeWordLoop()`
+- Added `_onBbWakeWordDetected(word)` — stops TTS, shows toast, starts Tier 2 listening
+- Added `_solveDoubt(question)` — extracts speech context from current step frames, coroutine → `ServerProxyClient.postDoubtSolve()` → `_showDoubtCard()` on main thread
+- Added `_showDoubtCard(question, answer, answerSpeech, followUp)` — programmatic overlay card (dark style, GradientDrawable rounded bg), "🔊 Hear Answer" + "▶ Resume Lesson" buttons, auto-dismiss after 90s
+- Added `_dismissDoubtAndResume()` — removes card, calls speakFrame + startBbWakeWordLoop if not paused
+
+**FullChatFragment.kt**:
+- Removed `currentTTSText`, `voiceStopWords`, `interruptCallback`, `shouldInterruptForText()`
+- Added `CHAT_WAKE_WORDS = listOf("madam","teacher","sir","stop","question","wait")`
+- `startInterruptListening(interruptCallback)` → `startWakeWordLoop(CHAT_WAKE_WORDS, { stopWakeWordLoop(); triggerBargein() }, currentLang)`
+- All `stopInterruptListening()` → `stopWakeWordLoop()`
+- `triggerBargein()` unchanged logic — stops TTS, starts Tier 2 `startListening()`
+
+
+---
+
 ## 2026-04-29 (session 10)
 
 **Asked:** 3 issues: (1) BB mode ask bar keyboard hides input. (2) Lesson complete shows dialog covering blackboard — show non-blocking top notification instead. (3) Drawer credits stale.

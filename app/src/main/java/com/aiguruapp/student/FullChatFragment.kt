@@ -134,9 +134,8 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     private lateinit var waveBar2: View
     private lateinit var waveBar3: View
     private lateinit var waveBar4: View
-    private var currentTTSText = ""
     private var isInterrupted = false
-    private val voiceStopWords = listOf("stop", "stop it", "wait", "wait wait", "hold on")
+    private val CHAT_WAKE_WORDS = listOf("madam", "teacher", "sir", "stop", "question", "wait")
 
     // ── Session ───────────────────────────────────────────────────────────────
     private lateinit var subjectName: String
@@ -519,7 +518,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
     override fun onDestroyView() {
         super.onDestroyView()
         if (isListening) voiceManager.stopListening()
-        voiceManager.stopInterruptListening()
+        voiceManager.stopWakeWordLoop()
         chatAiTtsEngine.destroy()
         ttsManager.destroy()
     }
@@ -1596,7 +1595,6 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                                 lastInputWasVoice = false
                                 val voiceText = TutorController.prepareSpeechText(reply.response)
                                 if (isVoiceModeActive) {
-                                    currentTTSText = voiceText
                                     setVoiceModeStatus("🔊 AI is speaking…", "#1565C0")
                                 }
                                 chatAiTtsEngine.languageCode = currentLang
@@ -1609,8 +1607,10 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
                                         if (isVoiceModeActive) {
                                             Handler(Looper.getMainLooper()).postDelayed({
                                                 if (isVoiceModeActive && chatAiTtsEngine.isSpeaking()) {
-                                                    voiceManager.startInterruptListening(
-                                                        interruptCallback, currentLang
+                                                    voiceManager.startWakeWordLoop(
+                                                        CHAT_WAKE_WORDS,
+                                                        { voiceManager.stopWakeWordLoop(); triggerBargein() },
+                                                        currentLang
                                                     )
                                                 }
                                             }, 700)
@@ -1619,7 +1619,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
                                     override fun onComplete() {
                                         act.runOnUiThread {
-                                            voiceManager.stopInterruptListening()
+                                            voiceManager.stopWakeWordLoop()
                                             if (isVoiceModeActive && !isInterrupted) startVoiceLoopListening()
                                             isInterrupted = false
                                         }
@@ -1627,7 +1627,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
 
                                     override fun onError(error: String) {
                                         act.runOnUiThread {
-                                            voiceManager.stopInterruptListening()
+                                            voiceManager.stopWakeWordLoop()
                                             if (isVoiceModeActive) startVoiceLoopListening()
                                         }
                                     }
@@ -2093,7 +2093,7 @@ After a Blackboard lesson, use the ask bar (💬 button) to ask follow-up questi
         isVoiceModeActive = false
         isInterrupted = false
         ttsManager.stop()
-        voiceManager.stopInterruptListening()
+        voiceManager.stopWakeWordLoop()
         if (isListening) { voiceManager.stopListening(); isListening = false }
         stopWaveAnimation()
         stopMicPulse()
@@ -2132,36 +2132,11 @@ After a Blackboard lesson, use the ask bar (💬 button) to ask follow-up questi
         }
     }
 
-    private val interruptCallback = object : VoiceRecognitionCallback {
-        override fun onPartialResults(text: String) {
-            if (!isVoiceModeActive || !ttsManager.isSpeaking() || text.length < 3) return
-            if (shouldInterruptForText(text)) triggerBargein()
-        }
-
-        override fun onBeginningOfSpeech() {}
-
-        override fun onResults(text: String) {
-            if (!isVoiceModeActive || text.length < 2) return
-            if (shouldInterruptForText(text)) triggerBargein()
-        }
-
-        override fun onError(error: String) {}
-        override fun onListeningStarted() {}
-        override fun onListeningFinished() {}
-    }
-
-    private fun shouldInterruptForText(text: String): Boolean {
-        val heard = text.lowercase().trim()
-        if (heard.isBlank()) return false
-        val normalizedTTS = currentTTSText.lowercase()
-        return voiceStopWords.any { heard.contains(it) } && !normalizedTTS.contains(heard)
-    }
-
     private fun triggerBargein() {
         if (isInterrupted) return
         isInterrupted = true
         ttsManager.stop()
-        voiceManager.stopInterruptListening()
+        voiceManager.stopWakeWordLoop()
         requireActivity().runOnUiThread {
             setVoiceModeStatus("🎙️ Listening (interrupted)…", "#6A1B9A")
         }

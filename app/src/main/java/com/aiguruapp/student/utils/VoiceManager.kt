@@ -99,7 +99,109 @@ class VoiceManager(private val context: Context) {
         }
     }
 
+    // ── Wake Word Loop ────────────────────────────────────────────────────────
+    // Self-restarting loop using onResults only (reliable across all OEMs).
+    // Audio keeps playing during detection. Calls onDetected when matched.
+
+    private val wakeWordHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var wakeWordRecognizer: SpeechRecognizer? = null
+    private var wakeWordActive = false
+
+    /**
+     * Starts a continuous wake-word detection loop.
+     * Calls [onDetected] on the main thread with the matched word.
+     * Uses [onResults] only — no partial results — for OEM reliability.
+     */
+    fun startWakeWordLoop(
+        wakeWords: List<String>,
+        onDetected: (matchedWord: String) -> Unit,
+        language: String = "en-US"
+    ) {
+        stopWakeWordLoop()
+        if (!SpeechRecognizer.isRecognitionAvailable(context)) {
+            Log.w(TAG, "Wake word loop: SpeechRecognizer not available")
+            return
+        }
+        wakeWordActive = true
+        _runWakeWordCycle(wakeWords, onDetected, language, 0L)
+    }
+
+    /** Stops the wake word loop and releases its recognizer. Safe to call anytime. */
+    fun stopWakeWordLoop() {
+        wakeWordActive = false
+        wakeWordHandler.removeCallbacksAndMessages(null)
+        try { wakeWordRecognizer?.stopListening() } catch (_: Exception) {}
+        try { wakeWordRecognizer?.destroy() } catch (_: Exception) {}
+        wakeWordRecognizer = null
+    }
+
+    private fun _runWakeWordCycle(
+        wakeWords: List<String>,
+        onDetected: (String) -> Unit,
+        language: String,
+        delayMs: Long
+    ) {
+        if (!wakeWordActive) return
+        wakeWordHandler.postDelayed({
+            if (!wakeWordActive) return@postDelayed
+            try {
+                wakeWordRecognizer?.destroy()
+                wakeWordRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
+                wakeWordRecognizer?.setRecognitionListener(object : RecognitionListener {
+                    override fun onReadyForSpeech(p: Bundle?) {}
+                    override fun onBeginningOfSpeech() {}
+                    override fun onRmsChanged(rms: Float) {}
+                    override fun onBufferReceived(buf: ByteArray?) {}
+                    override fun onEndOfSpeech() {}
+                    override fun onEvent(t: Int, p: Bundle?) {}
+                    override fun onPartialResults(b: Bundle?) {} // intentionally unused
+
+                    override fun onResults(b: Bundle?) {
+                        if (!wakeWordActive) return
+                        val text = b?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                            ?.firstOrNull()?.lowercase()?.trim() ?: ""
+                        val matched = wakeWords.firstOrNull { word ->
+                            text.contains(word.lowercase())
+                        }
+                        if (matched != null) {
+                            wakeWordActive = false
+                            onDetected(matched)
+                        } else {
+                            _runWakeWordCycle(wakeWords, onDetected, language, 200L)
+                        }
+                    }
+
+                    override fun onError(error: Int) {
+                        if (!wakeWordActive) return
+                        val delay = when (error) {
+                            SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> 1500L
+                            SpeechRecognizer.ERROR_AUDIO           -> 800L
+                            SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> {
+                                wakeWordActive = false; return
+                            }
+                            else -> 300L
+                        }
+                        _runWakeWordCycle(wakeWords, onDetected, language, delay)
+                    }
+                })
+                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
+                    putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
+                    putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1200L)
+                    putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
+                }
+                wakeWordRecognizer?.startListening(intent)
+            } catch (e: Exception) {
+                Log.e(TAG, "Wake word cycle error: ${e.message}")
+                _runWakeWordCycle(wakeWords, onDetected, language, 500L)
+            }
+        }, delayMs)
+    }
+
     fun destroy() {
+        stopWakeWordLoop()
         try {
             speechRecognizer.destroy()
         } catch (e: Exception) {

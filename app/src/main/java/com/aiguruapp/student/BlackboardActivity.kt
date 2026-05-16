@@ -241,6 +241,10 @@ class BlackboardActivity : AppCompatActivity() {
     private var bbIsListening = false
     private var bbMicPulseAnim: android.animation.Animator? = null
     private lateinit var bbVoiceManager: VoiceManager
+    // Wake word loop state
+    private var bbDoubtCardView: android.view.View? = null
+    private var bbWakeWordLoopRunning = false
+    private val BB_WAKE_WORDS = listOf("madam", "teacher", "sir", "stop", "question", "wait")
     private lateinit var bbMediaManager: MediaManager
     private lateinit var bbCameraBtn: TextView
     private lateinit var bbMicBtn: TextView
@@ -833,14 +837,23 @@ class BlackboardActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         aiTtsEngine.stop()
+        stopBbWakeWordLoop()
         // Prevent TTS callbacks from re-triggering when app returns to foreground
         isPaused = true
         if (::pauseBtn.isInitialized) pauseBtn.text = "▶"
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Restart wake word loop if lesson was playing before app was backgrounded
+        if (!isPaused && steps.isNotEmpty()) startBbWakeWordLoop()
+    }
+
     override fun onDestroy() {
         typeAnimator?.cancel()
         aiTtsEngine.destroy()
+        stopBbWakeWordLoop()
+        bbDoubtCardView = null
         // tts is owned by aiTtsEngine.androidTts — already destroyed above
         if (::bbVoiceManager.isInitialized) bbVoiceManager.destroy()
         // Mark session done so HomeActivity.onResume can show feedback if needed.
@@ -2656,6 +2669,8 @@ class BlackboardActivity : AppCompatActivity() {
         }
         // Preload the next 2 frames' audio in background while this frame plays
         preloadUpcoming(stepIdx, frameIdx + 1, count = 2)
+        // Start wake word loop if not already running (non-quiz frame — quiz guard is above)
+        startBbWakeWordLoop()
 
         if (finalEngine != "android" && frame.speech.isNotBlank()) {
             android.util.Log.d("BB_SPEAK", "  ↳ AI TTS mode: engine=$finalEngine")
@@ -3045,8 +3060,10 @@ class BlackboardActivity : AppCompatActivity() {
         if (isPaused) {
             seekBarAnimator?.cancel()
             aiTtsEngine.stop()
+            stopBbWakeWordLoop()
         } else {
             speakFrame(currentStepIdx, currentFrameIdx)
+            startBbWakeWordLoop()
         }
     }
 
@@ -5134,6 +5151,181 @@ class BlackboardActivity : AppCompatActivity() {
         stepsContainer.addView(deeperCard)
         deeperCard.animate().alpha(1f).setStartDelay(300).setDuration(400).start()
         stepsScrollView.postDelayed({ stepsScrollView.smoothScrollTo(0, stepsContainer.bottom) }, 700)
+    }
+
+    // ── Wake Word Loop ────────────────────────────────────────────────────────
+
+    private fun startBbWakeWordLoop() {
+        if (bbWakeWordLoopRunning || isPaused || bbDoubtCardView != null) return
+        if (!::bbVoiceManager.isInitialized) return
+        bbWakeWordLoopRunning = true
+        bbVoiceManager.startWakeWordLoop(BB_WAKE_WORDS, ::_onBbWakeWordDetected, preferredLanguageTag)
+    }
+
+    private fun stopBbWakeWordLoop() {
+        bbWakeWordLoopRunning = false
+        if (::bbVoiceManager.isInitialized) bbVoiceManager.stopWakeWordLoop()
+    }
+
+    /** Called on the main thread when a wake word is detected during the lesson. */
+    private fun _onBbWakeWordDetected(word: String) {
+        bbWakeWordLoopRunning = false
+        aiTtsEngine.stop()
+        tts.stop()
+        android.widget.Toast.makeText(this, "🎙 Ask your question…", android.widget.Toast.LENGTH_SHORT).show()
+        if (!::bbVoiceManager.isInitialized) return
+        bbVoiceManager.startListening(object : com.aiguruapp.student.utils.VoiceRecognitionCallback {
+            override fun onResults(text: String) {
+                if (text.isNotBlank()) _solveDoubt(text)
+                else _dismissDoubtAndResume()
+            }
+            override fun onError(error: String) {
+                runOnUiThread {
+                    android.widget.Toast.makeText(
+                        this@BlackboardActivity,
+                        "Couldn't hear that — resuming lesson.",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                    _dismissDoubtAndResume()
+                }
+            }
+            override fun onPartialResults(text: String) {}
+            override fun onListeningStarted() {}
+            override fun onListeningFinished() {}
+        }, preferredLanguageTag)
+    }
+
+    /** Calls the server in background; shows doubt card when done. */
+    private fun _solveDoubt(question: String) {
+        val serverUrl = com.aiguruapp.student.config.AdminConfigRepository.effectiveServerUrl()
+        val stepTitle = steps.getOrNull(currentStepIdx)?.title ?: ""
+        val lessonTopic = intent.getStringExtra(EXTRA_CHAPTER) ?: ""
+        val speechContext = steps.getOrNull(currentStepIdx)
+            ?.frames?.take(currentFrameIdx + 1)?.joinToString(" ") { it.speech }
+            ?.take(500) ?: ""
+        val gradeStr = cachedMetadata.grade.filter { it.isDigit() }
+        val level = gradeStr.toIntOrNull() ?: 7
+
+        runOnUiThread {
+            android.widget.Toast.makeText(this, "Thinking…", android.widget.Toast.LENGTH_SHORT).show()
+        }
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            val response = com.aiguruapp.student.chat.ServerProxyClient.postDoubtSolve(
+                serverUrl    = serverUrl,
+                question     = question,
+                speechContext= speechContext,
+                stepTitle    = stepTitle,
+                lessonTopic  = lessonTopic,
+                studentLevel = level,
+                languageTag  = preferredLanguageTag
+            )
+            withContext(kotlinx.coroutines.Dispatchers.Main) {
+                _showDoubtCard(question, response.answer, response.answerSpeech, response.followUp)
+            }
+        }
+    }
+
+    /** Shows a dismissible overlay card with the doubt answer. Auto-dismisses after 90 s. */
+    private fun _showDoubtCard(question: String, answer: String, answerSpeech: String, followUp: String) {
+        bbDoubtCardView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
+
+        val dm = resources.displayMetrics
+        val dp = dm.density
+
+        val card = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            val bg = android.graphics.drawable.GradientDrawable().apply {
+                setColor(android.graphics.Color.parseColor("#F0182533"))
+                cornerRadius = 20f * dp
+            }
+            background = bg
+            setPadding((20 * dp).toInt(), (20 * dp).toInt(), (20 * dp).toInt(), (20 * dp).toInt())
+            elevation = 24f * dp
+        }
+
+        card.addView(android.widget.TextView(this).apply {
+            text = "❓ \"$question\""
+            setTextColor(android.graphics.Color.parseColor("#94a3b8"))
+            textSize = 12f
+            setPadding(0, 0, 0, (10 * dp).toInt())
+        })
+
+        card.addView(android.widget.TextView(this).apply {
+            text = answer
+            setTextColor(android.graphics.Color.WHITE)
+            textSize = 15f
+            setPadding(0, 0, 0, (10 * dp).toInt())
+        })
+
+        if (followUp.isNotBlank()) {
+            card.addView(android.widget.TextView(this).apply {
+                text = followUp
+                setTextColor(android.graphics.Color.parseColor("#64b5f6"))
+                textSize = 13f
+                setPadding(0, 0, 0, (16 * dp).toInt())
+            })
+        }
+
+        val btnRow = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER
+        }
+
+        val hearBtn = android.widget.Button(this).apply {
+            text = "🔊 Hear Answer"
+            setOnClickListener {
+                val speechText = answerSpeech.ifBlank { answer }
+                tts.setLocale(java.util.Locale.forLanguageTag(preferredLanguageTag))
+                tts.speak(speechText, object : com.aiguruapp.student.tts.TTSCallback {
+                    override fun onStart() {}
+                    override fun onComplete() {}
+                    override fun onError(e: String) {}
+                })
+            }
+        }
+
+        val resumeBtn = android.widget.Button(this).apply {
+            text = "▶ Resume Lesson"
+            setOnClickListener { _dismissDoubtAndResume() }
+        }
+
+        btnRow.addView(
+            hearBtn,
+            android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        btnRow.addView(
+            resumeBtn,
+            android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        )
+        card.addView(btnRow)
+
+        val root = window.decorView.findViewById<android.view.ViewGroup>(android.R.id.content)
+        val lp = android.widget.FrameLayout.LayoutParams(
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+            android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+            android.view.Gravity.BOTTOM
+        ).apply {
+            bottomMargin = (80 * dp).toInt()
+            leftMargin   = (20 * dp).toInt()
+            rightMargin  = (20 * dp).toInt()
+        }
+        root.addView(card, lp)
+        bbDoubtCardView = card
+
+        // Auto-dismiss after 90 seconds
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            if (bbDoubtCardView == card) _dismissDoubtAndResume()
+        }, 90_000L)
+    }
+
+    /** Removes doubt card, resumes TTS, restarts wake word loop. */
+    private fun _dismissDoubtAndResume() {
+        bbDoubtCardView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
+        bbDoubtCardView = null
+        if (!isPaused) {
+            speakFrame(currentStepIdx, currentFrameIdx)
+            startBbWakeWordLoop()
+        }
     }
 }
 

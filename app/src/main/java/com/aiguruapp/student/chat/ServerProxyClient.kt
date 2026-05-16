@@ -316,5 +316,67 @@ class ServerProxyClient(
             }
             if (!attempt(false)) attempt(true)  // retry once with fresh token on 401
         }
+
+        /**
+         * POST /bb/doubt_solve — answers a student's spoken doubt during a BB lesson.
+         * Returns [DoubtSolveResponse]. Never throws; returns a fallback on error.
+         * Must be called from a background thread (blocking I/O).
+         */
+        @JvmStatic
+        fun postDoubtSolve(
+            serverUrl: String,
+            question: String,
+            speechContext: String = "",
+            stepTitle: String = "",
+            lessonTopic: String = "",
+            studentLevel: Int = 7,
+            languageTag: String = "en-US"
+        ): DoubtSolveResponse {
+            val json = JSONObject().apply {
+                put("question",       question)
+                put("speech_context", speechContext)
+                put("step_title",     stepTitle)
+                put("lesson_topic",   lessonTopic)
+                put("student_level",  studentLevel)
+                put("language_tag",   languageTag)
+            }
+            val base = serverUrl.trimEnd('/')
+            val url  = "$base/bb/doubt_solve"
+            fun attempt(forceRefresh: Boolean): DoubtSolveResponse? {
+                val authHeader = TokenManager.buildAuthHeader(forceRefresh) ?: return null
+                val req = Request.Builder()
+                    .url(url)
+                    .post(json.toString().toRequestBody("application/json".toMediaType()))
+                    .header("Authorization", authHeader)
+                    .build()
+                return try {
+                    val resp = HttpClientManager.longTimeoutClient.newCall(req).execute()
+                    if (resp.code == 401 && !forceRefresh) { resp.close(); return null }
+                    if (!resp.isSuccessful) { resp.close(); return null }
+                    val body = resp.body?.string() ?: return null
+                    resp.close()
+                    val j = JSONObject(body)
+                    DoubtSolveResponse(
+                        answer       = j.optString("answer", ""),
+                        answerSpeech = j.optString("answer_speech", ""),
+                        followUp     = j.optString("follow_up", "Ready to continue?")
+                    )
+                } catch (e: IOException) {
+                    Log.w("ServerProxyClient", "postDoubtSolve failed: ${e.message}")
+                    null
+                }
+            }
+            return attempt(false) ?: attempt(true) ?: DoubtSolveResponse(
+                answer       = "Couldn't reach the server.",
+                answerSpeech = "Could not reach the server.",
+                followUp     = "Let us continue."
+            )
+        }
     }
 }
+
+data class DoubtSolveResponse(
+    val answer: String,
+    val answerSpeech: String,
+    val followUp: String
+)

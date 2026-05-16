@@ -86,6 +86,76 @@ async def grade_answer(
     return _keyword_grade(req.student_answer, req.model_answer, req.keywords)
 
 
+class DoubtRequest(BaseModel):
+    question: str
+    speech_context: str = ""    # recent lesson TTS text for context
+    step_title: str = ""
+    lesson_topic: str = ""
+    student_level: int = 7
+    language_tag: str = "en-US"
+
+
+class DoubtResponse(BaseModel):
+    answer: str
+    answer_speech: str   # plain text, no markdown — safe for TTS
+    follow_up: str       # short re-engagement phrase (≤10 words)
+
+
+@router.post("/doubt_solve", response_model=DoubtResponse)
+async def solve_doubt(
+    req: DoubtRequest,
+    auth: AuthUser = Depends(require_auth),
+):
+    """
+    Answers a student's spoken doubt during a Blackboard lesson.
+    Returns structured JSON so the Android client can display + speak the answer.
+    """
+    context_snippet = req.speech_context[:500] if req.speech_context else ""
+    lang_note = "Reply in Hindi." if req.language_tag.startswith("hi") else "Reply in English."
+
+    prompt = (
+        f"A student (grade {req.student_level}) is studying '{req.lesson_topic}'. "
+        f"Current lesson step: '{req.step_title}'. "
+        + (f"Recent lesson content: \"{context_snippet}\". " if context_snippet else "")
+        + f"Student's doubt: \"{req.question}\"\n\n"
+        f"{lang_note} Answer in 2-3 clear sentences. "
+        f"Then give a short re-engagement phrase (≤10 words) to connect back to the lesson.\n"
+        'Return ONLY valid JSON: {{"answer":"...","answer_speech":"...","follow_up":"..."}}\n'
+        '"answer" may use markdown. '
+        '"answer_speech" must be plain text with no markdown or symbols. '
+        '"follow_up" is 1 short sentence.'
+    )
+
+    try:
+        result = generate_response(prompt=prompt, tier="faster", call_name="bb_doubt", uid=auth.uid)
+        text   = result.get("text", "")
+        tokens = result.get("tokens", {})
+        if tokens:
+            asyncio.get_event_loop().run_in_executor(
+                None, user_service.record_tokens,
+                auth.uid,
+                tokens.get("inputTokens", 0),
+                tokens.get("outputTokens", 0),
+                tokens.get("totalTokens", 0),
+            )
+        m = re.search(r'\{.*\}', text, re.DOTALL)
+        if m:
+            d = json.loads(m.group())
+            return DoubtResponse(
+                answer       = str(d.get("answer", text)).strip(),
+                answer_speech= str(d.get("answer_speech", d.get("answer", text))).strip(),
+                follow_up    = str(d.get("follow_up", "Ready to continue?")).strip(),
+            )
+    except Exception as e:
+        logger.warning("doubt_solve LLM failed: %s", e)
+
+    return DoubtResponse(
+        answer       = "Sorry, I couldn't process that right now. Let's continue the lesson.",
+        answer_speech= "Sorry, I could not process that right now. Let us continue.",
+        follow_up    = "Ready to continue?",
+    )
+
+
 def _keyword_grade(answer: str, model_answer: str, keywords: List[str]) -> GradeResponse:
     lower = answer.lower()
     if not keywords:
