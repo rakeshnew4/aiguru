@@ -244,7 +244,9 @@ class BlackboardActivity : AppCompatActivity() {
     // Wake word loop state
     private var bbDoubtCardView: android.view.View? = null
     private var bbWakeWordLoopRunning = false
-    private val BB_WAKE_WORDS = listOf("madam", "teacher", "sir", "stop", "question", "wait")
+    private val BB_WAKE_WORDS = listOf("madam", "teacher", "sir", "stop", "question", "wait","hello")
+    private var bbListeningRingView: android.view.View? = null
+    private var bbListeningRingAnimator: android.animation.ValueAnimator? = null
     private lateinit var bbMediaManager: MediaManager
     private lateinit var bbCameraBtn: TextView
     private lateinit var bbMicBtn: TextView
@@ -323,6 +325,9 @@ class BlackboardActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_blackboard)
+        // Reset per-session hint flag so it shows once per BB session
+        getSharedPreferences("bb_prefs", MODE_PRIVATE).edit()
+            .putBoolean("wake_hint_shown_this_session", false).apply()
 
         loadingGroup    = findViewById(R.id.loadingGroup)
         loadingText     = findViewById(R.id.loadingText)
@@ -852,7 +857,8 @@ class BlackboardActivity : AppCompatActivity() {
     override fun onDestroy() {
         typeAnimator?.cancel()
         aiTtsEngine.destroy()
-        stopBbWakeWordLoop()
+        stopBbWakeWordLoop()  // also calls _hideListeningRing()
+        bbListeningRingAnimator?.cancel()
         bbDoubtCardView = null
         // tts is owned by aiTtsEngine.androidTts — already destroyed above
         if (::bbVoiceManager.isInitialized) bbVoiceManager.destroy()
@@ -5160,16 +5166,20 @@ class BlackboardActivity : AppCompatActivity() {
         if (!::bbVoiceManager.isInitialized) return
         bbWakeWordLoopRunning = true
         bbVoiceManager.startWakeWordLoop(BB_WAKE_WORDS, ::_onBbWakeWordDetected, preferredLanguageTag)
+        _showListeningRing()
+        _maybeShowWakeWordHint()
     }
 
     private fun stopBbWakeWordLoop() {
         bbWakeWordLoopRunning = false
         if (::bbVoiceManager.isInitialized) bbVoiceManager.stopWakeWordLoop()
+        _hideListeningRing()
     }
 
     /** Called on the main thread when a wake word is detected during the lesson. */
     private fun _onBbWakeWordDetected(word: String) {
         bbWakeWordLoopRunning = false
+        _hideListeningRing()
         aiTtsEngine.stop()
         tts.stop()
         android.widget.Toast.makeText(this, "🎙 Ask your question…", android.widget.Toast.LENGTH_SHORT).show()
@@ -5326,6 +5336,171 @@ class BlackboardActivity : AppCompatActivity() {
             speakFrame(currentStepIdx, currentFrameIdx)
             startBbWakeWordLoop()
         }
+    }
+
+    // ── Listening Ring Animation ──────────────────────────────────────────────
+
+    /**
+     * Shows a soft pulsing border around the screen edges while the wake word
+     * loop is active. Lets the user know the mic is open without being intrusive.
+     */
+    private fun _showListeningRing() {
+        _hideListeningRing() // clear any existing ring
+        val root = window.decorView.findViewById<android.view.ViewGroup>(android.R.id.content)
+        val ring = android.view.View(this).apply {
+            val border = android.graphics.drawable.GradientDrawable().apply {
+                setColor(android.graphics.Color.TRANSPARENT)
+                setStroke(
+                    (3f * resources.displayMetrics.density).toInt(),
+                    android.graphics.Color.parseColor("#4DD0E1") // cyan-400
+                )
+                cornerRadius = 0f
+            }
+            background = border
+            alpha = 0f
+            isClickable = false
+            isFocusable = false
+        }
+        val lp = android.widget.FrameLayout.LayoutParams(
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+        )
+        root.addView(ring, lp)
+        bbListeningRingView = ring
+
+        // Pulse: fade 0.08 → 0.45 → 0.08, repeat indefinitely
+        bbListeningRingAnimator = android.animation.ValueAnimator.ofFloat(0.08f, 0.45f, 0.08f).apply {
+            duration = 2600
+            repeatCount = android.animation.ValueAnimator.INFINITE
+            interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+            addUpdateListener { ring.alpha = it.animatedValue as Float }
+            start()
+        }
+    }
+
+    private fun _hideListeningRing() {
+        bbListeningRingAnimator?.cancel()
+        bbListeningRingAnimator = null
+        bbListeningRingView?.let { v ->
+            v.animate().alpha(0f).setDuration(300).withEndAction {
+                (v.parent as? android.view.ViewGroup)?.removeView(v)
+            }.start()
+        }
+        bbListeningRingView = null
+    }
+
+    // ── First-use Wake Word Hint ──────────────────────────────────────────────
+
+    /**
+     * Shows a dismissible hint banner for the first 3 BB sessions.
+     * Teaches users how to interact via voice while the lesson plays.
+     */
+    private fun _maybeShowWakeWordHint() {
+        val prefs = getSharedPreferences("bb_prefs", MODE_PRIVATE)
+        val shown = prefs.getInt("wake_hint_shown_count", 0)
+        if (shown >= 3) return
+        // Don't show again within same session if already shown
+        if (prefs.getBoolean("wake_hint_shown_this_session", false)) return
+        prefs.edit()
+            .putInt("wake_hint_shown_count", shown + 1)
+            .putBoolean("wake_hint_shown_this_session", true)
+            .apply()
+
+        val dm = resources.displayMetrics
+        val dp = dm.density
+        val root = window.decorView.findViewById<android.view.ViewGroup>(android.R.id.content)
+
+        val hint = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            val bg = android.graphics.drawable.GradientDrawable().apply {
+                setColor(android.graphics.Color.parseColor("#E8192233"))
+                cornerRadius = 16f * dp
+                setStroke((1.5f * dp).toInt(), android.graphics.Color.parseColor("#4DD0E1"))
+            }
+            background = bg
+            setPadding((16 * dp).toInt(), (14 * dp).toInt(), (16 * dp).toInt(), (14 * dp).toInt())
+            alpha = 0f
+        }
+
+        // Header row: mic icon + label
+        val headerRow = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+        }
+        headerRow.addView(android.widget.TextView(this).apply {
+            text = "🎙"
+            textSize = 18f
+            setPadding(0, 0, (8 * dp).toInt(), 0)
+        })
+        headerRow.addView(android.widget.TextView(this).apply {
+            text = "You can ask questions while the lesson plays!"
+            setTextColor(android.graphics.Color.parseColor("#E0F7FA"))
+            textSize = 14f
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        })
+        hint.addView(headerRow)
+
+        // Instruction rows
+        val instructions = listOf(
+            "💬  Say  \"Madam\"  or  \"Teacher\"  to ask anything",
+            "✋  Say  \"Stop\"  or  \"Wait\"  to pause & ask"
+        )
+        for (line in instructions) {
+            hint.addView(android.widget.TextView(this).apply {
+                text = line
+                setTextColor(android.graphics.Color.parseColor("#B2EBF2"))
+                textSize = 13f
+                setPadding((4 * dp).toInt(), (6 * dp).toInt(), 0, 0)
+            })
+        }
+
+        // Dismiss button row
+        val dismissRow = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.END
+            setPadding(0, (10 * dp).toInt(), 0, 0)
+        }
+        val sessionNum = prefs.getInt("wake_hint_shown_count", 1)
+        val sessionsLeft = 3 - sessionNum
+        dismissRow.addView(android.widget.TextView(this).apply {
+            text = if (sessionsLeft > 0) "Got it  ✓   (shows $sessionsLeft more time${if (sessionsLeft == 1) "" else "s"})" else "Got it  ✓"
+            setTextColor(android.graphics.Color.parseColor("#80DEEA"))
+            textSize = 12f
+            setPadding((12 * dp).toInt(), (6 * dp).toInt(), (12 * dp).toInt(), (6 * dp).toInt())
+            val dismissBg = android.graphics.drawable.GradientDrawable().apply {
+                setColor(android.graphics.Color.parseColor("#20FFFFFF"))
+                cornerRadius = 8f * dp
+            }
+            background = dismissBg
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { hint.animate().alpha(0f).setDuration(250).withEndAction {
+                (hint.parent as? android.view.ViewGroup)?.removeView(hint) }.start() }
+        })
+        hint.addView(dismissRow)
+
+        val lp = android.widget.FrameLayout.LayoutParams(
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+            android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+            android.view.Gravity.BOTTOM
+        ).apply {
+            bottomMargin = (120 * dp).toInt()
+            leftMargin   = (20 * dp).toInt()
+            rightMargin  = (20 * dp).toInt()
+        }
+        root.addView(hint, lp)
+
+        // Fade in
+        hint.animate().alpha(1f).setStartDelay(800).setDuration(400).start()
+
+        // Auto-dismiss after 9 seconds
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            if (hint.parent != null) {
+                hint.animate().alpha(0f).setDuration(400).withEndAction {
+                    (hint.parent as? android.view.ViewGroup)?.removeView(hint)
+                }.start()
+            }
+        }, 9_000L)
     }
 }
 
