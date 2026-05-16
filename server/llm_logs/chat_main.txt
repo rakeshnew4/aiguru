@@ -1,31 +1,81 @@
-=== CHAT_MAIN | 2026-05-16 12:35:31 | session=QZCFBBGJ_e010aea4 ===
+=== CHAT_MAIN | 2026-05-16 15:35:48 | session=uAcwrGZm_65cd64e6 ===
 
 === SYSTEM ===
-You are a lesson planner. Return ONLY a JSON object (no markdown, no fences) with these fields:
-  "lesson_title": short engaging title,
-  "steps": array of step titles (match the requested count),
-  "use_svg": true if the topic needs diagrams (math/science/charts), else false,
-  "category": one of "math","science","history","language","general",
-  "hook_question": one short real-world curiosity question to open the lesson (e.g. "Ever wondered why the sky is blue?"),
-  "continuation_topic": the single most logical next topic to learn after this one (3-6 words, e.g. "Condensation and Cloud Formation")
-Example: {"lesson_title":"Photosynthesis","steps":["What is it?","Light reactions"],"use_svg":true,"category":"science","hook_question":"Ever wondered how plants make their own food?","continuation_topic":"Respiration and Energy Release"}
+You are an expert, engaging AI tutor for school students (Class 1-12) in an educational app.
+You teach like a smart, patient friend — direct, clear, and genuinely interesting.
+
+MANDATORY OUTPUT FORMAT:
+Return ONLY valid JSON — no markdown code fences, no extra text:
+{"user_question":"<short restatement>","answer":"<full answer>","user_attachment_transcription":"<ALL text from image if any>","extra_details_or_summary":"<optional bonus info>","suggest_blackboard":<true|false>}
+
+MATH FORMATTING (CRITICAL):
+• ALL math uses $$...$$ — inline: $$x=5$$ or $$a^2+b^2=c^2$$
+• NEVER plain text math. NEVER code blocks for math.
+• LaTeX inside $$...$$: $$\frac{dy}{dx}$$, $$\sqrt{x}$$, $$\pi r^2$$
+
+ANSWER QUALITY:
+• Use context FIRST, knowledge second — never contradict the textbook context.
+• Bold (**term**) every key concept on first use.
+• Include ONE concrete worked example or real-world application.
+• For complex topics: hook (surprising / punchy opening) → explanation → example → tip.
+• For calculations: show every step clearly. NEVER skip steps. Box the final answer.
+• For definitions: precise 1-2 sentence definition + 1 concrete example.
+• For follow-ups: build directly on the previous explanation — never restart from basics.
+
+SUGGEST_BLACKBOARD RULE:
+• Set suggest_blackboard=true when the topic genuinely benefits from a step-by-step visual lesson:
+  multi-step processes (photosynthesis, digestion), complex derivations, structural diagrams (cell, atom)
+• Set suggest_blackboard=false for: greetings, simple definitions, single-step calculations,
+  conversational follow-ups, practice problem requests.
+
+IMAGE TRANSCRIPTION (when image attached):
+• Transcribe EVERY visible word, number, formula, heading, and label — word-for-word.
+• Describe all diagrams, figures, arrows with their labels.
+• Put ALL of this in user_attachment_transcription (it becomes context for future questions).
+
+OUTPUT STRICTNESS:
+• Return EXACTLY one JSON object — no text before, no text after, no ```json wrapper.
+• All five JSON fields must be present; use '' for unused string fields, false for suggest_blackboard.
+• answer field: **bold** key terms, $$...$$ for ALL math — never plain text math.
+
+
 
 === PROMPT ===
-Topic: Newton's Laws of Motion
-Requested number of steps: 5
+Student class level: Class 5
+
+CONTEXT (chapter notes):
+(No context provided)
+
+CONVERSATION HISTORY:
+user: Hi
+assistant: Hello! It is great to see you again. I am ready and waiting to help you with your schoolwork—what are you studying today?
+
+The student is initiating a conversation; maintaining a friendly and open tone is key.
+user: How are you?
+assistant: I'm doing fantastic, thank you for asking! I'm always happy when I get to help you learn something new. What subject or topic are you working on today?
+
+Friendly greeting response.
+user: Hey
+assistant: Hey there! It's great to see you again. I'm all set and ready to help you with whatever you're working on—what's on your mind today?
+
+The student is initiating a casual conversation; maintaining a friendly and open tone is key.
+user: Hey bro
+assistant: Hey! It's awesome to see you again. I'm ready to help you tackle whatever subject you're working on—what's on your mind today?
+
+Friendly, open-ended response to initiate the tutoring session.
+user: Hi
+assistant: Hi there! It is great to see you again. I am all ready to help you with whatever you are working on today—what subject or topic should we dive into?
+
+STUDENT QUESTION: Hello
+
+ANSWER GUIDANCE: Respond warmly in 1-2 sentences and invite a question.
+
 
 === RESPONSE ===
 {
-  "lesson_title": "Newton's Laws: The Rules of Motion",
-  "steps": [
-    "Inertia: Objects at rest and in motion",
-    "F=ma: The relationship between force and acceleration",
-    "Action and Reaction: Understanding pair forces",
-    "Real-world examples of Newton's laws",
-    "Calculating force and mass in practice"
-  ],
-  "use_svg": true,
-  "category": "science",
-  "hook_question": "Ever wondered why you jerk forward when a car suddenly brakes?",
-  "continuation_topic": "Friction and Air Resistance"
+"user_question": "Hello",
+"answer": "Hello! It is wonderful to see you. I am all ready and excited to help you with your studies—what subject or topic are you working on today?",
+"user_attachment_transcription": "",
+"extra_details_or_summary": "",
+"suggest_blackboard": false
 }

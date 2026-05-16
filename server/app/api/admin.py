@@ -799,13 +799,443 @@ def get_activity_stats(_: str = Depends(_require_admin)):
     return {"counts": counts, "recent": recent, "total": sum(counts.values())}
 
 
+# ── Users (users_table) ──────────────────────────────────────────────────────
+
+@router.get("/users_table")
+def list_users_table(
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, le=100),
+    search: Optional[str] = Query(None),
+    plan: Optional[str] = Query(None),
+    grade: Optional[str] = Query(None),
+    school: Optional[str] = Query(None),
+    _: str = Depends(_require_admin),
+):
+    """List users from users_table with pagination and filters."""
+    db = _get_db()
+    query = db.collection("users_table")
+
+    # Apply filters
+    if plan:
+        query = query.where("planId", "==", plan)
+    if grade:
+        query = query.where("grade", "==", grade)
+    if school:
+        query = query.where("schoolId", "==", school)
+
+    # Get total count and paginate
+    try:
+        total = db.collection("users_table").count().get()[0][0].value
+    except Exception:
+        total = 0
+
+    offset = (page - 1) * limit
+    docs = query.offset(offset).limit(limit).stream()
+    users = [_doc_to_dict(d) for d in docs]
+
+    # Apply search filter in-memory (uid, name, email)
+    if search:
+        search_lower = search.lower()
+        users = [u for u in users if (
+            search_lower in (u.get('_id') or '').lower() or
+            search_lower in (u.get('name') or '').lower() or
+            search_lower in (u.get('email') or '').lower()
+        )]
+
+    return {
+        "users": users,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "pages": (total + limit - 1) // limit,
+    }
+
+
+@router.get("/users_table/{uid}")
+def get_user(uid: str, _: str = Depends(_require_admin)):
+    """Get full user profile with credits and activity."""
+    db = _get_db()
+    user_doc = db.collection("users_table").document(uid).get()
+    if not user_doc.exists:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user = _doc_to_dict(user_doc)
+
+    # Fetch credits
+    credits_doc = db.collection("user_credits").document(uid).get()
+    user["credits"] = _doc_to_dict(credits_doc) if credits_doc.exists else {"balance": 0, "lifetime_earned": 0}
+
+    # Fetch recent transactions
+    txns = db.collection("credit_transactions").where("uid", "==", uid).order_by(
+        "created_at", direction=firestore.Query.DESCENDING
+    ).limit(10).stream()
+    user["recent_transactions"] = [_doc_to_dict(t) for t in txns]
+
+    return user
+
+
+@router.put("/users_table/{uid}")
+def update_user(uid: str, payload: Dict[str, Any], _: str = Depends(_require_admin)):
+    """Update user fields (merge, not replace)."""
+    db = _get_db()
+    payload.pop("_id", None)
+    payload.pop("credits", None)
+    payload.pop("recent_transactions", None)
+    db.collection("users_table").document(uid).set(payload, merge=True)
+    return {"ok": True}
+
+
+@router.post("/users_table/{uid}/quota")
+def update_user_quota(uid: str, payload: Dict[str, Any], _: str = Depends(_require_admin)):
+    """Update only quota fields for a user."""
+    QUOTA_FIELDS = {
+        "planId", "plan_daily_chat_limit", "plan_daily_bb_limit",
+        "plan_tts_enabled", "plan_ai_tts_enabled", "plan_blackboard_enabled",
+        "plan_image_enabled", "plan_expiry_date", "ai_tts_quota_chars",
+    }
+    safe = {k: v for k, v in payload.items() if k in QUOTA_FIELDS}
+    if not safe:
+        raise HTTPException(status_code=400, detail="No valid quota fields")
+
+    db = _get_db()
+    db.collection("users_table").document(uid).set(safe, merge=True)
+    return {"ok": True, "updated": list(safe.keys())}
+
+
+@router.post("/users_table/{uid}/credits/grant")
+def grant_credits(uid: str, payload: Dict[str, Any], _: str = Depends(_require_admin)):
+    """Grant credits to a user."""
+    amount = int(payload.get("amount", 0))
+    reason = str(payload.get("reason", "admin_grant"))
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+
+    db = _get_db()
+    now = int(_time.time() * 1000)
+
+    # Update balance
+    credits_ref = db.collection("user_credits").document(uid)
+    doc = credits_ref.get()
+    current = (doc.to_dict() or {}).get("balance", 0) if doc.exists else 0
+    new_balance = current + amount
+
+    credits_ref.set({
+        "balance": new_balance,
+        "lifetime_earned": firestore.Increment(amount),
+        "last_updated": now,
+    }, merge=True)
+
+    # Log transaction
+    db.collection("credit_transactions").document().set({
+        "uid": uid,
+        "amount": amount,
+        "type": "admin_grant",
+        "reason": reason,
+        "balance_after": new_balance,
+        "created_at": now,
+    })
+
+    return {"ok": True, "new_balance": new_balance}
+
+
+@router.post("/users_table/{uid}/credits/deduct")
+def deduct_credits(uid: str, payload: Dict[str, Any], _: str = Depends(_require_admin)):
+    """Deduct credits from a user."""
+    amount = int(payload.get("amount", 0))
+    reason = str(payload.get("reason", "admin_deduct"))
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+
+    db = _get_db()
+    now = int(_time.time() * 1000)
+
+    # Update balance
+    credits_ref = db.collection("user_credits").document(uid)
+    doc = credits_ref.get()
+    current = (doc.to_dict() or {}).get("balance", 0) if doc.exists else 0
+    new_balance = max(0, current - amount)
+
+    credits_ref.set({
+        "balance": new_balance,
+        "last_updated": now,
+    }, merge=True)
+
+    # Log transaction
+    db.collection("credit_transactions").document().set({
+        "uid": uid,
+        "amount": -amount,
+        "type": "admin_deduct",
+        "reason": reason,
+        "balance_after": new_balance,
+        "created_at": now,
+    })
+
+    return {"ok": True, "new_balance": new_balance}
+
+
+@router.delete("/users_table/{uid}")
+def delete_user(uid: str, _: str = Depends(_require_admin)):
+    """Delete a user (careful operation)."""
+    db = _get_db()
+    db.collection("users_table").document(uid).delete()
+    db.collection("user_credits").document(uid).delete()
+    return {"ok": True}
+
+
+# ── Plans ──────────────────────────────────────────────────────────────────────
+
+@router.get("/plans_new")
+def list_plans(_: str = Depends(_require_admin)):
+    """List all plans."""
+    return _collection_list("plans", 100)
+
+
+@router.post("/plans_new")
+def create_plan(payload: Dict[str, Any], _: str = Depends(_require_admin)):
+    """Create a new plan."""
+    doc_id = payload.pop("_id", None) or str(uuid.uuid4())
+    db = _get_db()
+    db.collection("plans").document(doc_id).set(payload)
+    return {"id": doc_id, "ok": True}
+
+
+@router.put("/plans_new/{plan_id}")
+def update_plan(plan_id: str, payload: Dict[str, Any], _: str = Depends(_require_admin)):
+    """Update a plan."""
+    payload.pop("_id", None)
+    db = _get_db()
+    db.collection("plans").document(plan_id).set(payload, merge=True)
+    return {"ok": True}
+
+
+@router.delete("/plans_new/{plan_id}")
+def delete_plan(plan_id: str, _: str = Depends(_require_admin)):
+    """Delete a plan."""
+    db = _get_db()
+    db.collection("plans").document(plan_id).delete()
+    return {"ok": True}
+
+
+# ── Credit Topups ──────────────────────────────────────────────────────────────
+
+@router.get("/credit-topups_new")
+def list_credit_topups(_: str = Depends(_require_admin)):
+    """List all credit topup packs."""
+    return _collection_list("credit_topups", 100)
+
+
+@router.post("/credit-topups_new")
+def create_credit_topup(payload: Dict[str, Any], _: str = Depends(_require_admin)):
+    """Create a credit topup pack."""
+    doc_id = payload.pop("_id", None) or str(uuid.uuid4())
+    db = _get_db()
+    db.collection("credit_topups").document(doc_id).set(payload)
+    return {"id": doc_id, "ok": True}
+
+
+@router.put("/credit-topups_new/{pack_id}")
+def update_credit_topup(pack_id: str, payload: Dict[str, Any], _: str = Depends(_require_admin)):
+    """Update a credit topup pack."""
+    payload.pop("_id", None)
+    db = _get_db()
+    db.collection("credit_topups").document(pack_id).set(payload, merge=True)
+    return {"ok": True}
+
+
+@router.delete("/credit-topups_new/{pack_id}")
+def delete_credit_topup(pack_id: str, _: str = Depends(_require_admin)):
+    """Delete a credit topup pack."""
+    db = _get_db()
+    db.collection("credit_topups").document(pack_id).delete()
+    return {"ok": True}
+
+
+# ── Offers ────────────────────────────────────────────────────────────────────
+
+@router.get("/offers_new")
+def list_offers(_: str = Depends(_require_admin)):
+    """List all offers."""
+    return _collection_list("app_offers", 100)
+
+
+@router.post("/offers_new")
+def create_offer(payload: Dict[str, Any], _: str = Depends(_require_admin)):
+    """Create an offer."""
+    doc_id = payload.pop("_id", None) or str(uuid.uuid4())
+    db = _get_db()
+    db.collection("app_offers").document(doc_id).set(payload)
+    return {"id": doc_id, "ok": True}
+
+
+@router.put("/offers_new/{offer_id}")
+def update_offer(offer_id: str, payload: Dict[str, Any], _: str = Depends(_require_admin)):
+    """Update an offer."""
+    payload.pop("_id", None)
+    db = _get_db()
+    db.collection("app_offers").document(offer_id).set(payload, merge=True)
+    return {"ok": True}
+
+
+@router.delete("/offers_new/{offer_id}")
+def delete_offer(offer_id: str, _: str = Depends(_require_admin)):
+    """Delete an offer."""
+    db = _get_db()
+    db.collection("app_offers").document(offer_id).delete()
+    return {"ok": True}
+
+
+# ── Schools ───────────────────────────────────────────────────────────────────
+
+@router.get("/schools_new")
+def list_schools(_: str = Depends(_require_admin)):
+    """List all schools."""
+    return _collection_list("schools", 200)
+
+
+@router.post("/schools_new")
+def create_school(payload: Dict[str, Any], _: str = Depends(_require_admin)):
+    """Create a school."""
+    doc_id = payload.pop("_id", None) or str(uuid.uuid4())
+    db = _get_db()
+    db.collection("schools").document(doc_id).set(payload)
+    return {"id": doc_id, "ok": True}
+
+
+@router.put("/schools_new/{school_id}")
+def update_school(school_id: str, payload: Dict[str, Any], _: str = Depends(_require_admin)):
+    """Update a school."""
+    payload.pop("_id", None)
+    db = _get_db()
+    db.collection("schools").document(school_id).set(payload, merge=True)
+    return {"ok": True}
+
+
+@router.delete("/schools_new/{school_id}")
+def delete_school(school_id: str, _: str = Depends(_require_admin)):
+    """Delete a school."""
+    db = _get_db()
+    db.collection("schools").document(school_id).delete()
+    return {"ok": True}
+
+
+# ── Subjects & Chapters ────────────────────────────────────────────────────────
+
+@router.get("/subjects_new")
+def list_subjects(_: str = Depends(_require_admin)):
+    """List all subjects."""
+    return _collection_list("subjects", 500)
+
+
+@router.post("/subjects_new")
+def create_subject(payload: Dict[str, Any], _: str = Depends(_require_admin)):
+    """Create a subject."""
+    doc_id = payload.pop("_id", None) or str(uuid.uuid4())
+    db = _get_db()
+    db.collection("subjects").document(doc_id).set(payload)
+    return {"id": doc_id, "ok": True}
+
+
+@router.put("/subjects_new/{subject_id}")
+def update_subject(subject_id: str, payload: Dict[str, Any], _: str = Depends(_require_admin)):
+    """Update a subject."""
+    payload.pop("_id", None)
+    db = _get_db()
+    db.collection("subjects").document(subject_id).set(payload, merge=True)
+    return {"ok": True}
+
+
+@router.delete("/subjects_new/{subject_id}")
+def delete_subject(subject_id: str, _: str = Depends(_require_admin)):
+    """Delete a subject."""
+    db = _get_db()
+    db.collection("subjects").document(subject_id).delete()
+    return {"ok": True}
+
+
+@router.get("/chapters_new")
+def list_chapters(subject_id: Optional[str] = Query(None), _: str = Depends(_require_admin)):
+    """List chapters, optionally filtered by subject."""
+    db = _get_db()
+    query = db.collection("chapters")
+    if subject_id:
+        query = query.where("subject_id", "==", subject_id)
+    docs = query.limit(500).stream()
+    return [_doc_to_dict(d) for d in docs]
+
+
+@router.post("/chapters_new")
+def create_chapter(payload: Dict[str, Any], _: str = Depends(_require_admin)):
+    """Create a chapter."""
+    doc_id = payload.pop("_id", None) or str(uuid.uuid4())
+    db = _get_db()
+    db.collection("chapters").document(doc_id).set(payload)
+    return {"id": doc_id, "ok": True}
+
+
+@router.put("/chapters_new/{chapter_id}")
+def update_chapter(chapter_id: str, payload: Dict[str, Any], _: str = Depends(_require_admin)):
+    """Update a chapter."""
+    payload.pop("_id", None)
+    db = _get_db()
+    db.collection("chapters").document(chapter_id).set(payload, merge=True)
+    return {"ok": True}
+
+
+@router.delete("/chapters_new/{chapter_id}")
+def delete_chapter(chapter_id: str, _: str = Depends(_require_admin)):
+    """Delete a chapter."""
+    db = _get_db()
+    db.collection("chapters").document(chapter_id).delete()
+    return {"ok": True}
+
+
+# ── Activity Logs (Paginated) ──────────────────────────────────────────────────
+
+@router.get("/activity-logs_new")
+def list_activity_logs_paginated(
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, le=100),
+    uid: Optional[str] = Query(None),
+    event_type: Optional[str] = Query(None),
+    _: str = Depends(_require_admin),
+):
+    """Paginated activity logs (50 per page)."""
+    db = _get_db()
+    query = db.collection("activity_logs")
+
+    if uid:
+        query = query.where("uid", "==", uid)
+    if event_type:
+        query = query.where("event_type", "==", event_type)
+
+    # Order by timestamp descending
+    query = query.order_by("timestamp", direction=firestore.Query.DESCENDING)
+
+    try:
+        total = db.collection("activity_logs").count().get()[0][0].value
+    except Exception:
+        total = 0
+
+    offset = (page - 1) * limit
+    docs = query.offset(offset).limit(limit).stream()
+    logs = [_doc_to_dict(d) for d in docs]
+
+    return {
+        "logs": logs,
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "pages": (total + limit - 1) // limit,
+    }
+
+
 # ── Generic collection viewer (read-only safety hatch) ────────────────────────
 
 ALLOWED_COLLECTIONS = {
     "users", "subjects", "chapters", "plans", "schools",
     "quizzes", "payment_intents", "payment_receipts", "payment_webhooks",
     "app_offers", "updates", "notifications", "admin_config", "referralCodes",
-    "activity_logs",
+    "activity_logs", "users_table", "user_credits", "credit_transactions", "credit_topups",
 }
 
 
@@ -818,3 +1248,56 @@ def raw_collection(
     if name not in ALLOWED_COLLECTIONS:
         raise HTTPException(status_code=400, detail="Collection not allowed")
     return _collection_list(name, limit)
+
+
+# ── Environment Status ────────────────────────────────────────────────────────
+
+@router.get("/env-status")
+def get_env_status(_: str = Depends(_require_admin)):
+    """
+    Returns which environment variables are set (presence only for secrets,
+    actual value for non-sensitive config keys like model IDs and providers).
+    Never exposes API key values.
+    """
+    # Keys where actual value is safe to show (model IDs, providers, flags)
+    SHOW_VALUE_KEYS = {
+        "POWER_MODEL_ID", "CHEAPER_MODEL_ID", "FASTER_MODEL_ID",
+        "POWER_PROVIDER", "CHEAPER_PROVIDER", "FASTER_PROVIDER",
+        "TTS_DEFAULT_ENGINE", "USE_LITELLM_PROXY", "DEBUG",
+        "AWS_REGION",
+    }
+    # All keys to report on
+    ALL_KEYS = [
+        # LLM API Keys (presence only)
+        "GEMINI_API_KEY", "GROQ_API_KEY", "ELEVENLABS_API_KEY",
+        "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
+        # AWS
+        "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION",
+        # LiteLLM
+        "LITELLM_MASTER_KEY", "LITELLM_PROXY_URL",
+        # Firebase
+        "FIREBASE_SERVICE_ACCOUNT", "GOOGLE_APPLICATION_CREDENTIALS",
+        # Payment
+        "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET",
+        # Admin auth
+        "ADMIN_USERNAME", "ADMIN_PASSWORD",
+        # Safe config values
+        "POWER_MODEL_ID", "CHEAPER_MODEL_ID", "FASTER_MODEL_ID",
+        "POWER_PROVIDER", "CHEAPER_PROVIDER", "FASTER_PROVIDER",
+        "TTS_DEFAULT_ENGINE", "USE_LITELLM_PROXY", "DEBUG",
+        # Services
+        "REDIS_URL", "ELASTICSEARCH_URL",
+    ]
+    result: Dict[str, Any] = {}
+    for key in ALL_KEYS:
+        val = os.environ.get(key, "")
+        if key in SHOW_VALUE_KEYS:
+            result[key] = {"set": bool(val), "value": val or None}
+        elif key in ("REDIS_URL", "ELASTICSEARCH_URL", "LITELLM_PROXY_URL"):
+            # Show URL structure but redact credentials if any
+            import re
+            safe_url = re.sub(r"://[^@]+@", "://<redacted>@", val) if val else None
+            result[key] = {"set": bool(val), "value": safe_url}
+        else:
+            result[key] = {"set": bool(val)}
+    return {"env": result}

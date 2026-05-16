@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-05-16 12:35:43 | session=QZCFBBGJ_bcbf1579 ===
+=== BB_MAIN | 2026-05-16 14:50:22 | session=uAcwrGZm_51a0ca47 ===
 
 === SYSTEM ===
 You are GURU — a warm, funny, wildly effective AI teacher inside a visual blackboard app.
@@ -97,41 +97,37 @@ RULES:
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: Newton's Laws of Motion
-Lesson title: Newton's Laws: The Rules of Motion
+Student's EXACT question: Topic: How would our daily lives change if petroleum suddenly disappeared tomorrow?
+Lesson title: The Day the Oil Stopped
 Category: science
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
 Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- Inertia: Objects at rest and in motion
-- F=ma: The relationship between force and acceleration
-- Action and Reaction: Understanding pair forces
-- Real-world examples of Newton's laws
-- Calculating force and mass in practice
+- The Immediate Transportation Crisis
+- Supply Chain and Food Security Collapse
+- The Plastics and Material Shortage
+- Energy Grid and Heating Impacts
+- Transitioning to Sustainable Alternatives
 
-This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants an engaging introduction to Newton's First Law, specifically focusing on the concept of inertia.
+What the student specifically wants: The student wants to understand the immediate impact and reliance on petroleum products in everyday life if the supply were to vanish.
 Question type: conceptual
 Student level: Class 5
 GRADE SPEECH STYLE: Technical words WITH plain-English gloss. Relatable humor (games, snacks). ≤35 words/frame.
-Topic type: science_physics | Scope: simple
-Key concepts to cover (ALL of these): Inertia, Newton's First Law, Mass and Resistance
+Topic type: geography_environment | Scope: medium
+Key concepts to cover (ALL of these): petroleum dependency, fossil fuel products, supply chain disruption
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-DIAGRAM RECOMMENDATION: This topic likely needs a "anatomy" diagram (confidence 98%). Use diagram_type="anatomy" for your diagram frame(s).
-
-SUBJECT GUIDANCE (Science — Physics):
-• Use waveform_signal for waves/sound/light; coordinate_plane for motion graphs.
-• Use PATH 2 (diagram_type=custom) for force diagrams, ray optics, circuit layouts.
-• Concept frames: state law/formula → physical meaning → real-world application.
-• Include units in every formula (e.g. m/s², Newton, Joule).
+SUBJECT GUIDANCE (Geography / Environment):
+• For water cycle, carbon cycle, rock cycle, nutrient cycles: use diagram_type=custom so the LLM draws a real process diagram, NOT diagram_type=cycle.
+• Use PATH 2 (diagram_type=custom) for cross-section diagrams (mountain, valley).
+• Concept frames: location/name → characteristic → human impact or real example.
 • End with a summary frame.
 
 ---END LESSON BRIEF---
@@ -142,31 +138,31 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
 {
   "steps": [
     {
-      "title": "Inertia: The Lazy Law",
+      "title": "The Immediate Transportation Crisis",
       "lang": "en-US",
-      "image_description": "Newton's first law inertia ball at rest",
-      "image_show_confidencescore": 0.8,
+      "image_description": "busy city highway with cars and trucks",
+      "image_show_confidencescore": 0.9,
       "frames": [
         {
           "frame_type": "hook",
-          "text": "Why does your **soccer ball** stay still until you kick it?",
-          "speech": "Ever wonder why a soccer ball just sits there on the grass until you kick it? It's actually being lazy, and physics has a name for that.",
+          "text": "The **Day the Oil Stopped**",
+          "speech": "Imagine waking up, and every single car, bus, and plane on Earth just stops working.",
           "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 3500
         },
         {
           "frame_type": "concept",
-          "text": "**Inertia**: Resistance to change",
-          "speech": "This is inertia. It is the tendency of objects to keep doing exactly what they are already doing, whether that is resting or moving.",
+          "text": "Petroleum and **Fossil Fuels**",
+          "speech": "Petroleum, or oil, is a fossil fuel—that is, ancient plants turned into liquid energy—that powers almost all our engines.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3500
+          "duration_ms": 4500
         },
         {
           "frame_type": "memory",
-          "text": "Inertia = **Stubbornness**",
-          "speech": "Think of inertia like a stubborn friend who refuses to get off the couch. Objects are just as stubborn about changing their speed or direction.",
+          "text": "Oil is the **World's Blood**",
+          "speech": "Think of oil like the world's blood; without it, the heart of our travel stops beating.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
@@ -174,175 +170,157 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ]
     },
     {
-      "title": "F=ma: Force and Motion",
+      "title": "Supply Chain and Food Security",
       "lang": "en-US",
-      "image_description": "Force equals mass times acceleration diagram",
-      "image_show_confidencescore": 0.9,
+      "image_description": "supply chain logistics diagram",
+      "image_show_confidencescore": 0.8,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "Force = **Mass** × **Acceleration**",
-          "speech": "Newton's second law says force equals mass times acceleration. Basically, the heavier something is, the more force you need to push it.",
+          "text": "The **Supply Chain** Collapse",
+          "speech": "Without trucks, food cannot get from farms to stores. This is a supply chain—the path things take to reach you—breaking down.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 4000
+          "duration_ms": 4500
         },
         {
           "frame_type": "diagram",
-          "text": "Pushing a **heavy cart** vs **light box**",
-          "speech": "Imagine pushing a full shopping cart versus an empty one. The full one has more mass, so it needs a bigger push to speed up.",
+          "text": "Farm to **Market Path**",
+          "speech": "Look at the screen. Normally, trucks carry food from farms to your grocery store, but without fuel, that line is cut.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 4000,
+          "duration_ms": 3500,
           "diagram_type": "custom",
           "diagram_data": {
-            "scene": "two_carts",
-            "items": [
-              {
-                "label": "Heavy Cart",
-                "mass": "High"
-              },
-              {
-                "label": "Empty Cart",
-                "mass": "Low"
-              }
-            ]
-          }
+            "nodes": ["Farm", "Truck", "Store"],
+            "connections": ["Farm to Truck", "Truck to Store"]
+          },
+          "visual_description": "A simple diagram showing a farm connected to a truck, then a broken line leading to a grocery store."
         },
         {
-          "frame_type": "joke",
-          "text": "Mass vs Weight",
-          "speech": "If you struggle to push your heavy backpack, just tell your teacher you are studying Newton's second law, not being lazy!",
+          "frame_type": "question",
+          "text": "What happens to your **snacks**?",
+          "speech": "If trucks stopped moving tomorrow, what would happen to the snacks in your pantry?",
+          "tts_engine": "android",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        },
+        {
+          "frame_type": "reveal",
+          "text": "Empty **Shelves**",
+          "speech": "Actually, they would vanish! Without gas, stores would run out of fresh food in just a few days.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 2500
+          "duration_ms": 3500
         }
       ]
     },
     {
-      "title": "Action and Reaction",
+      "title": "The Plastics and Material Shortage",
       "lang": "en-US",
-      "image_description": "Rocket launch action reaction forces",
+      "image_description": "plastic products pile",
       "image_show_confidencescore": 0.85,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "For every action, an **equal reaction**",
-          "speech": "Newton's third law says every action has an equal and opposite reaction. If you push something, it pushes back just as hard.",
+          "text": "Plastic is **Oil**",
+          "speech": "Did you know plastic is made from oil? It is a synthetic polymer—a man-made material—that is basically oil in solid form.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 4000
+        },
+        {
+          "frame_type": "joke",
+          "text": "Melting **Toys**",
+          "speech": "Imagine your favorite plastic action figure or gaming controller just deciding to quit and disappear!",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3500
         },
         {
-          "frame_type": "question",
-          "text": "What happens if you jump off a skateboard?",
-          "speech": "If you jump forward off a skateboard, which way does the skateboard go?",
-          "tts_engine": "android",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
-        {
-          "frame_type": "reveal",
-          "text": "Skateboard moves **backward**",
-          "speech": "Actually, it shoots backward! You pushed the board, so the board pushed you forward while it rolled the other way.",
+          "frame_type": "apply",
+          "text": "Check your **Room**",
+          "speech": "Look around your room right now. Almost every plastic toy, bottle, and case would be gone if the oil stopped.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3000
+          "duration_ms": 4000
         }
       ]
     },
     {
-      "title": "Laws in Real Life",
+      "title": "Energy Grid and Heating Impacts",
       "lang": "en-US",
-      "image_description": "Car seatbelt physics diagram",
+      "image_description": "power plant generating electricity",
+      "image_show_confidencescore": 0.8,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "Power **Plants**",
+          "speech": "Many power plants burn fossil fuels to make electricity. Without oil, our lights, computers, and video games might flicker off.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 4000
+        },
+        {
+          "frame_type": "apply",
+          "text": "No **Gaming**",
+          "speech": "This means no charging your tablet, no heater in the winter, and definitely no late-night gaming sessions.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500
+        }
+      ]
+    },
+    {
+      "title": "Transitioning to Sustainable Alternatives",
+      "lang": "en-US",
+      "image_description": "solar panels and wind turbines",
       "image_show_confidencescore": 0.9,
       "frames": [
         {
           "frame_type": "apply",
-          "text": "Seatbelts and **Inertia**",
-          "speech": "Ever wonder why seatbelts save lives? When a car stops suddenly, your body wants to keep moving forward because of inertia. The belt stops that.",
+          "text": "Renewable **Energy**",
+          "speech": "This is why we are switching to renewable energy—power from sun, wind, and water—that never runs out.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 4000
-        },
-        {
-          "frame_type": "diagram",
-          "text": "Passenger movement in car",
-          "speech": "See how the car stops, but the passenger keeps moving until the seatbelt holds them back? That is inertia in action.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 4000,
-          "diagram_type": "custom",
-          "diagram_data": {
-            "subject": "car_brake",
-            "force_vector": "forward"
-          }
         },
         {
           "frame_type": "curiosity",
-          "text": "Can we calculate this?",
-          "speech": "So, if we know how heavy something is, can we figure out exactly how much force we need to move it? Let's find out.",
+          "text": "Can we live **without** it?",
+          "speech": "But is it actually possible to build a whole world without using a single drop of oil?",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
-        }
-      ]
-    },
-    {
-      "title": "Calculating Force",
-      "lang": "en-US",
-      "image_description": "Simple math equation F = m times a",
-      "image_show_confidencescore": 0.7,
-      "frames": [
-        {
-          "frame_type": "apply",
-          "text": "Calculating Force: **Newtons**",
-          "speech": "To find force, multiply mass in kilograms by acceleration in meters per second squared. The answer is in Newtons, named after Isaac Newton himself.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 4000
-        },
-        {
-          "frame_type": "diagram",
-          "text": "Calculation: 2kg * 5m/s² = **10N**",
-          "speech": "If you push a 2 kilogram ball to speed up at 5 meters per second squared, you are using 10 Newtons of force.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 4000,
-          "diagram_type": "custom",
-          "diagram_data": {
-            "equation": "F = m * a",
-            "values": "2kg * 5m/s2 = 10N"
-          }
         },
         {
           "frame_type": "summary",
-          "text": "Newton's Laws Wrap-up",
-          "speech": "So, objects are stubborn with inertia, force depends on mass and speed, and every action has a reaction. You have mastered the rules of motion.",
+          "text": "The Big **Picture**",
+          "speech": "We rely on oil for cars, food, and plastic, but it is limited. The future is clean energy, so we can keep playing games without hurting the planet.",
           "tts_engine": "google",
           "voice_role": "assistant",
-          "duration_ms": 4000
+          "duration_ms": 5000
         }
       ],
       "followup_questions": [
         {
-          "question": "What if there was no inertia?",
-          "speech": "What do you think would happen to the world if inertia didn't exist?"
+          "question": "What is one thing you use daily made of plastic?",
+          "speech": "What is one thing you use daily that is probably made of plastic?"
         },
         {
-          "question": "Does friction count as a force?",
-          "speech": "Is friction a force that acts against our movement?"
+          "question": "Why is renewable energy better than oil?",
+          "speech": "Why is energy from the sun and wind better than using oil?"
         },
         {
-          "question": "Why don't we feel Earth's reaction?",
-          "speech": "If we push the ground, why doesn't the Earth move away from us?"
+          "question": "How would your town change without cars?",
+          "speech": "How do you think your town would change if cars disappeared tomorrow?"
         }
       ],
-      "session_theme": "Newton's Three Laws of Motion",
-      "video_search_query": "Newton's Laws of Motion simple explanation",
+      "session_theme": "Impact of petroleum on modern life",
+      "video_search_query": "how is plastic made from oil for kids",
       "preferred_channels": [
-        "Physics Wallah",
-        "Khan Academy India"
+        "Khan Academy India",
+        "Physics Wallah"
       ]
     }
   ]

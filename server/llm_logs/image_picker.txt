@@ -1,4 +1,4 @@
-=== IMAGE_PICKER | 2026-05-16 12:35:45 | session=none ===
+=== IMAGE_PICKER | 2026-05-16 14:50:24 | session=none ===
 
 === PROMPT ===
 You are selecting the best matching Wikimedia Commons image for each blackboard lesson step.
@@ -8,16 +8,46 @@ When a Visual layout is provided, prefer images that match the described visual 
 Output ONLY valid JSON mapping step index (string key) to the EXACT title string or null.
 
 Steps needing images:
-[0] Step "Inertia: The Lazy Law" — topic: "Newton's first law inertia ball at rest"
-[1] Step "F=ma: Force and Motion" — topic: "Force equals mass times acceleration diagram"
-[2] Step "Action and Reaction" — topic: "Rocket launch action reaction forces"
-[3] Step "Laws in Real Life" — topic: "Car seatbelt physics diagram"
-[4] Step "Calculating Force" — topic: "Simple math equation F = m times a"
+[0] Step "The Immediate Transportation Crisis" — topic: "busy city highway with cars and trucks"
+[1] Step "Supply Chain and Food Security" — topic: "supply chain logistics diagram"
+        Visual layout: "A simple diagram showing a farm connected to a truck, then a broken line leading to a grocery store."
+[2] Step "The Plastics and Material Shortage" — topic: "plastic products pile"
+[3] Step "Energy Grid and Heating Impacts" — topic: "power plant generating electricity"
+[4] Step "Transitioning to Sustainable Alternatives" — topic: "solar panels and wind turbines"
 
 Available Wikimedia titles:
-- Rolling Racers - Moment of inertia.gif
+- Lieferantenpyramide (English version).jpg
+- Warhouse Types in the Supply Chain.png
+- Chicken wings and hot chips from Red Rooster and a can of Coke No Sugar.jpg
+- This image shows the pile of UXO and a box of the PE4 explosive, which was used to detonate the deadly munitions. MOD 45146241.jpg
+- Electricity Generating Plant No 1527 - Singleton Street - geograph.org.uk - 2366909.jpg
+- Electricity generating plant - geograph.org.uk - 3245002.jpg
+- POWER LINES AT THE P.H. ROBINSON GENERATING PLANT - NARA - 543926.jpg
+- Power Generating Plant at Burnhills landfill site - geograph.org.uk - 2821468.jpg
+- Transformer and electricity power generating gear at Knapton Power Station - geograph.org.uk - 545607.jpg
+- Green radio mast with solar panel and wind generator - geograph.org.uk - 608556.jpg
+- Solar Panels and Wind Generator - geograph.org.uk - 1218592.jpg
+- Solar Panels and Wind Turbines - geograph.org.uk - 808021.jpg
+- Solar cells and wind turbines, Technical University of Łódź, Electrical, Electronic, Computer and Control Engineering Faculty.jpg
+- Solar panels and wind turbine - geograph.org.uk - 6118124.jpg
+- Wind Turbines ^ Solar Panels at Upper Holton Wind ^ Solar Farm - geograph.org.uk - 4618332.jpg
+- Wind Turbines ^ Solar Panels at Upper Holton Wind ^ Solar Farm - geograph.org.uk - 4618380.jpg
+- Wind turbine and solar panels - geograph.org.uk - 6529328.jpg
+- Moinesti-oil-industry-train.jpg
+- OIL REFINERY IN THE SUNSET - NARA - 546384.jpg
+- Oil-refinery-cuba-1.jpg
+- Oil industry.svg
+- Oil refinery at lake Mariout.jpg
+- Total Oil Refinery - Ferrybridge Road - geograph.org.uk - 2036014.jpg
+- The Life of Benvenuto Cellini Vol 1.djvu
+- USAG Ansbach plastic-free month (6589749).jpg
+- Flying A Gasoline pump 02.jpg
+- Hy-Red Gasoline Station pump.jpg
+- Petrol station in Bénin.jpg
+- Shell petrol pump 1930.jpg
+- Shell petrol pump 1952.jpg
 
 Output example: {"0": "Photosynthesis diagram.svg", "3": null, "5": "Newton laws.png"}
 
 === RESPONSE ===
-{"0": null, "1": null, "2": null, "3": null, "4": null}
+{"0": null, "1": null, "2": null, "3": "Electricity Generating Plant No 1527 - Singleton Street - geograph.org.uk - 2366909.jpg", "4": "Solar Panels and Wind Turbines - geograph.org.uk - 808021.jpg"}

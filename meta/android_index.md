@@ -34,7 +34,18 @@
 | `BlackboardActivity` class | 88 | Full-screen BB lesson activity |
 | Key extras (consts) | 63–103 | EXTRA_MESSAGE, EXTRA_USER_ID, EXTRA_SUBJECT, EXTRA_CHAPTER, EXTRA_DURATION, EXTRA_BB_CACHE_ID, EXTRA_TTS_KEYS |
 | TTS fields | 179–200 | `tts: TextToSpeechManager`, `aiTtsEngine: BbAiTtsEngine`, `isPaused`, `useAiTts` |
+| `bbSubtitleTv` | 195 | lateinit TextView for subtitle overlay |
+| `subtitleToggleBtn` | ~202 | lateinit TextView — the "CC" pill button in media controls |
+| `showSubtitlesEnabled` | 203 | Boolean flag (default false); persisted in SharedPrefs `show_subtitles` |
+| `bbLoadingWebView` | ~173 | WebView for SVG loading animations |
 | Post-TTS advance logic | ~3139–3186 | `makeTtsCallback()` now uses shared `continueAfterSpeech()` for BOTH `onComplete` and `onError`; prevents frame stalls when TTS fails |
+| `makeTtsCallback()` | 3553 | Factory: `(stepIdx, frameIdx, subtitle="")` → TTSCallback; `onStart()` calls `showSubtitle(subtitle)` if non-blank and enabled |
+| `showSubtitle(text)` | 3636 | Guards with `if (!showSubtitlesEnabled) return`; fades in + starts pulse |
+| `hideSubtitle()` | 3669 | Cancels pulse, fades out bbSubtitleTv |
+| `startSubtitlePulse()` | 3658 | Infinite alpha 1.0↔0.65 pulse animation on bbSubtitleTv |
+| `updateSubtitleToggleUi()` | ~860 | Green tint when enabled, gray when off; called on toggle |
+| ~~`buildStepNameStrip()`~~ | — | No-op — stepNamesScrollView stays GONE always (removed 2026-05-15) |
+| ~~`updateStepNameStrip()`~~ | — | No-op (removed 2026-05-15) |
 | Diagram pre-speech delay | ~1525–1529 | `postDelayed(speakFrame, 200ms)` — minimal render delay, no subtitle; was 2500ms+showSubtitle (removed 2026-04-30) |
 | BB ask-bar fields | 207–216 | `bbAskInput`, `bbAskSendBtn`, `bbCameraImageUri`, `bbPendingImageUri/Base64` |
 | Launcher registrations | 227–250 | `bbCameraLauncher`, `bbGalleryLauncher`, `bbCropLauncher` |
@@ -53,6 +64,13 @@
 | `buildChatCard()` | 4165–4217 | Creates card view; decodes raw base64 image thumbnail if present (try/catch safe) |
 | `showAskBottomSheet()` | 3657–3901 | Full bottom sheet with multiline input + 📷/🎤/⛶ tiles + Send button; shows sheetImgCard if `bbPendingImageBase64 != null` |
 | `sendBbQuestion` lambda | 333–336 | Sends if text non-blank only — ⚠️ image-only sends silently ignored |
+| bbMediaControls nav inset | ~580 | `ViewCompat.setOnApplyWindowInsetsListener` on `bbMediaControls`; pads by `navBottom` so buttons clear 3-button nav bar |
+| bbAskBar inset fix | ~600 | `basePadding + maxOf(imeBottom, navBottom)` (was `maxOf(...) - navBottom` which always = 0 when keyboard hidden) |
+| `showQuotaLimitDialog()` | ~2200 | Shows countdown-to-midnight + "Upgrade" / "Saved Lessons" buttons; replaces hard redirect to SubscriptionActivity |
+| `startQuizFromLesson()` | ~2800 | Builds lessonSummary from steps → calls QuizApiClient.generateQuiz → starts QuizActivity |
+| `showCompletionCard()` | ~2769 | Wires `completionQuizBtn` → `startQuizFromLesson()`; wires completionSaveBtn, completionReplayBtn |
+| `appendLocalWatchHistory()` | ~1260 | Prepends new entry to `bb_watch_history_<uid>.json`; caps at 50 entries |
+| BbLoadingAnimator calls | 851, 1263, 1308 | `BbLoadingAnimator.start(bbLoadingWebView)` at 3 entry points; 9 stop sites at all `loadingGroup.visibility=GONE` calls |
 | `launchBbCamera()` / `openBbCamera()` | 3481–3509 | Camera picker dialog → ContentValues insert → bbCameraLauncher |
 | `launchBbCrop()` | 3515–3560 | UCrop launch with `Uri.fromFile(destFile)`; catches `FileUriExposedException` → fallback `encodeBbImage(sourceUri)` |
 | `encodeBbImage()` | 3566–3578 | Background thread `bbMediaManager.uriToBase64(uri)` → sets `bbPendingImageBase64`; shows bbImgPreviewRow |
@@ -120,6 +138,7 @@
 | `executeStreamInternal()` | 177–? | Actual OkHttp SSE stream; parses `{"text":"..."}` tokens → `onToken`; handles `{"done":true}` → `onDone` |
 | `streamWithImage()` | 139–149 | ⚠️ NOT a real multimodal call — falls back to text-only `streamText()`; use `streamChat(imageBase64=...)` instead |
 | `bbFeatures` param | 110 | Map<String,Boolean> key-value pairs appended to JSON body (e.g. `bb_images_enabled`) |
+| `onBbStep` param | ~110 | `((String, Int) -> Unit)?` — callback fired per streamed BB step; parses `bb_step` SSE event |
 | Token refresh | 277 | Skips refresh if `serverUrl` blank, `userId` blank, or `userId=="guest_user"` |
 
 ---
@@ -162,6 +181,12 @@
 | `loadTasksForSchool()` | ~1040–1070 | Queries `school_tasks` by `school_id` only (removed composite index req Apr 2026); filters `is_active` + grade/section in-memory |
 | `saveTask()` | ~988–1040 | Writes `school_tasks/{docId}`; fields: task_id, teacher_id, school_id, grade, title, description, task_type, subject, chapter, bb_topic, bb_cache_id, quiz_id, is_active=true |
 | `loadTasksByTeacher()` | ~1073–1090 | Queries by `teacher_id` only (removed orderBy Apr 2026); sorts in-memory |
+| `addFriend()` | ~968 | `users/{uid}/friends/{friendUid}` — adds friend record |
+| `loadFriends()` | ~985 | Ordered by `added_at` desc |
+| `loadSharedWithMe()` | ~1000 | `users/{uid}/shared_with_me/` ordered by `shared_at` desc |
+| `recordBbHistory()` | ~? | Writes to `users/{uid}/bb_watch_history` with `viewed_at` timestamp |
+| `loadBbWatchHistory()` | ~? | Reads `bb_watch_history` ordered by `viewed_at` desc, limit 200 |
+| `deleteBbHistoryEntry()` | ~? | Deletes from `bb_watch_history` |
 | `deactivateTask()` | ~1093–1102 | Updates `is_active=false` on school_tasks doc |
 | `loadTeacherBbLessons()` | 1489–1510 | `bb_cache` where `teacher_id` + orderBy created_at + limit 50 |
 | `saveBbLesson()` / bb_cache | ~1425–1470 | Fields: bb_cache_id, teacher_id, school_id, subject, chapter, topic, preview(150), steps_json, language_tag, step_count, created_at |
@@ -192,6 +217,11 @@
 
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
+| `defaultSubjectsForGrade()` | 2180 | Maps grade number to list of subject names (6-8, 9-10, 11-12, fallback) |
+| `seedSampleSubject()` | ~2246 | One-time (flag `sample_seeded`) seeds "Mathematics (Class 10)" + "Quadratic Equations (Chapter 4)" chapter with NCERT URL `jemh104.pdf` |
+| `loadSubjects()` | 2209 | Loads from SharedPrefs; if empty uses `defaultSubjectsForGrade()`; calls `seedSampleSubject()`; syncs with Firestore |
+| `showManualSubjectDialog()` | ~2248 | Rewritten 2026-05-15: auto-focuses input, shows keyboard, after `addSubject()` offers to open SubjectActivity for PDF |
+| `populateTopicChips()` | ~? | Grade-aware BB topic chips: grade 6-7 / 8-9 / 10-12 topic sets |
 | `homePendingImageBase64` | 81 | Raw base64 string (no prefix); passed as `EXTRA_IMAGE_BASE64` to BlackboardActivity |
 | `homePendingImageUri` | 80 | URI of selected/cropped image |
 | `homeMediaManager` | 84 | `MediaManager(this)`; initialized in `onCreate()` line 133 |
@@ -226,6 +256,23 @@
 
 ---
 
+## res/layout/activity_blackboard.xml
+**Path:** `app/src/main/res/layout/activity_blackboard.xml`
+
+| Symbol / ID | Notes |
+|-------------|-------|
+| `bbMediaControls` | LinearLayout — transport row container; has `android:id` added 2026-05-15 for nav bar inset |
+| `subtitleToggleBtn` | "CC" pill TextView after `aiTtsToggleBtn` in transport row (added 2026-05-15) |
+| `bbSubtitleTv` | Bottom subtitle overlay; `maxLines="4"` (was broken `maxLines="0"` — fixed 2026-05-16) |
+| `bbLoadingWebView` | `200×220dp` WebView inside `loadingGroup` for SVG loading animations |
+| `stepNamesScrollView` | `visibility="gone"` — always hidden (no-op in code since 2026-05-15) |
+| `bbCompletionCard` | `0×0dp` overlay; contains `completionSaveBtn`, `completionReplayBtn`, `completionQuizBtn`, `completionDemoStartBtn`, `completionCloseBtn` |
+| `saveSessionBtn` | Pill button `"💾 Save"` in top-right cluster; `wrap_content` width |
+| `bbChatFab` | `52×52dp` floating chat button bottom-right |
+| `bbAskBar` | Slide-up ask panel; contains `bbAskInput`, `bbCameraBtn`, `bbMicBtn`, `bbAskSend` |
+
+---
+
 ## res/values/themes.xml
 **Path:** `app/src/main/res/values/themes.xml`
 
@@ -234,6 +281,57 @@
 | `Theme.AIGuru` | 11–39 | Main app theme and Material color roles |
 | `Theme.AIGuru.Splash` | 62–68 | Splash window styling |
 | `Theme.AIGuru.Fullscreen` | 70–76 | Fullscreen image viewer theme |
+
+---
+
+## BbSavedSessionsActivity.kt
+**Path:** `app/src/main/java/com/aiguruapp/student/BbSavedSessionsActivity.kt`
+
+| Symbol | Lines | What it does |
+|--------|-------|------|
+| `showingShared` | ~30 | Boolean; true when showing "Shared with Me" tab |
+| `sharedSessions` | ~32 | List of shared session maps from `shared_with_me` |
+| `replaySession()` | ~255–295 | For shared sessions: seeds disk cache from `steps_json` if non-blank; sets `canReplayFromCache=false` for blank steps_json (falls back to topic regeneration) |
+| `shareSession()` | ~300 | Opens `FriendsActivity` in share mode (passes session extras) |
+| `loadSharedSessions()` | ~? | Loads from `users/{uid}/shared_with_me/` via `FirestoreManager.loadSharedWithMe()` |
+| `switchTab()` | ~? | Switches between "My Sessions" and "Shared with Me" tabs |
+| `confirmDelete()` | ~? | Uses `deleteBbHistoryEntry` in history mode, `deleteBbSession` in saved mode |
+| `isAllHistory` | ~? | true = Watch History (from `bb_watch_history`), false = My Sessions |
+| Cache file | — | `bb_watch_history_{uid}.json` (history mode) or `bb_sessions_{uid}.json` (saved mode) |
+
+---
+
+## FriendsActivity.kt
+**Path:** `app/src/main/java/com/aiguruapp/student/FriendsActivity.kt`
+
+| Symbol | Lines | What it does |
+|--------|-------|------|
+| `FriendsActivity` | 1 | Browse/add friends + share BB sessions to friends |
+| Browse mode | ~60–140 | Lists friends; "Add Friend" button → referral-code lookup dialog |
+| Add friend | ~110–140 | `GET /users/lookup?code=XXXX` → confirm → `FirestoreManager.addFriend()` |
+| Share mode | ~150–200 | Launched from BbSavedSessionsActivity; shows friends list with "Share" buttons |
+| `doShareToFriend()` | ~180 | `POST /users/share-session` with session data; shows toast on success |
+
+---
+
+## widget/BbLoadingAnimator.kt
+**Path:** `app/src/main/java/com/aiguruapp/student/widget/BbLoadingAnimator.kt`
+
+| Symbol | Lines | What it does |
+|--------|-------|------|
+| `BbLoadingAnimator` | 1 | Singleton; cycles SVG animations in WebView during BB lesson load |
+| `ALL_ANIMATIONS` | ~10 | Array of 39 filenames (`01_water_glass.html` … `36_tetris.html`) from `loading_svgs/` |
+| `SESSION_SIZE = 5` | ~20 | 5 random distinct animations per session |
+| `WARMUP_ASSET` | ~22 | `22_bouncing_balls.html` — fast-rendering first frame |
+| `WARMUP_MS = 4000L` | ~23 | Duration of warmup animation |
+| `ROTATE_INTERVAL_MS = 4000L` | ~24 | Per-animation display time |
+| `SLOW_FACTOR = 1.6` | ~25 | Applied to all CSS animation durations via injected script |
+| `htmlCache` | ~30 | In-memory cache of all 39 HTML files (pre-loaded on first `start()`) |
+| `start(webView)` | ~50 | Sets dark bg `#0D1117`, shows WARMUP_ASSET, starts rotation after warmup |
+| `stop(webView)` | ~80 | Cancels rotation, blanks WebView, sets GONE |
+| `injectSlowdown(html)` | ~100 | Appends `<script>` that multiplies all CSS animationDuration by SLOW_FACTOR |
+| `ensureCached(ctx)` | ~115 | Pre-loads all assets into `htmlCache` via `assets.open()` |
+| Assets location | — | `app/src/main/assets/loading_svgs/` — 39 `.html` files |
 
 ---
 

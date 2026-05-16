@@ -49,10 +49,14 @@ if os.path.isfile(_service_account_json) and not os.getenv("GOOGLE_APPLICATION_C
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = _service_account_json
     logger.info(f"✓ Google Cloud TTS: using service account from {_service_account_json}")
 
+_debug = os.getenv("DEBUG", "").lower() in ("1", "true", "yes")
 app = FastAPI(
     title="AI Teacher Backend",
     description="Production-grade AI backend — cache-enabled, structured, streamable.",
     version="2.0.0",
+    docs_url="/docs" if _debug else None,
+    redoc_url="/redoc" if _debug else None,
+    openapi_url="/openapi.json" if _debug else None,
 )
 
 # ── CORS ──────────────────────────────────────────────────────────────────────

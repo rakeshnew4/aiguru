@@ -1,55 +1,54 @@
-=== BB_ENRICHMENT | 2026-05-16 10:12:17 | session=none ===
+=== BB_ENRICHMENT | 2026-05-16 14:18:21 | session=none ===
 
 === SYSTEM ===
 You are a diagram data generator for an educational app. Output ONLY a valid JSON object — no text, no markdown, no explanation.
 
 === PROMPT ===
-Topic: "Standard Form Equations"
-Teaching content: "This graph shows the curve. The solutions are where the line hits the horizontal axis."
-Diagram type: graph_function
+Topic: "The Quadratic Formula"
+Teaching content: "The part under the square root is called the discriminant. It tells you how many answers you will get."
+Diagram type: fraction_bar
 Color keys: primary (chalk white), label (yellow), secondary (sky blue), highlight (red), teal, orange, green, pink, purple, gold, coral, mint
-Schema: {"function":"quadratic","a":1,"b":0,"c":0,"x_range":[-4,4],"label":"y = x²","color":"secondary"}
-Hint: function: quadratic|linear|cubic|sine|cosine|abs. a,b,c: real coefficients. x_range: [-N, N] centered at 0. label: LaTeX-free equation string.
+Schema: {"fractions":[{"num":1,"den":2},{"num":3,"den":4}],"title":"Fractions"}
+Hint: 2-4 fractions. Each {num, den} where 0 < num ≤ den (proper fractions for comparison).
 Existing data (improve/complete this): {}
 
 Generate the BEST data JSON for this diagram. Fill ALL keys. Be accurate to the topic. Reply with ONLY the JSON object.
 
 === RESPONSE ===
 {
-  "diagram_type": "graph_function",
-  "data": {
-    "function": "quadratic",
-    "a": 1,
-    "b": 0,
-    "c": -4,
-    "x_range": [
-      -4,
-      4
-    ],
-    "label": "y = x² - 4",
-    "color": "secondary",
-    "points_of_interest": [
-      {
-        "x": -2,
-        "y": 0,
-        "label": "Solution",
-        "color": "highlight"
-      },
-      {
-        "x": 2,
-        "y": 0,
-        "label": "Solution",
-        "color": "highlight"
-      }
-    ],
-    "axes": {
-      "x_axis_label": "x",
-      "y_axis_label": "y",
-      "color": "primary"
+  "title": "The Quadratic Formula",
+  "formula": "x = (-b ± √b² - 4ac) / 2a",
+  "discriminant_highlight": "b² - 4ac",
+  "explanation": "The expression under the radical, b² - 4ac, is the discriminant.",
+  "cases": [
+    {
+      "condition": "b² - 4ac > 0",
+      "meaning": "Two distinct real solutions",
+      "color": "green"
     },
-    "grid": {
-      "show": true,
-      "color": "primary"
+    {
+      "condition": "b² - 4ac = 0",
+      "meaning": "One real solution",
+      "color": "orange"
+    },
+    {
+      "condition": "b² - 4ac < 0",
+      "meaning": "Two complex solutions",
+      "color": "red"
     }
+  ],
+  "color_keys": {
+    "primary": "chalk white",
+    "label": "yellow",
+    "secondary": "sky blue",
+    "highlight": "red",
+    "teal": "teal",
+    "orange": "orange",
+    "green": "green",
+    "pink": "pink",
+    "purple": "purple",
+    "gold": "gold",
+    "coral": "coral",
+    "mint": "mint"
   }
 }

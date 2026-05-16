@@ -106,14 +106,18 @@ const App = (() => {
     subjects:      { title: 'Subjects',         render: () => Subjects.render()       },
     chapters:      { title: 'Chapters',         render: () => Chapters.render()       },
     plans:         { title: 'Plans',            render: () => Plans.render()          },
+    credits:       { title: 'Credit Packs',     render: () => Credits.render()        },
     schools:       { title: 'Schools',          render: () => Schools.render()        },
-    payments:      { title: 'Payments',         render: () => Payments.render()       },
+    bbsamples:     { title: 'BB Samples',        render: () => BBSamples.render()      },
+    payments:      { title: 'Payments',          render: () => Payments.render()       },
     models:        { title: 'Model Config',     render: () => ModelConfig.render()    },
     appconfig:     { title: 'App Config',       render: () => AppConfig.render()      },
     offers:        { title: 'Offers',           render: () => Offers.render()         },
     notifications: { title: 'Notifications',   render: () => Notifications.render()  },
     referrals:     { title: 'Referral Codes',   render: () => Referrals.render()      },
     logs:          { title: 'Activity Logs',    render: () => Logs.render()           },
+    litellm:       { title: 'LiteLLM Proxy',    render: () => LiteLLM.render()        },
+    serverconfig:  { title: 'Server Config',    render: () => ServerConfig.render()   },
   };
 
   let _currentSection = null;

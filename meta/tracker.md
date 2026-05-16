@@ -2177,3 +2177,237 @@ Firestore resolved faster than tour started → sheet appeared before tour.
 - Existing users unaffected (flag already absent → seeds once; existing "Mathematics (Class 10)" from NCERT import won't be duplicated)
 
 **Files changed:** `app/src/main/java/com/aiguruapp/student/HomeActivity.kt` (seedSampleSubject function ~line 2246, loadSubjects call ~line 2221)
+
+---
+
+## 2026-05-16 (session - admin credits & security)
+
+**Asked:** Make advancements in admin pages for user credit management (view/update credits, voice credits, limits, tokens), observe seed files and update admin pages, check nginx and app security.
+
+**Implemented:**
+
+**Backend (admin.py)**:
+- Added `GET /admin/api/users/{uid}/credits` — fetch user balance + lifetime_earned
+- Added `POST /admin/api/users/{uid}/credits/adjust` — manually grant/deduct credits with reason
+- Added `GET /admin/api/users/{uid}/credits/transactions` — view credit transaction history
+- Added `PUT /admin/api/users/{uid}/quota` — update quota fields (plan_daily_chat_limit, plan_daily_bb_limit, ai_tts_quota_chars, planId, plan_expiry)
+- Added CRUD for credit packs: `GET/POST /admin/api/credit-packs`, `PUT/DELETE /admin/api/credit-packs/{pack_id}`
+- Updated ALLOWED_COLLECTIONS to include credit_topups, user_credits, credit_transactions
+
+**Security (main.py)**:
+- Added _SecurityHeadersMiddleware class — sets security headers on all responses:
+  - X-Content-Type-Options: nosniff
+  - X-Frame-Options: DENY
+  - X-XSS-Protection: 1; mode=block
+  - Referrer-Policy: strict-origin-when-cross-origin
+  - Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+**Frontend JavaScript**:
+- Updated `users.js`: Added viewUser credits card, new adjustCredits() + viewCreditTransactions() + quickQuotaEdit() functions; extended Users export
+- Expanded `plans.js` FIELDS array to include all limits.* sub-fields from seed schema; added _getNestedVal() and _setNestedVal() helpers for dotted-key form handling
+- Created new `credits.js` — Credits section with CRUD for credit_topups collection (name, credits, bonus_credits, price_inr, discount_pct, is_active)
+- Updated `index.html`: Added Credits nav item + section div, loaded credits.js script
+- Updated `app.js` SECTION_MAP: Added credits section entry
+
+**Files changed**:
+- server/app/api/admin.py (lines 802-930 new credit endpoints + ALLOWED_COLLECTIONS update)
+- server/app/main.py (lines 24-25 imports, lines 58-71 middleware class + registration)
+- server/app/static/admin/js/users.js (viewUser + new adjustCredits/viewCreditTransactions/quickQuotaEdit functions)
+- server/app/static/admin/js/plans.js (expanded FIELDS array, added _getNestedVal/_setNestedVal helpers, updated _formHtml and _collectForm)
+- server/app/static/admin/js/credits.js (NEW file — full credits management CRUD)
+- server/app/static/admin/index.html (added Credits nav + section + script)
+- server/app/static/admin/js/app.js (added credits to SECTION_MAP)
+
+**Security Review**:
+- Backend security headers now present (FastAPI middleware)
+- Nginx server_tokens: still commented in /etc/nginx/nginx.conf (manual fix needed with sudo)
+- Nginx TLS: /etc/nginx/nginx.conf line 32 still lists TLSv1, TLSv1.1 (manual fix with sudo)
+- Nginx site config: No security headers yet (manual addition to /etc/nginx/sites-enabled/vkpremium needed)
+- Admin credentials: stored in sessionStorage as base64 Basic Auth (protected by security headers + X-Frame-Options: DENY)
+
+**Manual nginx updates needed** (requires sudo):
+```bash
+# 1. Uncomment server_tokens in /etc/nginx/nginx.conf line 20
+sed -i 's/^\s*#\s*server_tokens off;/\tserver_tokens off;/' /etc/nginx/nginx.conf
+
+# 2. Update TLS protocols in /etc/nginx/nginx.conf line 32
+sed -i 's/ssl_protocols.*/ssl_protocols TLSv1.2 TLSv1.3;/' /etc/nginx/nginx.conf
+
+# 3. Add security headers to /etc/nginx/sites-enabled/vkpremium (before location / block):
+# Add these 5 lines after line 7 (after proxy_send_timeout):
+add_header X-Frame-Options "DENY" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-XSS-Protection "1; mode=block" always;
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+# 4. Reload nginx
+nginx -t && systemctl reload nginx
+```
+
+**How to test**:
+1. Admin portal → Users → Select user → View → should show Credits card with balance + Adjust Credits / View Transactions buttons
+2. Click "Adjust Credits" → enter amount (100) + reason → Save → balance should increase
+3. Click "View Transactions" → shows ledger of credit changes
+4. Click "Quick Quota Edit" → edit daily_chat_limit/bb_limit/plan → Save → user document updated in Firestore
+5. Admin → Credits → shows credit pack management CRUD table
+6. Plans section → Edit any plan → should see all limits.* fields (daily_chat_questions, daily_bb_sessions, ai_tts_enabled, etc.)
+7. Security headers check: `curl -I https://vkpremium.art 2>/dev/null | grep -i "x-frame\|x-content\|strict-transport"`
+   → Should see: X-Content-Type-Options: nosniff, X-Frame-Options: DENY, Strict-Transport-Security
+
+**Remaining open issues**:
+- Nginx configuration changes require sudo (will need manual admin action)
+- Seed.py files are read-only (only admin.py needs to mirror credit_topups structure from seed, which is now done)
+
+---
+
+## 2026-05-16 (session - complete admin dashboard rewrite)
+
+**Asked:** Rewrite admin portal from scratch with proper understanding of all schemas (users_table, user_credits, credit_transactions, plans, offers, credit_topups, schools, subjects, chapters, activity_logs). Add complete CRUD, caching, pagination (50 items/page), and make it a best-in-class admin interface.
+
+**Implemented:**
+
+**Backend - Complete API Redesign** (admin.py):
+- Users (`users_table`):
+  - GET /users_table?page=1&limit=50&search=&plan=&grade=&school= (paginated with filters)
+  - GET /users_table/{uid} (full profile with credits + recent transactions)
+  - PUT /users_table/{uid} (update user fields)
+  - POST /users_table/{uid}/quota (update only quota fields - safe)
+  - POST /users_table/{uid}/credits/grant (grant credits with reason)
+  - POST /users_table/{uid}/credits/deduct (deduct credits with reason)
+  - DELETE /users_table/{uid} (delete user)
+
+- Plans:
+  - GET/POST/PUT/DELETE /admin/api/plans_new - full CRUD for plans
+  - All limit fields editable
+
+- Credit Topups:
+  - GET/POST/PUT/DELETE /admin/api/credit-topups_new - manage credit packs
+
+- Offers:
+  - GET/POST/PUT/DELETE /admin/api/offers_new - promotional banners
+
+- Schools:
+  - GET/POST/PUT/DELETE /admin/api/schools_new - school management
+
+- Subjects & Chapters:
+  - GET/POST/PUT/DELETE /admin/api/subjects_new - subject catalog
+  - GET/POST/PUT/DELETE /admin/api/chapters_new - chapter content
+
+- Activity Logs:
+  - GET /admin/api/activity-logs_new?page=1&limit=50&uid=&event_type= (paginated 50/page)
+
+**Features:**
+- Pagination: 50 items per page for users and logs
+- Search: by name, email, UID for users
+- Filtering: by plan, grade, school for users
+- Caching: 5 min TTL for stats, plans, schools
+- Real-time: users, activity logs, credits
+- Credit audit: full transaction history
+- Safe quota updates: only whitelisted fields accepted
+- Bulk operations ready: grant credits with reason tracking
+
+**Documentation:**
+- Created ADMIN_DASHBOARD_GUIDE.md with:
+  - Complete endpoint reference
+  - All field descriptions for each collection
+  - Common tasks and workflows
+  - Troubleshooting guide
+  - Usage instructions
+
+**Files Changed:**
+- server/app/api/admin.py: +250 lines new endpoints (all syntax validated)
+
+**Status:**
+✅ Backend: COMPLETE
+⏳ Frontend: Design ready, needs implementation
+
+**Next Steps for Frontend:**
+The existing admin UI at /static/admin/ can be used with new endpoints (_new suffix).
+To use new endpoints in frontend:
+1. Update users.js: use /users_table instead of /users
+2. Update api calls to match new endpoint signatures
+3. Add pagination UI for users (50/page) and logs (50/page)
+4. Add filters: plan, grade, school for users
+5. Add credit grant/deduct modals
+6. Add quota editor (form, not JSON)
+
+**All Collections Now Fully Managed:**
+✓ users_table (view, edit, grant/deduct credits, delete)
+✓ user_credits (auto-updated by grant/deduct)
+✓ credit_transactions (auto-logged)
+✓ plans (full CRUD, all limits)
+✓ credit_topups (full CRUD)
+✓ offers (full CRUD)
+✓ schools (full CRUD)
+✓ subjects (full CRUD)
+✓ chapters (full CRUD)
+✓ activity_logs (read-only, paginated 50/page)
+
+**Caching Strategy:**
+- Dashboard stats: 5 min TTL (plans, schools cached)
+- Users: Real-time (paginated, no cache)
+- Credits: Real-time (no cache)
+- Logs: Real-time (paginated 50/page)
+
+
+## 2026-05-16 (frontend admin implementation)
+
+**Asked:** Update admin frontend to integrate with new admin API endpoints for user credits, credit packs, and plans limits management.
+
+**Frontend Implementation Completed:**
+
+1. **users.js** — User profile enhanced:
+   - Changed "Quota" column header to "Credits" (shows "—" since credits are in separate collection)
+   - Updated `viewUser()` modal to wide mode and added Credits card showing balance + lifetime earned
+   - Added recent transactions table (up to 5 transactions) with type badge and color coding
+   - New `adjustCredits(uid)` function: modal for grant/deduct with reason, calls `POST /users/{uid}/credits/adjust`
+   - New `quickQuota(uid)` function: focused form for quota-only fields (planId, daily limits, TTS quota, expiry)
+   - `_saveQuota()` calls `PUT /users/{uid}/quota` with whitelisted fields only
+   - Exported new functions in module return
+
+2. **credits.js** (new file) — Credit Packs CRUD:
+   - Module structure identical to plans.js
+   - Fields: name, credits, bonus_credits, price_inr, display_order, is_active
+   - CRUD endpoints: GET/POST /credit-topups, PUT/DELETE /credit-topups/{id}
+   - Table shows pack info with credits count, bonus (green), price, active status
+   - Full create/edit modals with form collection
+
+3. **plans.js** — Expanded for limits:
+   - FIELDS expanded from 7 to 27 fields: added badge, display_order, and 19 limits.* fields
+   - New limits section in form: daily_chat_questions, daily_bb_sessions, token limits, TTS, feature flags, max_quiz, credits_on_activation, starter_credits
+   - Updated `_formHtml()` to:
+     - Handle nested keys (limits.daily_chat_questions → limits object)
+     - Support `section` property for section headers (Limits section)
+     - Close section div when done
+   - Updated `_collectForm()` to nest dotted keys into limits sub-object on collection
+   - Edit/create modals now show expandable Limits section with 19 fields
+
+4. **index.html** — Navigation and sections:
+   - Added Credits nav item after Plans (icon &#128179;, data-section="credits")
+   - Added `<section id="section-credits" class="section hidden"></section>` in main content
+   - Added `<script src="/static/admin/js/credits.js"></script>` before app.js
+
+5. **app.js** — Router integration:
+   - Added `credits` entry to SECTION_MAP: `{ title: 'Credit Packs', render: () => Credits.render() }`
+   - Now 15 sections total (added 1, no removed)
+
+**Files Changed:**
+- `server/app/static/admin/js/users.js` — lines: renderTable (col header), viewUser (50+ lines for credits card + buttons), adjustCredits (25 lines), quickQuota (20 lines), _loadCurrentQuota (10 lines), _saveQuota (15 lines), return statement (updated exports)
+- `server/app/static/admin/js/credits.js` — NEW FILE (120 lines, full CRUD for credit_topups collection)
+- `server/app/static/admin/js/plans.js` — FIELDS expanded (7→27 lines), _formHtml (section handling, ~35 lines), _collectForm (nested key handling, ~20 lines)
+- `server/app/static/admin/index.html` — Credits nav item added, section div added, credits.js script added
+- `server/app/static/admin/js/app.js` — Credits entry added to SECTION_MAP
+
+**Testing Path:**
+1. Navigate to admin → click Plans → edit any plan → should see Limits section with 19 fields
+2. Navigate to Credits → should load credit packs table with create/edit/delete buttons
+3. Navigate to Users → view any user → should see Credits card with balance + transactions + "Adjust Credits" + "Quick Quota" buttons
+4. Click "Adjust Credits" → grant/deduct form with preview → should update balance
+5. Click "Quick Quota" → pre-filled form with current values → edit and save → should update user doc
+2026-05-16 | server_index.md cleanup: removed duplicate user_service.py (updated) section + stale api/users.py stub + fixed analyze_image.py corruption; merged unique rows (copy_samples_to_user, Webhook+verify race, Free plan defaults) into primary user_service entry. No code files changed. | files: meta/server_index.md
+2026-05-16 | Security hardening applied: (1) ufw enabled — ports 8003/8005 DROP in iptables, removed old ALLOW rules; (2) nginx: server_tokens off, HSTS/X-Frame/X-Content-Type/Referrer-Policy/Permissions-Policy headers, rate limiting zones (120r/m general, 30r/m heavy); (3) FastAPI: /docs /redoc /openapi.json disabled in prod (DEBUG=1 to re-enable); (4) certbot dry-run: OK; (5) LITELLM_MASTER_KEY confirmed set in .env. | files: server/app/main.py, /etc/nginx/sites-enabled/vkpremium, /etc/nginx/conf.d/security.conf
+2026-05-16 | Scanner blocking complete: (1) ufw deny from 146.190.103.103 + 157.245.204.205 (live scanner IPs from logs); (2) /etc/nginx/conf.d/scanblock.conf — map $is_scanner_path (swagger/api-docs/php/wp-login/actuator/vite/sftp/git/env etc) + map $is_wp_probe (rest_route query string); (3) vhost updated with if($is_scanner_path)→444 and if($is_wp_probe)→444; (4) fail2ban installed+enabled — jail nginx-scanner: 15 hits/60s → ban 24h, watching /var/log/nginx/access.log; (5) verified: curl to /api-docs/swagger.json + /?rest_route= + /wp-login.php all return 000 (silent drop). | files: /etc/nginx/conf.d/scanblock.conf, /etc/nginx/sites-enabled/vkpremium, /etc/fail2ban/jail.d/nginx-scanner.conf, /etc/fail2ban/filter.d/nginx-scanner.conf
+
+2026-05-16 | Admin portal expansion: (1) Fixed JS crash — created missing schools.js; (2) New JS modules: bbsamples.js, litellm.js, serverconfig.js; (3) admin.py: /env-status endpoint added; (4) index.html: nav items + section divs + script tags; (5) app.js: bbsamples+litellm+serverconfig added to SECTION_MAP; (6) styles.css: env-grid, tts-chain, warn-box CSS classes added | files: static/admin/js/schools.js(NEW), bbsamples.js(NEW), litellm.js(NEW), serverconfig.js(NEW), api/admin.py, admin/index.html, admin/js/app.js, admin/css/styles.css
+2026-05-16 | Bug fixes + UI polish: (1) credits.js: fixed endpoint /credit-topups → /credit-topups_new (all 4 CRUD); (2) schools.js: API.delete → API.del (delete was broken); (3) bbsamples.js: API.delete → API.del; (4) styles.css: added --c-bg-2 var, form-grid, checkbox-label, data-table, actions classes; improved thead, card-header, login-card, buttons, nav-item active state | files: js/credits.js, js/schools.js, js/bbsamples.js, css/styles.css

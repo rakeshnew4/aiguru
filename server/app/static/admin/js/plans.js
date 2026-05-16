@@ -23,8 +23,24 @@ const Plans = (() => {
     { key:'price',           label:'Price (INR)',        type:'number', required:false },
     { key:'duration_days',   label:'Duration (days)',   type:'number', required:false },
     { key:'daily_quota',     label:'Daily Quota',       type:'number', required:false },
-    { key:'features',        label:'Features (JSON)',   type:'json',   required:false },
+    { key:'badge',           label:'Badge Text',        type:'text',   required:false },
+    { key:'display_order',   label:'Display Order',     type:'number', required:false },
     { key:'is_active',       label:'Active',            type:'checkbox',required:false},
+    // Limits section
+    { key:'limits.daily_chat_questions',  label:'Daily Chat Questions',   type:'number', required:false, section:'Limits' },
+    { key:'limits.daily_bb_sessions',     label:'Daily Blackboard Sessions', type:'number', required:false, section:'Limits' },
+    { key:'limits.daily_token_limit',     label:'Daily Token Limit',      type:'number', required:false, section:'Limits' },
+    { key:'limits.monthly_token_limit',   label:'Monthly Token Limit',    type:'number', required:false, section:'Limits' },
+    { key:'limits.ai_tts_quota_chars',    label:'AI TTS Quota (chars)',   type:'number', required:false, section:'Limits' },
+    { key:'limits.ai_tts_enabled',        label:'AI TTS Enabled',         type:'checkbox', required:false, section:'Limits' },
+    { key:'limits.image_upload_enabled',  label:'Image Upload Enabled',   type:'checkbox', required:false, section:'Limits' },
+    { key:'limits.voice_mode_enabled',    label:'Voice Mode Enabled',     type:'checkbox', required:false, section:'Limits' },
+    { key:'limits.blackboard_enabled',    label:'Blackboard Enabled',     type:'checkbox', required:false, section:'Limits' },
+    { key:'limits.pdf_enabled',           label:'PDF Upload Enabled',     type:'checkbox', required:false, section:'Limits' },
+    { key:'limits.flashcards_enabled',    label:'Flashcards Enabled',     type:'checkbox', required:false, section:'Limits' },
+    { key:'limits.max_quiz_questions',    label:'Max Quiz Questions',     type:'number', required:false, section:'Limits' },
+    { key:'limits.credits_on_activation', label:'Credits on Activation',  type:'number', required:false, section:'Limits' },
+    { key:'limits.starter_credits',       label:'Starter Credits',        type:'number', required:false, section:'Limits' },
   ];
 
   async function render() {
@@ -96,26 +112,47 @@ const Plans = (() => {
   }
 
   function _formHtml(data = {}) {
-    return FIELDS.map(f => {
-      const val = data[f.key] !== undefined ? data[f.key] : '';
-      if (f.type === 'checkbox') {
-        return `<div class="form-group" style="flex-direction:row;align-items:center;gap:8px;">
-          <input type="checkbox" id="f_${f.key}" ${val ? 'checked' : ''} style="width:16px;height:16px;">
-          <label for="f_${f.key}">${f.label}</label>
-        </div>`;
+    let html = '';
+    let currentSection = null;
+
+    FIELDS.forEach(f => {
+      // Get nested value for limits.* keys
+      let val = '';
+      if (f.key.includes('.')) {
+        const [section, field] = f.key.split('.');
+        val = data[section] && data[section][field] !== undefined ? data[section][field] : '';
+      } else {
+        val = data[f.key] !== undefined ? data[f.key] : '';
       }
-      if (f.type === 'json') {
+
+      // Add section header if needed
+      if (f.section && f.section !== currentSection) {
+        currentSection = f.section;
+        html += `<div style="margin-top:16px;padding-top:12px;border-top:1px solid #e5e7eb;">
+          <h4 style="margin:0 0 12px;font-size:13px;font-weight:600;">${f.section}</h4>`;
+      }
+
+      if (f.type === 'checkbox') {
+        html += `<div class="form-group" style="flex-direction:row;align-items:center;gap:8px;">
+          <input type="checkbox" id="f_${f.key}" ${val ? 'checked' : ''} style="width:16px;height:16px;">
+          <label for="f_${f.key}" style="margin:0;">${f.label}</label>
+        </div>`;
+      } else if (f.type === 'json') {
         const jsonVal = typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val || '[]');
-        return `<div class="form-group">
+        html += `<div class="form-group">
           <label>${f.label}</label>
           <textarea class="json-editor" id="f_${f.key}" style="min-height:80px;">${jsonVal}</textarea>
         </div>`;
+      } else {
+        html += `<div class="form-group">
+          <label>${f.label}${f.required?' *':''}</label>
+          <input type="${f.type}" id="f_${f.key}" value="${esc(String(val))}">
+        </div>`;
       }
-      return `<div class="form-group">
-        <label>${f.label}${f.required?' *':''}</label>
-        <input type="${f.type}" id="f_${f.key}" value="${esc(String(val))}">
-      </div>`;
-    }).join('');
+    });
+
+    if (currentSection) html += '</div>';
+    return html;
   }
 
   function _collectForm() {
@@ -123,11 +160,22 @@ const Plans = (() => {
     FIELDS.forEach(f => {
       const el = document.getElementById(`f_${f.key}`);
       if (!el) return;
-      if (f.type === 'checkbox') obj[f.key] = el.checked;
-      else if (f.type === 'number') obj[f.key] = el.value !== '' ? Number(el.value) : null;
+
+      let val;
+      if (f.type === 'checkbox') val = el.checked;
+      else if (f.type === 'number') val = el.value !== '' ? Number(el.value) : null;
       else if (f.type === 'json') {
-        try { obj[f.key] = JSON.parse(el.value); } catch (_) { obj[f.key] = el.value; }
-      } else obj[f.key] = el.value;
+        try { val = JSON.parse(el.value); } catch (_) { val = el.value; }
+      } else val = el.value;
+
+      // Handle nested limits.* keys
+      if (f.key.includes('.')) {
+        const [section, field] = f.key.split('.');
+        if (!obj[section]) obj[section] = {};
+        obj[section][field] = val;
+      } else {
+        obj[f.key] = val;
+      }
     });
     return obj;
   }

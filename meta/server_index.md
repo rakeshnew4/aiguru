@@ -38,10 +38,12 @@
 | `_BASIC_GEOMETRY_TYPES` | 45 | Geometry types that may be overridden by force check |
 | `_FRAME_DEFAULTS` | 53–72 | Default values for BB frame fields after sparse LLM output |
 | `_normalize_frame()` | 75–80 | Fills missing frame fields with defaults |
-| `_best_title_match()` | 83–111 | Word-overlap scorer for Wikimedia image title matching (≥50% threshold) |
+| `_best_title_match()` | 83–111 | Word-overlap scorer for Wikimedia image title matching (threshold lowered to 0.3 from 0.5) |
 | `extract_json_safe()` | 114–163 | Robust JSON extractor with 5 fallback strategies |
 | `search_wikimedia_images()` | 172–? | Async Wikimedia Commons image search; returns thumbnail URLs |
-| `get_titles()` | ~400+ | BB post-processor: enrichment + wikimedia + SVG build |
+| `get_titles()` | ~400+ | BB post-processor: enrichment + wikimedia + SVG build. Parallel: image picker future started before Phase 3; all LLM SVG calls run in parallel via `asyncio.gather` |
+| `_build_llm_svg_cached()` | inside get_titles | Wraps `build_llm_svg` with md5-keyed cache (TTL 24h); 3 call sites inside `get_titles()` use this |
+| `_CIRCULAR_LAYOUT_TYPES` | ~51 | `{"cycle", "labeled"}` — these bypass JS engine and go to LLM SVG builder |
 | `build_enrichment_tasks()` call | ~407 | Unpacks `(enr_futs, diagram_refs)` — 2-tuple |
 | diagram enrichment apply | ~444–447 | Writes enriched data back into frame["data"] |
 | tts_engine default | 58 | `_FRAME_DEFAULTS` sets tts_engine="gemini" |
@@ -80,6 +82,7 @@
 | cache_control | ~452–454 | `extra_body: {cache_control: {type: ephemeral}}` for Gemini explicit caching |
 | cachedTokens parse | ~486 | Reads `prompt_tokens_details.cached_tokens` from response |
 | `generate_response()` | ~502–540 | Public entry point; routes to `_call_litellm_proxy()` |
+| `stream_generate_response()` | ~540+ | Async generator; hits LiteLLM with `stream=True`; yields str chunks then sentinel `{"_stream_done": True, "tokens": ...}`. Falls back to blocking call if stream fails before any text. `max_tokens` param supported. |
 
 ---
 
@@ -101,8 +104,36 @@
 
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
-| `/api/tts/synthesize` endpoint | ~205–254 | Calls Google/ElevenLabs/OpenAI TTS — NO LLM involved |
+| `GEMINI_VOICE_DEFAULT` | ~? | `"Kore"` — default Gemini voice name |
+| `_pcm_to_wav()` | ~? | Wraps raw 24kHz PCM bytes in WAV container using stdlib `wave` module |
+| `_gemini_tts()` | ~? | Calls `generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts`; decodes base64 PCM; returns WAV bytes |
+| `synthesize()` endpoint | ~205–254 | Routes: gemini first (→ `audio/wav`), then google TTS (→ `audio/mpeg`), then ElevenLabs/OpenAI (English only). `X-TTS-Engine` header in response. |
+| `TtsSynthesizeRequest.tts_engine` default | — | `"gemini"` (changed from `"google"` in 2026-05-15) |
 | `_clean_for_tts()` | ~195–198 | Strips LaTeX symbols; no LLM |
+| Fallback chain | — | gemini → google → elevenlabs (en only) → openai (en only) |
+
+---
+
+## api/users.py
+**Path:** `server/app/api/users.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `GET /users/lookup?code=XXXX` | ~413 | Resolves `referralCodes/{code}` → `{uid, name, code}`; rejects own code (for add-friend flow) |
+| `POST /users/share-session` | ~450 | Resolves recipient via `to_code`; writes to `users/{recipientUid}/shared_with_me/`; auto-adds both as friends in `users/{uid}/friends/` |
+| Login handler | ~87–89 | Calls `ensure_user_credits(uid)` on every login so existing users get credits doc if missing |
+| `get_user_quota` | ~200–205 | Adds referral bonus + tts_balance to quota response |
+| `get_quota_status` | ~322–326 | Same bonus additions |
+
+---
+
+## api/referrals.py
+**Path:** `server/app/api/referrals.py` (NEW — added 2026-05-09)
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `POST /referrals/apply` | ~20 | Validates code from `referralCodes`; prevents self-referral + double-claim; writes `referral_bb_bonus_per_day` + `referral_bb_bonus_expiry_at` to both claimant + referrer |
+| `_get_referral_config()` | ~? | Reads `app_config/referral_settings` `{bonus_per_day, bonus_days}`; defaults to 3/30 on error |
 
 ---
 
@@ -250,6 +281,53 @@
 
 ---
 
+## services/user_service.py
+**Path:** `server/app/services/user_service.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `_lookup_plan_limits()` | ~54–87 | Reads `limits` sub-map first, then falls back to root-level fields for `credits_on_activation`, `tts_credits_on_activation`, `daily_chat_limit`, etc. Logs found credits value. |
+| `create_user_if_missing()` | ~130–140 | Now reads from `_lookup_plan_limits(db, "free")` (dynamic from Firestore); mirrors identity to `users/{uid}`; calls `init_user_credits` |
+| Free plan defaults | 107–144 | `plan_daily_chat_limit=12`, `plan_daily_bb_limit=10` (updated), `plan_tts_enabled=True`, `plan_ai_tts_enabled=False`, `plan_image_enabled=False` |
+| `copy_samples_to_user()` | 157–188 | Copies up to 10 docs from `bb_samples` → `users/{uid}/saved_bb_sessions_flat/`; sets `is_sample=True` |
+| `activate_plan()` | ~217–340 | Activates plan; reads `activation_tts_credits` from limits; calls `_award_activation_credits(uid, amount, tts_amount, ...)` |
+| ⚠️ Webhook+verify race | 191 | `activate_plan()` called from both `/payments/razorpay/verify` and webhook handler; `_award_activation_credits` can fire twice if both complete concurrently |
+| `_award_activation_credits()` | ~641–700 | Awards `balance` + `lifetime_earned`; if `tts_amount > 0` also increments `tts_balance` + `tts_lifetime_earned`; logs `plan_activation_tts` transaction |
+| `init_user_credits()` | ~730–784 | Accepts `starter_credits` + `starter_tts_credits` params; initializes `user_credits/{uid}` doc |
+| `ensure_user_credits()` | ~784+ | Public wrapper: calls `init_user_credits` if doc missing; called on every login |
+| quota logic | 537–619 | `check_and_record_quota()`: returns `(allowed, reason, credit_mode)` 3-tuple; credit_mode=True when on credits; adds referral bonus to BB limit |
+
+---
+
+## services/cache_service.py
+**Path:** `server/app/services/cache_service.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `get_cache(namespace, key)` | ~? | Returns cached value or None |
+| `set_cache(namespace, key, value, ttl=2592000)` | ~? | Stores with custom TTL (default 30d); bb_main uses 6h, SVG uses 24h |
+
+---
+
+## services/diagram_service.py
+**Path:** `server/app/services/diagram_service.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `_call_llm(question, uid)` | ~? | LLM call for diagram intent; now takes `uid` for per-user key |
+| `generate_diagram(question, uid)` | ~? | Entry point; passes `uid` to `_call_llm` |
+
+---
+
+## utils/diagram_router.py
+**Path:** `server/app/utils/diagram_router.py`
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| keyword map | 65–200 | Maps topic keywords → diagram type; `cycle`-related keywords (`mitosis`, `meiosis`, `water cycle`, `life cycle`, etc.) now map to `"custom"` instead of `"cycle"` |
+
+---
+
 ## services/evaluation_service.py
 **Path:** `server/app/services/evaluation_service.py`
 
@@ -277,16 +355,6 @@
 
 ---
 
-## services/user_service.py
-**Path:** `server/app/services/user_service.py`
-
-| Symbol | Lines | What it does |
-|--------|-------|--------------|
-| credit charge/award | 142, 231–238 | Deducts or adds credits to user balance |
-| credit init | 311–392 | Initializes new user with welcome credits (50) |
-| quota logic | 537–619 | Per-plan daily quota enforcement |
-
----
 
 ## models/request.py
 **Path:** `server/app/models/request.py`
@@ -369,17 +437,19 @@
 
 ---
 
-## api/users.py
-**Path:** `server/app/api/users.py`
+## api/analyze_image.py
+**Path:** `server/app/api/analyze_image.py`
 
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
-| (unread) | ? | User profile CRUD, signup, plan info |
+| (unread) | ? | POST /analyze-image — describes PDF/image page for Ask AI |
 
 ---
 
 ## api/admin.py
-**Path:** `server/app/api/admin.py` | Lines: ~730 (after 2026-05-09 refactor)
+**Path:** `server/app/api/admin.py` | Lines: ~980 (after 2026-05-16 rewrite)
+
+**Helper functions:**
 
 | Symbol | Lines | What it does |
 |--------|-------|--------------|
@@ -388,13 +458,88 @@
 | `_count_collection()` | 78–85 | Uses Firestore `count()` aggregation (1 read/call) with stream() fallback |
 | `_to_epoch_s()` | 88–95 | Normalises int ms, int s, datetime → epoch seconds float |
 | `_stats_cache`, `_analytics_cache` | 97–99 | In-memory dicts; TTL = 300s (5 min) each |
+
+**Dashboard (cached, 5 min TTL):**
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
 | `GET /stats` | 103–120 | Returns 8 collection counts; uses count() + cache — very cheap |
 | `GET /analytics` | 123–195 | One-pass: reads users(500) + payments(200) + LiteLLM; returns growth, plan dist, revenue, LLM cost |
-| `GET /users` | 207–211 | Lists up to 200 user docs |
-| `GET /users/{uid}` | 213–221 | Fetches user + chapter_progress subcollection |
-| `PUT /users/{uid}` | 224–228 | Merge-update user doc |
-| `DELETE /users/{uid}` | 231–234 | Hard-delete user doc |
-| CRUD: subjects, chapters, plans, schools, offers | 237–385 | Standard set/merge/delete per collection |
+
+**Users Management** (NEW 2026-05-16):
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `GET /users_table` | 803–850 | Paginated user list (50/page) with search + filters (plan, grade, school); returns total, page, pages |
+| `GET /users_table/{uid}` | 853–875 | Full profile + credits doc + recent 10 transactions |
+| `PUT /users_table/{uid}` | 878–885 | Merge-update user; filters out credits/transactions |
+| `POST /users_table/{uid}/quota` | 888–908 | Safe quota-only update; whitelisted fields: planId, plan_daily_chat_limit, plan_daily_bb_limit, plan_tts_enabled, plan_ai_tts_enabled, plan_blackboard_enabled, plan_image_enabled, plan_expiry_date, ai_tts_quota_chars |
+| `POST /users_table/{uid}/credits/grant` | 911–945 | Grant credits: increments balance + lifetime_earned, logs to credit_transactions |
+| `POST /users_table/{uid}/credits/deduct` | 948–980 | Deduct credits: decrements balance (min 0), logs with type=admin_deduct |
+| `DELETE /users_table/{uid}` | 983–987 | Hard-delete user + credits docs |
+
+**Plans** (NEW):
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `GET /plans_new` | 990–993 | List all plans |
+| `POST /plans_new` | 996–1002 | Create plan |
+| `PUT /plans_new/{plan_id}` | 1005–1011 | Update plan |
+| `DELETE /plans_new/{plan_id}` | 1014–1018 | Delete plan |
+
+**Credit Topups** (NEW):
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `GET /credit-topups_new` | 1021–1024 | List all credit packs |
+| `POST /credit-topups_new` | 1027–1033 | Create pack |
+| `PUT /credit-topups_new/{pack_id}` | 1036–1042 | Update pack |
+| `DELETE /credit-topups_new/{pack_id}` | 1045–1049 | Delete pack |
+
+**Offers** (NEW):
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `GET /offers_new` | 1052–1055 | List all offers |
+| `POST /offers_new` | 1058–1064 | Create offer |
+| `PUT /offers_new/{offer_id}` | 1067–1073 | Update offer |
+| `DELETE /offers_new/{offer_id}` | 1076–1080 | Delete offer |
+
+**Schools** (NEW):
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `GET /schools_new` | 1083–1086 | List schools |
+| `POST /schools_new` | 1089–1095 | Create school |
+| `PUT /schools_new/{school_id}` | 1098–1104 | Update school |
+| `DELETE /schools_new/{school_id}` | 1107–1111 | Delete school |
+
+**Subjects & Chapters** (NEW):
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `GET /subjects_new` | 1114–1117 | List subjects |
+| `POST /subjects_new` | 1120–1126 | Create subject |
+| `PUT /subjects_new/{subject_id}` | 1129–1135 | Update subject |
+| `DELETE /subjects_new/{subject_id}` | 1138–1142 | Delete subject |
+| `GET /chapters_new` | 1145–1154 | List chapters; optional filter by subject_id |
+| `POST /chapters_new` | 1157–1163 | Create chapter |
+| `PUT /chapters_new/{chapter_id}` | 1166–1172 | Update chapter |
+| `DELETE /chapters_new/{chapter_id}` | 1175–1179 | Delete chapter |
+
+**Activity Logs** (NEW):
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `GET /activity-logs_new` | 1182–1209 | Paginated logs (50/page) with optional uid/event_type filters; sorted descending by timestamp |
+
+**Legacy Endpoints** (pre-2026-05-16):
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| ~~`GET /users`~~ | — | Replaced by GET /users_table (paginated) |
+| ~~`GET /users/{uid}`~~ | — | Replaced by GET /users_table/{uid} |
+| CRUD: subjects, chapters, plans, schools, offers | 237–385 | (Old implementation; superseded by _new endpoints) |
 | `GET /model-config` | 281–305 | Returns live env tiers + Firestore admin_config/global |
 | `PUT /model-config` | 308–312 | Updates admin_config/global |
 | `GET /payments/intents` | 317–322 | Payment intents, ordered by created_at DESC |
@@ -404,8 +549,8 @@
 | `GET /notifications` | 432–433 | Lists notification docs |
 | `GET /referral-codes` | 461–463 | Lists referralCodes collection |
 | LiteLLM endpoints | 479–608 | Key create/list/revoke + usage per-user + all-users + health check |
-| `GET /activity-logs` | 612–629 | Live activity logs; order_by timestamp DESC (no composite index: uid/event_type filter skips orderBy) |
-| `GET /activity-logs/stats` | 633–648 | Count per event_type over last 500 log entries |
+| ~~`GET /activity-logs`~~ | — | Replaced by GET /activity-logs_new (paginated 50/page) |
+| ~~`GET /activity-logs/stats`~~ | — | Removed; use activity-logs_new with aggregation on client |
 | `GET /collection/{name}` | 653–668 | Read-only hatch for ALLOWED_COLLECTIONS set |
 
 ---
@@ -513,22 +658,6 @@
 | Token expiry handling | 96–100 | `ExpiredIdTokenError` → 401 "token has expired" |
 | Token revoke handling | 101–104 | `RevokedIdTokenError` → 401 |
 | Network error handling | 115–120 | Unexpected exceptions (JWKS fetch fail) → 401 "Token verification failed. Please try again." |
-
----
-
-## services/user_service.py (updated)
-**Path:** `server/app/services/user_service.py`
-
-| Symbol | Lines | What it does |
-|--------|-------|--------------|
-| `create_user_if_missing()` | 67–154 | Idempotent; creates `users_table/{uid}` with free defaults + mirrors identity to `users/{uid}`; calls `init_user_credits` |
-| Free plan defaults | 107–144 | `plan_daily_chat_limit=12`, `plan_daily_bb_limit=2`, `plan_tts_enabled=True`, `plan_ai_tts_enabled=False`, `plan_image_enabled=False` |
-| `copy_samples_to_user()` | 157–188 | Copies up to 10 docs from `bb_samples` → `users/{uid}/saved_bb_sessions_flat/`; sets `is_sample=True` |
-| `activate_plan()` | 191–244 | Sets plan fields from `plans/{plan_id}.limits`; resets daily counters; awards `credits_on_activation` credits |
-| ⚠️ Webhook+verify race | 191 | `activate_plan()` called from both `/payments/razorpay/verify` and webhook handler; `_award_activation_credits` can fire twice if both complete concurrently — add `plan_activated_at` guard |
-| credit charge/award | ~142, 231–238 | Deducts or adds credits to user balance |
-| credit init | ~311–392 | `init_user_credits()`: initializes new user with 500 starter credits |
-| quota logic | ~537–619 | `check_and_record_quota()`: returns `(allowed, reason, credit_mode)` 3-tuple; credit_mode=True when on credits |
 
 ---
 
