@@ -5229,7 +5229,7 @@ class BlackboardActivity : AppCompatActivity() {
                 studentLevel = level,
                 languageTag  = preferredLanguageTag
             )
-            withContext(kotlinx.coroutines.Dispatchers.Main) {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 _showDoubtCard(question, response.answer, response.answerSpeech, response.followUp)
             }
         }
@@ -5286,7 +5286,7 @@ class BlackboardActivity : AppCompatActivity() {
             setOnClickListener {
                 val speechText = answerSpeech.ifBlank { answer }
                 tts.setLocale(java.util.Locale.forLanguageTag(preferredLanguageTag))
-                tts.speak(speechText, object : com.aiguruapp.student.tts.TTSCallback {
+                tts.speak(speechText, object : com.aiguruapp.student.utils.TTSCallback {
                     override fun onStart() {}
                     override fun onComplete() {}
                     override fun onError(e: String) {}
