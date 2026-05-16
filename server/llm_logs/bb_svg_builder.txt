@@ -1,4 +1,4 @@
-=== BB_SVG_BUILDER | 2026-05-16 10:12:21 | session=none ===
+=== BB_SVG_BUILDER | 2026-05-16 12:35:48 | session=none ===
 
 === SYSTEM ===
 You are an SVG diagram artist for an educational app. Draw accurate diagrams as raw SVG.
@@ -31,51 +31,14 @@ DRAW REAL STRUCTURES (never flowcharts with boxes/arrows):
 Draw this educational diagram as SVG:
 
   Diagram type : custom
-  Topic/title  : Method 1: Factoring
-  Context      : We rewrite the equation as two parentheses multiplied together, like x minus three times x minus two equals zero.
+  Topic/title  : Laws in Real Life
+  Context      : See how the car stops, but the passenger keeps moving until the seatbelt holds them back? That is inertia in action.
   Data hints   : none
-  Visual layout: The equation split into two factors.
+  Visual layout: Laws in Real Life
   Follow this layout exactly — positions, arrows, and labels as described above.
 
-Draw "Method 1: Factoring" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
+Draw "Laws in Real Life" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
 Animate each part appearing sequentially.  Output ONLY the <svg> element.
 
 === RESPONSE ===
-<svg viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg">
-<rect width="400" height="300" fill="#1A2B1A"/>
-<text x="200" y="30" font-family="serif" fill="#F0EDD0" font-size="13" font-weight="bold" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="0s" fill="freeze"/>Method 1: Factoring</text>
-
-<path d="M100 120 L300 120" stroke="#8BAB8B" stroke-width="2" stroke-dasharray="200" stroke-dashoffset="200">
-  <animate attributeName="stroke-dashoffset" values="200;0" dur="0.6s" begin="0.3s" fill="freeze"/>
-</path>
-
-<text x="200" y="110" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="0.6s" fill="freeze"/>x² - 5x + 6 = 0</text>
-
-<path d="M140 160 C 130 160, 120 170, 120 190 C 120 210, 130 220, 140 220" stroke="#4FC3F7" stroke-width="3" fill="none" stroke-dasharray="100" stroke-dashoffset="100">
-  <animate attributeName="stroke-dashoffset" values="100;0" dur="0.6s" begin="0.9s" fill="freeze"/>
-</path>
-<path d="M180 160 C 190 160, 200 170, 200 190 C 200 210, 190 220, 180 220" stroke="#4FC3F7" stroke-width="3" fill="none" stroke-dasharray="100" stroke-dashoffset="100">
-  <animate attributeName="stroke-dashoffset" values="100;0" dur="0.6s" begin="0.9s" fill="freeze"/>
-</path>
-<text x="160" y="200" font-family="serif" fill="#F0EDD0" font-size="13" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="1.2s" fill="freeze"/>(x - 3)</text>
-
-<path d="M220 160 C 210 160, 200 170, 200 190 C 200 210, 210 220, 220 220" stroke="#FF6B6B" stroke-width="3" fill="none" stroke-dasharray="100" stroke-dashoffset="100">
-  <animate attributeName="stroke-dashoffset" values="100;0" dur="0.6s" begin="1.5s" fill="freeze"/>
-</path>
-<path d="M260 160 C 270 160, 280 170, 280 190 C 280 210, 270 220, 260 220" stroke="#FF6B6B" stroke-width="3" fill="none" stroke-dasharray="100" stroke-dashoffset="100">
-  <animate attributeName="stroke-dashoffset" values="100;0" dur="0.6s" begin="1.5s" fill="freeze"/>
-</path>
-<text x="240" y="200" font-family="serif" fill="#F0EDD0" font-size="13" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="1.8s" fill="freeze"/>(x - 2)</text>
-
-<text x="280" y="200" font-family="serif" fill="#F0EDD0" font-size="13" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="2.1s" fill="freeze"/>= 0</text>
-
-<path d="M160 140 L160 160" stroke="#4FC3F7" stroke-width="2" stroke-dasharray="20" stroke-dashoffset="20">
-  <animate attributeName="stroke-dashoffset" values="20;0" dur="0.6s" begin="2.4s" fill="freeze"/>
-</path>
-<text x="160" y="135" font-family="serif" fill="#4FC3F7" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="2.7s" fill="freeze"/>Factor 1</text>
-
-<path d="M240 140 L240 160" stroke="#FF6B6B" stroke-width="2" stroke-dasharray="20" stroke-dashoffset="20">
-  <animate attributeName="stroke-dashoffset" values="20;0" dur="0.6s" begin="2.4s" fill="freeze"/>
-</path>
-<text x="240" y="135" font-family="serif" fill="#FF6B6B" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="2.7s" fill="freeze"/>Factor 2</text>
-</svg>
+<svg viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#1A2B1A"/><text x="200" y="30" text-anchor="middle" font-family="serif" font-size="13" font-weight="bold" fill="#F0EDD0" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0s"/>Laws in Real Life</text><path d="M50 220 L350 220 M50 220 L350 220" stroke="#8BAB8B" stroke-width="2" stroke-dasharray="300 300" stroke-dashoffset="300"><animate attributeName="stroke-dashoffset" values="300;0" dur="0.6s" fill="freeze" begin="0.3s"/></path><path d="M80 180 L200 180 L220 150 L300 150 L320 180 L350 180 L350 220 L80 220 Z" fill="#FF6B6B" fill-opacity="0.25" stroke="#FF6B6B" stroke-width="2" stroke-dasharray="600 600" stroke-dashoffset="600"><animate attributeName="stroke-dashoffset" values="600;0" dur="0.6s" fill="freeze" begin="0.6s"/></path><circle cx="120" cy="220" r="20" fill="#4FC3F7" fill-opacity="0.25" stroke="#4FC3F7" stroke-width="2" stroke-dasharray="126 126" stroke-dashoffset="126"><animate attributeName="stroke-dashoffset" values="126;0" dur="0.6s" fill="freeze" begin="0.9s"/></circle><circle cx="300" cy="220" r="20" fill="#4FC3F7" fill-opacity="0.25" stroke="#4FC3F7" stroke-width="2" stroke-dasharray="126 126" stroke-dashoffset="126"><animate attributeName="stroke-dashoffset" values="126;0" dur="0.6s" fill="freeze" begin="1.2s"/></circle><path d="M220 150 L220 220" stroke="#FFB74D" stroke-width="3" stroke-dasharray="70 70" stroke-dashoffset="70"><animate attributeName="stroke-dashoffset" values="70;0" dur="0.6s" fill="freeze" begin="1.5s"/></path><path d="M240 160 L280 160" stroke="#F0EDD0" stroke-width="2" stroke-dasharray="40 40" stroke-dashoffset="40"><animate attributeName="stroke-dashoffset" values="40;0" dur="0.6s" fill="freeze" begin="1.8s"/><animateTransform attributeName="transform" type="translate" values="0 0; 30 0" dur="0.6s" fill="freeze" begin="1.8s"/></path><text x="120" y="260" text-anchor="middle" font-family="serif" font-size="11" fill="#F0EDD0" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="0.9s"/>Wheel</text><text x="300" y="260" text-anchor="middle" font-family="serif" font-size="11" fill="#F0EDD0" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.2s"/>Wheel</text><text x="220" y="140" text-anchor="middle" font-family="serif" font-size="11" fill="#F0EDD0" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.5s"/>Seatbelt</text><text x="260" y="150" text-anchor="middle" font-family="serif" font-size="11" fill="#F0EDD0" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" fill="freeze" begin="1.8s"/>Inertia</text></svg>

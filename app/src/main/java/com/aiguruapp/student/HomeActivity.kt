@@ -2220,6 +2220,8 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
         }
         subjectAdapter.notifyDataSetChanged()
         updateSubjectCount()
+        // Seed the sample Maths chapter once for new users so they see something immediately
+        seedSampleSubject()
         
         // ALWAYS load from Firestore as fallback/sync (survives app uninstall)
         // This restores subjects even if local SharedPrefs were wiped
@@ -2243,6 +2245,49 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
         val count = subjectsList.size
         val text = if (count == 1) "1 subject" else "$count subjects"
         findViewById<TextView?>(R.id.subjectCountText)?.text = text
+    }
+
+    /** One-time seed: adds a sample NCERT Maths chapter so new users have something to explore. */
+    private fun seedSampleSubject() {
+        val prefs = subjectsPrefs()
+        if (prefs.getBoolean("sample_seeded", false)) return
+
+        val subject = "Mathematics (Class 10)"
+        val chapter = "Quadratic Equations (Chapter 4)"
+        val url     = "https://ncert.nic.in/textbook/pdf/jemh104.pdf"
+
+        // Add subject at the top of the list if not already present
+        if (!subjectsList.contains(subject)) {
+            subjectsList.add(0, subject)
+            saveSubjectsLocally(subjectsList)
+            FirestoreManager.saveSubject(userId, subject)
+            subjectAdapter.notifyItemInserted(0)
+            updateSubjectCount()
+        }
+
+        // Add the chapter entry with NCERT metadata
+        val chapPrefs = getSharedPreferences("chapters_prefs", MODE_PRIVATE)
+        val chapKey   = "chapters_$subject"
+        val existing  = chapPrefs.getString(chapKey, "") ?: ""
+        val chapters  = if (existing.isEmpty()) mutableListOf()
+                        else existing.split("||||||").filter { it.isNotEmpty() }.toMutableList()
+        if (!chapters.contains(chapter)) {
+            chapters.add(chapter)
+            chapPrefs.edit()
+                .putString(chapKey, chapters.joinToString("||||"))
+                .putString("meta_${subject}_$chapter",
+                    org.json.JSONObject().apply {
+                        put("isPdf", false)
+                        put("isNcert", true)
+                        put("ncertUrl", url)
+                        put("ncertCode", "jemh1")
+                        put("ncertChapterNum", 4)
+                    }.toString())
+                .apply()
+            FirestoreManager.saveChapter(userId, subject, chapter, ncertUrl = url)
+        }
+
+        prefs.edit().putBoolean("sample_seeded", true).apply()
     }
 
     private fun showAddSubjectDialog() {

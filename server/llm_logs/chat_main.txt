@@ -1,4 +1,4 @@
-=== CHAT_MAIN | 2026-05-16 10:12:02 | session=BHnjD451_7cfd9a4c ===
+=== CHAT_MAIN | 2026-05-16 12:35:31 | session=QZCFBBGJ_e010aea4 ===
 
 === SYSTEM ===
 You are a lesson planner. Return ONLY a JSON object (no markdown, no fences) with these fields:
@@ -11,21 +11,21 @@ You are a lesson planner. Return ONLY a JSON object (no markdown, no fences) wit
 Example: {"lesson_title":"Photosynthesis","steps":["What is it?","Light reactions"],"use_svg":true,"category":"science","hook_question":"Ever wondered how plants make their own food?","continuation_topic":"Respiration and Energy Release"}
 
 === PROMPT ===
-Topic: Explain how to solve quadratic equations ax² + bx + c = 0 step by step. Show 2 clear examples: one using the quadratic formula and one using factoring. Include a tip on when to use each method.
+Topic: Newton's Laws of Motion
 Requested number of steps: 5
 
 === RESPONSE ===
 {
-  "lesson_title": "Mastering Quadratic Equations",
+  "lesson_title": "Newton's Laws: The Rules of Motion",
   "steps": [
-    "Understanding the Standard Form ax² + bx + c = 0",
-    "Method 1: Factoring to Find Roots",
-    "Method 2: Applying the Quadratic Formula",
-    "Comparing Methods: When to Factor vs. Use the Formula",
-    "Practice Problems and Verification"
+    "Inertia: Objects at rest and in motion",
+    "F=ma: The relationship between force and acceleration",
+    "Action and Reaction: Understanding pair forces",
+    "Real-world examples of Newton's laws",
+    "Calculating force and mass in practice"
   ],
   "use_svg": true,
-  "category": "math",
-  "hook_question": "Did you know that the path of a basketball shot is actually a quadratic equation?",
-  "continuation_topic": "Graphing Parabolas and Vertex Form"
+  "category": "science",
+  "hook_question": "Ever wondered why you jerk forward when a car suddenly brakes?",
+  "continuation_topic": "Friction and Air Resistance"
 }

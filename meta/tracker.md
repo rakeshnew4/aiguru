@@ -2160,3 +2160,20 @@ Firestore resolved faster than tour started → sheet appeared before tour.
 - `app/src/main/res/layout/activity_blackboard.xml` (bbMediaControls ID, subtitleToggleBtn added)
 - `app/src/main/java/com/aiguruapp/student/HomeActivity.kt` (showManualSubjectDialog: auto-focus + PDF prompt)
 - `app/src/main/java/com/aiguruapp/student/BbSavedSessionsActivity.kt` (replaySession: canReplayFromCache flag for shared sessions with blank steps_json)
+
+---
+
+## 2026-05-16 — Seed sample Maths subject for new users
+
+**Asked:** Add one sample Maths subject with an NCERT PDF chapter so new users immediately see what the app can do.
+
+**Change:** Added `seedSampleSubject()` private function in `HomeActivity.kt`, called from `loadSubjects()` after initial population (one-time, guarded by `"sample_seeded"` SharedPrefs flag).
+
+- **Subject seeded:** `"Mathematics (Class 10)"` — inserted at position 0 so it appears first
+- **Chapter seeded:** `"Quadratic Equations (Chapter 4)"` — NCERT Class 10 Maths, one of the most exam-critical chapters
+- **PDF URL:** `https://ncert.nic.in/textbook/pdf/jemh104.pdf` (code `jemh1`, chapter 4)
+- **Meta stored:** `isNcert=true, ncertUrl, ncertCode="jemh1", ncertChapterNum=4` in `chapters_prefs`
+- Saves to both SharedPrefs and Firestore via `saveSubject` + `saveChapter`
+- Existing users unaffected (flag already absent → seeds once; existing "Mathematics (Class 10)" from NCERT import won't be duplicated)
+
+**Files changed:** `app/src/main/java/com/aiguruapp/student/HomeActivity.kt` (seedSampleSubject function ~line 2246, loadSubjects call ~line 2221)

@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-05-16 10:12:15 | session=BHnjD451_fbd4b648 ===
+=== BB_MAIN | 2026-05-16 12:35:43 | session=QZCFBBGJ_bcbf1579 ===
 
 === SYSTEM ===
 You are GURU — a warm, funny, wildly effective AI teacher inside a visual blackboard app.
@@ -97,41 +97,42 @@ RULES:
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: Explain how to solve quadratic equations ax² + bx + c = 0 step by step. Show 2 clear examples: one using the quadratic formula and one using factoring. Include a tip on when to use each method.
-Lesson title: Mastering Quadratic Equations
-Category: math
+Student's EXACT question: Topic: Newton's Laws of Motion
+Lesson title: Newton's Laws: The Rules of Motion
+Category: science
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
 Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- Understanding the Standard Form ax² + bx + c = 0
-- Method 1: Factoring to Find Roots
-- Method 2: Applying the Quadratic Formula
-- Comparing Methods: When to Factor vs. Use the Formula
-- Practice Problems and Verification
+- Inertia: Objects at rest and in motion
+- F=ma: The relationship between force and acceleration
+- Action and Reaction: Understanding pair forces
+- Real-world examples of Newton's laws
+- Calculating force and mass in practice
 
 This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants to learn the step-by-step process for solving quadratic equations using both the quadratic formula and factoring, along with guidance on when to choose each method.
-Question type: how_to
+What the student specifically wants: The student wants an engaging introduction to Newton's First Law, specifically focusing on the concept of inertia.
+Question type: conceptual
 Student level: Class 5
 GRADE SPEECH STYLE: Technical words WITH plain-English gloss. Relatable humor (games, snacks). ≤35 words/frame.
-Topic type: math_formula | Scope: medium
-Key concepts to cover (ALL of these): Quadratic Formula, Factoring Trinomials, Zero Product Property, Discriminant
+Topic type: science_physics | Scope: simple
+Key concepts to cover (ALL of these): Inertia, Newton's First Law, Mass and Resistance
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-DIAGRAM RECOMMENDATION: This topic likely needs a "graph_function" diagram (confidence 98%). Use diagram_type="graph_function" for your diagram frame(s).
+DIAGRAM RECOMMENDATION: This topic likely needs a "anatomy" diagram (confidence 98%). Use diagram_type="anatomy" for your diagram frame(s).
 
-SUBJECT GUIDANCE (Math — Formula/Algebra):
-• Lead with the formula in a concept frame. Show what each variable means.
-• Dedicate 2 concept frames to worked substitution (step-by-step numbers).
-• Prefer diagram_type: graph_function, fraction_bar, number_line, or pythagoras.
-• End with a summary frame recapping key takeaways.
+SUBJECT GUIDANCE (Science — Physics):
+• Use waveform_signal for waves/sound/light; coordinate_plane for motion graphs.
+• Use PATH 2 (diagram_type=custom) for force diagrams, ray optics, circuit layouts.
+• Concept frames: state law/formula → physical meaning → real-world application.
+• Include units in every formula (e.g. m/s², Newton, Joule).
+• End with a summary frame.
 
 ---END LESSON BRIEF---
 
@@ -141,142 +142,31 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
 {
   "steps": [
     {
-      "title": "Standard Form Equations",
+      "title": "Inertia: The Lazy Law",
       "lang": "en-US",
-      "image_description": "parabola graph function",
-      "image_show_confidencescore": 0.9,
-      "frames": [
-        {
-          "frame_type": "hook",
-          "text": "The **Parabola** shape",
-          "speech": "Ever seen a fountain arc or a basketball shot? That curve is a quadratic equation in action.",
-          "tts_engine": "android",
-          "voice_role": "teacher",
-          "duration_ms": 3000
-        },
-        {
-          "frame_type": "concept",
-          "text": "ax² + bx + c = 0",
-          "speech": "We write these as a x squared plus b x plus c equals zero. The letters a, b, and c are just numbers.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3500
-        },
-        {
-          "frame_type": "diagram",
-          "text": "y = ax² + bx + c",
-          "speech": "This graph shows the curve. The solutions are where the line hits the horizontal axis.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000,
-          "diagram_type": "graph_function",
-          "diagram_data": {
-            "function": "x^2 - 4"
-          },
-          "visual_description": "A graph showing a U-shaped parabola crossing the x-axis."
-        }
-      ]
-    },
-    {
-      "title": "Method 1: Factoring",
-      "lang": "en-US",
-      "image_description": "factoring trinomials math",
-      "image_show_confidencescore": 0.7,
-      "frames": [
-        {
-          "frame_type": "concept",
-          "text": "Factoring Trinomials",
-          "speech": "Factoring is like breaking a big LEGO set into two smaller, easier parts.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 2500
-        },
-        {
-          "frame_type": "diagram",
-          "text": "(x - 3)(x - 2) = 0",
-          "speech": "We rewrite the equation as two parentheses multiplied together, like x minus three times x minus two equals zero.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3500,
-          "diagram_type": "custom",
-          "diagram_data": {
-            "expression": "(x-3)(x-2)=0"
-          },
-          "visual_description": "The equation split into two factors."
-        },
-        {
-          "frame_type": "concept",
-          "text": "Zero Product Property",
-          "speech": "Here is the trick. If two things multiply to zero, one of them must be zero. So, x equals three or x equals two.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3500
-        }
-      ]
-    },
-    {
-      "title": "Method 2: Quadratic Formula",
-      "lang": "en-US",
-      "image_description": "quadratic formula math text",
+      "image_description": "Newton's first law inertia ball at rest",
       "image_show_confidencescore": 0.8,
       "frames": [
         {
-          "frame_type": "concept",
-          "text": "x = (-b ± √(b² - 4ac)) / 2a",
-          "speech": "The quadratic formula is the ultimate tool. It works even when factoring is impossible.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000
-        },
-        {
-          "frame_type": "diagram",
-          "text": "Formula Breakdown",
-          "speech": "The part under the square root, b squared minus four a c, is called the discriminant. It tells us how many answers we have.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 4000,
-          "diagram_type": "custom",
-          "diagram_data": {
-            "formula": "x = (-b ± sqrt(b^2 - 4ac)) / 2a"
-          },
-          "visual_description": "The quadratic formula written clearly."
-        },
-        {
-          "frame_type": "joke",
-          "text": "Math Cheat Code",
-          "speech": "Memorizing this formula is like learning a secret cheat code in a video game, except this code solves math problems instead of unlocking new levels.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 1500
-        }
-      ]
-    },
-    {
-      "title": "When to Use Which",
-      "lang": "en-US",
-      "image_description": "decision tree math",
-      "image_show_confidencescore": 0.6,
-      "frames": [
-        {
-          "frame_type": "concept",
-          "text": "Factoring vs Formula",
-          "speech": "Factor when the numbers are friendly and small. Use the formula when the numbers are big or messy decimals.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3000
-        },
-        {
-          "frame_type": "question",
-          "text": "Which method is best?",
-          "speech": "If you have a really messy equation with big decimals, which method wins?",
+          "frame_type": "hook",
+          "text": "Why does your **soccer ball** stay still until you kick it?",
+          "speech": "Ever wonder why a soccer ball just sits there on the grass until you kick it? It's actually being lazy, and physics has a name for that.",
           "tts_engine": "android",
           "voice_role": "teacher",
-          "duration_ms": 2500
+          "duration_ms": 3500
         },
         {
-          "frame_type": "reveal",
-          "text": "Formula Wins!",
-          "speech": "Actually, it is the formula! It handles messy numbers like a champion every single time.",
+          "frame_type": "concept",
+          "text": "**Inertia**: Resistance to change",
+          "speech": "This is inertia. It is the tendency of objects to keep doing exactly what they are already doing, whether that is resting or moving.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500
+        },
+        {
+          "frame_type": "memory",
+          "text": "Inertia = **Stubbornness**",
+          "speech": "Think of inertia like a stubborn friend who refuses to get off the couch. Objects are just as stubborn about changing their speed or direction.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
@@ -284,60 +174,175 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ]
     },
     {
-      "title": "Practice and Review",
+      "title": "F=ma: Force and Motion",
       "lang": "en-US",
-      "image_description": "math equation solved",
-      "image_show_confidencescore": 0.5,
+      "image_description": "Force equals mass times acceleration diagram",
+      "image_show_confidencescore": 0.9,
       "frames": [
         {
-          "frame_type": "apply",
-          "text": "Solve x² - 5x + 6 = 0",
-          "speech": "Try solving x squared minus 5x plus 6 equals zero. We need two numbers that add to negative five and multiply to positive six.",
+          "frame_type": "concept",
+          "text": "Force = **Mass** × **Acceleration**",
+          "speech": "Newton's second law says force equals mass times acceleration. Basically, the heavier something is, the more force you need to push it.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 4000
         },
         {
           "frame_type": "diagram",
-          "text": "x = 2, x = 3",
-          "speech": "The numbers are negative two and negative three. So the answers are two and three.",
+          "text": "Pushing a **heavy cart** vs **light box**",
+          "speech": "Imagine pushing a full shopping cart versus an empty one. The full one has more mass, so it needs a bigger push to speed up.",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3000,
+          "duration_ms": 4000,
           "diagram_type": "custom",
           "diagram_data": {
-            "result": "x=2, x=3"
-          },
-          "visual_description": "The factors (x-2)(x-3)=0 shown."
+            "scene": "two_carts",
+            "items": [
+              {
+                "label": "Heavy Cart",
+                "mass": "High"
+              },
+              {
+                "label": "Empty Cart",
+                "mass": "Low"
+              }
+            ]
+          }
+        },
+        {
+          "frame_type": "joke",
+          "text": "Mass vs Weight",
+          "speech": "If you struggle to push your heavy backpack, just tell your teacher you are studying Newton's second law, not being lazy!",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        }
+      ]
+    },
+    {
+      "title": "Action and Reaction",
+      "lang": "en-US",
+      "image_description": "Rocket launch action reaction forces",
+      "image_show_confidencescore": 0.85,
+      "frames": [
+        {
+          "frame_type": "concept",
+          "text": "For every action, an **equal reaction**",
+          "speech": "Newton's third law says every action has an equal and opposite reaction. If you push something, it pushes back just as hard.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500
+        },
+        {
+          "frame_type": "question",
+          "text": "What happens if you jump off a skateboard?",
+          "speech": "If you jump forward off a skateboard, which way does the skateboard go?",
+          "tts_engine": "android",
+          "voice_role": "teacher",
+          "duration_ms": 2500
+        },
+        {
+          "frame_type": "reveal",
+          "text": "Skateboard moves **backward**",
+          "speech": "Actually, it shoots backward! You pushed the board, so the board pushed you forward while it rolled the other way.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        }
+      ]
+    },
+    {
+      "title": "Laws in Real Life",
+      "lang": "en-US",
+      "image_description": "Car seatbelt physics diagram",
+      "image_show_confidencescore": 0.9,
+      "frames": [
+        {
+          "frame_type": "apply",
+          "text": "Seatbelts and **Inertia**",
+          "speech": "Ever wonder why seatbelts save lives? When a car stops suddenly, your body wants to keep moving forward because of inertia. The belt stops that.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 4000
+        },
+        {
+          "frame_type": "diagram",
+          "text": "Passenger movement in car",
+          "speech": "See how the car stops, but the passenger keeps moving until the seatbelt holds them back? That is inertia in action.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 4000,
+          "diagram_type": "custom",
+          "diagram_data": {
+            "subject": "car_brake",
+            "force_vector": "forward"
+          }
+        },
+        {
+          "frame_type": "curiosity",
+          "text": "Can we calculate this?",
+          "speech": "So, if we know how heavy something is, can we figure out exactly how much force we need to move it? Let's find out.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        }
+      ]
+    },
+    {
+      "title": "Calculating Force",
+      "lang": "en-US",
+      "image_description": "Simple math equation F = m times a",
+      "image_show_confidencescore": 0.7,
+      "frames": [
+        {
+          "frame_type": "apply",
+          "text": "Calculating Force: **Newtons**",
+          "speech": "To find force, multiply mass in kilograms by acceleration in meters per second squared. The answer is in Newtons, named after Isaac Newton himself.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 4000
+        },
+        {
+          "frame_type": "diagram",
+          "text": "Calculation: 2kg * 5m/s² = **10N**",
+          "speech": "If you push a 2 kilogram ball to speed up at 5 meters per second squared, you are using 10 Newtons of force.",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 4000,
+          "diagram_type": "custom",
+          "diagram_data": {
+            "equation": "F = m * a",
+            "values": "2kg * 5m/s2 = 10N"
+          }
         },
         {
           "frame_type": "summary",
-          "text": "Lesson Summary",
-          "speech": "Quadratic equations define curves. Factor for simple numbers, use the quadratic formula for everything else. You've got this.",
+          "text": "Newton's Laws Wrap-up",
+          "speech": "So, objects are stubborn with inertia, force depends on mass and speed, and every action has a reaction. You have mastered the rules of motion.",
           "tts_engine": "google",
           "voice_role": "assistant",
-          "duration_ms": 3000
+          "duration_ms": 4000
         }
       ],
       "followup_questions": [
         {
-          "question": "What if the discriminant is zero?",
-          "speech": "What happens to the curve if that special part under the square root equals zero?"
+          "question": "What if there was no inertia?",
+          "speech": "What do you think would happen to the world if inertia didn't exist?"
         },
         {
-          "question": "Can I use the formula for everything?",
-          "speech": "Is it okay to just use the quadratic formula for every single problem?"
+          "question": "Does friction count as a force?",
+          "speech": "Is friction a force that acts against our movement?"
         },
         {
-          "question": "Why is it called quadratic?",
-          "speech": "Why do we call these equations quadratic instead of just calling them curves?"
+          "question": "Why don't we feel Earth's reaction?",
+          "speech": "If we push the ground, why doesn't the Earth move away from us?"
         }
       ],
-      "session_theme": "Mastering Quadratic Equations",
-      "video_search_query": "how to solve quadratic equations for beginners",
+      "session_theme": "Newton's Three Laws of Motion",
+      "video_search_query": "Newton's Laws of Motion simple explanation",
       "preferred_channels": [
-        "Khan Academy India",
-        "Physics Wallah"
+        "Physics Wallah",
+        "Khan Academy India"
       ]
     }
   ]

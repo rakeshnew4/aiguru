@@ -1,4 +1,4 @@
-=== IMAGE_PICKER | 2026-05-16 10:12:18 | session=none ===
+=== IMAGE_PICKER | 2026-05-16 12:35:45 | session=none ===
 
 === PROMPT ===
 You are selecting the best matching Wikimedia Commons image for each blackboard lesson step.
@@ -8,49 +8,16 @@ When a Visual layout is provided, prefer images that match the described visual 
 Output ONLY valid JSON mapping step index (string key) to the EXACT title string or null.
 
 Steps needing images:
-[0] Step "Standard Form Equations" — topic: "parabola graph function"
-[1] Step "Method 1: Factoring" — topic: "factoring trinomials math"
-[2] Step "Method 2: Quadratic Formula" — topic: "quadratic formula math text"
-[3] Step "When to Use Which" — topic: "decision tree math"
-[4] Step "Practice and Review" — topic: "math equation solved"
+[0] Step "Inertia: The Lazy Law" — topic: "Newton's first law inertia ball at rest"
+[1] Step "F=ma: Force and Motion" — topic: "Force equals mass times acceleration diagram"
+[2] Step "Action and Reaction" — topic: "Rocket launch action reaction forces"
+[3] Step "Laws in Real Life" — topic: "Car seatbelt physics diagram"
+[4] Step "Calculating Force" — topic: "Simple math equation F = m times a"
 
 Available Wikimedia titles:
-- Graph of the floor function of x squared.png
-- Graph of the function f(x)=x^2 with a tangent line drawn to (2,4).png
-- Inverse square graph.svg
-- Kwakwaka'wakw transformation mask.jpg
-- Parabola and three vertical lines.svg
-- Parabola graphed against a catenary upside-down, zoomed out.png
-- Quadratic function graph complex roots.svg
-- Wikiversity zh AdvancedFunction&Calculus img02.png
-- External rays and critical orbit landing on the parabolic fixed point for t=5 over 11.png
-- Julia set for fc(z) = z*z+c where c = -0.749998153581339 +0.001569040474910*I; t = 0.49975027919634618290 with orbits.png
-- Lamination of basilica Julia set.png
-- Mandel zoom 00 mandelbrot set.jpg
-- OpenOffice.org Math-ja.png
-- Parabolic Julia set for internal angle 1 over 20.png
-- Carlton's Monty Hall Problem Intuitive Explanation Decision Tree.png
-- Carlton's Monty Hall Problem Simple Solution Decision Tree.png
-- ID3 algorithm decision tree.svg
-- 3JCN method - A quick solution for Quadratic Equation.png
-- MATHS (linear equation (elimination) find x and y values).jpg
-- SAGE equation solve.jpeg
-- SAGE equation solve.png
-- Completing the Square for the Quadratic Equation.jpg
-- Quadratic Equation Solution Cases (Discriminant & Quadratic Formula).jpg
-- Quadratic Formula.jpg
-- Quadratic equation.gif
-- Quadratic formula.svg
-- Quadratic formula via completing the square.png
-- Roots of a quadratic function via the quadratic formula.png
+- Rolling Racers - Moment of inertia.gif
 
 Output example: {"0": "Photosynthesis diagram.svg", "3": null, "5": "Newton laws.png"}
 
 === RESPONSE ===
-{
-  "0": "Parabola and three vertical lines.svg",
-  "1": null,
-  "2": "Quadratic formula.svg",
-  "3": "ID3 algorithm decision tree.svg",
-  "4": "SAGE equation solve.png"
-}
+{"0": null, "1": null, "2": null, "3": null, "4": null}

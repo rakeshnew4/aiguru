@@ -1,11 +1,11 @@
-=== DAILY_QUESTION_GEN | 2026-05-16 10:11:46 | session=none ===
+=== DAILY_QUESTION_GEN | 2026-05-16 12:21:52 | session=none ===
 
 === PROMPT ===
 Generate exactly 3 engaging daily learning questions for a student.
 
-Student's top subjects: Science, Math, History
-Recent topics studied: basic concepts
-Topics already used today (AVOID these): none
+Student's top subjects: General
+Recent topics studied: Newton's Laws of Motion
+Topics already used today (AVOID these): Monetary Policy, Neuroscience, Semantics, Archaeology, Calculus, Geology, Arithmetic, Economic History, Physics, Human Geography
 
 Rules:
 - Each question must be thought-provoking and curiosity-driven (not "what is X")
@@ -27,24 +27,24 @@ hook: one-line real-world curiosity fact related to the question (under 12 words
 === RESPONSE ===
 [
   {
-    "question": "Why do shadows change length throughout the day?",
-    "subject": "Science",
-    "topic": "Light and Shadows",
+    "question": "Why do some plants 'sleep' by closing their leaves at night?",
+    "subject": "Biology",
+    "topic": "Plant Physiology",
     "difficulty": 1,
-    "hook": "Shadows are longest during sunrise and sunset."
+    "hook": "Some plants move their leaves to conserve heat and moisture."
   },
   {
-    "question": "How would our number system change without the concept of zero?",
-    "subject": "Math",
-    "topic": "Number Theory",
+    "question": "How does music theory influence the emotional impact of a film score?",
+    "subject": "Music",
+    "topic": "Composition",
     "difficulty": 2,
-    "hook": "Ancient Romans did not have a symbol for zero."
+    "hook": "Minor keys are often used to trigger feelings of sadness."
   },
   {
-    "question": "What if the printing press had never been invented?",
-    "subject": "History",
-    "topic": "The Renaissance",
+    "question": "What would happen to global trade if the Suez Canal vanished tomorrow?",
+    "subject": "Logistics",
+    "topic": "Supply Chain Management",
     "difficulty": 3,
-    "hook": "Books were hand-copied by monks before the printing press."
+    "hook": "12% of global trade passes through this narrow waterway."
   }
 ]
