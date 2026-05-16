@@ -1,4 +1,4 @@
-=== BB_SVG_BUILDER | 2026-05-13 08:02:05 | session=none ===
+=== BB_SVG_BUILDER | 2026-05-16 10:12:21 | session=none ===
 
 === SYSTEM ===
 You are an SVG diagram artist for an educational app. Draw accurate diagrams as raw SVG.
@@ -31,53 +31,51 @@ DRAW REAL STRUCTURES (never flowcharts with boxes/arrows):
 Draw this educational diagram as SVG:
 
   Diagram type : custom
-  Topic/title  : The Calvin Cycle
-  Context      : This diagram shows how the plant takes gas from the air and turns it into energy-packed sugar.
+  Topic/title  : Method 1: Factoring
+  Context      : We rewrite the equation as two parentheses multiplied together, like x minus three times x minus two equals zero.
   Data hints   : none
-  Visual layout: A simple flow chart showing CO2 entering and glucose exiting a cycle.
+  Visual layout: The equation split into two factors.
   Follow this layout exactly — positions, arrows, and labels as described above.
 
-Draw "The Calvin Cycle" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
+Draw "Method 1: Factoring" accurately — show the REAL structure/anatomy/physics, not just abstract shapes.
 Animate each part appearing sequentially.  Output ONLY the <svg> element.
 
 === RESPONSE ===
 <svg viewBox="0 0 400 300" width="100%" xmlns="http://www.w3.org/2000/svg">
-  <rect width="400" height="300" fill="#1A2B1A"/>
-  <defs>
-    <style>
-      .anim-path { stroke-dasharray: 500; stroke-dashoffset: 500; animation: draw 0.6s forwards; }
-      .anim-text { opacity: 0; animation: fade 0.35s forwards; }
-      @keyframes draw { to { stroke-dashoffset: 0; } }
-      @keyframes fade { to { opacity: 1; } }
-    </style>
-  </defs>
+<rect width="400" height="300" fill="#1A2B1A"/>
+<text x="200" y="30" font-family="serif" fill="#F0EDD0" font-size="13" font-weight="bold" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="0s" fill="freeze"/>Method 1: Factoring</text>
 
-  <text x="200" y="25" text-anchor="middle" font-family="serif" fill="#F0EDD0" font-size="13" font-weight="bold" class="anim-text" style="animation-delay: 0.1s">The Calvin Cycle</text>
+<path d="M100 120 L300 120" stroke="#8BAB8B" stroke-width="2" stroke-dasharray="200" stroke-dashoffset="200">
+  <animate attributeName="stroke-dashoffset" values="200;0" dur="0.6s" begin="0.3s" fill="freeze"/>
+</path>
 
-  <!-- Cycle Circle -->
-  <circle cx="200" cy="160" r="80" fill="none" stroke="#8BAB8B" stroke-width="3" stroke-dasharray="4 4" class="anim-path" style="animation-delay: 0.3s"/>
+<text x="200" y="110" font-family="serif" fill="#F0EDD0" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="0.6s" fill="freeze"/>x² - 5x + 6 = 0</text>
 
-  <!-- CO2 Input -->
-  <path d="M 80 160 L 120 160" stroke="#4FC3F7" stroke-width="3" class="anim-path" style="animation-delay: 0.6s"/>
-  <text x="70" y="150" font-family="serif" fill="#4FC3F7" font-size="11" class="anim-text" style="animation-delay: 0.9s">CO2 In</text>
+<path d="M140 160 C 130 160, 120 170, 120 190 C 120 210, 130 220, 140 220" stroke="#4FC3F7" stroke-width="3" fill="none" stroke-dasharray="100" stroke-dashoffset="100">
+  <animate attributeName="stroke-dashoffset" values="100;0" dur="0.6s" begin="0.9s" fill="freeze"/>
+</path>
+<path d="M180 160 C 190 160, 200 170, 200 190 C 200 210, 190 220, 180 220" stroke="#4FC3F7" stroke-width="3" fill="none" stroke-dasharray="100" stroke-dashoffset="100">
+  <animate attributeName="stroke-dashoffset" values="100;0" dur="0.6s" begin="0.9s" fill="freeze"/>
+</path>
+<text x="160" y="200" font-family="serif" fill="#F0EDD0" font-size="13" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="1.2s" fill="freeze"/>(x - 3)</text>
 
-  <!-- Glucose Output -->
-  <path d="M 280 160 L 320 160" stroke="#FFB74D" stroke-width="3" class="anim-path" style="animation-delay: 1.2s"/>
-  <text x="330" y="165" font-family="serif" fill="#FFB74D" font-size="11" class="anim-text" style="animation-delay: 1.5s">Glucose</text>
+<path d="M220 160 C 210 160, 200 170, 200 190 C 200 210, 210 220, 220 220" stroke="#FF6B6B" stroke-width="3" fill="none" stroke-dasharray="100" stroke-dashoffset="100">
+  <animate attributeName="stroke-dashoffset" values="100;0" dur="0.6s" begin="1.5s" fill="freeze"/>
+</path>
+<path d="M260 160 C 270 160, 280 170, 280 190 C 280 210, 270 220, 260 220" stroke="#FF6B6B" stroke-width="3" fill="none" stroke-dasharray="100" stroke-dashoffset="100">
+  <animate attributeName="stroke-dashoffset" values="100;0" dur="0.6s" begin="1.5s" fill="freeze"/>
+</path>
+<text x="240" y="200" font-family="serif" fill="#F0EDD0" font-size="13" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="1.8s" fill="freeze"/>(x - 2)</text>
 
-  <!-- ATP/NADPH Input -->
-  <path d="M 200 250 L 200 230" stroke="#81C784" stroke-width="3" class="anim-path" style="animation-delay: 1.8s"/>
-  <text x="205" y="245" font-family="serif" fill="#81C784" font-size="11" class="anim-text" style="animation-delay: 2.1s">ATP/NADPH</text>
+<text x="280" y="200" font-family="serif" fill="#F0EDD0" font-size="13" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="2.1s" fill="freeze"/>= 0</text>
 
-  <!-- ADP/NADP Output -->
-  <path d="M 200 70 L 200 90" stroke="#FF6B6B" stroke-width="3" class="anim-path" style="animation-delay: 2.4s"/>
-  <text x="205" y="80" font-family="serif" fill="#FF6B6B" font-size="11" class="anim-text" style="animation-delay: 2.7s">ADP/NADP+</text>
+<path d="M160 140 L160 160" stroke="#4FC3F7" stroke-width="2" stroke-dasharray="20" stroke-dashoffset="20">
+  <animate attributeName="stroke-dashoffset" values="20;0" dur="0.6s" begin="2.4s" fill="freeze"/>
+</path>
+<text x="160" y="135" font-family="serif" fill="#4FC3F7" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="2.7s" fill="freeze"/>Factor 1</text>
 
-  <!-- RuBP Molecule (Representation) -->
-  <ellipse cx="200" cy="160" rx="20" ry="15" fill="#CE93D8" fill-opacity="0.4" stroke="#CE93D8" stroke-width="2" class="anim-path" style="animation-delay: 3.0s"/>
-  <text x="200" y="165" text-anchor="middle" font-family="serif" fill="#F0EDD0" font-size="10" class="anim-text" style="animation-delay: 3.3s">RuBP</text>
-
-  <!-- Arrows on cycle -->
-  <path d="M 200 80 A 80 80 0 0 1 280 160" fill="none" stroke="#F5E3A0" stroke-width="2" marker-end="url(#arrowhead)" class="anim-path" style="animation-delay: 3.6s"/>
-  <path d="M 200 240 A 80 80 0 0 0 120 160" fill="none" stroke="#F5E3A0" stroke-width="2" class="anim-path" style="animation-delay: 3.9s"/>
+<path d="M240 140 L240 160" stroke="#FF6B6B" stroke-width="2" stroke-dasharray="20" stroke-dashoffset="20">
+  <animate attributeName="stroke-dashoffset" values="20;0" dur="0.6s" begin="2.4s" fill="freeze"/>
+</path>
+<text x="240" y="135" font-family="serif" fill="#FF6B6B" font-size="11" text-anchor="middle" opacity="0"><animate attributeName="opacity" values="0;1" dur="0.35s" begin="2.7s" fill="freeze"/>Factor 2</text>
 </svg>

@@ -1,19 +1,15 @@
-=== BB_PLANNER | 2026-05-13 08:01:50 | session=YXnhFuOF_7156d0fe ===
+=== BB_PLANNER | 2026-05-16 10:12:05 | session=BHnjD451_fbd4b648 ===
 
 === PROMPT ===
 You are a lesson analyst for a personal visual AI tutor responding to a student's SPECIFIC question.
 Analyze exactly what the student is asking and return a focused lesson plan.
 Output ONLY valid JSON — nothing else.
 
-Student question (answer THIS specifically): "Topic: Photosynthesis
-Lesson title: The Magic of Photosynthesis
-Category: science
+Student question (answer THIS specifically): "Topic: Explain how to solve quadratic equations ax² + bx + c = 0 step by step. Show 2 clear examples: one using the quadratic formula and one using factoring. Include a tip on when to use each method.
+Lesson title: Mastering Quadratic Equations
+Category: math
 
-This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
-
-Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
-Steps to generate in this batch:
-- The Ingredients: Sunlight, Water"
+This is the FIRST chunk of the lesson —"
 Chapter context (excerpt): ""
 Recent conversation (last 3 turns):
   (No prior conversation — this is the student's first question)
@@ -48,22 +44,22 @@ Rules:
 
 === RESPONSE ===
 {
-  "topic_type": "science_biology",
-  "scope": "simple",
+  "topic_type": "math_formula",
+  "scope": "medium",
   "key_concepts": [
-    "photosynthesis",
-    "solar energy",
-    "water absorption"
+    "Quadratic Formula",
+    "Factoring Trinomials",
+    "Zero Product Property",
+    "Discriminant"
   ],
   "steps_count": 5,
   "image_search_terms": [
-    "sunlight shining on green leaves",
-    "plant roots absorbing water from soil",
-    "photosynthesis diagram sunlight water"
+    "quadratic formula",
+    "factoring quadratic equation diagram"
   ],
-  "question_focus": "The student wants an engaging introduction to photosynthesis focusing specifically on the role of sunlight and water as the initial ingredients.",
-  "question_type": "conceptual",
+  "question_focus": "The student wants to learn the step-by-step process for solving quadratic equations using both the quadratic formula and factoring, along with guidance on when to choose each method.",
+  "question_type": "how_to",
   "prior_knowledge": "",
-  "hook_question": "Have you ever wondered how plants eat without having a mouth?",
-  "continuation_topic": "Carbon Dioxide and Glucose Production"
+  "hook_question": "Did you know that quadratic equations are used to calculate the path of a basketball thrown into a hoop?",
+  "continuation_topic": "Graphing Quadratic Functions"
 }

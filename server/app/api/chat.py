@@ -702,7 +702,7 @@ def _coerce_frame(frame: dict) -> None:
         except (ValueError, TypeError):
             frame["quiz_correct_index"] = -1
     if frame.get("tts_engine") not in _VALID_TTS_ENGINES:
-        frame["tts_engine"] = "gemini"
+        frame["tts_engine"] = "google"
     if frame.get("voice_role") not in _VALID_VOICE_ROLES:
         frame["voice_role"] = "teacher"
     # Ensure every frame has a 'text' field — diagram frames often omit it,

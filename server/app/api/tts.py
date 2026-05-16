@@ -27,7 +27,7 @@ class TtsSynthesizeRequest(BaseModel):
     voice_name: str = ""
     speaking_rate: float = 1.0
     user_plan: str = "free"
-    tts_engine: str = "google"   # google | gemini | android
+    tts_engine: str = "google"   # google | android
 
 
 # ================================
@@ -49,26 +49,29 @@ CHEAP_VOICES = {
 }
 
 PREMIUM_VOICES = {
-    "hi": "hi-IN-Neural2-A",
-    "en": "en-US-Neural2-F",
+    "hi": "hi-IN-Chirp3-HD-Aoede",
+    "en": "en-IN-Chirp3-HD-Aoede",
     "en-in": "en-IN-Neural2-A",
     "ta": "ta-IN-Neural2-A",
 
     # fallback (no Neural2)
-    "te": "te-IN-Wavenet-A",
-    "kn": "kn-IN-Wavenet-A",
-    "ml": "ml-IN-Wavenet-A",
-    "mr": "mr-IN-Wavenet-A",
-    "bn": "bn-IN-Wavenet-A",
-    "gu": "gu-IN-Wavenet-A",
-    "pa": "pa-Guru-IN-Wavenet-A",
+    "te": "te-IN-Chirp3-HD-Aoede",
+    "kn": "kn-IN-Chirp3-HD-Aoede",
+    "ml": "ml-IN-Chirp3-HD-Aoede",
+    "mr": "mr-IN-Chirp3-HD-Aoede",
+    "bn": "bn-IN-Chirp3-HD-Aoede",
+    "gu": "gu-IN-Chirp3-HD-Aoede",
+    "pa": "pa-Guru-IN-Chirp3-HD-Aoede",
 }
 
 
 def _select_voice(language_code: str, voice_name: str, user_plan: str):
     if voice_name:
+        # Derive languageCode from the voice name to avoid lang/voice mismatch errors
+        parts = voice_name.split("-")
+        resolved_lang = "-".join(parts[:2]) if len(parts) >= 2 else language_code
         return {
-            "languageCode": language_code,
+            "languageCode": resolved_lang,
             "name": voice_name,
             "ssmlGender": "NEUTRAL",
         }
@@ -76,7 +79,7 @@ def _select_voice(language_code: str, voice_name: str, user_plan: str):
     lang = language_code.lower()
     lang_key = lang.split("-")[0]
 
-    voice_map = PREMIUM_VOICES if user_plan == "premium" else CHEAP_VOICES
+    voice_map = PREMIUM_VOICES if user_plan == "premium" else PREMIUM_VOICES
 
     name = (
         voice_map.get(lang)
@@ -84,8 +87,16 @@ def _select_voice(language_code: str, voice_name: str, user_plan: str):
         or voice_map.get("en")
     )
 
+    # Derive languageCode from the voice name (e.g. "en-IN-Chirp-HD-F" → "en-IN")
+    # so it always matches the voice, regardless of what the client sent.
+    if name:
+        parts = name.split("-")
+        resolved_lang = "-".join(parts[:2]) if len(parts) >= 2 else language_code
+    else:
+        resolved_lang = language_code
+
     return {
-        "languageCode": language_code,
+        "languageCode": resolved_lang,
         "name": name,
         "ssmlGender": "NEUTRAL",
     }
@@ -233,7 +244,7 @@ async def synthesize(
         req.language_code,
         req.voice_name,
         speaking_rate,
-        req.user_plan
+        req.user_plan,
     )
 
     # For non-English languages: ElevenLabs and OpenAI do not support Indian regional
@@ -259,6 +270,6 @@ async def synthesize(
         media_type="audio/mpeg",
         headers={
             "X-TTS-Chars": str(len(text)),
-            "X-TTS-Plan": req.user_plan
-        }
+            "X-TTS-Plan": req.user_plan,
+        },
     )

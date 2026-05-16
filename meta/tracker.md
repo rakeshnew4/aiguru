@@ -1886,3 +1886,56 @@ Books with ALL 404 (English/SS for Class 6/9) kept as-is — likely IP-blocked f
   - "Step 1: <title> — <first frame text[:80]>\nStep 2: ..." capped at 800 chars total
   - Injected as second `system:` history entry before bbChatHistory
 - Result: inline chat now knows what was taught, can answer "explain step 2 more" etc.
+
+---
+
+## Session 26 — LLM call reduction: bb_main cache + SVG cache
+
+**Date:** 2026-05-13
+**Asked:** 7 LLM calls per BB session shown in logs; implement pending caches
+
+### `server/app/services/cache_service.py`
+- `set_cache()`: added `ttl: int = 60*60*24*30` param (default still 30 days)
+- Callers can now pass custom TTL (6h for bb_main, 24h for SVG)
+
+### `server/app/api/chat.py`
+- Added `from app.services.cache_service import get_cache, set_cache`
+- BB pipeline: before `_bb_plan()`, check `get_cache("bb_main", question:level)`
+  - HIT: skip planner + wiki_prefetch + yt_task + stream_generate_response
+  - Parse cached `_bb_text`, emit `first_step` + `bb_step` events from JSON, `_bb_emitted` set
+  - `wiki_task = None`, `yt_task = None` → skips those waits safely
+  - HIT guard: `build_blackboard_mode_user_content` also skipped (no `plan` needed)
+  - MISS: run normal pipeline, then `set_cache("bb_main", ..., ttl=6*3600)` after streaming
+- On cache HIT: result `provider` set to `"cache"` (for logging)
+- On cache HIT: `_bb_emitted` set from parsed steps count (so fallback parse is skipped)
+
+### `server/app/api/image_search_titles.py`
+- Added `from app.services.cache_service import get_cache, set_cache`
+- New `_build_llm_svg_cached(**kw)` sync function inside `get_titles()`:
+  - Cache key: `md5("diagram_type|visual_description|json(data, sort_keys=True)")`
+  - HIT: returns cached SVG string immediately (no LLM call)
+  - MISS: calls `build_llm_svg(**kw)`, caches result with TTL 24h
+- All 3 executor `build_llm_svg(**kw)` calls replaced with `_build_llm_svg_cached(**kw)`
+
+### Net savings on cache HIT
+- Skips: planner ($0.00065) + bb_main ($0.0053) + 3×SVG ($0.0065) = $0.012/session saved
+- Only runs: image_picker ($0.0003) + per-step Wikimedia search (REST, not LLM)
+- ~92% cost reduction on repeat questions. TTL 6h keeps lessons fresh.
+
+---
+
+## Session 27 — Gemini TTS added as default engine
+
+**Date:** 2026-05-15
+**Asked:** Add Gemini voice to TTS, make it default.
+
+### `server/app/api/tts.py`
+- Added `import io`, `import wave` at top
+- Added `GEMINI_VOICE_DEFAULT = "Kore"` constant
+- Added `_pcm_to_wav(pcm_data, sample_rate=24000, channels=1, bits_per_sample=16) → bytes`: wraps raw PCM in WAV container using stdlib `wave` module
+- Added `_gemini_tts(text, voice_name="") → Optional[bytes]`: calls `generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent` with `GEMINI_API_KEY`; decodes base64 PCM from response; returns WAV bytes
+- `TtsSynthesizeRequest.tts_engine` default changed: `"google"` → `"gemini"`
+- `synthesize()` endpoint: refactored to route `tts_engine == "gemini"` first (returns `audio/wav`), then falls through to Google TTS (returns `audio/mpeg`), then ElevenLabs/OpenAI English-only fallbacks
+- Added `X-TTS-Engine` response header for debugging
+- Fallback chain: gemini → google → elevenlabs (en only) → openai (en only)
+- Key: `settings.GEMINI_API_KEY` already existed in `config.py:24`

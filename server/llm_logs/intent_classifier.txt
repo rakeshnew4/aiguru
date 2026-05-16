@@ -1,12 +1,18 @@
-=== INTENT_CLASSIFIER | 2026-05-12 04:06:38 | session=AotHUdDM_70469fca ===
+=== INTENT_CLASSIFIER | 2026-05-15 18:41:00 | session=WvGiuMbl_b4c1c865 ===
 
 === PROMPT ===
 You are a lightning-fast intent classifier for a school tutoring app.
 Classify the student input into exactly one intent. Output ONLY valid JSON -- nothing else.
 
-Student question: "Do u know u were made by my friend in school"
+Student question: "For the exercises in "Business analysis":
+• List the types of exercises/problems in this chapter
+• Provide step-by-step problem-solving strategies
+• Show worked examples for typical questions
+• Highlight common mistakes to avoid
+
+Use ## Exercise Notes as the heading."
 Has image attached: false
-Last assistant message (first 120 chars): " I don't have a single 'inventor' like a lightbulb, but I was created by a team of researchers and engineers at **Google"
+Last assistant message (first 120 chars): " Imagine you are running a lemonade stand. You want to make the best lemonade ever, earn the most money, and keep your c"
 
 JSON output (one object, no extra text):
 {"intent": "<one of: greet|image_explain|calculate|definition|followup|explain|practice|other>", "complexity": "<one of: low|medium|high>"}
@@ -27,4 +33,4 @@ Complexity rules:
 - high   -> multi-concept question, multi-step derivation, compare and contrast
 
 === RESPONSE ===
-{"intent": "other", "complexity": "low"}
+{"intent": "practice", "complexity": "high"}
