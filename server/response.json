@@ -1,9 +1,9 @@
 {
-  "text": "{\n\"user_question\": \"Hello\",\n\"answer\": \"Hello! It is wonderful to see you. I am all ready and excited to help you with your studies\u2014what subject or topic are you working on today?\",\n\"user_attachment_transcription\": \"\",\n\"extra_details_or_summary\": \"\",\n\"suggest_blackboard\": false\n}",
+  "text": "[\n  {\"question\": \"Why do shadows change length throughout the day?\", \"subject\": \"Science\", \"topic\": \"Light and Shadows\", \"difficulty\": 1, \"hook\": \"Shadows were the world's first clocks.\"},\n  {\"question\": \"How would our world change if we used base-12 instead of base-10?\", \"subject\": \"Math\", \"topic\": \"Number Systems\", \"difficulty\": 2, \"hook\": \"Ancient Sumerians counted using finger joints, not fingers.\"},\n  {\"question\": \"What if the printing press had never been invented?\", \"subject\": \"History\", \"topic\": \"The Renaissance\", \"difficulty\": 3, \"hook\": \"Books were once handwritten and cost as much as houses.\"}\n]",
   "tokens": {
-    "inputTokens": 869,
-    "outputTokens": 199,
-    "totalTokens": 1068,
+    "inputTokens": 227,
+    "outputTokens": 286,
+    "totalTokens": 513,
     "cachedTokens": 0
   },
   "provider": "litellm",

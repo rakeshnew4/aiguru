@@ -140,6 +140,8 @@
 | `bbFeatures` param | 110 | Map<String,Boolean> key-value pairs appended to JSON body (e.g. `bb_images_enabled`) |
 | `onBbStep` param | ~110 | `((String, Int) -> Unit)?` — callback fired per streamed BB step; parses `bb_step` SSE event |
 | Token refresh | 277 | Skips refresh if `serverUrl` blank, `userId` blank, or `userId=="guest_user"` |
+| `DoubtSolveResponse` | end of file | Data class: `answer`, `answerSpeech`, `followUp` — returned by doubt_solve endpoint |
+| `postDoubtSolve()` | companion obj | Static; POSTs to `$base/bb/doubt_solve`; same attempt(forceRefresh)/retry pattern; fallback response on failure |
 
 ---
 
@@ -507,7 +509,49 @@
 | `SessionManager.kt` | SharedPreferences wrapper for session state (uid, schoolId, plan) |
 | `StorageMigrationHelper.kt` | Migrates legacy local storage to new schema |
 | `TextToSpeechManager.kt` | Android native TTS fallback wrapper |
-| `VoiceManager.kt` | Mic recording + voice-input lifecycle |
+| `VoiceManager.kt` | Mic recording + voice-input lifecycle; `startWakeWordLoop` / `stopWakeWordLoop` added |
+
+---
+
+## utils/VoiceManager.kt
+**Path:** `app/src/main/java/com/aiguruapp/student/utils/VoiceManager.kt` | **Size:** ~310 lines
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `VoiceRecognitionCallback` | 11–18 | Interface: `onResults`, `onError`, `onPartialResults`, `onListeningStarted`, `onListeningFinished`, `onBeginningOfSpeech`, `onRmsChanged` |
+| `speechRecognizer` | 23 | Primary `SpeechRecognizer` for user voice input |
+| `interruptRecognizer` | 28 | Secondary recognizer for interrupt listening (legacy — kept for compat) |
+| `startListening()` | 43–60 | Starts primary mic; `EXTRA_PARTIAL_RESULTS=true`, silence 1500/2000ms |
+| `stopListening()` | 62–68 | Stops primary mic |
+| `startInterruptListening()` | 71–87 | Single-cycle background recognizer (legacy) |
+| `stopInterruptListening()` | 89–96 | Stops/destroys interrupt recognizer |
+| `wakeWordHandler` | ~103 | `Handler(Looper.getMainLooper())` — schedules restart cycles |
+| `wakeWordActive` flag | ~105 | Boolean; set false before calling `onDetected` |
+| `startWakeWordLoop()` | ~107 | Starts self-restarting wake word loop using `onResults` only (reliable across OEMs); calls `_runWakeWordCycle(delay=0)` |
+| `stopWakeWordLoop()` | ~118 | Cancels Handler, destroys `wakeWordRecognizer`, sets `wakeWordActive=false` |
+| `_runWakeWordCycle()` | ~127 | `Handler.postDelayed()` → fresh SpeechRecognizer each cycle; `onResults` checks wake words → calls `onDetected` or restarts 200ms; per-error delays: BUSY→1500, AUDIO→800, PERMISSIONS→stop, else→300 |
+| `destroy()` | ~100 | Calls `stopWakeWordLoop()` first, then destroys speechRecognizer + stopInterruptListening |
+
+---
+
+## utils/VoiceManager.kt
+**Path:** `app/src/main/java/com/aiguruapp/student/utils/VoiceManager.kt` | **Size:** ~310 lines
+
+| Symbol | Lines | What it does |
+|--------|-------|--------------|
+| `VoiceRecognitionCallback` | 11–18 | Interface: `onResults`, `onError`, `onPartialResults`, `onListeningStarted`, `onListeningFinished`, `onBeginningOfSpeech`, `onRmsChanged` |
+| `speechRecognizer` | 23 | Primary `SpeechRecognizer` for user voice input |
+| `interruptRecognizer` | 28 | Secondary recognizer for interrupt listening (kept for compat) |
+| `startListening()` | 43–60 | Starts primary mic; `EXTRA_PARTIAL_RESULTS=true`, silence 1500/2000ms |
+| `stopListening()` | 62–68 | Stops primary mic |
+| `startInterruptListening()` | 71–87 | Single-cycle background recognizer (legacy — kept for compat; new code uses `startWakeWordLoop`) |
+| `stopInterruptListening()` | 89–96 | Stops/destroys interrupt recognizer |
+| `startWakeWordLoop()` | ~107 | New: starts self-restarting wake word detection loop using `onResults` only (reliable across OEMs); calls `_runWakeWordCycle()` with delay=0 |
+| `stopWakeWordLoop()` | ~118 | Cancels Handler, destroys `wakeWordRecognizer`, sets `wakeWordActive=false` |
+| `_runWakeWordCycle()` | ~127 | Private: `Handler.postDelayed()` → creates fresh SpeechRecognizer, `onResults` checks wake words → calls `onDetected` or restarts 200ms; per-error delays: BUSY→1500, AUDIO→800, PERMISSIONS→stop, else→300 |
+| `wakeWordHandler` | ~103 | `Handler(Looper.getMainLooper())` — schedules restart cycles |
+| `wakeWordActive` flag | ~105 | Boolean; set false before calling `onDetected` so callback can restart if needed |
+| `destroy()` | ~100 | Calls `stopWakeWordLoop()` first, then destroys speechRecognizer + stopInterruptListening |
 | `WikimediaUtils.kt` | Wikimedia Commons image URL helpers |
 
 ---

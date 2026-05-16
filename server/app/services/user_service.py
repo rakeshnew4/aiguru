@@ -130,14 +130,14 @@ def create_user_if_missing(
     # Read free plan limits from Firestore so registration always reflects
     # whatever is configured there — no hardcoded values.
     fp = _lookup_plan_limits(db, "free")
-    daily_chat_limit = int(fp.get("daily_chat_questions", 12))
-    daily_bb_limit   = int(fp.get("daily_bb_sessions", 10))
+    daily_chat_limit = int(fp.get("daily_chat_questions") or 12)
+    daily_bb_limit   = int(fp.get("daily_bb_sessions") or 10)
     tts_enabled      = bool(fp.get("tts_enabled", True))
     ai_tts_enabled   = bool(fp.get("ai_tts_enabled", False))
     bb_enabled       = bool(fp.get("blackboard_enabled", True))
     image_enabled    = bool(fp.get("image_upload_enabled", False))
-    starter_credits  = int(fp.get("starter_credits", _STARTER_CREDITS))
-    starter_tts      = int(fp.get("starter_tts_credits", _STARTER_TTS_CREDITS))
+    starter_credits  = int(fp.get("starter_credits") or _STARTER_CREDITS)
+    starter_tts      = int(fp.get("starter_tts_credits") or _STARTER_TTS_CREDITS)
 
     ref.set({
         **identity,
@@ -223,6 +223,61 @@ def copy_samples_to_user(uid: str) -> None:
             logger.info("copy_samples_to_user: copied %d samples to uid=%s", count, uid)
     except Exception as exc:
         logger.warning("copy_samples_to_user: failed for uid=%s: %s", uid, exc)
+
+
+def _copy_subcol_recursive(db, src_ref, dst_ref, batch_holder: list, depth: int = 0, max_depth: int = 3) -> None:
+    """
+    Recursively copies all subcollections from src_ref to dst_ref.
+    batch_holder = [batch, write_count] — auto-flushes at 499 writes.
+    """
+    if depth >= max_depth:
+        return
+    for col_ref in src_ref.collections():
+        for doc in col_ref.stream():
+            dst_doc_ref = dst_ref.collection(col_ref.id).document(doc.id)
+            batch_holder[0].set(dst_doc_ref, doc.to_dict() or {}, merge=True)
+            batch_holder[1] += 1
+            if batch_holder[1] % 499 == 0:
+                batch_holder[0].commit()
+                batch_holder[0] = db.batch()
+            _copy_subcol_recursive(db, doc.reference, dst_doc_ref, batch_holder, depth + 1, max_depth)
+
+
+def copy_default_data_to_user(uid: str) -> None:
+    """
+    Copy admin_config/user_defaults into users/{uid} on first registration:
+      • default_data (dict)  → merged into root users/{uid} document
+      • subcollections under admin_config/user_defaults/ → copied to users/{uid}/
+    Called once per new user (fire-and-forget).
+    """
+    if not uid or uid == "guest_user":
+        return
+    db = _get_db()
+    if db is None:
+        return
+    try:
+        template_ref = db.collection("admin_config").document("user_defaults")
+        defaults_doc = template_ref.get()
+        if not defaults_doc.exists:
+            logger.info("copy_default_data_to_user: admin_config/user_defaults not found, skipping uid=%s", uid)
+            return
+
+        # 1. Root fields
+        default_data = (defaults_doc.to_dict() or {}).get("default_data", {})
+        if default_data:
+            db.collection("users").document(uid).set(default_data, merge=True)
+            logger.info("copy_default_data_to_user: applied %d root fields to uid=%s", len(default_data), uid)
+
+        # 2. Subcollections stored under admin_config/user_defaults/<col>/<doc>
+        user_ref = db.collection("users").document(uid)
+        batch_holder = [db.batch(), 0]
+        _copy_subcol_recursive(db, template_ref, user_ref, batch_holder)
+        if batch_holder[1] > 0:
+            batch_holder[0].commit()
+            logger.info("copy_default_data_to_user: wrote %d subcollection docs to uid=%s", batch_holder[1], uid)
+
+    except Exception as exc:
+        logger.warning("copy_default_data_to_user: failed for uid=%s: %s", uid, exc)
 
 
 def activate_plan(
@@ -779,6 +834,6 @@ def ensure_user_credits(uid: str) -> None:
     if db is None:
         return
     fp = _lookup_plan_limits(db, "free")
-    starter_credits     = int(fp.get("starter_credits", _STARTER_CREDITS))
-    starter_tts_credits = int(fp.get("starter_tts_credits", _STARTER_TTS_CREDITS))
+    starter_credits     = int(fp.get("starter_credits") or _STARTER_CREDITS)
+    starter_tts_credits = int(fp.get("starter_tts_credits") or _STARTER_TTS_CREDITS)
     init_user_credits(db, uid, starter_credits=starter_credits, starter_tts_credits=starter_tts_credits)

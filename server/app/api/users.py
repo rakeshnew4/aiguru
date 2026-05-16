@@ -88,9 +88,10 @@ async def register_user(req: RegisterRequest, auth: AuthUser = Depends(require_a
     # Catches users who registered before the credits system was added.
     loop.run_in_executor(None, user_service.ensure_user_credits, req.userId)
 
-    # For brand-new users: copy onboarding sample BB sessions (fire-and-forget)
+    # For brand-new users: copy onboarding sample BB sessions + default user data (fire-and-forget)
     if is_new_user:
         loop.run_in_executor(None, user_service.copy_samples_to_user, req.userId)
+        loop.run_in_executor(None, user_service.copy_default_data_to_user, req.userId)
 
     # Create LiteLLM API key if enabled
     litellm_key = None

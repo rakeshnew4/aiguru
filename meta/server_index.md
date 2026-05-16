@@ -290,6 +290,7 @@
 | `create_user_if_missing()` | ~130–140 | Now reads from `_lookup_plan_limits(db, "free")` (dynamic from Firestore); mirrors identity to `users/{uid}`; calls `init_user_credits` |
 | Free plan defaults | 107–144 | `plan_daily_chat_limit=12`, `plan_daily_bb_limit=10` (updated), `plan_tts_enabled=True`, `plan_ai_tts_enabled=False`, `plan_image_enabled=False` |
 | `copy_samples_to_user()` | 157–188 | Copies up to 10 docs from `bb_samples` → `users/{uid}/saved_bb_sessions_flat/`; sets `is_sample=True` |
+| `copy_default_data_to_user()` | ~230–250 | Reads `admin_config/user_defaults.default_data`; merges into `users/{uid}` with `merge=True`; called fire-and-forget on new user registration |
 | `activate_plan()` | ~217–340 | Activates plan; reads `activation_tts_credits` from limits; calls `_award_activation_credits(uid, amount, tts_amount, ...)` |
 | ⚠️ Webhook+verify race | 191 | `activate_plan()` called from both `/payments/razorpay/verify` and webhook handler; `_award_activation_credits` can fire twice if both complete concurrently |
 | `_award_activation_credits()` | ~641–700 | Awards `balance` + `lifetime_earned`; if `tts_amount > 0` also increments `tts_balance` + `tts_lifetime_earned`; logs `plan_activation_tts` transaction |

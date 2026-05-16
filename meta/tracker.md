@@ -5,6 +5,23 @@
 
 ---
 
+## 2026-05-01
+
+**Asked:** Copy content of `users/LpdfEUxoArdZw7QzTQOr9rCIDrB3` to `admin_config/user_defaults` with key `default_data`; apply defaults to each new user on registration.
+**Changed:**
+- `seed_user_defaults.py` (NEW) — script to read `users/{SOURCE_UID}`, strip identity fields, write to `admin_config/user_defaults` as `{default_data: {...}}`
+- `server/app/services/user_service.py:~230–250` — added `copy_default_data_to_user(uid)`: reads `admin_config/user_defaults.default_data`, merges into `users/{uid}` with `merge=True`; no-op if doc missing
+- `server/app/api/users.py:~93` — added `loop.run_in_executor(None, user_service.copy_default_data_to_user, req.userId)` inside `if is_new_user:` block (fire-and-forget)
+- `meta/server_index.md:~292` — added `copy_default_data_to_user()` row to user_service section
+**Files read:**
+- `seed_app_config.py:1–80` — seed script pattern (firebase init, SA path, argparse, dry-run)
+- `server/app/services/user_service.py:190–250` — `copy_samples_to_user` model; `activate_plan` signature start
+- `server/app/api/users.py:70–100` — `is_new_user` block, existing fire-and-forget pattern
+- `server/app/api/admin.py` — grep: `admin_config/global` read/write pattern
+- `meta/server_index.md:284–295` — user_service section to identify insert point
+
+---
+
 ## 2026-04-30
 
 **Asked:** Fix Kotlin compile error in `FullChatFragment.kt:1674` — argument type mismatch: `Function3<Int,Int,Int,Unit>` passed where `Function1<String,Unit>` expected.
@@ -1040,10 +1057,25 @@ Run to start seeding:
 - All `stopInterruptListening()` → `stopWakeWordLoop()`
 - `triggerBargein()` unchanged logic — stops TTS, starts Tier 2 `startListening()`
 
-
 ---
 
-## 2026-04-29 (session 10)
+## 2026-05-16 — BB session listening indicator + first-use voice hint
+
+**Task:** Two UX improvements for wake word feature: (1) visible animation while mic is open, (2) guide new users what words to say.
+
+**BlackboardActivity.kt** only:
+- Added fields: `bbListeningRingView: android.view.View?`, `bbListeningRingAnimator: android.animation.ValueAnimator?`
+- `startBbWakeWordLoop()` now calls `_showListeningRing()` + `_maybeShowWakeWordHint()` after starting loop
+- `stopBbWakeWordLoop()` now calls `_hideListeningRing()`
+- `_onBbWakeWordDetected()` calls `_hideListeningRing()` immediately (ring gone when listening for question)
+- `onDestroy()` cancels `bbListeningRingAnimator` explicitly as safety
+- `onCreate()`: resets `wake_hint_shown_this_session=false` in bb_prefs on every new activity start
+- Added `_showListeningRing()` — overlays thin 3dp cyan (#4DD0E1) border on root FrameLayout, ValueAnimator pulses alpha 0.08→0.45→0.08 every 2.6s
+- Added `_hideListeningRing()` — cancels animator, fades ring out 300ms then removes view
+- Added `_maybeShowWakeWordHint()` — checks `wake_hint_shown_count` < 3 AND `wake_hint_shown_this_session=false`; shows dark semi-transparent card with cyan border: mic icon, "Say Madam or Teacher to ask", "Say Stop or Wait to pause", "Got it ✓ (shows N more times)" dismiss button; auto-dismisses after 9s; positioned above doubt card zone (bottomMargin=120dp)
+
+**Files changed:** `BlackboardActivity.kt` only (wake word section ~line 5155+, onCreate ~line 324, onDestroy ~line 856)
+
 
 **Asked:** 3 issues: (1) BB mode ask bar keyboard hides input. (2) Lesson complete shows dialog covering blackboard — show non-blocking top notification instead. (3) Drawer credits stale.
 
