@@ -51,7 +51,7 @@ class BbAiTtsEngine(
     private var mediaPlayer: MediaPlayer? = null
 
     // ── Server config (all TTS routes through the FastAPI server) ───────────────
-    /** Base URL of the FastAPI server, e.g. "http://108.181.187.227:8003" */
+    /** Base URL of the FastAPI server, e.g. "https://vkpremium.art" */
     var selfHostedUrl: String = ""
 
     /** BCP-47 language code passed to the provider (e.g. "hi-IN", "en-IN") */
