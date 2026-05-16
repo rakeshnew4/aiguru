@@ -1,0 +1,85 @@
+[
+  {
+    "title": "Step 1: Newton's First Law — Objects Are Lazy by Nature",
+    "lang": "en-US",
+    "image_description": "",
+    "image_show_confidencescore": 0.0,
+    "followup_questions": [],
+    "frames": [
+      {
+        "frame_type": "concept",
+        "text": "Isaac Newton (1687) changed how we understand motion forever.\n\nHis **First Law** says:\n\n*\"An object at rest stays at rest, and an object in motion stays in motion — unless a force acts on it.\"*\n\nThis is called **Inertia** — the resistance to change in motion.",
+        "speech": "Isaac Newton in 1687 changed how we understand motion forever. His First Law says: an object at rest stays at rest, and an object in motion stays in motion — unless a force acts on it. This resistance to change is called Inertia.",
+        "duration_ms": 4000,
+        "pause_after_ms": 0,
+        "tts_engine": "gemini",
+        "voice_role": "teacher",
+        "svg_html": "<html><body style='margin:0;background:#0D1117;display:flex;align-items:center;justify-content:center;height:100vh'><svg width='340' height='200' viewBox='0 0 340 200'><rect width='340' height='200' fill='#0D1117'/><rect x='10' y='30' width='145' height='100' rx='10' fill='#0D1E3A' stroke='#546E7A' stroke-width='2'/><circle cx='82' cy='80' r='22' fill='#29B6F6' opacity='0.8'/><text x='82' y='85' text-anchor='middle' fill='#0D1117' font-size='12' font-family='sans-serif' font-weight='bold'>😴</text><text x='82' y='110' text-anchor='middle' fill='#90CAF9' font-size='10' font-family='sans-serif'>At rest</text><text x='82' y='123' text-anchor='middle' fill='#546E7A' font-size='9' font-family='sans-serif'>stays at rest</text><rect x='175' y='30' width='155' height='100' rx='10' fill='#0A1E0A' stroke='#4CAF50' stroke-width='2'/><circle cx='240' cy='80' r='22' fill='#66BB6A' opacity='0.8'><animateTransform attributeName='transform' type='translate' values='0,0; 40,0; 0,0' dur='2s' repeatCount='indefinite'/></circle><text x='240' y='85' text-anchor='middle' fill='#0D1117' font-size='12' font-family='sans-serif' font-weight='bold'>🚀</text><path d='M200 80 L330 80' stroke='#4CAF50' stroke-width='1.5' stroke-dasharray='8,4'><animate attributeName='stroke-dashoffset' from='0' to='-24' dur='1s' repeatCount='indefinite'/></path><text x='252' y='110' text-anchor='middle' fill='#A5D6A7' font-size='10' font-family='sans-serif'>In motion</text><text x='252' y='123' text-anchor='middle' fill='#546E7A' font-size='9' font-family='sans-serif'>stays in motion</text><rect x='55' y='148' width='230' height='35' rx='8' fill='#1A0A0A' stroke='#FF7043' stroke-width='1.5'/><text x='170' y='163' text-anchor='middle' fill='#FF7043' font-size='10' font-family='sans-serif' font-weight='bold'>Until a force changes the state</text><text x='170' y='176' text-anchor='middle' fill='#FFAB91' font-size='9' font-family='sans-serif'>This resistance = INERTIA</text></svg></body></html>",
+        "highlight": ["Inertia", "First Law"],
+        "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1,
+        "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": []
+      }
+    ]
+  },
+  {
+    "title": "Step 2: Newton's Second Law — Force = Mass × Acceleration",
+    "lang": "en-US",
+    "image_description": "",
+    "image_show_confidencescore": 0.0,
+    "followup_questions": [],
+    "frames": [
+      {
+        "frame_type": "diagram",
+        "text": "**Second Law**: The bigger the force, the bigger the acceleration.\nThe bigger the mass, the smaller the acceleration.\n\n**F = ma**\n\nForce (Newtons) = Mass (kg) × Acceleration (m/s²)\n\nPush a feather vs push a truck — same force, very different results!",
+        "speech": "Newton's Second Law says the bigger the force, the bigger the acceleration. But the bigger the mass, the smaller the acceleration. This is captured in the formula: F equals m times a. Force in Newtons equals mass in kilograms times acceleration in meters per second squared. Push a feather versus push a truck with the same force — very different results!",
+        "duration_ms": 4000,
+        "pause_after_ms": 0,
+        "tts_engine": "gemini",
+        "voice_role": "teacher",
+        "svg_html": "<html><body style='margin:0;background:#0D1117;display:flex;align-items:center;justify-content:center;height:100vh'><svg width='340' height='210' viewBox='0 0 340 210'><rect width='340' height='210' fill='#0D1117'/><rect x='55' y='15' width='230' height='50' rx='10' fill='#0A1E0A' stroke='#4CAF50' stroke-width='2.5'/><text x='170' y='40' text-anchor='middle' fill='#4CAF50' font-size='22' font-family='monospace' font-weight='bold'>F = m × a</text><text x='170' y='57' text-anchor='middle' fill='#81C784' font-size='10' font-family='sans-serif'>Newton's Second Law</text><rect x='10' y='85' width='140' height='90' rx='8' fill='#0D1E3A' stroke='#29B6F6' stroke-width='1.5'/><circle cx='55' cy='115' r='10' fill='#80DEEA'/><text x='55' y='118' text-anchor='middle' fill='#0D1117' font-size='9' font-weight='bold'>🪶</text><path d='M75 115 L130 115' stroke='#FF7043' stroke-width='3' marker-end='url(#a2)'><defs><marker id='a2' markerWidth='6' markerHeight='6' refX='3' refY='3' orient='auto'><path d='M0,0 L6,3 L0,6 Z' fill='#FF7043'/></marker></defs></path><text x='80' y='108' fill='#FF7043' font-size='9' font-family='sans-serif'>F=10N</text><text x='80' y='135' fill='#29B6F6' font-size='9' font-family='sans-serif'>m=0.01kg</text><text x='80' y='148' fill='#80DEEA' font-size='9' font-family='sans-serif'>a=1000 m/s²</text><text x='80' y='165' fill='#90CAF9' font-size='9' font-family='sans-serif'>HUGE acceleration!</text><rect x='185' y='85' width='145' height='90' rx='8' fill='#1A0A0A' stroke='#FF7043' stroke-width='1.5'/><rect x='215' y='105' width='50' height='30' rx='4' fill='#546E7A'/><text x='240' y='124' text-anchor='middle' fill='#0D1117' font-size='10'>🚛</text><path d='M268 120 L318 120' stroke='#FF7043' stroke-width='3' marker-end='url(#a3)'><defs><marker id='a3' markerWidth='6' markerHeight='6' refX='3' refY='3' orient='auto'><path d='M0,0 L6,3 L0,6 Z' fill='#FF7043'/></marker></defs></path><text x='270' y='113' fill='#FF7043' font-size='9' font-family='sans-serif'>F=10N</text><text x='270' y='140' fill='#FFAB91' font-size='9' font-family='sans-serif'>m=2000kg</text><text x='270' y='153' fill='#FFCCBC' font-size='9' font-family='sans-serif'>a=0.005 m/s²</text><text x='270' y='167' fill='#EF9A9A' font-size='9' font-family='sans-serif'>tiny acceleration</text></svg></body></html>",
+        "highlight": ["F = ma"],
+        "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1,
+        "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": []
+      }
+    ]
+  },
+  {
+    "title": "Step 3: Newton's Third Law — Every Action Has a Reaction",
+    "lang": "en-US",
+    "image_description": "",
+    "image_show_confidencescore": 0.0,
+    "followup_questions": [
+      {"question": "Why do rockets work in the vacuum of space?", "speech": "Why do rockets work even in the vacuum of space where there's nothing to push against?", "tts_engine": "android", "voice_role": "teacher"},
+      {"question": "What is the difference between mass and weight?", "speech": "What is the actual difference between mass and weight? Are they the same thing?", "tts_engine": "android", "voice_role": "teacher"},
+      {"question": "What is friction and how does it relate to Newton's laws?", "speech": "What is friction and how does it relate to Newton's laws of motion?", "tts_engine": "android", "voice_role": "teacher"}
+    ],
+    "frames": [
+      {
+        "frame_type": "concept",
+        "text": "**Third Law**: For every action there is an equal and opposite reaction.\n\n🚀 Rocket exhaust pushes down → rocket goes up\n🏊 Swimmer pushes water back → swimmer moves forward\n👣 You push the ground down → ground pushes you forward\n\nForces always come in pairs — you can't have one without the other!",
+        "speech": "Newton's Third Law: for every action, there is an equal and opposite reaction. A rocket exhaust pushes down, so the rocket goes up. A swimmer pushes water back, so the swimmer moves forward. You push the ground down when you walk, and the ground pushes you forward. Forces always come in pairs — you can never have one without the other.",
+        "duration_ms": 4000,
+        "pause_after_ms": 0,
+        "tts_engine": "gemini",
+        "voice_role": "teacher",
+        "svg_html": "<html><body style='margin:0;background:#0D1117;display:flex;align-items:center;justify-content:center;height:100vh'><svg width='340' height='210' viewBox='0 0 340 210'><rect width='340' height='210' fill='#0D1117'/><text x='170' y='20' text-anchor='middle' fill='#CE93D8' font-size='12' font-family='sans-serif' font-weight='bold'>Action = −Reaction</text><rect x='20' y='35' width='135' height='60' rx='8' fill='#0D1E3A' stroke='#29B6F6' stroke-width='1.5'/><text x='87' y='58' text-anchor='middle' fill='#80DEEA' font-size='11'>🚀</text><path d='M87 72 L87 90' stroke='#FF7043' stroke-width='3' marker-end='url(#down)'><defs><marker id='down' markerWidth='6' markerHeight='6' refX='3' refY='3' orient='auto'><path d='M0,0 L6,3 L0,6 Z' fill='#FF7043'/></marker></defs></path><path d='M87 58 L87 40' stroke='#4CAF50' stroke-width='3' marker-end='url(#up)'><defs><marker id='up' markerWidth='6' markerHeight='6' refX='3' refY='3' orient='auto'><path d='M0,0 L6,3 L0,6 Z' fill='#4CAF50'/></marker></defs></path><text x='87' y='85' text-anchor='middle' fill='#FFAB91' font-size='8' font-family='sans-serif'>exhaust pushes ↓</text><text x='87' y='93' text-anchor='middle' fill='#A5D6A7' font-size='8' font-family='sans-serif'>rocket goes ↑</text><rect x='183' y='35' width='140' height='60' rx='8' fill='#0A2010' stroke='#4CAF50' stroke-width='1.5'/><text x='253' y='55' text-anchor='middle' fill='#A5D6A7' font-size='11'>🏊</text><path d='M220 65 L200 65' stroke='#FF7043' stroke-width='3' marker-end='url(#left)'><defs><marker id='left' markerWidth='6' markerHeight='6' refX='3' refY='3' orient='auto'><path d='M6,0 L0,3 L6,6 Z' fill='#FF7043'/></marker></defs></path><path d='M253 65 L280 65' stroke='#4CAF50' stroke-width='3' marker-end='url(#right)'><defs><marker id='right' markerWidth='6' markerHeight='6' refX='3' refY='3' orient='auto'><path d='M0,0 L6,3 L0,6 Z' fill='#4CAF50'/></marker></defs></path><text x='210' y='82' fill='#FFAB91' font-size='8' font-family='sans-serif'>pushes water ←</text><text x='255' y='82' fill='#A5D6A7' font-size='8' font-family='sans-serif'>moves →</text><rect x='55' y='118' width='230' height='50' rx='10' fill='#1A0A2E' stroke='#CE93D8' stroke-width='2'/><text x='170' y='140' text-anchor='middle' fill='#CE93D8' font-size='12' font-family='monospace' font-weight='bold'>F₁ = −F₂</text><text x='170' y='158' text-anchor='middle' fill='#E1BEE7' font-size='9' font-family='sans-serif'>Equal magnitude, opposite direction</text></svg></body></html>",
+        "highlight": ["Third Law", "equal and opposite reaction"],
+        "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1,
+        "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": []
+      },
+      {
+        "frame_type": "summary",
+        "text": "Newton's 3 Laws in one line each:\n\n1️⃣ **Inertia** — Things don't change unless forced to\n2️⃣ **F = ma** — Force creates acceleration, mass resists it\n3️⃣ **Action-Reaction** — Forces always come in pairs\n\nThese 3 laws govern everything from bouncing balls to spacecraft trajectories! 🛸",
+        "speech": "Here's Newton's three laws in one line each. First: Inertia — things don't change unless forced to. Second: F equals ma — force creates acceleration, mass resists it. Third: Action-Reaction — forces always come in pairs. These three laws govern everything from bouncing balls to spacecraft trajectories.",
+        "duration_ms": 3500,
+        "pause_after_ms": 0,
+        "tts_engine": "gemini",
+        "voice_role": "teacher",
+        "svg_html": "",
+        "highlight": ["Inertia", "F = ma", "Action-Reaction"],
+        "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1,
+        "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": []
+      }
+    ]
+  }
+]

@@ -127,28 +127,38 @@ def create_user_if_missing(
         "updated_at": now,
     }
 
+    # Read free plan limits from Firestore so registration always reflects
+    # whatever is configured there — no hardcoded values.
+    fp = _lookup_plan_limits(db, "free")
+    daily_chat_limit = int(fp.get("daily_chat_questions", 12))
+    daily_bb_limit   = int(fp.get("daily_bb_sessions", 10))
+    tts_enabled      = bool(fp.get("tts_enabled", True))
+    ai_tts_enabled   = bool(fp.get("ai_tts_enabled", False))
+    bb_enabled       = bool(fp.get("blackboard_enabled", True))
+    image_enabled    = bool(fp.get("image_upload_enabled", False))
+    starter_credits  = int(fp.get("starter_credits", _STARTER_CREDITS))
+    starter_tts      = int(fp.get("starter_tts_credits", _STARTER_TTS_CREDITS))
+
     ref.set({
         **identity,
-        # ── Plan (free defaults) ─────────────────────────────────────────────
+        # ── Plan (sourced from plans/free in Firestore) ──────────────────────
         "planId": "free",
         "planName": "Free",
         "plan_start_date": now,
         "plan_expiry_date": 0,          # 0 = never expires
-        "plan_daily_chat_limit": 12,
-        "plan_daily_bb_limit": 2,
-        "plan_tts_enabled": True,
-        "plan_ai_tts_enabled": False,
-        "plan_blackboard_enabled": True,
-        "plan_image_enabled": False,
+        "plan_daily_chat_limit": daily_chat_limit,
+        "plan_daily_bb_limit": daily_bb_limit,
+        "plan_tts_enabled": tts_enabled,
+        "plan_ai_tts_enabled": ai_tts_enabled,
+        "plan_blackboard_enabled": bb_enabled,
+        "plan_image_enabled": image_enabled,
         # ── Daily question counters (Android client increments these) ─────────
         "chat_questions_today": 0,
         "bb_sessions_today": 0,
         "questions_updated_at": now,
         # ── Free session remaining counts (server manages; resets daily) ──────
-        # These are the authoritative "how many free sessions left today" fields.
-        # Decremented on each free session; reset to daily limit at UTC midnight.
-        "free_bb_remaining": 2,
-        "free_chat_remaining": 12,
+        "free_bb_remaining": daily_bb_limit,
+        "free_chat_remaining": daily_chat_limit,
         # ── Token counters (server increments these) ─────────────────────────
         "tokens_today": 0,
         "input_tokens_today": 0,
@@ -171,8 +181,8 @@ def create_user_if_missing(
     })
     logger.info("create_user_if_missing: created users_table/%s", uid)
 
-    # Initialize credit balance doc
-    init_user_credits(db, uid)
+    # Initialize credit balance doc (amounts driven by Firestore plans/free)
+    init_user_credits(db, uid, starter_credits=starter_credits, starter_tts_credits=starter_tts)
 
     # Mirror identity fields to /users/{uid} so it exists for conversation
     # subcollections and any legacy reads.
@@ -719,36 +729,56 @@ _STARTER_CREDITS = 5000          # chat/LLM credit welcome bonus (signup gift)
 _STARTER_TTS_CREDITS = 50000     # TTS credit welcome bonus (separate pool)
 
 
-def init_user_credits(db, uid: str) -> None:
-    """Create user_credits/{uid} with starter balance on first registration."""
+def init_user_credits(
+    db,
+    uid: str,
+    starter_credits: int = _STARTER_CREDITS,
+    starter_tts_credits: int = _STARTER_TTS_CREDITS,
+) -> None:
+    """Create user_credits/{uid} with starter balance. Idempotent — no-op if doc exists."""
     try:
         ref = db.collection("user_credits").document(uid)
         if not ref.get().exists:
             now = _now_ms()
             ref.set({
-                "balance": _STARTER_CREDITS,
-                "lifetime_earned": _STARTER_CREDITS,
-                "tts_balance": _STARTER_TTS_CREDITS,
-                "tts_lifetime_earned": _STARTER_TTS_CREDITS,
+                "balance": starter_credits,
+                "lifetime_earned": starter_credits,
+                "tts_balance": starter_tts_credits,
+                "tts_lifetime_earned": starter_tts_credits,
                 "last_updated": now,
             })
-            # Log the chat welcome grant
             db.collection("credit_transactions").add({
                 "uid": uid,
-                "amount": _STARTER_CREDITS,
+                "amount": starter_credits,
                 "type": "welcome_grant",
                 "source_id": "registration",
-                "description": f"Welcome bonus ({_STARTER_CREDITS} chat credits)",
+                "description": f"Welcome bonus ({starter_credits} chat credits)",
                 "created_at": now,
             })
-            # Log the TTS welcome grant
             db.collection("credit_transactions").add({
                 "uid": uid,
-                "amount": _STARTER_TTS_CREDITS,
+                "amount": starter_tts_credits,
                 "type": "tts_welcome_grant",
                 "source_id": "registration",
-                "description": f"Welcome bonus ({_STARTER_TTS_CREDITS} TTS credits)",
+                "description": f"Welcome bonus ({starter_tts_credits} TTS credits)",
                 "created_at": now,
             })
+            logger.info("init_user_credits: granted %d chat + %d TTS credits to uid=%s",
+                        starter_credits, starter_tts_credits, uid)
     except Exception as exc:
         logger.warning("init_user_credits uid=%s: %s", uid, exc)
+
+
+def ensure_user_credits(uid: str) -> None:
+    """
+    Ensure user_credits/{uid} exists. Idempotent — safe to call on every login.
+    Handles users who registered before the credits system was introduced.
+    Credit amounts are read from plans/free in Firestore.
+    """
+    db = _get_db()
+    if db is None:
+        return
+    fp = _lookup_plan_limits(db, "free")
+    starter_credits     = int(fp.get("starter_credits", _STARTER_CREDITS))
+    starter_tts_credits = int(fp.get("starter_tts_credits", _STARTER_TTS_CREDITS))
+    init_user_credits(db, uid, starter_credits=starter_credits, starter_tts_credits=starter_tts_credits)

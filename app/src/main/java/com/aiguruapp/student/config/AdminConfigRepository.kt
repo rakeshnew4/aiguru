@@ -139,12 +139,11 @@ object AdminConfigRepository {
         userOverrideLimits: PlanLimits? = null,
         onResult: (PlanLimits) -> Unit
     ) {
-        // If the plan is already cached (or the user is on the free plan which uses defaultLimits),
-        // resolve synchronously and return immediately.
+        // If the plan is already cached, resolve synchronously and return immediately.
         // Note: a plan with dailyChatQuestions==0 is legitimately unlimited — 0 is a valid value.
-        // Plans only end up missing from cachedPlans if toObject() threw (e.g. before
-        // @IgnoreExtraProperties was added). If the plan is present, it was successfully parsed.
-        if (planId.isBlank() || planId == "free") {
+        // "free" is NOT short-circuited here so it also reads its limits from Firestore plans/free
+        // rather than falling back to hardcoded defaultLimits.
+        if (planId.isBlank()) {
             onResult(resolveEffectiveLimits(planId, userOverrideLimits))
             return
         }

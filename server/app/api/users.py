@@ -84,6 +84,10 @@ async def register_user(req: RegisterRequest, auth: AuthUser = Depends(require_a
         logger.error("register_user: failed to create Firestore user uid=%s: %s", req.userId, exc)
         raise HTTPException(status_code=500, detail="Failed to register user in Firestore")
 
+    # Ensure credits doc exists for ALL users (idempotent).
+    # Catches users who registered before the credits system was added.
+    loop.run_in_executor(None, user_service.ensure_user_credits, req.userId)
+
     # For brand-new users: copy onboarding sample BB sessions (fire-and-forget)
     if is_new_user:
         loop.run_in_executor(None, user_service.copy_samples_to_user, req.userId)

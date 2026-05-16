@@ -816,7 +816,9 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
             }
 
             // Show BB intro bottom sheet if never used BB
-            if (totalBbSessions == 0L) {
+            // Skip if the home tour hasn't been shown yet — the tour's onFinished callback
+            // already shows BbIntroBottomSheet, so firing here too would race/duplicate it.
+            if (totalBbSessions == 0L && !HomeTourManager.shouldShowHome(this)) {
                 StudentStatsManager.hasSeen_bb_intro(uid) { alreadySeen ->
                     if (!alreadySeen) {
                         // Mark seen immediately so it never shows twice
@@ -1085,18 +1087,48 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
 
     /** Populate quick-launch topic chips and inner BB card topic chips. */
     private fun populateTopicChips() {
-        val curatedTopics = listOf(
-            Pair("🌿 Photosynthesis", "Explain Photosynthesis"),
-            Pair("📐 Pythagoras", "How do we use Pythagoras Theorem in real life"),
-            Pair("🌿 Heart Pumping", "Explain Heart Pumping"),
-            Pair("⚛️ Atom Structure", "How Atoms have their Structures"),
-            Pair("⚡ Newton's Laws", "What are Newton's Laws"),
-            Pair("💧 Water Cycle", "How Water Cycle Works"),
-            Pair("🧬 DNA & Genes", "How DNA & Genes Work"),
-            Pair("🔋 Electric Circuits", "How Electric Circuits Work"),
-            
-            Pair("🌍 Solar System", "How Solar System Works")
-        )
+        val grade = SessionManager.getGrade(this).lowercase()
+            .replace("th","").replace("st","").replace("nd","").replace("rd","").trim()
+        val gradeNum = grade.toIntOrNull() ?: 0
+
+        val curatedTopics: List<Pair<String, String>> = when {
+            gradeNum in 6..7 -> listOf(
+                Pair("🌿 Photosynthesis", "Explain Photosynthesis for Class 6-7 students"),
+                Pair("💧 Water Cycle", "How does the Water Cycle work?"),
+                Pair("🔢 Fractions", "Explain Fractions and how to add, subtract, multiply them"),
+                Pair("⚡ Newton's Laws", "Explain Newton's 3 Laws of Motion simply"),
+                Pair("🌍 Solar System", "How does our Solar System work?"),
+                Pair("🧱 Atoms & Molecules", "What are Atoms and Molecules?"),
+                Pair("📐 Angles", "Explain types of angles and triangles")
+            )
+            gradeNum in 8..9 -> listOf(
+                Pair("🧬 Cell Division", "Explain Mitosis and Meiosis step by step"),
+                Pair("⚛️ Atom Structure", "How are Atoms structured? Explain protons, neutrons, electrons"),
+                Pair("📐 Pythagoras", "Explain Pythagoras Theorem with real-life examples"),
+                Pair("⚡ Electricity", "How do Electric Circuits work?"),
+                Pair("🌿 Photosynthesis", "Explain Photosynthesis in detail with equations"),
+                Pair("🧪 Chemical Reactions", "Explain types of Chemical Reactions with examples"),
+                Pair("🌍 Motion & Force", "Explain Motion, Speed, Velocity and Acceleration")
+            )
+            gradeNum in 10..12 -> listOf(
+                Pair("🧪 Organic Chemistry", "Explain Organic Chemistry basics: hydrocarbons and functional groups"),
+                Pair("⚡ Electromagnetism", "Explain Electromagnetic Induction and Faraday's Law"),
+                Pair("📊 Statistics", "Explain Mean, Median, Mode and Standard Deviation"),
+                Pair("🧬 Genetics", "Explain Mendelian Genetics and inheritance patterns"),
+                Pair("🔢 Calculus", "Explain Derivatives and Integration with examples"),
+                Pair("⚛️ Quantum Physics", "Introduction to Quantum Mechanics for beginners"),
+                Pair("🌡️ Thermodynamics", "Explain Laws of Thermodynamics")
+            )
+            else -> listOf(
+                Pair("🌿 Photosynthesis", "Explain Photosynthesis"),
+                Pair("📐 Pythagoras", "How do we use Pythagoras Theorem in real life"),
+                Pair("⚛️ Atom Structure", "How Atoms have their Structures"),
+                Pair("⚡ Newton's Laws", "What are Newton's Laws"),
+                Pair("💧 Water Cycle", "How Water Cycle Works"),
+                Pair("🧬 DNA & Genes", "How DNA & Genes Work"),
+                Pair("🌍 Solar System", "How Solar System Works")
+            )
+        }
 
         val container = findViewById<LinearLayout?>(R.id.topicChipsContainer) ?: return
         val bbInnerContainer = findViewById<LinearLayout?>(R.id.bbInnerTopicsContainer)
@@ -2144,6 +2176,19 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
         
     )
 
+    /** Returns grade-appropriate default subjects. Falls back to generic list if grade unknown. */
+    private fun defaultSubjectsForGrade(): List<String> {
+        val grade = SessionManager.getGrade(this).lowercase()
+            .replace("th","").replace("st","").replace("nd","").replace("rd","").trim()
+        val gradeNum = grade.toIntOrNull() ?: 0
+        return when {
+            gradeNum in 6..8  -> listOf("Mathematics", "Science", "English", "Social Studies", "Hindi")
+            gradeNum in 9..10 -> listOf("Mathematics", "Science", "English", "Social Science", "Hindi")
+            gradeNum in 11..12 -> listOf("Mathematics", "Physics", "Chemistry", "English", "Biology")
+            else               -> listOf("Mathematics", "Science", "English")
+        }
+    }
+
     // ── Local SharedPreferences storage (Firestore will be added later) ──────
 
     private fun subjectsPrefs() =
@@ -2165,7 +2210,8 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
         val saved = loadSubjectsLocally()
         subjectsList.clear()
         if (saved.isEmpty()) {
-            subjectsList.addAll(defaultSubjects)
+            val defaults = defaultSubjectsForGrade()
+            subjectsList.addAll(defaults)
             saveSubjectsLocally(subjectsList)
             // Push defaults to Firestore too
             subjectsList.forEach { FirestoreManager.saveSubject(userId, it) }

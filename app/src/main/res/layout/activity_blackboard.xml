@@ -551,6 +551,31 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/completionQuizBtn"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="🧠 Quiz me on this"
+            android:gravity="center"
+            android:textColor="#D0EAFF"
+            android:textSize="14sp"
+            android:background="@drawable/bg_chip_indigo"
+            android:layout_marginTop="10dp" />
+
+        <!-- Shown only in demo mode (EXTRA_DEMO_ASSET) to route new users to HomeActivity -->
+        <TextView
+            android:id="@+id/completionDemoStartBtn"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="🚀 Start Learning for Free →"
+            android:gravity="center"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:background="@drawable/bg_chip_indigo"
+            android:layout_marginTop="12dp"
+            android:visibility="gone" />
+
+        <TextView
             android:id="@+id/completionCloseBtn"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

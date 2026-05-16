@@ -1,0 +1,98 @@
+[
+  {
+    "title": "Step 1: The Secret Hidden in a Triangle",
+    "lang": "en-US",
+    "image_description": "",
+    "image_show_confidencescore": 0.0,
+    "followup_questions": [],
+    "frames": [
+      {
+        "frame_type": "concept",
+        "text": "🔺 Around 570 BC, a Greek mathematician named Pythagoras discovered something mind-bending about right triangles.\n\nNo matter the size — big or tiny — a right triangle always obeys one secret rule.",
+        "speech": "Around 570 BC, a Greek mathematician named Pythagoras discovered something mind-bending about right triangles. No matter the size — big or tiny — a right triangle always obeys one secret rule.",
+        "duration_ms": 3500,
+        "pause_after_ms": 0,
+        "tts_engine": "gemini",
+        "voice_role": "teacher",
+        "svg_html": "",
+        "highlight": ["Pythagoras", "right triangles"],
+        "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1,
+        "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": []
+      },
+      {
+        "frame_type": "diagram",
+        "text": "A right triangle has 3 sides:\n• **a** and **b** are the two shorter legs\n• **c** is the hypotenuse — always opposite the right angle\n\nThe theorem: **a² + b² = c²**",
+        "speech": "A right triangle has 3 sides. a and b are the two shorter legs. c is the hypotenuse — always opposite the right angle. The theorem states: a squared plus b squared equals c squared.",
+        "duration_ms": 3500,
+        "pause_after_ms": 0,
+        "tts_engine": "gemini",
+        "voice_role": "teacher",
+        "svg_html": "<html><body style='margin:0;background:#0D1117;display:flex;align-items:center;justify-content:center;height:100vh'><svg width='340' height='210' viewBox='0 0 340 210'><rect width='340' height='210' fill='#0D1117'/><polygon points='60,160 60,50 220,160' fill='#0D2137' stroke='#29B6F6' stroke-width='2.5'/><rect x='60' y='145' width='15' height='15' fill='none' stroke='#80DEEA' stroke-width='1.5'/><text x='38' y='110' fill='#66BB6A' font-size='16' font-family='sans-serif' font-weight='bold' font-style='italic'>a</text><text x='135' y='185' fill='#66BB6A' font-size='16' font-family='sans-serif' font-weight='bold' font-style='italic'>b</text><text x='148' y='100' fill='#FF7043' font-size='16' font-family='sans-serif' font-weight='bold' font-style='italic'>c</text><text x='148' y='80' fill='#FF7043' font-size='11' font-family='sans-serif'>(hypotenuse)</text><rect x='240' y='50' width='85' height='40' rx='8' fill='#0D2010' stroke='#4CAF50' stroke-width='2'/><text x='282' y='68' text-anchor='middle' fill='#4CAF50' font-size='14' font-family='monospace' font-weight='bold'>a²+b²=c²</text><text x='282' y='83' text-anchor='middle' fill='#81C784' font-size='9' font-family='sans-serif'>The Theorem</text><text x='50' y='175' fill='#546E7A' font-size='10' font-family='sans-serif'>90°</text><circle cx='220' cy='160' r='4' fill='#29B6F6'><animate attributeName='r' values='4;7;4' dur='2s' repeatCount='indefinite'/></circle><text x='230' y='178' fill='#90CAF9' font-size='10' font-family='sans-serif'>right angle</text></svg></body></html>",
+        "highlight": ["a² + b² = c²", "hypotenuse"],
+        "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1,
+        "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": []
+      }
+    ]
+  },
+  {
+    "title": "Step 2: The Famous 3-4-5 Triangle — Prove It Yourself",
+    "lang": "en-US",
+    "image_description": "",
+    "image_show_confidencescore": 0.0,
+    "followup_questions": [],
+    "frames": [
+      {
+        "frame_type": "concept",
+        "text": "Let's test the theorem with the simplest numbers:\n\na = 3, b = 4, c = ?\n\n3² + 4² = 9 + 16 = 25\n√25 = **5** ✓\n\nThe sides 3, 4, 5 form a perfect right triangle — ancient Egyptians used this to build the pyramids!",
+        "speech": "Let's test the theorem with the simplest numbers. a equals 3, b equals 4. Three squared plus four squared equals 9 plus 16, which equals 25. The square root of 25 is 5. So the sides 3, 4, 5 form a perfect right triangle. Ancient Egyptians actually used this exact trick to build the pyramids!",
+        "duration_ms": 4000,
+        "pause_after_ms": 0,
+        "tts_engine": "gemini",
+        "voice_role": "teacher",
+        "svg_html": "<html><body style='margin:0;background:#0D1117;display:flex;align-items:center;justify-content:center;height:100vh'><svg width='340' height='210' viewBox='0 0 340 210'><rect width='340' height='210' fill='#0D1117'/><polygon points='50,165 50,45 170,165' fill='#0D2137' stroke='#29B6F6' stroke-width='2.5'/><rect x='50' y='150' width='15' height='15' fill='none' stroke='#80DEEA' stroke-width='1.5'/><rect x='35' y='95' width='34' height='34' fill='#0D1E3A' stroke='#66BB6A' stroke-width='1.5'/><text x='52' y='116' text-anchor='middle' fill='#66BB6A' font-size='11' font-family='sans-serif'>3²=9</text><rect x='50' y='165' width='48' height='48' fill='#0D1E3A' stroke='#66BB6A' stroke-width='1.5'/><text x='74' y='192' text-anchor='middle' fill='#66BB6A' font-size='11' font-family='sans-serif'>4²=16</text><rect x='175' y='80' width='70' height='70' fill='#0D2010' stroke='#FF7043' stroke-width='1.5'/><text x='210' y='118' text-anchor='middle' fill='#FF7043' font-size='13' font-family='sans-serif' font-weight='bold'>5²=25</text><text x='28' y='108' fill='#A5D6A7' font-size='14' font-family='sans-serif' font-style='italic' font-weight='bold'>3</text><text x='100' y='188' fill='#A5D6A7' font-size='14' font-family='sans-serif' font-style='italic' font-weight='bold'>4</text><text x='120' y='110' fill='#FF7043' font-size='14' font-family='sans-serif' font-style='italic' font-weight='bold'>5</text><text x='200' y='172' text-anchor='middle' fill='#546E7A' font-size='10' font-family='sans-serif'>9 + 16 = 25 ✓</text></svg></body></html>",
+        "highlight": ["3² + 4² = 9 + 16 = 25", "3, 4, 5"],
+        "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1,
+        "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": []
+      },
+      {
+        "frame_type": "memory",
+        "text": "🧠 Memory trick:\n\n**\"Pythagoras Attacks Both Cats\"**\n→ P: Pythagoras  A: a²  B: b²  C: c²\n\nOr just remember: **squares on the legs = square on the hypotenuse**",
+        "speech": "Here's a memory trick: Pythagoras Attacks Both Cats. P for Pythagoras, A for a squared, B for b squared, C for c squared. Or just remember: the squares on the two legs always equal the square on the hypotenuse.",
+        "duration_ms": 3000,
+        "pause_after_ms": 0,
+        "tts_engine": "gemini",
+        "voice_role": "teacher",
+        "svg_html": "",
+        "highlight": ["squares on the legs", "square on the hypotenuse"],
+        "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1,
+        "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": []
+      }
+    ]
+  },
+  {
+    "title": "Step 3: Real-Life Uses — From Buildings to GPS",
+    "lang": "en-US",
+    "image_description": "",
+    "image_show_confidencescore": 0.0,
+    "followup_questions": [
+      {"question": "How do you find the hypotenuse if only one leg is known?", "speech": "How would you find the hypotenuse if only one leg of the triangle is known?", "tts_engine": "android", "voice_role": "teacher"},
+      {"question": "What is a Pythagorean triple?", "speech": "What exactly is a Pythagorean triple and can you give examples beyond 3-4-5?", "tts_engine": "android", "voice_role": "teacher"},
+      {"question": "Can the theorem work in 3D?", "speech": "Does the Pythagorean theorem extend to three dimensions?", "tts_engine": "android", "voice_role": "teacher"}
+    ],
+    "frames": [
+      {
+        "frame_type": "summary",
+        "text": "Pythagoras' theorem is everywhere:\n\n📐 Architecture — checking if walls are perpendicular\n🗺 GPS — calculating straight-line distance between coordinates\n🎮 Game engines — measuring distance between objects\n⚡ Electrical engineering — impedance in AC circuits\n\nOne formula. 2,500 years old. Still powering modern technology.",
+        "speech": "Pythagoras' theorem is literally everywhere. In architecture, it's used to check if walls are perfectly perpendicular. In GPS, it calculates straight-line distances between coordinates. In video game engines, it measures distance between objects. Even in electrical engineering, it calculates impedance. One formula, two thousand five hundred years old, and still powering modern technology.",
+        "duration_ms": 4500,
+        "pause_after_ms": 0,
+        "tts_engine": "gemini",
+        "voice_role": "teacher",
+        "svg_html": "<html><body style='margin:0;background:#0D1117;display:flex;align-items:center;justify-content:center;height:100vh'><svg width='340' height='200' viewBox='0 0 340 200'><rect width='340' height='200' fill='#0D1117'/><rect x='10' y='20' width='70' height='70' rx='8' fill='#0D2137' stroke='#29B6F6' stroke-width='1.5'/><text x='45' y='50' text-anchor='middle' fill='#29B6F6' font-size='18'>📐</text><text x='45' y='68' text-anchor='middle' fill='#90CAF9' font-size='8' font-family='sans-serif'>Architecture</text><text x='45' y='78' text-anchor='middle' fill='#90CAF9' font-size='8' font-family='sans-serif'>right angles</text><rect x='90' y='20' width='70' height='70' rx='8' fill='#0D2137' stroke='#4CAF50' stroke-width='1.5'/><text x='125' y='50' text-anchor='middle' fill='#4CAF50' font-size='18'>🗺</text><text x='125' y='68' text-anchor='middle' fill='#A5D6A7' font-size='8' font-family='sans-serif'>GPS distance</text><text x='125' y='78' text-anchor='middle' fill='#A5D6A7' font-size='8' font-family='sans-serif'>calculations</text><rect x='170' y='20' width='70' height='70' rx='8' fill='#0D2137' stroke='#CE93D8' stroke-width='1.5'/><text x='205' y='50' text-anchor='middle' fill='#CE93D8' font-size='18'>🎮</text><text x='205' y='68' text-anchor='middle' fill='#E1BEE7' font-size='8' font-family='sans-serif'>Game engine</text><text x='205' y='78' text-anchor='middle' fill='#E1BEE7' font-size='8' font-family='sans-serif'>collision detect</text><rect x='250' y='20' width='70' height='70' rx='8' fill='#0D2137' stroke='#FF7043' stroke-width='1.5'/><text x='285' y='50' text-anchor='middle' fill='#FF7043' font-size='18'>⚡</text><text x='285' y='68' text-anchor='middle' fill='#FFCCBC' font-size='8' font-family='sans-serif'>Electrical</text><text x='285' y='78' text-anchor='middle' fill='#FFCCBC' font-size='8' font-family='sans-serif'>impedance</text><rect x='60' y='110' width='220' height='50' rx='10' fill='#0D2010' stroke='#4CAF50' stroke-width='2'/><text x='170' y='132' text-anchor='middle' fill='#4CAF50' font-size='15' font-family='monospace' font-weight='bold'>a² + b² = c²</text><text x='170' y='150' text-anchor='middle' fill='#81C784' font-size='10' font-family='sans-serif'>One formula. 2,500 years. Everywhere.</text></svg></body></html>",
+        "highlight": ["Architecture", "GPS", "Game engines", "Electrical engineering"],
+        "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1,
+        "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": []
+      }
+    ]
+  }
+]

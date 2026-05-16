@@ -508,7 +508,9 @@ object PlanEnforcer {
         charsAboutToUse: Int
     ): CheckResult {
         val quotaLimit = limits.aiTtsQuotaChars
-     
+        // 0 means unlimited (same convention as getAiTtsCharsRemaining)
+        if (quotaLimit <= 0) return CheckResult(allowed = true)
+
         val isSameDay = metadata.aiTtsUpdatedAt > 0L &&
             utcDayOf(metadata.aiTtsUpdatedAt) == utcDayOf(System.currentTimeMillis())
 

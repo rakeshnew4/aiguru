@@ -1886,3 +1886,195 @@ Books with ALL 404 (English/SS for Class 6/9) kept as-is — likely IP-blocked f
   - "Step 1: <title> — <first frame text[:80]>\nStep 2: ..." capped at 800 chars total
   - Injected as second `system:` history entry before bbChatHistory
 - Result: inline chat now knows what was taught, can answer "explain step 2 more" etc.
+
+---
+
+## 2026-05-14 — Trim home tour to 3 steps
+
+**Asked:** Home page guidance is showing too many buttons. Show only Language, My Subjects, Blackboard mode. After tour show BB default questions popup.
+
+**Root cause:** `HomeTourManager.steps` had 8 entries covering every UI element.
+
+**Changed:**
+- `app/src/main/java/com/aiguruapp/student/HomeTourManager.kt` — `steps` list replaced with 3 entries:
+  1. `R.id.langChipButton` — "🌐 Language"
+  2. `R.id.subjectsRecyclerView` — "📖 My Subjects"
+  3. `R.id.quickActionBbBtn` — "🎓 Blackboard Mode"
+- Removed: quickActionChatBtn, quickActionTasksBtn, dailyChallengeCard, addSubjectButton, drawerToggleBtn, helpGuideBtn steps
+- `BbIntroBottomSheet` already shows after tour (wired in HomeActivity.kt L233-237) — no change needed
+
+**Files read (no change):**
+- `HomeTourManager.kt` L1-60: full steps list + tour overlay logic
+- `HomeActivity.kt` L205-240: tour trigger + BbIntroBottomSheet.show() after onFinished
+
+---
+
+## 2026-05-14 — BbIntroBottomSheet race fix
+
+**Asked:** BbIntroBottomSheet sometimes comes first before the home tour.
+
+**Root cause:** Two race paths both showed the sheet on first launch:
+1. `loadSmartHomeContent()` L818-833 (Firestore fetch, ~800ms delay)
+2. Tour callback L236 (tour finishes → 400ms delay)
+Firestore resolved faster than tour started → sheet appeared before tour.
+
+**Changed:**
+- `HomeActivity.kt` L819: condition changed from `if (totalBbSessions == 0L)` to `if (totalBbSessions == 0L && !HomeTourManager.shouldShowHome(this))` — skips the Firestore path when tour is about to run; tour callback handles it instead.
+
+**Files read:**
+- `HomeActivity.kt` L220-240: tour + BbIntroBottomSheet wiring
+- `HomeActivity.kt` L818-835: Firestore path for BbIntroBottomSheet
+
+---
+
+## 2026-05-14 — Quiz me on this (BB lesson → QuizActivity)
+
+**Asked:** After BB lesson ends, let student take a quiz on what was just taught (Option B).
+
+**Existing infra confirmed:**
+- `QuizApiClient.generateQuiz(contextText=...)` — already accepts lesson text
+- `Quiz.toTransferJson()` / `Quiz.fromJson()` — serialization for Intent
+- `QuizActivity` — takes `"quizJson"` Intent extra
+- `server/app/api/quiz.py` `/quiz/generate` — full endpoint
+
+**Changed:**
+- `app/src/main/res/layout/activity_blackboard.xml`: added `completionQuizBtn` (TextView pill, "🧠 Quiz me on this") inside `bbCompletionCard`, above `completionCloseBtn`
+- `app/src/main/java/com/aiguruapp/student/BlackboardActivity.kt`:
+  - Import: `com.aiguruapp.student.quiz.QuizApiClient` added
+  - `showCompletionCard()`: wires `completionQuizBtn.setOnClickListener { startQuizFromLesson(it) }`
+  - New `startQuizFromLesson(btn: TextView)`: builds `lessonSummary` from steps (same pattern as inline chat), calls `QuizApiClient().generateQuiz(subject, chapter, difficulty="medium", count=5, questionTypes=["mcq"], contextText=lessonSummary)` on IO, then starts `QuizActivity` with `quizJson`; on error resets button + shows Toast
+
+**Flow:** BB lesson ends → "🧠 Quiz me on this" button → "⏳ Generating quiz…" → QuizActivity opens with 5 MCQs about the lesson
+
+---
+
+## 2026-05-14 — Trim home tour to 3 steps
+
+**Asked:** Home page guidance is showing too many buttons. Show only Language, My Subjects, Blackboard mode. After tour show BB default questions popup.
+
+**Root cause:** `HomeTourManager.steps` had 8 entries covering every UI element.
+
+**Changed:**
+- `app/src/main/java/com/aiguruapp/student/HomeTourManager.kt` — `steps` list replaced with 3 entries:
+  1. `R.id.langChipButton` — "🌐 Language"
+  2. `R.id.subjectsRecyclerView` — "📖 My Subjects"
+  3. `R.id.quickActionBbBtn` — "🎓 Blackboard Mode"
+- Removed: quickActionChatBtn, quickActionTasksBtn, dailyChallengeCard, addSubjectButton, drawerToggleBtn, helpGuideBtn steps
+- `BbIntroBottomSheet` already shows after tour (wired in HomeActivity.kt L233-237) — no change needed
+
+**Files read (no change):**
+- `HomeTourManager.kt` L1-60: full steps list + tour overlay logic
+- `HomeActivity.kt` L205-240: tour trigger + BbIntroBottomSheet.show() after onFinished
+
+---
+
+## 2026-05-14 — Fix free plan credits not being credited + plan limits from Firestore
+
+**Asked:** Users are not getting 5000 free credits on registration. Free plan limits should come entirely from Firestore (not hardcoded). All quotas/limits/AI credits should be Firestore-driven.
+
+**Root causes found:**
+1. `create_user_if_missing()` hardcoded free plan limits (12 chat, 2 BB etc.) — never read from `plans/free` in Firestore
+2. `init_user_credits()` was only called for NEW users — existing users who registered before credits system was added never got their `user_credits/{uid}` doc
+3. Starter credits (5000) were a hardcoded constant `_STARTER_CREDITS`, not driven by Firestore
+4. Android `resolveEffectiveLimitsAsync()` short-circuited for `planId=="free"` — never fetched `plans/free` from Firestore; fell back to hardcoded `defaultLimits`
+
+**Changed:**
+- `server/app/services/user_service.py` L130-140: `create_user_if_missing()` now calls `_lookup_plan_limits(db, "free")` and uses those values dynamically (daily_chat_limit, daily_bb_limit, tts flags, image flag, starter_credits, starter_tts)
+- `server/app/services/user_service.py` L182: passes `starter_credits` and `starter_tts` to `init_user_credits()`
+- `server/app/services/user_service.py` L730-784: `init_user_credits()` now accepts `starter_credits` and `starter_tts_credits` params (with fallback defaults); added `ensure_user_credits(uid)` public wrapper that gets db internally
+- `server/app/api/users.py` L87-89: added `loop.run_in_executor(None, user_service.ensure_user_credits, req.userId)` — runs on EVERY login, ensuring existing users get their credits doc
+- `server/seed_firestore.py` L307-308: added `starter_credits: 5000` and `starter_tts_credits: 50000` to free plan limits
+- `app/src/main/java/com/aiguruapp/student/config/AdminConfigRepository.kt` L147: removed `planId == "free"` from short-circuit condition so free plan users also go through the Firestore fetch path for their limits
+
+**Files read:**
+- `server/app/services/user_service.py` L1-190, L718-784
+- `server/app/api/users.py` L50-131
+- `server/seed_firestore.py` L269-310
+- `app/src/main/java/com/aiguruapp/student/config/AdminConfigRepository.kt` L1-262
+- `app/src/main/java/com/aiguruapp/student/models/PlanLimits.kt` L1-116
+
+---
+
+## 2026-05-14 — Onboarding images + free plan 10 BB sessions
+
+**Asked:** Show real app screenshots in onboarding slides; increase free plan from 2 to 10 BB sessions.
+
+**Image mapping (from `assets/onboard_images/`):**
+- Slide 1 "Meet Your AI Blackboard Tutor" → `bb_session.jpeg`
+- Slide 2 "Chat With Your AI Tutor" → `subject_chat.jpeg`
+- Slide 3 "Snap. Ask. Understand." → `image_crop_send.jpeg`
+- Slide 4 "Learn Faster. Think Smarter." → no image (grade picker + BB preview already fills the page)
+
+**`activity_onboarding.xml`:**
+- Added `onboardingImageCard` (MaterialCardView 220dp, 16dp corners) + `onboardingImage` (ImageView centerCrop) between Skip row and Title
+- Emoji `layout_marginTop` reduced 32dp→20dp (emoji only shows on last slide now)
+
+**`OnboardingActivity.kt`:**
+- `OnboardingPage` data class: added `imageAsset: String? = null` field
+- `pages` list: assigned image assets to slides 1–3; slide 2 title updated to "Chat With Your AI Tutor"
+- New fields: `onboardingImageCard: View`, `onboardingImage: ImageView`
+- `onCreate()`: binds 2 new views
+- `updatePage()`: if `imageAsset != null` → load bitmap from assets, hide emoji, show card; if null → show emoji, hide card; fallback to emoji on IOException
+
+**Free plan sessions:**
+- `server/seed_firestore.py` L305: `daily_bb_sessions: 2` → `10` (free plan doc)
+- `server/seed_firestore.py` L580: `daily_bb_sessions: 2` → `10` (default app_config block)
+- `server/app/services/user_service.py` L134: fallback default `2` → `10` (new user registration)
+- Re-run `python seed_firestore.py` to update Firestore `plans/free` doc
+
+---
+
+## 2026-05-14 — Engagement fixes: grade picker, subject auto-populate, grade-aware topics, quota dialog
+
+**Asked:** Fix 4 engagement issues: (1+2) Onboarding typo + grade picker + auto-populate subjects for new users; (3) Persistent BB topic suggestions grade-aware; (4) Quota wall countdown + alternatives instead of hard redirect.
+
+### Fix 1+2 — Onboarding grade picker + auto-populate subjects
+
+**`app/src/main/res/layout/activity_onboarding.xml`:**
+- Added `gradePickerContainer` (LinearLayout, gone by default) + "What grade are you in?" label + `HorizontalScrollView` containing `gradeChipsRow` (LinearLayout)
+- Positioned between `bbPreviewContainer` and the spacer View
+
+**`app/src/main/java/com/aiguruapp/student/OnboardingActivity.kt`:**
+- Added imports: `Color`, `GradientDrawable`, `HorizontalScrollView`, `SessionManager`
+- Added fields: `gradePickerContainer: LinearLayout`, `gradeChipsRow: LinearLayout`, `selectedGrade: String = ""`
+- `onCreate()`: binds new views, calls `buildGradeChips()`
+- `updatePage()`: shows `gradePickerContainer` on last page only
+- `buildGradeChips()`: creates styled chips for 6th–12th in `gradeChipsRow`
+- `selectGrade()`: highlights selected chip (blue) + stores `selectedGrade`
+- `finish()`: now calls `SessionManager.saveGrade(this, selectedGrade)` before starting HomeActivity
+- Typo fix: "Greaty" removed from last slide subtitle
+
+**`app/src/main/java/com/aiguruapp/student/HomeActivity.kt`:**
+- `defaultSubjectsForGrade()` new function: reads `SessionManager.getGrade(this)`, maps grade number to subject list:
+  - 6–8 → Mathematics, Science, English, Social Studies, Hindi
+  - 9–10 → Mathematics, Science, English, Social Science, Hindi
+  - 11–12 → Mathematics, Physics, Chemistry, English, Biology
+  - unknown → Mathematics, Science, English
+- `loadSubjects()`: uses `defaultSubjectsForGrade()` when subjects list is empty (was `defaultSubjects` empty list)
+- Also pushes defaults to Firestore for the user
+
+### Fix 3 — Grade-aware BB topic chips
+
+**`HomeActivity.kt` `populateTopicChips()`:**
+- Reads `SessionManager.getGrade(this)` to determine grade group
+- Grade 6–7 topics: Photosynthesis, Water Cycle, Fractions, Newton's Laws, Solar System, Atoms, Angles
+- Grade 8–9 topics: Cell Division, Atom Structure, Pythagoras, Electricity, Photosynthesis, Chemical Reactions, Motion & Force
+- Grade 10–12 topics: Organic Chemistry, Electromagnetism, Statistics, Genetics, Calculus, Quantum Physics, Thermodynamics
+- Fallback (no grade): original generic topics
+
+### Fix 4 — Quota wall: countdown + alternatives dialog
+
+**`app/src/main/java/com/aiguruapp/student/BlackboardActivity.kt`:**
+- Replaced 2-second redirect-to-SubscriptionActivity pattern at ~L690 and ~L708 with `showQuotaLimitDialog(check.upgradeMessage)`
+- New `showQuotaLimitDialog(upgradeMessage)` private function (~L2200):
+  - Calculates time until midnight (`Calendar.DAY_OF_YEAR+1 00:00:00 - now`)
+  - Shows `AlertDialog`: title "Daily Limit Reached", message with reset countdown (e.g. "Resets in 3h 22m"), two action buttons:
+    - "⭐ Upgrade Plan" → SubscriptionActivity
+    - "📖 Saved Lessons" → BbSavedSessionsActivity
+  - "Close" negative button dismisses + finishes activity
+
+**Files changed:**
+- `app/src/main/res/layout/activity_onboarding.xml` (gradePickerContainer + row added)
+- `app/src/main/java/com/aiguruapp/student/OnboardingActivity.kt` (grade picker: imports, fields, build, select, finish)
+- `app/src/main/java/com/aiguruapp/student/HomeActivity.kt` (defaultSubjectsForGrade, loadSubjects update, grade-aware topicChips)
+- `app/src/main/java/com/aiguruapp/student/BlackboardActivity.kt` (showQuotaLimitDialog, replaced 2 quota redirect blocks)

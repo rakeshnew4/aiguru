@@ -21,44 +21,19 @@ class HomeTourManager(private val activity: Activity) {
 
     private val steps = listOf(
         TourStep(
-            R.id.quickActionBbBtn,
-            "🎓 Blackboard Mode",
-            "Your AI visual tutor! Pick any topic and watch a live animated lesson unfold — just like a real teacher on a blackboard."
-        ),
-        TourStep(
-            R.id.quickActionChatBtn,
-            "💬 Ask AI – Chat",
-            "Quick doubts? Chat with your AI tutor instantly. Great for one-line questions, explanations and practice."
-        ),
-        TourStep(
-            R.id.quickActionTasksBtn,
-            "📚 Saved Sessions",
-            "All your past Blackboard lessons are saved here. Revisit, replay, or continue any lesson at any time."
-        ),
-        TourStep(
-            R.id.dailyChallengeCard,
-            "⚡ Today's Challenge",
-            "A fresh brain-teaser every day! Tap it to explore the question as a live Blackboard lesson and earn bonus points."
+            R.id.langChipButton,
+            "🌐 Language",
+            "Tap to change the language your AI tutor teaches in. Pick the one you're most comfortable with."
         ),
         TourStep(
             R.id.subjectsRecyclerView,
             "📖 My Subjects",
-            "Your imported or added subjects and chapters live here. Tap any subject card to start chatting or launch a Blackboard lesson."
+            "Your subjects and chapters live here. Tap any card to chat with your AI tutor or launch a Blackboard lesson."
         ),
         TourStep(
-            R.id.addSubjectButton,
-            "➕ Add Subject",
-            "Not seeing your subject? Tap here to add more subjects and chapters to customise your learning list."
-        ),
-        TourStep(
-            R.id.drawerToggleBtn,
-            "☰ Menu",
-            "Tap here to access your profile, plan details, credit balance, progress stats and app settings."
-        ),
-        TourStep(
-            R.id.helpGuideBtn,
-            "? Help",
-            "Tap here anytime to replay this tour or browse the full feature guide. You're all set! 🎉"
+            R.id.quickActionBbBtn,
+            "🎓 Blackboard Mode",
+            "Tap here to start a live animated lesson on any topic — just like a real teacher explaining on a blackboard."
         )
     )
 

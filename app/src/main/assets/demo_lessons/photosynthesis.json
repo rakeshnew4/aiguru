@@ -1,0 +1,120 @@
+[
+  {
+    "title": "Step 1: The Big Question — Why Are Plants Green?",
+    "lang": "en-US",
+    "image_description": "",
+    "image_show_confidencescore": 0.0,
+    "followup_questions": [],
+    "frames": [
+      {
+        "frame_type": "concept",
+        "text": "🌿 Here's a question that stumped scientists for centuries:\n\nWhy do plants never need to eat food — yet they grow, bloom, and live for hundreds of years?",
+        "speech": "Here's a question that stumped scientists for centuries. Why do plants never need to eat food — yet they grow, bloom, and live for hundreds of years?",
+        "duration_ms": 3000,
+        "pause_after_ms": 0,
+        "tts_engine": "gemini",
+        "voice_role": "teacher",
+        "svg_html": "",
+        "highlight": [],
+        "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1,
+        "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": []
+      },
+      {
+        "frame_type": "concept",
+        "text": "The answer: plants make their own food using sunlight, water, and air.\n\nThis process is called **Photosynthesis** — and it's the reason life exists on Earth.",
+        "speech": "The answer is that plants make their own food using sunlight, water, and air. This process is called Photosynthesis — and it's the reason all life exists on Earth.",
+        "duration_ms": 3500,
+        "pause_after_ms": 0,
+        "tts_engine": "gemini",
+        "voice_role": "teacher",
+        "svg_html": "<html><body style='margin:0;background:#0D1117;display:flex;align-items:center;justify-content:center;height:100vh'><svg width='340' height='200' viewBox='0 0 340 200'><defs><radialGradient id='sun' cx='50%' cy='50%' r='50%'><stop offset='0%' stop-color='#FFE066'/><stop offset='100%' stop-color='#FF9800' stop-opacity='0'/></radialGradient></defs><rect width='340' height='200' fill='#0D1117'/><circle cx='60' cy='40' r='30' fill='url(#sun)'><animate attributeName='r' values='28;32;28' dur='2s' repeatCount='indefinite'/></circle><text x='60' y='85' text-anchor='middle' fill='#FFE066' font-size='11' font-family='sans-serif'>Sunlight</text><path d='M170 160 Q170 80 110 60' stroke='#FFE066' stroke-width='2.5' fill='none' stroke-dasharray='6,4'><animate attributeName='stroke-dashoffset' from='0' to='-20' dur='1.5s' repeatCount='indefinite'/></path><ellipse cx='170' cy='165' rx='55' ry='22' fill='#1B5E20'/><ellipse cx='170' cy='155' rx='40' ry='16' fill='#2E7D32'/><ellipse cx='170' cy='145' rx='28' ry='11' fill='#388E3C'/><text x='170' y='190' text-anchor='middle' fill='#81C784' font-size='11' font-family='sans-serif'>Plant Leaf</text><rect x='230' y='50' width='80' height='30' rx='6' fill='#0D2137' stroke='#29B6F6' stroke-width='1.5'/><text x='270' y='62' text-anchor='middle' fill='#29B6F6' font-size='9' font-family='sans-serif'>CO₂ + H₂O</text><text x='270' y='74' text-anchor='middle' fill='#29B6F6' font-size='9' font-family='sans-serif'>(from air+soil)</text><path d='M230 65 L195 130' stroke='#29B6F6' stroke-width='1.5' stroke-dasharray='5,3'><animate attributeName='stroke-dashoffset' from='0' to='-16' dur='1.2s' repeatCount='indefinite'/></path><rect x='235' y='120' width='80' height='30' rx='6' fill='#0D2137' stroke='#A5D6A7' stroke-width='1.5'/><text x='275' y='132' text-anchor='middle' fill='#A5D6A7' font-size='9' font-family='sans-serif'>Glucose + O₂</text><text x='275' y='144' text-anchor='middle' fill='#A5D6A7' font-size='9' font-family='sans-serif'>(food + oxygen)</text><path d='M225 135 L200 148' stroke='#A5D6A7' stroke-width='1.5' stroke-dasharray='5,3'><animate attributeName='stroke-dashoffset' from='0' to='-16' dur='1.2s' repeatCount='indefinite'/></path></svg></body></html>",
+        "highlight": ["Photosynthesis"],
+        "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1,
+        "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": []
+      }
+    ]
+  },
+  {
+    "title": "Step 2: Inside the Chloroplast — Where the Magic Happens",
+    "lang": "en-US",
+    "image_description": "",
+    "image_show_confidencescore": 0.0,
+    "followup_questions": [],
+    "frames": [
+      {
+        "frame_type": "diagram",
+        "text": "Inside every leaf cell there are tiny green factories called **chloroplasts**.\n\nThey contain a green pigment — **chlorophyll** — that captures sunlight like a solar panel.",
+        "speech": "Inside every leaf cell there are tiny green factories called chloroplasts. They contain a green pigment called chlorophyll, that captures sunlight exactly like a solar panel.",
+        "duration_ms": 3500,
+        "pause_after_ms": 0,
+        "tts_engine": "gemini",
+        "voice_role": "teacher",
+        "svg_html": "<html><body style='margin:0;background:#0D1117;display:flex;align-items:center;justify-content:center;height:100vh'><svg width='340' height='210' viewBox='0 0 340 210'><rect width='340' height='210' fill='#0D1117'/><ellipse cx='170' cy='105' rx='130' ry='80' fill='#0A2010' stroke='#388E3C' stroke-width='2'/><text x='170' y='22' text-anchor='middle' fill='#81C784' font-size='13' font-family='sans-serif' font-weight='bold'>Chloroplast</text><ellipse cx='100' cy='85' rx='28' ry='12' fill='#1B5E20' stroke='#66BB6A' stroke-width='1.5'/><ellipse cx='155' cy='95' rx='28' ry='12' fill='#1B5E20' stroke='#66BB6A' stroke-width='1.5'/><ellipse cx='210' cy='80' rx='28' ry='12' fill='#1B5E20' stroke='#66BB6A' stroke-width='1.5'/><ellipse cx='245' cy='105' rx='20' ry='9' fill='#1B5E20' stroke='#66BB6A' stroke-width='1.5'/><text x='100' y='108' text-anchor='middle' fill='#A5D6A7' font-size='9' font-family='sans-serif'>Thylakoid</text><text x='100' y='118' text-anchor='middle' fill='#A5D6A7' font-size='9' font-family='sans-serif'>disc</text><path d='M130 140 Q170 165 210 140' stroke='#29B6F6' stroke-width='1.5' fill='none'/><text x='170' y='178' text-anchor='middle' fill='#29B6F6' font-size='10' font-family='sans-serif'>Stroma (fluid)</text><circle cx='72' cy='72' r='6' fill='#FFEB3B' opacity='0.9'><animate attributeName='opacity' values='0.9;0.3;0.9' dur='1.8s' repeatCount='indefinite'/></circle><circle cx='60' cy='90' r='5' fill='#FFEB3B' opacity='0.7'><animate attributeName='opacity' values='0.7;0.2;0.7' dur='2.2s' repeatCount='indefinite'/></circle><circle cx='78' cy='105' r='4' fill='#FFEB3B' opacity='0.8'><animate attributeName='opacity' values='0.8;0.25;0.8' dur='1.5s' repeatCount='indefinite'/></circle><text x='42' y='125' fill='#FFE066' font-size='9' font-family='sans-serif'>Chlorophyll</text><text x='42' y='135' fill='#FFE066' font-size='9' font-family='sans-serif'>absorbs light</text></svg></body></html>",
+        "highlight": ["chloroplasts", "chlorophyll"],
+        "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1,
+        "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": []
+      },
+      {
+        "frame_type": "memory",
+        "text": "🧠 Memory trick:\n\n**Chloro** = Greek for *green*\n**Plast** = Greek for *form/make*\n\nSo chloroplast literally means \"the green maker\" — it makes food using green pigment!",
+        "speech": "Here's a memory trick. Chloro is Greek for green, and plast is Greek for make. So chloroplast literally means the green maker — it makes food using its green pigment!",
+        "duration_ms": 3000,
+        "pause_after_ms": 0,
+        "tts_engine": "gemini",
+        "voice_role": "teacher",
+        "svg_html": "",
+        "highlight": ["Chloro", "Plast"],
+        "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1,
+        "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": []
+      }
+    ]
+  },
+  {
+    "title": "Step 3: The Equation — Sun + Water + Air = Food",
+    "lang": "en-US",
+    "image_description": "",
+    "image_show_confidencescore": 0.0,
+    "followup_questions": [],
+    "frames": [
+      {
+        "frame_type": "concept",
+        "text": "Photosynthesis can be written as one beautiful equation:\n\n☀️ 6CO₂ + 6H₂O → C₆H₁₂O₆ + 6O₂\n\nCarbon dioxide + Water → Glucose (sugar) + Oxygen\n\nAnd that oxygen? That's what we breathe! 🌬️",
+        "speech": "Photosynthesis can be written as one beautiful equation. Six molecules of carbon dioxide plus six molecules of water, powered by sunlight, produces one molecule of glucose sugar and six molecules of oxygen. And that oxygen? That's exactly what we breathe!",
+        "duration_ms": 4000,
+        "pause_after_ms": 0,
+        "tts_engine": "gemini",
+        "voice_role": "teacher",
+        "svg_html": "<html><body style='margin:0;background:#0D1117;display:flex;align-items:center;justify-content:center;height:100vh'><svg width='340' height='200' viewBox='0 0 340 200'><rect width='340' height='200' fill='#0D1117'/><rect x='10' y='60' width='90' height='80' rx='10' fill='#0D2137' stroke='#29B6F6' stroke-width='1.5'><animate attributeName='stroke-opacity' values='1;0.4;1' dur='2s' repeatCount='indefinite'/></rect><text x='55' y='95' text-anchor='middle' fill='#29B6F6' font-size='14' font-family='monospace' font-weight='bold'>6CO₂</text><text x='55' y='112' text-anchor='middle' fill='#90CAF9' font-size='9' font-family='sans-serif'>Carbon</text><text x='55' y='123' text-anchor='middle' fill='#90CAF9' font-size='9' font-family='sans-serif'>Dioxide</text><text x='108' y='103' text-anchor='middle' fill='#78909C' font-size='18' font-family='sans-serif'>+</text><rect x='120' y='60' width='90' height='80' rx='10' fill='#0D2137' stroke='#29B6F6' stroke-width='1.5'><animate attributeName='stroke-opacity' values='1;0.4;1' dur='2.3s' repeatCount='indefinite'/></rect><text x='165' y='95' text-anchor='middle' fill='#29B6F6' font-size='14' font-family='monospace' font-weight='bold'>6H₂O</text><text x='165' y='112' text-anchor='middle' fill='#90CAF9' font-size='9' font-family='sans-serif'>Water</text><circle cx='170' cy='35' r='18' fill='url(#sg)'><animate attributeName='r' values='17;20;17' dur='1.8s' repeatCount='indefinite'/></circle><defs><radialGradient id='sg' cx='50%' cy='50%' r='50%'><stop offset='0%' stop-color='#FFE066'/><stop offset='100%' stop-color='#FF9800'/></radialGradient></defs><text x='170' y='40' text-anchor='middle' fill='#0D1117' font-size='9' font-family='sans-serif' font-weight='bold'>☀️ light</text><path d='M218 100 L238 100' stroke='#4CAF50' stroke-width='2.5' marker-end='url(#arr)'><animate attributeName='stroke-dashoffset' from='0' to='-10' dur='0.8s' repeatCount='indefinite'/></path><defs><marker id='arr' markerWidth='6' markerHeight='6' refX='3' refY='3' orient='auto'><path d='M0,0 L6,3 L0,6 Z' fill='#4CAF50'/></marker></defs><rect x='240' y='60' width='88' height='80' rx='10' fill='#0A2010' stroke='#4CAF50' stroke-width='2'><animate attributeName='stroke-opacity' values='1;0.4;1' dur='2s' repeatCount='indefinite'/></rect><text x='284' y='88' text-anchor='middle' fill='#66BB6A' font-size='11' font-family='monospace' font-weight='bold'>Glucose</text><text x='284' y='104' text-anchor='middle' fill='#A5D6A7' font-size='9' font-family='sans-serif'>C₆H₁₂O₆</text><text x='284' y='118' text-anchor='middle' fill='#80DEEA' font-size='9' font-family='sans-serif'>+ 6O₂</text><text x='284' y='130' text-anchor='middle' fill='#80DEEA' font-size='9' font-family='sans-serif'>(oxygen!)</text><text x='170' y='185' text-anchor='middle' fill='#546E7A' font-size='10' font-family='sans-serif'>Sunlight powers the reaction</text></svg></body></html>",
+        "highlight": ["6CO₂", "6H₂O", "C₆H₁₂O₆", "6O₂"],
+        "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1,
+        "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": []
+      }
+    ]
+  },
+  {
+    "title": "Step 4: Why This Matters — The Oxygen You Just Breathed",
+    "lang": "en-US",
+    "image_description": "",
+    "image_show_confidencescore": 0.0,
+    "followup_questions": [
+      {"question": "What would happen if all plants disappeared?", "speech": "What would happen if all plants on Earth suddenly disappeared?", "tts_engine": "android", "voice_role": "teacher"},
+      {"question": "How does photosynthesis happen at night?", "speech": "Does photosynthesis happen at night when there's no sunlight?", "tts_engine": "android", "voice_role": "teacher"},
+      {"question": "Why are some plants not green?", "speech": "If chlorophyll is green, why are some plants red or purple?", "tts_engine": "android", "voice_role": "teacher"}
+    ],
+    "frames": [
+      {
+        "frame_type": "summary",
+        "text": "🌍 Every breath you take has a plant to thank.\n\nEvery animal on Earth depends on plants for:\n• Oxygen to breathe\n• Food (either directly or through other animals)\n• Carbon dioxide removal from the atmosphere\n\nPhotosynthesis is literally the engine of life on Earth.",
+        "speech": "Every breath you take has a plant to thank. Every animal on Earth depends on plants for oxygen to breathe, food either directly or through other animals, and carbon dioxide removal from the atmosphere. Photosynthesis is literally the engine of all life on Earth.",
+        "duration_ms": 4000,
+        "pause_after_ms": 0,
+        "tts_engine": "gemini",
+        "voice_role": "teacher",
+        "svg_html": "<html><body style='margin:0;background:#0D1117;display:flex;align-items:center;justify-content:center;height:100vh'><svg width='340' height='200' viewBox='0 0 340 200'><rect width='340' height='200' fill='#0D1117'/><circle cx='170' cy='100' r='70' fill='none' stroke='#1B5E20' stroke-width='2' stroke-dasharray='8,4'/><circle cx='170' cy='100' r='45' fill='#0A2010' stroke='#388E3C' stroke-width='1.5'/><text x='170' y='96' text-anchor='middle' fill='#66BB6A' font-size='13' font-family='sans-serif' font-weight='bold'>Photo-</text><text x='170' y='112' text-anchor='middle' fill='#66BB6A' font-size='13' font-family='sans-serif' font-weight='bold'>synthesis</text><g transform='translate(170,32)'><circle r='18' fill='#0D2230' stroke='#FFE066' stroke-width='1.5'/><text y='5' text-anchor='middle' fill='#FFE066' font-size='10' font-family='sans-serif'>☀️ Energy</text></g><g transform='translate(258,75)'><circle r='18' fill='#0D2230' stroke='#80DEEA' stroke-width='1.5'/><text y='-2' text-anchor='middle' fill='#80DEEA' font-size='9' font-family='sans-serif'>O₂ for</text><text y='9' text-anchor='middle' fill='#80DEEA' font-size='9' font-family='sans-serif'>breath</text></g><g transform='translate(245,152)'><circle r='18' fill='#0D2230' stroke='#CE93D8' stroke-width='1.5'/><text y='-2' text-anchor='middle' fill='#CE93D8' font-size='9' font-family='sans-serif'>Food</text><text y='9' text-anchor='middle' fill='#CE93D8' font-size='9' font-family='sans-serif'>chain</text></g><g transform='translate(95,152)'><circle r='18' fill='#0D2230' stroke='#FFAB40' stroke-width='1.5'/><text y='-2' text-anchor='middle' fill='#FFAB40' font-size='9' font-family='sans-serif'>CO₂</text><text y='9' text-anchor='middle' fill='#FFAB40' font-size='9' font-family='sans-serif'>removal</text></g><g transform='translate(82,75)'><circle r='18' fill='#0D2230' stroke='#EF9A9A' stroke-width='1.5'/><text y='-2' text-anchor='middle' fill='#EF9A9A' font-size='9' font-family='sans-serif'>Climate</text><text y='9' text-anchor='middle' fill='#EF9A9A' font-size='9' font-family='sans-serif'>balance</text></g><line x1='170' y1='50' x2='170' y2='55' stroke='#FFE066' stroke-width='1.5'/><line x1='240' y1='80' x2='214' y2='88' stroke='#80DEEA' stroke-width='1.5'/><line x1='228' y1='143' x2='208' y2='130' stroke='#CE93D8' stroke-width='1.5'/><line x1='112' y1='143' x2='132' y2='130' stroke='#FFAB40' stroke-width='1.5'/><line x1='100' y1='80' x2='126' y2='88' stroke='#EF9A9A' stroke-width='1.5'/></svg></body></html>",
+        "highlight": ["Oxygen", "Food", "Carbon dioxide"],
+        "quiz_answer": "", "quiz_options": [], "quiz_correct_index": -1,
+        "quiz_model_answer": "", "quiz_keywords": [], "fill_blanks": [], "quiz_correct_order": []
+      }
+    ]
+  }
+]

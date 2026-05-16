@@ -76,6 +76,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.util.Locale
 import com.aiguruapp.student.daily.DailyQuestionsManager
+import com.aiguruapp.student.quiz.QuizApiClient
 
 /**
  * Full-screen "blackboard" lesson.
@@ -121,6 +122,13 @@ class BlackboardActivity : AppCompatActivity() {
         const val EXTRA_DURATION        = "extra_duration"
         /** Optional Base64-encoded image to include in the lesson generation (e.g. from home dialog camera). */
         const val EXTRA_IMAGE_BASE64    = "extra_image_base64"
+        /**
+         * Path to a bundled demo lesson JSON inside the assets/ folder.
+         * When set, the lesson is loaded from the asset file instantly — no LLM call,
+         * no Firestore read, no quota consumed. Used for the first-launch demo experience.
+         * Example value: "demo_lessons/photosynthesis.json"
+         */
+        const val EXTRA_DEMO_ASSET      = "extra_demo_asset"
         /**
          * In-memory store for a large base64 image passed from [HomeActivity].
          * Avoids TransactionTooLargeException — Android Binder IPC has a ~1 MB limit
@@ -576,6 +584,20 @@ class BlackboardActivity : AppCompatActivity() {
         if (!userId.isNullOrBlank()) {
             intent.putExtra(EXTRA_USER_ID, userId)
         }
+
+        // ── Demo mode: load lesson from bundled asset, skip all auth/quota ────
+        val demoAsset = intent.getStringExtra(EXTRA_DEMO_ASSET).orEmpty()
+        if (demoAsset.isNotBlank()) {
+            // Enable Gemini AI voice for the demo — best first impression, no quota consumed
+            val demoPrefs = getSharedPreferences("bb_prefs", MODE_PRIVATE)
+            useAiTts = demoPrefs.getBoolean("use_ai_tts", true)
+            updateAiTtsToggleUi()
+            AdminConfigRepository.fetchIfStale { _ ->
+                aiTtsEngine.selfHostedUrl = AdminConfigRepository.ttsSelfHostedUrl()
+            }
+            loadFromDemoAsset(demoAsset)
+            return
+        }
         AdminConfigRepository.fetchIfStale { _ ->
             // Wire the server URL for AI TTS as soon as config is loaded
             aiTtsEngine.selfHostedUrl = AdminConfigRepository.ttsSelfHostedUrl()
@@ -686,12 +708,7 @@ class BlackboardActivity : AppCompatActivity() {
                                             } else {
                                                 com.aiguruapp.student.widget.BbLoadingAnimator.stop(bbLoadingWebView)
                                                 loadingGroup.visibility = android.view.View.GONE
-                                                loadingText.text = check.upgradeMessage
-                                                loadingText.visibility = android.view.View.VISIBLE
-                                                android.widget.Toast.makeText(this@BlackboardActivity, check.upgradeMessage, android.widget.Toast.LENGTH_LONG).show()
-                                                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                                                    startActivity(android.content.Intent(this@BlackboardActivity, SubscriptionActivity::class.java))
-                                                }, 2000)
+                                                showQuotaLimitDialog(check.upgradeMessage)
                                             }
                                         }
                                         .addOnFailureListener {
@@ -711,12 +728,7 @@ class BlackboardActivity : AppCompatActivity() {
                                 }
                                 com.aiguruapp.student.widget.BbLoadingAnimator.stop(bbLoadingWebView)
                                 loadingGroup.visibility = android.view.View.GONE
-                                loadingText.text = check.upgradeMessage
-                                loadingText.visibility = android.view.View.VISIBLE
-                                android.widget.Toast.makeText(this, check.upgradeMessage, android.widget.Toast.LENGTH_LONG).show()
-                                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                                    startActivity(android.content.Intent(this, SubscriptionActivity::class.java))
-                                }, 2000)
+                                showQuotaLimitDialog(check.upgradeMessage)
                                 return@runOnUiThread
                             }
                             val isReplay = intent.getBooleanExtra(EXTRA_IS_REPLAY, false)
@@ -1399,6 +1411,44 @@ class BlackboardActivity : AppCompatActivity() {
     }
 
     // ── Publish current lesson to global bb_cache (teacher only) ──────────────
+
+    /**
+     * Loads a bundled demo lesson from assets — no LLM call, no Firestore, no quota.
+     * Used for the first-launch "watch a sample" experience.
+     */
+    private fun loadFromDemoAsset(assetPath: String) {
+        com.aiguruapp.student.widget.BbLoadingAnimator.start(bbLoadingWebView)
+        loadingText.text = "Loading demo lesson…"
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val json = applicationContext.assets.open(assetPath).bufferedReader().readText()
+                val parsed = com.aiguruapp.student.chat.BlackboardGenerator.deserializeSteps(json, "en-US")
+                lifecycleScope.launch(Dispatchers.Main) {
+                    if (parsed.isEmpty()) {
+                        loadingText.text = "Demo not available."
+                        return@launch
+                    }
+                    steps = parsed
+                    computedFontSp = computeFontSize(steps)
+                    com.aiguruapp.student.widget.BbLoadingAnimator.stop(bbLoadingWebView)
+                    loadingGroup.visibility = View.GONE
+                    contentGroup.visibility = View.VISIBLE
+                    showAskFabOnly()
+                    saveSessionBtn.visibility = View.GONE
+                    publishLessonBtn.visibility = View.GONE
+                    buildDots()
+                    setupBoard()
+                    preloadUpcoming(0, 0, count = 3)
+                    showFrame(0, 0)
+                }
+            } catch (e: Exception) {
+                lifecycleScope.launch(Dispatchers.Main) {
+                    loadingText.text = "Couldn't load demo."
+                    android.util.Log.e("Blackboard", "Demo asset load failed: $assetPath", e)
+                }
+            }
+        }
+    }
 
     /**
      * Loads a previously saved BB session directly from the user's Firestore flat collection.
@@ -2205,6 +2255,38 @@ class BlackboardActivity : AppCompatActivity() {
             ?.setTextColor(Color.parseColor("#BDBDBD"))   // grey — "Cancel"
     }
 
+    // ── Quota limit dialog ────────────────────────────────────────────────────
+    private fun showQuotaLimitDialog(upgradeMessage: String) {
+        val now = java.util.Calendar.getInstance()
+        val midnight = java.util.Calendar.getInstance().apply {
+            add(java.util.Calendar.DAY_OF_YEAR, 1)
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+        }
+        val diffMs = midnight.timeInMillis - now.timeInMillis
+        val diffHrs = diffMs / (1000 * 60 * 60)
+        val diffMins = (diffMs % (1000 * 60 * 60)) / (1000 * 60)
+        val resetTime = if (diffHrs > 0) "${diffHrs}h ${diffMins}m" else "${diffMins}m"
+
+        val message = "You've reached your daily Blackboard lesson limit.\n\n" +
+            "⏱️ Resets in $resetTime (midnight)\n\n" +
+            "In the meantime, you can:"
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Daily Limit Reached")
+            .setMessage(message)
+            .setPositiveButton("⭐ Upgrade Plan") { _, _ ->
+                startActivity(android.content.Intent(this, SubscriptionActivity::class.java))
+            }
+            .setNeutralButton("📖 Saved Lessons") { _, _ ->
+                startActivity(android.content.Intent(this, BbSavedSessionsActivity::class.java))
+            }
+            .setNegativeButton("Close") { d, _ -> d.dismiss(); finish() }
+            .setCancelable(true)
+            .show()
+    }
+
     // ── Pre-session settings dialog ───────────────────────────────────────────
     private fun showPreSessionDialog(onConfirm: () -> Unit) {
         val prefs = getSharedPreferences("bb_prefs", MODE_PRIVATE)
@@ -2651,6 +2733,68 @@ class BlackboardActivity : AppCompatActivity() {
         val saveBtn = bbCompletionCard.findViewById<TextView?>(R.id.completionSaveBtn)
         saveBtn?.animate()?.scaleX(1.06f)?.scaleY(1.06f)?.setDuration(300)
             ?.withEndAction { saveBtn.animate().scaleX(1f).scaleY(1f).setDuration(300).start() }?.start()
+        // Quiz button
+        val quizBtn = bbCompletionCard.findViewById<TextView?>(R.id.completionQuizBtn)
+        quizBtn?.setOnClickListener { startQuizFromLesson(quizBtn) }
+        // Demo CTA: guide new users to HomeActivity after the demo lesson
+        val demoStartBtn = bbCompletionCard.findViewById<TextView?>(R.id.completionDemoStartBtn)
+        if (!intent.getStringExtra(EXTRA_DEMO_ASSET).isNullOrBlank() && demoStartBtn != null) {
+            demoStartBtn.visibility = View.VISIBLE
+            demoStartBtn.setOnClickListener {
+                startActivity(Intent(this, HomeActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                })
+                finish()
+            }
+        }
+    }
+
+    private fun startQuizFromLesson(btn: TextView) {
+        btn.isEnabled = false
+        btn.text = "⏳ Generating quiz…"
+        val subject = intent.getStringExtra(EXTRA_SUBJECT) ?: "General"
+        val chapter = intent.getStringExtra(EXTRA_CHAPTER) ?: currentTopic
+        val userId  = intent.getStringExtra(EXTRA_USER_ID) ?: ""
+        val lessonSummary = buildString {
+            append("Lesson taught (summary):\n")
+            steps.forEachIndexed { i, step ->
+                append("Step ${i + 1}: ${step.title}")
+                val firstText = step.frames.firstOrNull()?.text?.take(80)
+                if (!firstText.isNullOrBlank()) append(" — $firstText")
+                append("\n")
+            }
+        }.take(800).trimEnd()
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val quiz = QuizApiClient().generateQuiz(
+                    subject       = subject,
+                    chapterId     = chapter.lowercase().replace(" ", "_"),
+                    chapterTitle  = chapter,
+                    difficulty    = "medium",
+                    questionTypes = listOf("mcq"),
+                    count         = 5,
+                    userId        = userId,
+                    contextText   = lessonSummary
+                )
+                val quizJson = quiz.toTransferJson()
+                lifecycleScope.launch(Dispatchers.Main) {
+                    startActivity(
+                        Intent(this@BlackboardActivity, QuizActivity::class.java)
+                            .putExtra("quizJson", quizJson)
+                    )
+                }
+            } catch (e: Exception) {
+                lifecycleScope.launch(Dispatchers.Main) {
+                    btn.isEnabled = true
+                    btn.text = "🧠 Quiz me on this"
+                    android.widget.Toast.makeText(
+                        this@BlackboardActivity,
+                        "Couldn't generate quiz. Try again.",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
     }
 
     private fun showContinuationCard() {
