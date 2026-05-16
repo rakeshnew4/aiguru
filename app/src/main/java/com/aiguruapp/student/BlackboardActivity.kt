@@ -194,11 +194,13 @@ class BlackboardActivity : AppCompatActivity() {
     private lateinit var bbProgressHintTv: TextView
     private lateinit var bbSubtitleTv: TextView
     private lateinit var handWriter:      TextView
+    private lateinit var subtitleToggleBtn: TextView
 
     // ── State ─────────────────────────────────────────────────────────────────
     private lateinit var tts: TextToSpeechManager
     private lateinit var aiTtsEngine: com.aiguruapp.student.tts.BbAiTtsEngine
     private var useAiTts = false
+    private var showSubtitlesEnabled = false   // off by default; user toggles via CC button
     private lateinit var aiTtsToggleBtn: TextView
     private var steps            = listOf<BlackboardGenerator.BlackboardStep>()
     private var currentStepIdx   = 0
@@ -334,6 +336,7 @@ class BlackboardActivity : AppCompatActivity() {
         progressSeekBar = findViewById(R.id.bbProgressSeek)
         bbProgressHintTv = findViewById(R.id.bbProgressHint)
         bbSubtitleTv     = findViewById(R.id.bbSubtitleTv)
+        subtitleToggleBtn = findViewById(R.id.subtitleToggleBtn)
         handWriter      = findViewById(R.id.handWriter)
         bbQuotaChip     = findViewById(R.id.bbQuotaChip)
         saveSessionBtn  = findViewById(R.id.saveSessionBtn)
@@ -427,7 +430,9 @@ class BlackboardActivity : AppCompatActivity() {
         ViewCompat.setOnApplyWindowInsetsListener(bbAskBar) { v, insets ->
             val imeBottom = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
             val navBottom = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
-            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, (12 * resources.displayMetrics.density).toInt() + maxOf(imeBottom, navBottom) - navBottom)
+            val basePadding = (12 * resources.displayMetrics.density).toInt()
+            // When keyboard is up: sit above keyboard (imeBottom); otherwise: sit above nav bar
+            v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, basePadding + maxOf(imeBottom, navBottom))
             insets
         }
         bbCameraBtn.setOnClickListener { launchBbCamera() }
@@ -548,6 +553,33 @@ class BlackboardActivity : AppCompatActivity() {
                 android.util.Log.d("BB_TTS_TOGGLE", "✗ AI TTS disabled")
                 aiTtsEngine.stop()
                 android.widget.Toast.makeText(this, "🔊 Android TTS", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // Restore subtitle toggle preference and set up click listener
+        showSubtitlesEnabled = prefs.getBoolean("show_subtitles", false)
+        updateSubtitleToggleUi()
+        subtitleToggleBtn.setOnClickListener {
+            showSubtitlesEnabled = !showSubtitlesEnabled
+            prefs.edit().putBoolean("show_subtitles", showSubtitlesEnabled).apply()
+            updateSubtitleToggleUi()
+            if (!showSubtitlesEnabled) hideSubtitle()
+            android.widget.Toast.makeText(
+                this,
+                if (showSubtitlesEnabled) "Subtitles ON" else "Subtitles OFF",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+        }
+
+        // Apply bottom navigation bar inset to media controls so they're not
+        // hidden under the 3-button nav bar on non-gesture-nav devices.
+        val bbMediaControls = findViewById<android.widget.LinearLayout>(R.id.bbMediaControls)
+        if (bbMediaControls != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(bbMediaControls) { v, insets ->
+                val navBottom = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+                val basePaddingBottom = (8 * resources.displayMetrics.density).toInt()
+                v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, basePaddingBottom + navBottom)
+                insets
             }
         }
 
@@ -825,6 +857,16 @@ class BlackboardActivity : AppCompatActivity() {
             aiTtsToggleBtn.text  = "🔊 TTS"
             aiTtsToggleBtn.setTextColor(android.graphics.Color.parseColor("#AABBCC"))
             aiTtsToggleBtn.setBackgroundColor(android.graphics.Color.parseColor("#333555"))
+        }
+    }
+
+    private fun updateSubtitleToggleUi() {
+        if (showSubtitlesEnabled) {
+            subtitleToggleBtn.setTextColor(android.graphics.Color.parseColor("#A0FFD0"))
+            subtitleToggleBtn.setBackgroundColor(android.graphics.Color.parseColor("#224433"))
+        } else {
+            subtitleToggleBtn.setTextColor(android.graphics.Color.parseColor("#AABBCC"))
+            subtitleToggleBtn.setBackgroundColor(android.graphics.Color.parseColor("#333555"))
         }
     }
 
@@ -3592,6 +3634,7 @@ class BlackboardActivity : AppCompatActivity() {
     private var subtitlePulse: android.animation.ObjectAnimator? = null
 
     private fun showSubtitle(text: String) {
+        if (!showSubtitlesEnabled) return   // user has subtitles turned off
         bbSubtitleTv.text = text
         if (bbSubtitleTv.visibility != View.VISIBLE) {
             bbSubtitleTv.alpha = 0f
@@ -4853,50 +4896,13 @@ class BlackboardActivity : AppCompatActivity() {
     }
 
     private fun buildStepNameStrip() {
+        // Step title strip removed from UI per design decision — keep GONE always.
+        stepNamesScrollView.visibility = View.GONE
         stepNamesContainer.removeAllViews()
-        if (steps.isEmpty()) { stepNamesScrollView.visibility = View.GONE; return }
-        val dp = resources.displayMetrics.density
-        steps.forEachIndexed { i, step ->
-            val label = step.title.let { if (it.length > 22) it.take(22) + "…" else it }
-            val isActive = i == currentStepIdx
-            val pill = TextView(this).apply {
-                text = "${i + 1}. $label"
-                textSize = 11f
-                setTextColor(Color.parseColor(if (isActive) "#FFFFFF" else "#88AABB"))
-                background = GradientDrawable().apply {
-                    shape = GradientDrawable.RECTANGLE; cornerRadius = 12 * dp
-                    setColor(if (isActive) Color.parseColor("#3C3CBD") else Color.parseColor("#1A1A2E"))
-                    setStroke((1 * dp).toInt(), if (isActive) Color.parseColor("#5C5CF0") else Color.parseColor("#334466"))
-                }
-                setPadding((10 * dp).toInt(), (5 * dp).toInt(), (10 * dp).toInt(), (5 * dp).toInt())
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply { marginEnd = (6 * dp).toInt() }
-                setOnClickListener { if (i <= currentStepIdx) showFrame(i, 0) }
-            }
-            stepNamesContainer.addView(pill)
-        }
-        stepNamesScrollView.visibility = View.VISIBLE
     }
 
     private fun updateStepNameStrip(activeIdx: Int) {
-        val dp = resources.displayMetrics.density
-        for (i in 0 until stepNamesContainer.childCount) {
-            val pill = stepNamesContainer.getChildAt(i) as? TextView ?: continue
-            val isActive = i == activeIdx
-            pill.setTextColor(Color.parseColor(if (isActive) "#FFFFFF" else "#88AABB"))
-            (pill.background as? GradientDrawable)?.apply {
-                setColor(if (isActive) Color.parseColor("#3C3CBD") else Color.parseColor("#1A1A2E"))
-                setStroke((1 * dp).toInt(), if (isActive) Color.parseColor("#5C5CF0") else Color.parseColor("#334466"))
-            }
-        }
-        if (activeIdx < stepNamesContainer.childCount) {
-            stepNamesScrollView.post {
-                stepNamesContainer.getChildAt(activeIdx)?.let { pill ->
-                    stepNamesScrollView.smoothScrollTo(pill.left, 0)
-                }
-            }
-        }
+        // Step title strip removed — no-op.
     }
 
     private fun updateDots(active: Int) {

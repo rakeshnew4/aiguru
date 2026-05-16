@@ -273,22 +273,24 @@ class BbSavedSessionsActivity : BaseActivity() {
         // Shared sessions live in shared_with_me (not saved_bb_sessions_flat), so
         // loadFromSavedSession would look in the wrong Firestore collection.
         // Seed the disk cache from steps_json so the cache hit bypasses Firestore entirely.
-        if (showingShared && sessionId.isNotBlank()) {
-            val stepsJson = session["steps_json"] as? String ?: ""
-            if (stepsJson.isNotBlank()) {
-                com.aiguruapp.student.chat.BlackboardGenerator.writeSessionCache(
-                    applicationContext, sessionId, stepsJson)
-            }
+        val sharedStepsJson = if (showingShared) session["steps_json"] as? String ?: "" else ""
+        if (showingShared && sessionId.isNotBlank() && sharedStepsJson.isNotBlank()) {
+            com.aiguruapp.student.chat.BlackboardGenerator.writeSessionCache(
+                applicationContext, sessionId, sharedStepsJson)
         }
+        // For shared sessions: only pass EXTRA_SESSION_ID when we have steps_json seeded in
+        // disk cache. If steps_json is blank (old/incomplete share), skip the session ID so
+        // BlackboardActivity regenerates from the topic rather than hitting the wrong Firestore path.
+        val canReplayFromCache = !showingShared || (sessionId.isNotBlank() && sharedStepsJson.isNotBlank())
         val intent = Intent(this, BlackboardActivity::class.java).apply {
             putExtra(BlackboardActivity.EXTRA_MESSAGE, topic)
             putExtra(BlackboardActivity.EXTRA_USER_ID, userId)
             putExtra(BlackboardActivity.EXTRA_SUBJECT, subject)
             putExtra(BlackboardActivity.EXTRA_CHAPTER, chapter)
-            putExtra(BlackboardActivity.EXTRA_IS_REPLAY, true)
+            putExtra(BlackboardActivity.EXTRA_IS_REPLAY, canReplayFromCache)
             // Pass sessionId so BlackboardActivity loads steps directly from Firestore
             // without any LLM regeneration.
-            if (sessionId.isNotBlank()) putExtra(BlackboardActivity.EXTRA_SESSION_ID, sessionId)
+            if (sessionId.isNotBlank() && canReplayFromCache) putExtra(BlackboardActivity.EXTRA_SESSION_ID, sessionId)
             if (ttsKeys.isNotEmpty()) putExtra(BlackboardActivity.EXTRA_TTS_KEYS, ArrayList(ttsKeys))
             if (!convId.isNullOrBlank()) putExtra(BlackboardActivity.EXTRA_CONVERSATION_ID, convId)
             if (!msgId.isNullOrBlank())  putExtra(BlackboardActivity.EXTRA_MESSAGE_ID, msgId)

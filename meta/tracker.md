@@ -2131,3 +2131,32 @@ Firestore resolved faster than tour started → sheet appeared before tour.
 - `app/src/main/java/com/aiguruapp/student/OnboardingActivity.kt` (grade picker: imports, fields, build, select, finish)
 - `app/src/main/java/com/aiguruapp/student/HomeActivity.kt` (defaultSubjectsForGrade, loadSubjects update, grade-aware topicChips)
 - `app/src/main/java/com/aiguruapp/student/BlackboardActivity.kt` (showQuotaLimitDialog, replaced 2 quota redirect blocks)
+
+---
+
+## 2026-05-15 (session — 5 Android UX bug fixes)
+
+**Asked:** 5 Android UX issues: (1) BB session sharing not copying content to target user. (2) Custom subject flow: auto-focus name input then prompt to add PDF. (3) Bottom buttons (play, AI) cut off on non-gesture-nav devices. (4) Remove top step titles display strip from BlackboardActivity. (5) Add CC subtitle toggle button; fix subtitle rendering.
+
+**Fix 4 — Remove step titles strip:**
+- `BlackboardActivity.kt`: `buildStepNameStrip()` and `updateStepNameStrip()` replaced with no-ops. `stepNamesScrollView` stays GONE always.
+
+**Fix 5 — Subtitle toggle CC button:**
+- `activity_blackboard.xml`: Added `subtitleToggleBtn` TextView ("CC") after `aiTtsToggleBtn` in media controls row.
+- `BlackboardActivity.kt`: Added `showSubtitlesEnabled: Boolean` field (default false, persisted in SharedPrefs). Added `subtitleToggleBtn` field + `updateSubtitleToggleUi()`. `showSubtitle()` guards with `if (!showSubtitlesEnabled) return`. Toggle saves preference, updates UI color, hides subtitle when turned off.
+
+**Fix 3 — Bottom buttons nav bar cutoff:**
+- `activity_blackboard.xml`: Added `android:id="@+id/bbMediaControls"` to media controls LinearLayout.
+- `BlackboardActivity.kt`: Added `ViewCompat.setOnApplyWindowInsetsListener` on `bbMediaControls` to pad by nav bar height. Fixed `bbAskBar` inset bug (`maxOf(imeBottom, navBottom) - navBottom` → `basePadding + maxOf(imeBottom, navBottom)`).
+
+**Fix 2 — Custom subject auto-focus + PDF prompt:**
+- `HomeActivity.kt` `showManualSubjectDialog()`: added `isFocusableInTouchMode = true`, `requestFocus()`, `SOFT_INPUT_STATE_VISIBLE`. After `addSubject(name)`, shows second AlertDialog offering to open `SubjectActivity` for PDF upload.
+
+**Fix 1 — BB sharing content copy:**
+- `BbSavedSessionsActivity.kt` `replaySession()`: for shared sessions, seed disk cache from `steps_json` if non-blank. Set `canReplayFromCache = false` for shared sessions with blank `steps_json` so BlackboardActivity regenerates from topic instead of failing Firestore lookup.
+
+**Files changed:**
+- `app/src/main/java/com/aiguruapp/student/BlackboardActivity.kt` (buildStepNameStrip no-op, updateStepNameStrip no-op, subtitleToggleBtn field + init, showSubtitlesEnabled flag, updateSubtitleToggleUi(), showSubtitle guard, subtitle toggle setup in onCreate, bbMediaControls nav bar inset, bbAskBar inset fix)
+- `app/src/main/res/layout/activity_blackboard.xml` (bbMediaControls ID, subtitleToggleBtn added)
+- `app/src/main/java/com/aiguruapp/student/HomeActivity.kt` (showManualSubjectDialog: auto-focus + PDF prompt)
+- `app/src/main/java/com/aiguruapp/student/BbSavedSessionsActivity.kt` (replaySession: canReplayFromCache flag for shared sessions with blank steps_json)

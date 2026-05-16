@@ -2266,16 +2266,35 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
         val input = EditText(this).apply {
             hint = "e.g. Science, Maths, History"
             setPadding(40, 24, 40, 24)
+            isFocusableInTouchMode = true
+            requestFocus()
         }
-        AlertDialog.Builder(this)
+        val dialog = AlertDialog.Builder(this)
             .setTitle("\ud83d\udcda Add Subject")
             .setView(input)
             .setPositiveButton("Add") { _, _ ->
                 val name = input.text.toString().trim()
-                if (name.isNotEmpty()) addSubject(name)
+                if (name.isNotEmpty()) {
+                    addSubject(name)
+                    // Prompt user to add a PDF for this new subject
+                    AlertDialog.Builder(this)
+                        .setTitle("\ud83d\udcc4 Add PDF Chapter?")
+                        .setMessage("Open \"$name\" now to add a PDF chapter?")
+                        .setPositiveButton("Open Subject") { _, _ ->
+                            startActivity(
+                                android.content.Intent(this, SubjectActivity::class.java)
+                                    .putExtra("subjectName", name)
+                                    .putExtra("subjectId", resolveSubjectId(name))
+                            )
+                        }
+                        .setNegativeButton("Later", null)
+                        .show()
+                }
             }
             .setNegativeButton("Cancel", null)
-            .show()
+            .create()
+        dialog.window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE)
+        dialog.show()
     }
 
     // \u2500\u2500 NCERT subject + chapters auto-import \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
