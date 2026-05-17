@@ -39,6 +39,17 @@
             android:background="@android:color/transparent" />
 
         <ImageView
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="6dp"
+            android:src="@drawable/logo"
+            android:scaleType="centerCrop"
+            android:background="@drawable/bg_logo_rounded"
+            android:clipToOutline="true"
+            android:outlineProvider="background"
+            android:contentDescription="Afterclass AI" />
+
+        <ImageView
             android:id="@+id/schoolLogoImage"
             android:layout_width="28dp"
             android:layout_height="28dp"
@@ -1236,6 +1247,35 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="Friends &amp; Share"
+                    android:textSize="15sp"
+                    android:textColor="@color/colorTextPrimary"
+                    android:paddingStart="12dp" />
+
+            </LinearLayout>
+
+            <!-- Share & Earn: direct referral share sheet -->
+            <LinearLayout
+                android:id="@+id/drawerItemShareEarn"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="20dp"
+                android:paddingEnd="16dp"
+                android:background="?attr/selectableItemBackground">
+
+                <TextView
+                    android:layout_width="32dp"
+                    android:layout_height="wrap_content"
+                    android:text="🎁"
+                    android:textSize="18sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Share &amp; Earn"
                     android:textSize="15sp"
                     android:textColor="@color/colorTextPrimary"
                     android:paddingStart="12dp" />

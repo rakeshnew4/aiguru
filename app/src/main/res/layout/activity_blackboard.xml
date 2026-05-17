@@ -17,6 +17,17 @@
         android:gravity="center"
         android:visibility="visible">
 
+        <ImageView
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/logo"
+            android:scaleType="centerCrop"
+            android:background="@drawable/bg_logo_rounded"
+            android:clipToOutline="true"
+            android:outlineProvider="background"
+            android:contentDescription="Afterclass AI"
+            android:layout_marginBottom="20dp" />
+
         <com.aiguruapp.student.widget.BoxSpinnerView
             android:id="@+id/boxSpinner"
             android:layout_width="64dp"

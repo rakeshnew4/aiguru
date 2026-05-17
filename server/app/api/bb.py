@@ -110,20 +110,30 @@ async def solve_doubt(
     Answers a student's spoken doubt during a Blackboard lesson.
     Returns structured JSON so the Android client can display + speak the answer.
     """
-    context_snippet = req.speech_context[:500] if req.speech_context else ""
-    lang_note = "Reply in Hindi." if req.language_tag.startswith("hi") else "Reply in English."
+    context_snippet = req.speech_context[:2000] if req.speech_context else ""
+
+    # Language instruction: detect the student's language from the question and respond in kind.
+    # Support mixed scripts: Hinglish (Hindi+English), Tenglish (Telugu+English), etc.
+    lang_note = (
+        "Detect the language of the student's question. "
+        "If it is Hindi or a mix of Hindi and English (Hinglish), reply in Hinglish (natural mix of Hindi and English). "
+        "If it is Telugu or a mix of Telugu and English (Tenglish), reply in Tenglish. "
+        "If it is Tamil mixed with English, reply in that mix. "
+        "For any other Indian language mixed with English, reply in that natural mix. "
+        "If the question is in pure English, reply in English. "
+        "Keep the answer conversational, like a friendly teacher."
+    )
 
     prompt = (
-        f"A student (grade {req.student_level}) is studying '{req.lesson_topic}'. "
-        f"Current lesson step: '{req.step_title}'. "
-        + (f"Recent lesson content: \"{context_snippet}\". " if context_snippet else "")
+        f"A student (grade {req.student_level}) is watching a lesson. "
+        + (f"The lesson content so far: \"{context_snippet}\". " if context_snippet else "")
         + f"Student's doubt: \"{req.question}\"\n\n"
-        f"{lang_note} Answer in 2-3 clear sentences. "
-        f"Then give a short re-engagement phrase (≤10 words) to connect back to the lesson.\n"
+        f"{lang_note}\n"
+        f"Answer in 2-3 clear sentences. "
         'Return ONLY valid JSON: {{"answer":"...","answer_speech":"...","follow_up":"..."}}\n'
         '"answer" may use markdown. '
-        '"answer_speech" must be plain text with no markdown or symbols. '
-        '"follow_up" is 1 short sentence.'
+        '"answer_speech" must be plain text with no markdown or symbols, suitable for TTS. '
+        '"follow_up" is 1 short sentence (max 10 words).'
     )
 
     try:

@@ -542,7 +542,7 @@
 | `VoiceRecognitionCallback` | 11–18 | Interface: `onResults`, `onError`, `onPartialResults`, `onListeningStarted`, `onListeningFinished`, `onBeginningOfSpeech`, `onRmsChanged` |
 | `speechRecognizer` | 23 | Primary `SpeechRecognizer` for user voice input |
 | `interruptRecognizer` | 28 | Secondary recognizer for interrupt listening (kept for compat) |
-| `startListening()` | 43–60 | Starts primary mic; `EXTRA_PARTIAL_RESULTS=true`, silence 1500/2000ms |
+| `startListening()` | 43–60 | Starts primary mic; `EXTRA_PARTIAL_RESULTS=true`, silence 1500/2000ms; does NOT call `onListeningStarted` immediately — fires in `onReadyForSpeech` when mic is actually open |
 | `stopListening()` | 62–68 | Stops primary mic |
 | `startInterruptListening()` | 71–87 | Single-cycle background recognizer (legacy — kept for compat; new code uses `startWakeWordLoop`) |
 | `stopInterruptListening()` | 89–96 | Stops/destroys interrupt recognizer |
@@ -551,7 +551,8 @@
 | `_runWakeWordCycle()` | ~127 | Private: `Handler.postDelayed()` → creates fresh SpeechRecognizer, `onResults` checks wake words → calls `onDetected` or restarts 200ms; per-error delays: BUSY→1500, AUDIO→800, PERMISSIONS→stop, else→300 |
 | `wakeWordHandler` | ~103 | `Handler(Looper.getMainLooper())` — schedules restart cycles |
 | `wakeWordActive` flag | ~105 | Boolean; set false before calling `onDetected` so callback can restart if needed |
-| `destroy()` | ~100 | Calls `stopWakeWordLoop()` first, then destroys speechRecognizer + stopInterruptListening |
+| `RecognitionListenerImpl.onReadyForSpeech` | ~220 | ⭐ Calls `callback?.onListeningStarted()` when mic is actually open |
+| `destroy()` | ~200 | Calls `stopWakeWordLoop()` first, then destroys speechRecognizer + stopInterruptListening |
 | `WikimediaUtils.kt` | Wikimedia Commons image URL helpers |
 
 ---

@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.aiguruapp.student.calculator.FloatingCalculatorView
+import com.aiguruapp.student.puzzle.FloatingPuzzleView
 import com.aiguruapp.student.utils.SchoolTheme
 
 /**
@@ -20,6 +21,8 @@ open class BaseActivity : AppCompatActivity() {
 
     /** Floating calculator bubble — shared across the whole Activity lifetime. */
     private var floatingCalc: FloatingCalculatorView? = null
+    /** Floating puzzle bubble — earned break game, gated by BB sessions. */
+    private var floatingPuzzle: FloatingPuzzleView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,6 +50,16 @@ open class BaseActivity : AppCompatActivity() {
             floatingCalc = FloatingCalculatorView(this)
             addContentView(
                 floatingCalc!!,
+                ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+            )
+        }
+        if (floatingPuzzle == null) {
+            floatingPuzzle = FloatingPuzzleView(this)
+            addContentView(
+                floatingPuzzle!!,
                 ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT

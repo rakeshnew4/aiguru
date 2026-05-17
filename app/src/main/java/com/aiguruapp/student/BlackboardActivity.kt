@@ -243,6 +243,8 @@ class BlackboardActivity : AppCompatActivity() {
     private lateinit var bbVoiceManager: VoiceManager
     // Wake word loop state
     private var bbDoubtCardView: android.view.View? = null
+    private var bbInterruptFab: android.widget.TextView? = null
+    private var bbInterruptPulse: android.animation.Animator? = null
     private var bbWakeWordLoopRunning = false
     private val BB_WAKE_WORDS = listOf("madam", "teacher", "sir", "stop", "question", "wait","hello")
     private var bbListeningRingView: android.view.View? = null
@@ -324,6 +326,9 @@ class BlackboardActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Keep status bar visible — the BB layout does not handle window insets,
+        // so we use the default (non-edge-to-edge) inset behaviour.
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, true)
         setContentView(R.layout.activity_blackboard)
         // Reset per-session hint flag so it shows once per BB session
         getSharedPreferences("bb_prefs", MODE_PRIVATE).edit()
@@ -850,6 +855,7 @@ class BlackboardActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        android.util.Log.d("BB_VOICE", "onResume: isPaused=$isPaused steps=${steps.size}")
         // Restart wake word loop if lesson was playing before app was backgrounded
         if (!isPaused && steps.isNotEmpty()) startBbWakeWordLoop()
     }
@@ -1016,6 +1022,7 @@ class BlackboardActivity : AppCompatActivity() {
                                     showAskFabOnly()
                                     buildDots()
                                     setupBoard()
+                                    preloadUpcoming(0, 0, count = 3)
                                     showFrame(0, 0)
                                 }
                             }
@@ -1705,10 +1712,21 @@ class BlackboardActivity : AppCompatActivity() {
         val dp = resources.displayMetrics.density
         val caveatFont = ResourcesCompat.getFont(this, R.font.kalam)
 
-        // Clear the board only if we're restarting the entire lesson (from prev button returning to start)
-        // or starting fresh. The actual forward traversal only appends.
-        if (stepIdx == 0 && frameIdx == 0) {
-            board.removeAllViews()
+        // On every step restart (frameIdx == 0), remove views belonging to this step
+        // and beyond so we don't paint duplicate content on the board.
+        if (frameIdx == 0) {
+            if (stepIdx == 0) {
+                board.removeAllViews()
+            } else {
+                // Find the title-wrapper tagged for this step and remove it + everything after
+                var foundAt = -1
+                for (i in 0 until board.childCount) {
+                    if (board.getChildAt(i).tag == stepIdx) { foundAt = i; break }
+                }
+                if (foundAt >= 0) {
+                    while (board.childCount > foundAt) board.removeViewAt(foundAt)
+                }
+            }
         }
 
         // If this is the FIRST frame of a NEW step, append the Step Title
@@ -1720,6 +1738,7 @@ class BlackboardActivity : AppCompatActivity() {
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 ).apply { topMargin = if (stepIdx > 0) (32 * dp).toInt() else 0 }
                 alpha = 0f
+                tag = stepIdx   // used to find & remove this step's views on restart
             }
 
             val titleText = if (step.title.isNotBlank()) "${step.title}" else ""
@@ -2654,8 +2673,8 @@ class BlackboardActivity : AppCompatActivity() {
         //   - useAiTts master toggle OFF       → android (user preference)
         //   - otherwise                        → use the per-frame engine assigned by the LLM
         val effectiveEngine: String = when {
-            stepIdx == 0 && frameIdx == 0 -> "android"
-            !useAiTts                     -> "android"
+            stepIdx == 0 && frameIdx == 0 -> "android"   // guaranteed zero-delay start
+            !useAiTts -> "android"
             else -> frame.ttsEngine.ifBlank {
                 BlackboardGenerator.smartAssignTts(frame.frameType).first
             }
@@ -2810,6 +2829,9 @@ class BlackboardActivity : AppCompatActivity() {
                 finish()
             }
         }
+
+        // After completion, start listening: if student speaks any question, launch a new BB lesson
+        _startCompletionVoiceListening()
     }
 
     private fun startQuizFromLesson(btn: TextView) {
@@ -3608,11 +3630,13 @@ class BlackboardActivity : AppCompatActivity() {
 
         override fun onStart() {
             if (subtitle.isNotBlank()) runOnUiThread { showSubtitle(subtitle) }
+            _showInterruptFab()
         }
 
         override fun onComplete() {
             runOnUiThread {
                 hideSubtitle()
+                _hideInterruptFab()
                 continueAfterSpeech()
             }
         }
@@ -3621,6 +3645,7 @@ class BlackboardActivity : AppCompatActivity() {
             android.util.Log.w("Blackboard", "TTS: $error")
             runOnUiThread {
                 hideSubtitle()
+                _hideInterruptFab()
                 continueAfterSpeech()
             }
         }
@@ -4214,24 +4239,36 @@ class BlackboardActivity : AppCompatActivity() {
      * Checks RECORD_AUDIO permission then delegates to startBbVoiceInput().
      */
     private fun startBbVoice() {
+        android.util.Log.d("BB_VOICE", "startBbVoice: checking RECORD_AUDIO permission")
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {
+            android.util.Log.w("BB_VOICE", "startBbVoice: RECORD_AUDIO NOT GRANTED — requesting")
             ActivityCompat.requestPermissions(
                 this, arrayOf(android.Manifest.permission.RECORD_AUDIO), 902
             )
             return
         }
+        android.util.Log.d("BB_VOICE", "startBbVoice: permission OK — calling startBbVoiceInput")
         startBbVoiceInput()
     }
 
     /** Mirrors FullChatFragment.startVoiceInput(). */
     private fun startBbVoiceInput() {
-        if (!android.speech.SpeechRecognizer.isRecognitionAvailable(this)) {
+        val recogAvail = android.speech.SpeechRecognizer.isRecognitionAvailable(this)
+        android.util.Log.d("BB_VOICE", "startBbVoiceInput: recognitionAvailable=$recogAvail bbIsListening=$bbIsListening")
+        if (!recogAvail) {
+            android.util.Log.e("BB_VOICE", "startBbVoiceInput: SpeechRecognizer NOT AVAILABLE on this device")
             android.widget.Toast.makeText(
                 this, "Voice recognition not available on this device", android.widget.Toast.LENGTH_SHORT
             ).show()
             return
         }
+        // Stop wake word loop so its recognizer releases the mic before we start the primary one
+        android.util.Log.d("BB_VOICE", "startBbVoiceInput: stopping wake word loop + TTS")
+        stopBbWakeWordLoop()
+        // Stop any ongoing TTS so it doesn't interfere with audio input
+        aiTtsEngine.stop()
+        tts.stop()
         // Haptic feedback
         @Suppress("DEPRECATION")
         val vib = getSystemService(android.content.Context.VIBRATOR_SERVICE) as android.os.Vibrator
@@ -4262,20 +4299,24 @@ class BlackboardActivity : AppCompatActivity() {
             interpolator = android.view.animation.AccelerateDecelerateInterpolator()
             start()
         }
+        android.util.Log.d("BB_VOICE", "startBbVoiceInput: calling bbVoiceManager.startListening lang=$preferredLanguageTag")
         bbVoiceManager.startListening(object : VoiceRecognitionCallback {
             override fun onResults(text: String) {
+                android.util.Log.d("BB_VOICE", "PRIMARY onResults: '$text'")
                 runOnUiThread {
                     resetBbVoiceButton()
                     if (text.isNotEmpty()) {
-                        bbAskInput.setText(text)
-                        bbAskInput.setSelection(text.length)
+                        bbAskInput.setText("")   // clear before sending
+                        sendBbChat(text)         // auto-send to LLM
                     }
                 }
             }
             override fun onPartialResults(text: String) {
+                android.util.Log.d("BB_VOICE", "PRIMARY onPartialResults: '$text'")
                 runOnUiThread { bbAskInput.setText(text); bbAskInput.setSelection(text.length) }
             }
             override fun onError(error: String) {
+                android.util.Log.e("BB_VOICE", "PRIMARY onError: '$error'")
                 runOnUiThread {
                     resetBbVoiceButton()
                     val msg = when {
@@ -4287,8 +4328,19 @@ class BlackboardActivity : AppCompatActivity() {
                     android.widget.Toast.makeText(this@BlackboardActivity, msg, android.widget.Toast.LENGTH_SHORT).show()
                 }
             }
-            override fun onListeningStarted() {}
-            override fun onListeningFinished() { runOnUiThread { resetBbVoiceButton() } }
+            override fun onListeningStarted() {
+                android.util.Log.d("BB_VOICE", "PRIMARY onListeningStarted: mic is OPEN — playing beep")
+                // Play a short beep to confirm mic is open and listening
+                try {
+                    val tg = android.media.ToneGenerator(android.media.AudioManager.STREAM_MUSIC, 70)
+                    tg.startTone(android.media.ToneGenerator.TONE_PROP_BEEP, 120)
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ tg.release() }, 300)
+                } catch (_: Exception) {}
+            }
+            override fun onListeningFinished() {
+                android.util.Log.d("BB_VOICE", "PRIMARY onListeningFinished")
+                runOnUiThread { resetBbVoiceButton() }
+            }
         }, preferredLanguageTag)
     }
 
@@ -4903,6 +4955,8 @@ class BlackboardActivity : AppCompatActivity() {
     // ── Progress dots ─────────────────────────────────────────────────────────
 
     private fun buildDots() {
+        // Dots intentionally hidden — we don't disclose the total number of steps
+        dotsContainer.visibility = View.GONE
         dotsContainer.removeAllViews()
         val dp = resources.displayMetrics.density
         repeat(steps.size) { i ->
@@ -5162,81 +5216,457 @@ class BlackboardActivity : AppCompatActivity() {
     // ── Wake Word Loop ────────────────────────────────────────────────────────
 
     private fun startBbWakeWordLoop() {
-        if (bbWakeWordLoopRunning || isPaused || bbDoubtCardView != null) return
-        if (!::bbVoiceManager.isInitialized) return
+        android.util.Log.d("BB_VOICE", "startBbWakeWordLoop: running=$bbWakeWordLoopRunning isPaused=$isPaused doubtCard=${bbDoubtCardView != null} vmInit=${::bbVoiceManager.isInitialized}")
+        if (bbWakeWordLoopRunning || isPaused || bbDoubtCardView != null) {
+            android.util.Log.d("BB_VOICE", "startBbWakeWordLoop SKIPPED (guard hit)")
+            return
+        }
+        if (!::bbVoiceManager.isInitialized) {
+            android.util.Log.e("BB_VOICE", "startBbWakeWordLoop SKIPPED — bbVoiceManager not initialized")
+            return
+        }
         bbWakeWordLoopRunning = true
+        android.util.Log.d("BB_VOICE", "startBbWakeWordLoop STARTING — wakeWords=$BB_WAKE_WORDS lang=$preferredLanguageTag")
         bbVoiceManager.startWakeWordLoop(BB_WAKE_WORDS, ::_onBbWakeWordDetected, preferredLanguageTag)
         _showListeningRing()
         _maybeShowWakeWordHint()
     }
 
     private fun stopBbWakeWordLoop() {
+        android.util.Log.d("BB_VOICE", "stopBbWakeWordLoop called (was running=$bbWakeWordLoopRunning)")
         bbWakeWordLoopRunning = false
         if (::bbVoiceManager.isInitialized) bbVoiceManager.stopWakeWordLoop()
         _hideListeningRing()
     }
 
-    /** Called on the main thread when a wake word is detected during the lesson. */
-    private fun _onBbWakeWordDetected(word: String) {
-        bbWakeWordLoopRunning = false
-        _hideListeningRing()
+    // Card shown during the wake-word listening window ("🎙 Listening…")
+    private var bbWakeListenCard: android.widget.TextView? = null
+    private var bbWakeListenContainer: android.view.ViewGroup? = null
+    // Debounce: ignore wake word if it fired within the last 5 seconds
+    private var bbLastWakeWordMs: Long = 0L
+
+    /**
+     * Shows a floating "🛑 Stop" button (bottom-right) while TTS is actively speaking.
+     * Tapping it is equivalent to a wake word: stops TTS and opens the mic.
+     */
+    private fun _showInterruptFab() {
+        runOnUiThread {
+            if (bbInterruptFab != null) return@runOnUiThread
+            val dp = resources.displayMetrics.density
+            val fab = android.widget.TextView(this).apply {
+                text = "🛑 Doubt?"
+                textSize = 13f
+                gravity = android.view.Gravity.CENTER
+                setTextColor(android.graphics.Color.WHITE)
+                setPadding((16 * dp).toInt(), (10 * dp).toInt(), (16 * dp).toInt(), (10 * dp).toInt())
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    setColor(android.graphics.Color.parseColor("#CC991B1B"))
+                    cornerRadius = 50f * dp
+                }
+                elevation = 12f * dp
+                alpha = 0f
+                isClickable = true
+                isFocusable = true
+                isLongClickable = true
+                // 700 ms hold to interrupt — avoids accidental single taps triggering mid-sentence
+                val holdHandler = android.os.Handler(android.os.Looper.getMainLooper())
+                var holdRunnable: Runnable? = null
+                setOnTouchListener { v, event ->
+                    when (event.action) {
+                        android.view.MotionEvent.ACTION_DOWN -> {
+                            v.animate().scaleX(0.88f).scaleY(0.88f).setDuration(700).start()
+                            val r = Runnable {
+                                v.animate().scaleX(1f).scaleY(1f).setDuration(100).start()
+                                _onBbWakeWordDetected("interrupt_hold")
+                            }
+                            holdRunnable = r
+                            holdHandler.postDelayed(r, 0L)
+                            true
+                        }
+                        android.view.MotionEvent.ACTION_UP,
+                        android.view.MotionEvent.ACTION_CANCEL -> {
+                            holdRunnable?.let { holdHandler.removeCallbacks(it) }
+                            holdRunnable = null
+                            v.animate().scaleX(1f).scaleY(1f).setDuration(120).start()
+                            false
+                        }
+                        else -> false
+                    }
+                }
+            }
+            val root = window.decorView.findViewById<android.view.ViewGroup>(android.R.id.content)
+            val lp = android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+                android.view.Gravity.BOTTOM or android.view.Gravity.END
+            ).apply {
+                bottomMargin = (148 * dp).toInt()
+                rightMargin  = (20 * dp).toInt()
+            }
+            root.addView(fab, lp)
+            bbInterruptFab = fab
+            fab.animate().alpha(1f).setDuration(200).start()
+            // Gentle pulse so the button draws the eye
+            bbInterruptPulse = android.animation.ObjectAnimator.ofPropertyValuesHolder(
+                fab,
+                android.animation.PropertyValuesHolder.ofFloat("scaleX", 1f, 1.10f, 1f),
+                android.animation.PropertyValuesHolder.ofFloat("scaleY", 1f, 1.10f, 1f)
+            ).apply {
+                duration = 900
+                repeatCount = android.animation.ValueAnimator.INFINITE
+                repeatMode  = android.animation.ValueAnimator.REVERSE
+                interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+                start()
+            }
+        }
+    }
+
+    /** Removes the floating interrupt button (safe to call when not visible). */
+    private fun _hideInterruptFab() {
+        runOnUiThread {
+            bbInterruptPulse?.cancel(); bbInterruptPulse = null
+            val fab = bbInterruptFab ?: return@runOnUiThread
+            fab.animate().alpha(0f).setDuration(150).withEndAction {
+                (fab.parent as? android.view.ViewGroup)?.removeView(fab)
+            }.start()
+            bbInterruptFab = null
+        }
+    }
+
+    /** Shows a full-width banner at the top of the screen during the listening window.
+     *  Includes a ⌨️ keyboard icon so the student can type instead of speaking. */
+    private fun _showWakeListenCard(msg: String) {
+        _removeWakeListenCard()
+        val dp = resources.displayMetrics.density
+
+        // Message text (takes all available width)
+        val tv = android.widget.TextView(this).apply {
+            text = msg
+            setTextColor(android.graphics.Color.WHITE)
+            textSize = 15f
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding((14 * dp).toInt(), 0, (8 * dp).toInt(), 0)
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f
+            )
+        }
+
+        // Keyboard icon button — shows type-doubt dialog
+        val kbBtn = android.widget.TextView(this).apply {
+            text = "⌨️"
+            textSize = 22f
+            gravity = android.view.Gravity.CENTER
+            setPadding((10 * dp).toInt(), 0, (14 * dp).toInt(), 0)
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            isClickable = true
+            isFocusable = true
+            contentDescription = "Type your doubt"
+            setOnClickListener { _showTypeDoubtDialog() }
+        }
+
+        val row = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setBackgroundColor(android.graphics.Color.parseColor("#CC1A237E"))
+            elevation = 32f * dp
+            val vPad = (12 * dp).toInt()
+            setPadding(0, vPad, 0, vPad)
+            addView(tv)
+            addView(kbBtn)
+        }
+
+        val root = window.decorView.findViewById<android.view.ViewGroup>(android.R.id.content)
+        val lp = android.widget.FrameLayout.LayoutParams(
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+            android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+            android.view.Gravity.TOP
+        ).apply {
+            val statusBarHeight = resources.getDimensionPixelSize(
+                resources.getIdentifier("status_bar_height", "dimen", "android")
+            ).coerceAtLeast((24 * dp).toInt())
+            topMargin = statusBarHeight
+        }
+        root.addView(row, lp)
+        bbWakeListenCard = tv
+        bbWakeListenContainer = row
+    }
+
+    private fun _updateWakeListenCard(msg: String) {
+        runOnUiThread { bbWakeListenCard?.text = msg }
+    }
+
+    private fun _removeWakeListenCard() {
+        (bbWakeListenContainer ?: bbWakeListenCard)?.let { v ->
+            (v.parent as? android.view.ViewGroup)?.removeView(v)
+        }
+        bbWakeListenCard = null
+        bbWakeListenContainer = null
+    }
+
+    /**
+     * Shows a centred popup with a text field so the student can type a doubt
+     * instead of speaking (useful at night / quiet environments).
+     * Calls _solveDoubt() on submit — same path as the voice flow.
+     */
+    private fun _showTypeDoubtDialog() {
+        // Stop TTS and animators — same as wake word detection
         aiTtsEngine.stop()
         tts.stop()
-        android.widget.Toast.makeText(this, "🎙 Ask your question…", android.widget.Toast.LENGTH_SHORT).show()
-        if (!::bbVoiceManager.isInitialized) return
+        typeAnimator?.cancel()
+        seekBarAnimator?.cancel()
+        // Stop the primary mic if still listening
+        if (::bbVoiceManager.isInitialized) {
+            bbVoiceManager.stopWakeWordLoop()
+            bbVoiceManager.stopListening()
+        }
+        _hideInterruptFab()
+
+        val dp = resources.displayMetrics.density
+
+        // Container card
+        val card = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(android.graphics.Color.parseColor("#F0182533"))
+                cornerRadius = 20f * dp
+            }
+            setPadding((22 * dp).toInt(), (22 * dp).toInt(), (22 * dp).toInt(), (18 * dp).toInt())
+            elevation = 32f * dp
+        }
+
+        card.addView(android.widget.TextView(this).apply {
+            text = "⌨️ Type your doubt"
+            textSize = 16f
+            setTextColor(android.graphics.Color.WHITE)
+            setPadding(0, 0, 0, (12 * dp).toInt())
+        })
+
+        val input = android.widget.EditText(this).apply {
+            hint = "e.g. What is Newton’s 3rd law?"
+            setHintTextColor(android.graphics.Color.parseColor("#80FFFFFF"))
+            setTextColor(android.graphics.Color.WHITE)
+            textSize = 15f
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(android.graphics.Color.parseColor("#33FFFFFF"))
+                cornerRadius = 10f * dp
+            }
+            setPadding((12 * dp).toInt(), (10 * dp).toInt(), (12 * dp).toInt(), (10 * dp).toInt())
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                        android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { bottomMargin = (14 * dp).toInt() }
+            maxLines = 4
+        }
+        card.addView(input)
+
+        // Buttons row
+        val btnRow = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.END
+        }
+        val cancelBtn = android.widget.Button(this).apply {
+            text = "Cancel"
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { rightMargin = (8 * dp).toInt() }
+        }
+        val sendBtn = android.widget.Button(this).apply { text = "→ Ask" }
+        btnRow.addView(cancelBtn)
+        btnRow.addView(sendBtn)
+        card.addView(btnRow)
+
+        // Dimmed scrim + centred card overlay
+        val scrim = android.widget.FrameLayout(this).apply {
+            setBackgroundColor(android.graphics.Color.parseColor("#99000000"))
+            isClickable = true
+        }
+        val cardLp = android.widget.FrameLayout.LayoutParams(
+            (300 * dp).toInt(),
+            android.widget.FrameLayout.LayoutParams.WRAP_CONTENT,
+            android.view.Gravity.CENTER
+        ).apply {
+            leftMargin  = (24 * dp).toInt()
+            rightMargin = (24 * dp).toInt()
+        }
+        scrim.addView(card, cardLp)
+
+        val root = window.decorView.findViewById<android.view.ViewGroup>(android.R.id.content)
+        root.addView(scrim, android.widget.FrameLayout.LayoutParams(
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+            android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+        ))
+
+        // Open keyboard
+        input.requestFocus()
+        val imm = getSystemService(android.content.Context.INPUT_METHOD_SERVICE)
+                as android.view.inputmethod.InputMethodManager
+        input.postDelayed({ imm.showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT) }, 120)
+
+        fun dismiss() {
+            imm.hideSoftInputFromWindow(input.windowToken, 0)
+            root.removeView(scrim)
+        }
+
+        cancelBtn.setOnClickListener {
+            dismiss()
+            _dismissDoubtAndResume()
+        }
+        scrim.setOnClickListener { dismiss(); _dismissDoubtAndResume() }
+        // Card click doesn't bubble to scrim
+        card.setOnClickListener { }
+
+        sendBtn.setOnClickListener {
+            val text = input.text.toString().trim()
+            if (text.isBlank()) return@setOnClickListener
+            dismiss()
+            _updateWakeListenCard("⏳ Asking AI: \"$text\"")
+            _solveDoubt(text)
+        }
+        // Also submit on keyboard "Done" / "Send"
+        input.setOnEditorActionListener { _, _, _ ->
+            sendBtn.performClick()
+            true
+        }
+    }
+
+    /** Called on the main thread when a wake word is detected during the lesson. */
+    private fun _onBbWakeWordDetected(word: String) {
+        _hideInterruptFab()   // remove the interrupt button immediately
+        // Debounce: ignore if another wake word fired within 5 seconds (prevents double-trigger from repeated "hello hello")
+        val now = System.currentTimeMillis()
+        if (now - bbLastWakeWordMs < 5_000L) {
+            android.util.Log.d("BB_VOICE", "Wake word '$word' debounced (last was ${now - bbLastWakeWordMs}ms ago)")
+            // Restart the loop so detection continues normally
+            startBbWakeWordLoop()
+            return
+        }
+        bbLastWakeWordMs = now
+        android.util.Log.d("BB_VOICE", ">>> WAKE WORD DETECTED: '$word' — pausing lesson, starting primary listener")
+        bbWakeWordLoopRunning = false
+        _hideListeningRing()
+
+        // ── Pause lesson completely ───────────────────────────────────────────
+        aiTtsEngine.stop()
+        tts.stop()
+        typeAnimator?.cancel()
+        seekBarAnimator?.cancel()
+
+        // Fully destroy the wake word recognizer so it releases the mic
+        bbVoiceManager.stopWakeWordLoop()
+
+        // Show listening banner
+        _showWakeListenCard("🎙 Listening… ask your question")
+
+        var gotResult = false   // guard: ensures only one of onResults/onError causes action
+
+        if (!::bbVoiceManager.isInitialized) { _removeWakeListenCard(); _dismissDoubtAndResume(); return }
+
+        // Delay 400 ms: give the system time to release the mic after destroying the
+        // wake-word recognizer from within its own onResults callback (avoids ERROR_RECOGNIZER_BUSY).
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
         bbVoiceManager.startListening(object : com.aiguruapp.student.utils.VoiceRecognitionCallback {
             override fun onResults(text: String) {
-                if (text.isNotBlank()) _solveDoubt(text)
-                else _dismissDoubtAndResume()
+                android.util.Log.d("BB_VOICE", "WAKE primary onResults: '$text'")
+                if (gotResult) return
+                gotResult = true
+                runOnUiThread {
+                    if (text.isNotBlank()) {
+                        _updateWakeListenCard("⏳ Asking AI: \"$text\"")
+                        _solveDoubt(text)
+                    } else {
+                        _removeWakeListenCard()
+                        _dismissDoubtAndResume()
+                    }
+                }
+            }
+            override fun onPartialResults(text: String) {
+                if (text.isNotBlank()) _updateWakeListenCard("🎙 \"$text\"…")
             }
             override fun onError(error: String) {
+                android.util.Log.w("BB_VOICE", "WAKE primary onError: $error")
+                if (gotResult) return
+                gotResult = true
                 runOnUiThread {
+                    _removeWakeListenCard()
                     android.widget.Toast.makeText(
                         this@BlackboardActivity,
-                        "Couldn't hear that — resuming lesson.",
+                        "Couldn't hear — resuming lesson.",
                         android.widget.Toast.LENGTH_SHORT
                     ).show()
                     _dismissDoubtAndResume()
                 }
             }
-            override fun onPartialResults(text: String) {}
-            override fun onListeningStarted() {}
-            override fun onListeningFinished() {}
+            override fun onListeningStarted() {
+                android.util.Log.d("BB_VOICE", "WAKE primary mic OPEN — playing beep")
+                try {
+                    val tg = android.media.ToneGenerator(android.media.AudioManager.STREAM_MUSIC, 70)
+                    tg.startTone(android.media.ToneGenerator.TONE_PROP_BEEP, 120)
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ tg.release() }, 300)
+                } catch (_: Exception) {}
+            }
+            override fun onListeningFinished() {
+                android.util.Log.d("BB_VOICE", "WAKE primary onListeningFinished (gotResult=$gotResult)")
+                // onResults fires before onListeningFinished on most devices, so gotResult should be true.
+                // If not (e.g. device never returned results), resume after a short grace period.
+                if (!gotResult) {
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        if (!gotResult) {
+                            gotResult = true
+                            _removeWakeListenCard()
+                            _dismissDoubtAndResume()
+                        }
+                    }, 1200)
+                }
+            }
         }, preferredLanguageTag)
+        }, 400L)   // end postDelayed — 400 ms mic-release grace period
     }
 
     /** Calls the server in background; shows doubt card when done. */
     private fun _solveDoubt(question: String) {
         val serverUrl = com.aiguruapp.student.config.AdminConfigRepository.effectiveServerUrl()
-        val stepTitle = steps.getOrNull(currentStepIdx)?.title ?: ""
-        val lessonTopic = intent.getStringExtra(EXTRA_CHAPTER) ?: ""
-        val speechContext = steps.getOrNull(currentStepIdx)
-            ?.frames?.take(currentFrameIdx + 1)?.joinToString(" ") { it.speech }
-            ?.take(500) ?: ""
         val gradeStr = cachedMetadata.grade.filter { it.isDigit() }
         val level = gradeStr.toIntOrNull() ?: 7
 
-        runOnUiThread {
-            android.widget.Toast.makeText(this, "Thinking…", android.widget.Toast.LENGTH_SHORT).show()
-        }
+        // Build full context: all speeches from ALL steps up to (and including) current frame.
+        // This gives the LLM full lesson context so it can answer accurately.
+        val speechContext = buildString {
+            for (si in 0..currentStepIdx) {
+                val s = steps.getOrNull(si) ?: break
+                val maxFi = if (si < currentStepIdx) s.frames.lastIndex else currentFrameIdx
+                for (fi in 0..maxFi) {
+                    val speech = s.frames.getOrNull(fi)?.speech ?: continue
+                    if (speech.isNotBlank()) { append(speech); append(" ") }
+                }
+            }
+        }.trim().take(2000)  // cap at 2000 chars to stay within token budget
+
+        // Banner already shows "⏳ Asking AI…" — no toast needed
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             val response = com.aiguruapp.student.chat.ServerProxyClient.postDoubtSolve(
                 serverUrl    = serverUrl,
                 question     = question,
                 speechContext= speechContext,
-                stepTitle    = stepTitle,
-                lessonTopic  = lessonTopic,
+                stepTitle    = "",        // not needed — context is self-contained
+                lessonTopic  = "",        // not needed
                 studentLevel = level,
                 languageTag  = preferredLanguageTag
             )
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                _removeWakeListenCard()   // banner no longer needed once card appears
                 _showDoubtCard(question, response.answer, response.answerSpeech, response.followUp)
             }
         }
     }
 
     /** Shows a dismissible overlay card with the doubt answer. Auto-dismisses after 90 s. */
-    private fun _showDoubtCard(question: String, answer: String, answerSpeech: String, followUp: String) {
+    private fun _showDoubtCard(question: String, answer: String, answerSpeech: String, @Suppress("UNUSED_PARAMETER") followUp: String) {
         bbDoubtCardView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
 
         val dm = resources.displayMetrics
@@ -5260,54 +5690,21 @@ class BlackboardActivity : AppCompatActivity() {
             setPadding(0, 0, 0, (10 * dp).toInt())
         })
 
-        card.addView(android.widget.TextView(this).apply {
-            text = answer
-            setTextColor(android.graphics.Color.WHITE)
+        // Render answer with Markwon so bold, italic, bullets etc display properly
+        val answerView = android.widget.TextView(this).apply {
             textSize = 15f
+            setTextColor(android.graphics.Color.WHITE)
+            setLineSpacing(0f, 1.4f)
             setPadding(0, 0, 0, (10 * dp).toInt())
-        })
-
-        if (followUp.isNotBlank()) {
-            card.addView(android.widget.TextView(this).apply {
-                text = followUp
-                setTextColor(android.graphics.Color.parseColor("#64b5f6"))
-                textSize = 13f
-                setPadding(0, 0, 0, (16 * dp).toInt())
-            })
         }
+        blackboardMarkwon.setMarkdown(answerView, answer)
+        card.addView(answerView)
 
-        val btnRow = android.widget.LinearLayout(this).apply {
-            orientation = android.widget.LinearLayout.HORIZONTAL
-            gravity = android.view.Gravity.CENTER
-        }
-
-        val hearBtn = android.widget.Button(this).apply {
-            text = "🔊 Hear Answer"
-            setOnClickListener {
-                val speechText = answerSpeech.ifBlank { answer }
-                tts.setLocale(java.util.Locale.forLanguageTag(preferredLanguageTag))
-                tts.speak(speechText, object : com.aiguruapp.student.utils.TTSCallback {
-                    override fun onStart() {}
-                    override fun onComplete() {}
-                    override fun onError(e: String) {}
-                })
-            }
-        }
-
-        val resumeBtn = android.widget.Button(this).apply {
+        // ── Resume button only (no "Hear Answer" — TTS auto-plays below) ──────
+        card.addView(android.widget.Button(this).apply {
             text = "▶ Resume Lesson"
             setOnClickListener { _dismissDoubtAndResume() }
-        }
-
-        btnRow.addView(
-            hearBtn,
-            android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        )
-        btnRow.addView(
-            resumeBtn,
-            android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-        )
-        card.addView(btnRow)
+        })
 
         val root = window.decorView.findViewById<android.view.ViewGroup>(android.R.id.content)
         val lp = android.widget.FrameLayout.LayoutParams(
@@ -5322,18 +5719,175 @@ class BlackboardActivity : AppCompatActivity() {
         root.addView(card, lp)
         bbDoubtCardView = card
 
+        // ── Auto-play the answer via TTS ──────────────────────────────────────
+        // Stop any previous TTS that may still be running (e.g. from a prior doubt answer)
+        aiTtsEngine.stop()
+        tts.stop()
+        val speechText = answerSpeech.ifBlank { answer }
+        val ttsLang = java.util.Locale.forLanguageTag(preferredLanguageTag)
+        tts.setLocale(ttsLang)
+        tts.speak(speechText, object : com.aiguruapp.student.utils.TTSCallback {
+            override fun onStart() { _showInterruptFab() }
+            override fun onComplete() {
+                runOnUiThread {
+                    _hideInterruptFab()
+                    // 1.5s pause: lets audio residue clear so mic opens cleanly
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        _startDoubtAnswerListening()
+                    }, 1500L)
+                }
+            }
+            override fun onError(e: String) {
+                runOnUiThread {
+                    _hideInterruptFab()
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        _startDoubtAnswerListening()
+                    }, 1500L)
+                }
+            }
+        })
+
         // Auto-dismiss after 90 seconds
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             if (bbDoubtCardView == card) _dismissDoubtAndResume()
         }, 90_000L)
     }
 
-    /** Removes doubt card, resumes TTS, restarts wake word loop. */
+    /**
+     * After the doubt answer is spoken, starts listening.
+     * - If student says a resume keyword → resume lesson
+     * - If student asks another question → solve that doubt
+     * - If no speech / error → auto-resume after timeout
+     */
+
+    /**
+     * After lesson completion, listens once for a student question.
+     * Any meaningful speech → triggers a new inline BB lesson (same as tapping a followup card).
+     * Silence / dismiss keywords → does nothing (card stays for tap interaction).
+     */
+    private fun _startCompletionVoiceListening() {
+        if (!::bbVoiceManager.isInitialized) return
+        _showWakeListenCard("🎙 Ask a follow-up question to start a new lesson")
+        var gotResult = false
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            bbVoiceManager.startListening(object : com.aiguruapp.student.utils.VoiceRecognitionCallback {
+                override fun onResults(text: String) {
+                    if (gotResult) return; gotResult = true
+                    runOnUiThread {
+                        _removeWakeListenCard()
+                        val lower = text.lowercase().trim()
+                        val isDismiss = listOf("no", "stop", "cancel", "done", "nothing", "ok", "okay")
+                            .any { lower == it || lower.startsWith(it) }
+                        if (text.isBlank() || isDismiss) return@runOnUiThread
+                        val speechContext = buildLessonSpeechContext()
+                        requestInlineBbLesson(text, speechContext)
+                    }
+                }
+                override fun onPartialResults(text: String) {
+                    if (text.isNotBlank()) _updateWakeListenCard("🎙 \"$text\"…")
+                }
+                override fun onError(error: String) {
+                    if (gotResult) return; gotResult = true
+                    runOnUiThread { _removeWakeListenCard() }
+                }
+                override fun onListeningStarted() {
+                    try {
+                        val tg = android.media.ToneGenerator(android.media.AudioManager.STREAM_MUSIC, 55)
+                        tg.startTone(android.media.ToneGenerator.TONE_PROP_BEEP, 80)
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ tg.release() }, 200)
+                    } catch (_: Exception) {}
+                }
+                override fun onListeningFinished() {
+                    if (!gotResult) {
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                            if (!gotResult) { gotResult = true; _removeWakeListenCard() }
+                        }, 1200)
+                    }
+                }
+            }, preferredLanguageTag)
+        }, 600L)  // brief delay so any completion speech finishes before mic opens
+    }
+
+    private fun _startDoubtAnswerListening() {
+        if (bbDoubtCardView == null) return   // already dismissed
+        _showWakeListenCard("🎙 Ask another question or say \"resume\"")
+        var gotResult = false
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            if (!::bbVoiceManager.isInitialized) return@postDelayed
+            bbVoiceManager.startListening(object : com.aiguruapp.student.utils.VoiceRecognitionCallback {
+                override fun onResults(text: String) {
+                    if (gotResult) return; gotResult = true
+                    runOnUiThread {
+                        _removeWakeListenCard()
+                        val lower = text.lowercase().trim()
+                        val isResume = listOf("resume", "continue", "play", "next", "go on", "ok", "okay", "yes", "stop", "cancel", "dismiss", "enough", "done", "thanks")
+                            .any { lower.contains(it) }
+                        if (isResume || text.isBlank()) {
+                            _dismissDoubtAndResume()
+                        } else {
+                            _updateWakeListenCard("⏳ Asking AI: \"$text\"")
+                            _solveDoubt(text)
+                        }
+                    }
+                }
+                override fun onPartialResults(text: String) {
+                    if (text.isNotBlank()) _updateWakeListenCard("🎙 \"$text\"…")
+                }
+                override fun onError(error: String) {
+                    if (gotResult) return; gotResult = true
+                    runOnUiThread { _removeWakeListenCard(); _dismissDoubtAndResume() }
+                }
+                override fun onListeningStarted() {
+                    try {
+                        val tg = android.media.ToneGenerator(android.media.AudioManager.STREAM_MUSIC, 55)
+                        tg.startTone(android.media.ToneGenerator.TONE_PROP_BEEP, 80)
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ tg.release() }, 200)
+                    } catch (_: Exception) {}
+                }
+                override fun onListeningFinished() {
+                    if (!gotResult) {
+                        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                            if (!gotResult) {
+                                gotResult = true
+                                // Countdown 3→2→1 then auto-resume
+                                _startDoubtCountdown()
+                            }
+                        }, 1200)
+                    }
+                }
+            }, preferredLanguageTag)
+        }, 400L)
+    }
+
+    /** Removes doubt card, restarts current step from frame 0, restarts wake word loop. */
+    private fun _startDoubtCountdown() {
+        val h = android.os.Handler(android.os.Looper.getMainLooper())
+        var secs = 3
+        fun tick() {
+            if (bbDoubtCardView == null) return   // already dismissed by tap
+            _showWakeListenCard("▶ Resuming in $secs…  (say a question to cancel)")
+            if (secs == 0) {
+                _dismissDoubtAndResume()
+                return
+            }
+            secs--
+            h.postDelayed(::tick, 1000L)
+        }
+        tick()
+    }
+
+    /** Removes doubt card, restarts current step from frame 0, restarts wake word loop. */
     private fun _dismissDoubtAndResume() {
+        _removeWakeListenCard()           // clean up banner if still showing
         bbDoubtCardView?.let { (it.parent as? android.view.ViewGroup)?.removeView(it) }
         bbDoubtCardView = null
+        aiTtsEngine.stop()               // stop any answer TTS that may still be playing
+        tts.stop()
         if (!isPaused) {
-            speakFrame(currentStepIdx, currentFrameIdx)
+            // Use showFrame (not speakFrame) so the board clears the old step content and
+            // re-renders from frame 0 before starting TTS. speakFrame is TTS-only.
+            currentFrameIdx = 0
+            showFrame(currentStepIdx, 0)
             startBbWakeWordLoop()
         }
     }

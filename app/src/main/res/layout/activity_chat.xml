@@ -76,6 +76,17 @@
                 android:background="@color/colorBackground"
                 android:visibility="visible">
 
+                <ImageView
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:src="@drawable/logo"
+                    android:scaleType="centerCrop"
+                    android:background="@drawable/bg_logo_rounded"
+                    android:clipToOutline="true"
+                    android:outlineProvider="background"
+                    android:contentDescription="Afterclass AI"
+                    android:layout_marginBottom="16dp" />
+
                 <com.aiguruapp.student.widget.BoxSpinnerView
                     android:layout_width="56dp"
                     android:layout_height="56dp" />

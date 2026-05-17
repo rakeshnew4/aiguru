@@ -10,7 +10,8 @@
       "Bash(Format-Table FullName)",
       "PowerShell(head -50)",
       "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\rakes\\\\OneDrive\\\\Desktop\\\\aiguru\\\\app\\\\src\\\\main\\\\java\" -Recurse | Where-Object { $_.Name -match \"\\\\.\\(java|kt\\)$\" } | Select-Object -First 30 FullName)",
-      "PowerShell(\\(Get-ChildItem -Path \"c:\\\\Users\\\\rakes\\\\OneDrive\\\\Desktop\\\\aiguru\\\\app\\\\src\\\\main\\\\java\" -Recurse\\).Count)"
+      "PowerShell(\\(Get-ChildItem -Path \"c:\\\\Users\\\\rakes\\\\OneDrive\\\\Desktop\\\\aiguru\\\\app\\\\src\\\\main\\\\java\" -Recurse\\).Count)",
+      "Bash(grep -n 'BoxSpinnerView\\\\|match_parent\\\\|overlay\\\\|loading\\\\|visibility' c:/Users/rakes/OneDrive/Desktop/aiguru/app/src/main/res/layout/__TRACKED_VAR__)"
     ]
   }
 }

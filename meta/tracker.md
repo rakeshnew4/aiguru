@@ -5,6 +5,67 @@
 
 ---
 
+## 2026-05-17 (session 3)
+
+**Asked:** Logs showed `WakeWord onError: INSUFFICIENT_PERMISSIONS — stopping loop` — wake word dying permanently.
+**Root cause:** `ERROR_INSUFFICIENT_PERMISSIONS` (code 9) is a transient false-positive on some OEMs — fires when mic is briefly occupied by TTS audio releasing at the moment the wake word recognizer tries to open. The old handler called `wakeWordActive = false; return` which permanently killed the loop. Also, no RECORD_AUDIO permission guard existed in `startWakeWordLoop`.
+**Changed:**
+- `VoiceManager.kt` — `startWakeWordLoop()`: added `ContextCompat.checkSelfPermission(RECORD_AUDIO)` guard; logs `permGranted=` flag
+- `VoiceManager.kt` — wake word `onError`: replaced `INSUFFICIENT_PERMISSIONS → stop permanently` with `INSUFFICIENT_PERMISSIONS → retry after 2000ms` (same as any transient error). Loop now survives the false-positive and recovers on next cycle.
+
+---
+
+## 2026-05-17 (session 2)
+
+**Asked:** Voice still not working in BB session, add logs to trace what is/isn't happening.
+**Changed:**
+- `BlackboardActivity.kt` — added `BB_VOICE` logs in: `onResume`, `startBbWakeWordLoop` (all guards logged), `stopBbWakeWordLoop`, `_onBbWakeWordDetected`, `startBbVoice` (permission check result), `startBbVoiceInput` (recogAvail + every step), primary mic callback `onResults/onPartialResults/onError/onListeningStarted/onListeningFinished`
+- `VoiceManager.kt` — added `VoiceManager` logs in: `startListening` (recognizer init state + startListening call result), `stopWakeWordLoop`, `startWakeWordLoop` (recogAvail), `_runWakeWordCycle` (each new cycle), `WakeWord onResults` (heard text + match), `WakeWord onError` (code + delay), `RecognitionListenerImpl.onReadyForSpeech/onBeginningOfSpeech/onEndOfSpeech` + `onError` (error code now in unknown branch)
+
+**Filter in Logcat:** `BB_VOICE|VoiceManager`
+
+---
+
+---
+
+## 2026-05-17 (session 4)
+
+**Asked:** After wake word detected: lesson should visually pause, show clear "Listening…" state, show "Asking AI…" while waiting for LLM, resume lesson after answer (or auto-resume on silence).
+**Changed:**
+- `BlackboardActivity.kt` — `_onBbWakeWordDetected()`:
+  - Added `typeAnimator?.cancel()` + `seekBarAnimator?.cancel()` → lesson text/animation freezes instantly
+  - Replaced toast "🎙 Ask your question…" with `_showWakeListenCard()` — a dark-blue persistent top banner with white text
+  - Added `gotResult` flag to guard against duplicate `onResults`+`onListeningFinished` race
+  - Partial results now update banner text live via `_updateWakeListenCard()`
+  - `onError()` removes banner and calls `_dismissDoubtAndResume()`
+  - `onListeningFinished()` — added 1200ms grace-period fallback: if `!gotResult`, removes banner and calls `_dismissDoubtAndResume()`
+- `BlackboardActivity.kt` — `_showWakeListenCard()` / `_updateWakeListenCard()` / `_removeWakeListenCard()` — new helpers: dark banner pinned to top of screen, stored as `bbWakeListenCard`.
+- `BlackboardActivity.kt` — `_solveDoubt()`: removed "Thinking…" toast; banner already shows "⏳ Asking AI…"; on coroutine completion calls `_removeWakeListenCard()` before `_showDoubtCard()`
+- `BlackboardActivity.kt` — `_dismissDoubtAndResume()`: added `_removeWakeListenCard()` + `aiTtsEngine.stop()` + `tts.stop()` before `speakFrame()` so lesson always resumes cleanly
+
+**Files read:** `BlackboardActivity.kt:5280–5420`, `BlackboardActivity.kt:3064–3090`
+
+
+**Root causes found:**
+1. When user taps mic button, wake word loop was still running — its `wakeWordRecognizer` held the mic, so primary `speechRecognizer` got `ERROR_RECOGNIZER_BUSY` or couldn't open audio
+2. `onListeningStarted()` was called immediately after `speechRecognizer.startListening()` (before mic was actually open), so no reliable "mic is ready" event was available for the beep
+3. Manual mic tap callback's `onListeningStarted()` was empty — no sound
+4. `onResults()` in manual mic flow just filled the text box; did NOT call `sendBbChat()` — auto-send was NOT implemented
+5. Same wakeWordRecognizer leak in `_onBbWakeWordDetected()` — `stopWakeWordLoop()` not called before `startListening()`
+
+**Changed:**
+- `app/src/main/java/com/aiguruapp/student/utils/VoiceManager.kt` — removed premature `callback.onListeningStarted()` call from `startListening()`; added `callback?.onListeningStarted()` inside `RecognitionListenerImpl.onReadyForSpeech()` so it fires when mic is actually open
+- `BlackboardActivity.kt:~4228` `startBbVoiceInput()` — added `stopBbWakeWordLoop()` + `aiTtsEngine.stop()` + `tts.stop()` at top; added beep in `onListeningStarted()` using `ToneGenerator(STREAM_MUSIC, 70) TONE_PROP_BEEP 120ms`; changed `onResults()` to clear input and call `sendBbChat(text)` directly (auto-send)
+- `BlackboardActivity.kt:~5180` `_onBbWakeWordDetected()` — added `bbVoiceManager.stopWakeWordLoop()` before `startListening()` to destroy wakeWordRecognizer first; added same beep in `onListeningStarted()`
+
+**Files read:**
+- `VoiceManager.kt:1–280` — full file; `startListening()`, `RecognitionListenerImpl`, `startWakeWordLoop()/_runWakeWordCycle()`, `InterruptListenerImpl`; VoiceRecognitionCallback interface (onListeningStarted, onReadyForSpeech)
+- `BlackboardActivity.kt:388–450` — voice setup, `sendBbQuestion` lambda, mic button click handler
+- `BlackboardActivity.kt:4210–4310` — `startBbVoice()`, `startBbVoiceInput()`, callback, `resetBbVoiceButton()`
+- `BlackboardActivity.kt:5164–5215` — `startBbWakeWordLoop()`, `stopBbWakeWordLoop()`, `_onBbWakeWordDetected()`
+
+---
+
 ## 2026-05-01
 
 **Asked:** Copy content of `users/LpdfEUxoArdZw7QzTQOr9rCIDrB3` to `admin_config/user_defaults` with key `default_data`; apply defaults to each new user on registration.
@@ -2487,3 +2548,23 @@ To use new endpoints in frontend:
 
 2026-05-16 | Admin portal expansion: (1) Fixed JS crash — created missing schools.js; (2) New JS modules: bbsamples.js, litellm.js, serverconfig.js; (3) admin.py: /env-status endpoint added; (4) index.html: nav items + section divs + script tags; (5) app.js: bbsamples+litellm+serverconfig added to SECTION_MAP; (6) styles.css: env-grid, tts-chain, warn-box CSS classes added | files: static/admin/js/schools.js(NEW), bbsamples.js(NEW), litellm.js(NEW), serverconfig.js(NEW), api/admin.py, admin/index.html, admin/js/app.js, admin/css/styles.css
 2026-05-16 | Bug fixes + UI polish: (1) credits.js: fixed endpoint /credit-topups → /credit-topups_new (all 4 CRUD); (2) schools.js: API.delete → API.del (delete was broken); (3) bbsamples.js: API.delete → API.del; (4) styles.css: added --c-bg-2 var, form-grid, checkbox-label, data-table, actions classes; improved thead, card-header, login-card, buttons, nav-item active state | files: js/credits.js, js/schools.js, js/bbsamples.js, css/styles.css
+
+---
+
+## 2026-05-17 — Floating sliding puzzle game
+
+**Asked:** Add a high-quality sliding puzzle game, floating like the calculator, images from Firestore `puzzles/` collection, unlocked after 2 BB sessions today, max 15 min/day play time.
+
+**Changed:**
+- `app/src/main/java/com/aiguruapp/student/puzzle/PuzzleGate.kt` (NEW) — singleton gate: reads `bb_sessions_today` from Firestore on bubble tap; tracks daily play ms in SharedPreferences with date reset
+- `app/src/main/java/com/aiguruapp/student/puzzle/PuzzleBoardView.kt` (NEW) — Canvas custom View: slices bitmap into N×N tiles, scrambles via 300 random valid moves (always solvable), ValueAnimator 130ms slide animation, win detection
+- `app/src/main/java/com/aiguruapp/student/puzzle/FloatingPuzzleView.kt` (NEW) — floating overlay FrameLayout (same pattern as FloatingCalculatorView): draggable 🧩 bubble, expandable panel with puzzle board + countdown timer + move counter + shuffle; loads random image from Firestore `puzzles/` via Glide; fallback colorful placeholder if Firestore/image fails
+- `app/src/main/java/com/aiguruapp/student/BaseActivity.kt` — added `floatingPuzzle: FloatingPuzzleView?` field + `addContentView()` call in `onPostCreate()` alongside existing `floatingCalc`
+- `server/seed_firestore.py` — added `PUZZLES` list (6 starter images: cell, solar system, periodic table, India map, photosynthesis, digestive system) + seed call in `__main__`
+
+**Files read:**
+- `calculator/FloatingCalculatorView.kt` L1-500: drag pattern, panel positioning, bubble touch logic
+- `BaseActivity.kt` L1-68: addContentView pattern
+- `models/UserMetadata.kt` L95-102: bbSessionsToday field
+- `config/PlanEnforcer.kt`: bbSessionsToday usage
+- `HomeActivity.kt` L282: bb_sessions_today Firestore read

@@ -257,6 +257,17 @@ class HomeActivity : BaseActivity() {
         AppUpdateBus.consume { result -> handleHomeUpdateResult(result) }
         // Show feedback sheet after first / periodic BB session.
         FeedbackManager.showIfNeeded(this)
+        // After the very first BB session, auto-open the drawer once to guide
+        // the user to Share & Earn, Friends, etc. (only shown one time ever).
+        val prefs = getSharedPreferences("bb_prefs", MODE_PRIVATE)
+        val bbDoneEver = prefs.getInt("bb_sessions_alltime", 0) > 0
+        val drawerHintShown = prefs.getBoolean("drawer_hint_shown", false)
+        if (bbDoneEver && !drawerHintShown && ::drawerLayout.isInitialized) {
+            prefs.edit().putBoolean("drawer_hint_shown", true).apply()
+            drawerLayout.postDelayed({
+                drawerLayout.openDrawer(androidx.core.view.GravityCompat.START)
+            }, 800L)
+        }
     }
 
     override fun onPause() {
@@ -1864,6 +1875,18 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
         }
         findViewById<LinearLayout>(R.id.drawerItemFriends).setOnClickListener {
             navigate { startActivity(Intent(this, FriendsActivity::class.java)) }
+        }
+        findViewById<LinearLayout>(R.id.drawerItemShareEarn).setOnClickListener {
+            navigate {
+                val code = com.aiguruapp.student.config.ReferralManager.codeForUser(userId)
+                val msg = "Join me on AiGuru 🎓 — AI-powered tutor that makes every topic click!\n" +
+                    "Use my referral code $code and we both get bonus questions!\n" +
+                    "Download: https://play.google.com/store/apps/details?id=com.aiguruapp.student"
+                startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, msg)
+                }, "Share AiGuru"))
+            }
         }
         findViewById<LinearLayout>(R.id.drawerItemTeacher).setOnClickListener {
             navigate { startActivity(Intent(this, TeacherDashboardActivity::class.java)) }
