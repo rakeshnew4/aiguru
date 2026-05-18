@@ -153,9 +153,9 @@ class ChapterActivity : BaseActivity() {
         findViewById<TextView>(R.id.chapterTitle).text = chapterName
         findViewById<ImageButton>(R.id.backButton).setOnClickListener { finish() }
 
-        // Generate button — always visible in header
+        // Generate button — launches message-selection flow to create notes
         findViewById<MaterialButton>(R.id.generateButton).setOnClickListener {
-            showGenerateOptions()
+            showNotesOptions()
         }
 
         // Quiz button — launches AI-powered quiz for this chapter
@@ -411,7 +411,8 @@ class ChapterActivity : BaseActivity() {
         notesLoading.visibility = View.GONE
         if (notesList.isEmpty()) {
             notesEmpty.visibility = View.VISIBLE
-            findViewById<View>(R.id.generateNotesBtn)?.setOnClickListener { showGenerateOptions() }
+            // Open selection screen so student can pick chat messages to save as notes
+            findViewById<View>(R.id.generateNotesBtn)?.setOnClickListener { showNotesOptions() }
             return
         }
 
@@ -513,7 +514,7 @@ class ChapterActivity : BaseActivity() {
                         if (notesContainer.childCount == 0) {
                             notesScroll.visibility = View.GONE
                             notesEmpty.visibility  = View.VISIBLE
-                            findViewById<View>(R.id.generateNotesBtn)?.setOnClickListener { showGenerateOptions() }
+                            findViewById<View>(R.id.generateNotesBtn)?.setOnClickListener { showNotesOptions() }
                         }
                     }
                     .setNegativeButton("Cancel", null)
@@ -565,80 +566,12 @@ class ChapterActivity : BaseActivity() {
         findViewById<View>(R.id.masteryCard).visibility = View.GONE
     }
 
-    // ─── Generate notes (moved from Notes button menu) ────────────────────────
+    // ─── Notes ────────────────────────────────────────────────────────────────
 
-    private fun showGenerateOptions() {
-        val options = mutableListOf(
-            "📖 Generate Chapter Notes",
-            "✏️ Generate Exercise Notes"
-        )
-        if (isPdfChapter && pdfPageCount > 0) {
-            options.add(1, "📄 Generate Page-wise Notes")
-        }
-        android.app.AlertDialog.Builder(this)
-            .setTitle("✨ Generate for $chapterName")
-            .setItems(options.toTypedArray()) { _, which ->
-                when (options[which]) {
-                    "📖 Generate Chapter Notes"   -> generateChapterNotes()
-                    "📄 Generate Page-wise Notes"  -> showPageWiseNotesPicker()
-                    "✏️ Generate Exercise Notes"   -> generateExerciseNotes()
-                }
-            }
-            .show()
-    }
-
+    /** Opens StudentChatSelectionActivity so student can select messages → save as notes / quiz. */
     private fun showNotesOptions() {
-        showGenerateOptions()
-    }
-
-    private fun generateChapterNotes() {
-        val fragment = getOrCreateChatFragment()
-        switchToChat()
-        fragment.sendAutoPrompt(
-            "Create comprehensive study notes for \"$chapterName\" with:\n" +
-            "• Key concepts and definitions\n" +
-            "• Important facts to remember\n" +
-            "• Summary of main points\n" +
-            "• Any formulas or rules to know\n\n" +
-            "Format clearly with ## headings and bullet points.",
-            notesType = "chapter"
-        )
-    }
-
-    private fun showPageWiseNotesPicker() {
-        val pageOptions = (1..pdfPageCount).map { "Page $it" }.toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle("Select Page for Notes")
-            .setItems(pageOptions) { _, idx -> generateNotesForPage(idx + 1) }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun generateNotesForPage(pageNum: Int) {
-        val fragment = getOrCreateChatFragment()
-        switchToChat()
-        fragment.sendAutoPrompt(
-            "Create detailed study notes for Page $pageNum of \"$chapterName\":\n" +
-            "• Key concepts and definitions on this page\n" +
-            "• Any formulas, rules, or special points\n" +
-            "• Summary of content on this page\n\n" +
-            "Use ## Page $pageNum Notes as the heading and format with bullet points.",
-            notesType = "page_$pageNum"
-        )
-    }
-
-    private fun generateExerciseNotes() {
-        val fragment = getOrCreateChatFragment()
-        switchToChat()
-        fragment.sendAutoPrompt(
-            "For the exercises in \"$chapterName\":\n" +
-            "• List the types of exercises/problems in this chapter\n" +
-            "• Provide step-by-step problem-solving strategies\n" +
-            "• Show worked examples for typical questions\n" +
-            "• Highlight common mistakes to avoid\n\n" +
-            "Use ## Exercise Notes as the heading.",
-            notesType = "exercises"
-        )
+        val uid = com.aiguruapp.student.utils.SessionManager.getFirestoreUserId(this) ?: ""
+        StudentChatSelectionActivity.launch(this, subjectName, chapterName, uid)
     }
 
     private fun viewSavedNotes() {

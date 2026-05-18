@@ -674,6 +674,20 @@ ADMIN_CONFIG_GLOBAL = {
     "tts_elevenlabs_api_key": "",     # ElevenLabs secret key
     "tts_openai_api_key": "",         # OpenAI sk-...
     "tts_server_url": "",             # Self-hosted TTS server URL (leave blank to reuse server_url)
+
+    # ── Page visibility (admin toggle per page) ────────────────────────────────
+    # Set any page key to False to hide it from ALL users instantly.
+    # Keys match AccessGate.Feature.pageKey in the Android app.
+    # Missing key = visible (safe default).
+    "pages_enabled": {
+        "subscription_plans": False,   # hide Plans & Payments until monetisation is ready
+        "quiz": True,
+        "blackboard": True,
+        "library": True,
+        "progress_dashboard": True,
+        "flashcards": True,
+        "ai_voice": True,
+    },
 }
 
 # ══════════════════════════════════════════════════════════════════════════════

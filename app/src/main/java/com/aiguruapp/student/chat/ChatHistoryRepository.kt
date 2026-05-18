@@ -1,5 +1,6 @@
 package com.aiguruapp.student.chat
 
+import android.content.Context
 import com.aiguruapp.student.firestore.FirestoreManager
 import com.aiguruapp.student.models.Message
 
@@ -14,12 +15,61 @@ import com.aiguruapp.student.models.Message
  *       - text: String
  *       - timestamp: Long
  *       - tokens: Int? (optional)
+ *
+ * Local offline mirror:
+ *   filesDir/offline_chat/{userId}__{subject}__{chapter}.jsonl
+ *   Each line is a JSON object with role, text, timestamp, messageId.
  */
 class ChatHistoryRepository(
-    private val userId:  String,
-    private val subject: String,
-    private val chapter: String
+    private val userId:   String,
+    private val subject:  String,
+    private val chapter:  String,
+    private val context:  Context? = null
 ) {
+    // ── Local file helpers ─────────────────────────────────────────────────────
+
+    private fun localFile(): java.io.File? {
+        val ctx = context ?: return null
+        val dir = java.io.File(ctx.filesDir, "offline_chat")
+        dir.mkdirs()
+        val name = "${userId}__${subject}__${chapter}".replace("/", "_").take(200)
+        return java.io.File(dir, "$name.jsonl")
+    }
+
+    private fun appendLocalLine(role: String, text: String, messageId: String, timestamp: Long) {
+        try {
+            val obj = org.json.JSONObject().apply {
+                put("role", role)
+                put("text", text)
+                put("messageId", messageId)
+                put("timestamp", timestamp)
+            }
+            localFile()?.appendText(obj.toString() + "\n")
+        } catch (_: Exception) {}
+    }
+
+    private fun readLocalMessages(): List<Message>? {
+        try {
+            val file = localFile() ?: return null
+            if (!file.exists()) return null
+            return file.readLines().filter { it.isNotBlank() }.mapNotNull { line ->
+                try {
+                    val obj = org.json.JSONObject(line)
+                    val role = obj.optString("role", "user")
+                    val id   = obj.optString("messageId")
+                    if (id.isBlank()) return@mapNotNull null
+                    Message(
+                        id        = id,
+                        content   = obj.optString("text"),
+                        isUser    = role == "user",
+                        timestamp = obj.optLong("timestamp", 0L)
+                    )
+                } catch (_: Exception) { null }
+            }.takeIf { it.isNotEmpty() }
+        } catch (_: Exception) { return null }
+    }
+
+    // ── Public API ─────────────────────────────────────────────────────────────
     fun loadHistory(
         onMessages: (List<Message>) -> Unit,
         onEmpty:    () -> Unit
@@ -27,7 +77,9 @@ class ChatHistoryRepository(
         FirestoreManager.loadMessages(userId, subject, chapter,
             onSuccess = { list ->
                 if (list.isEmpty()) {
-                    onEmpty()
+                    // Try local offline cache before giving up
+                    val local = readLocalMessages()
+                    if (!local.isNullOrEmpty()) onMessages(local) else onEmpty()
                 } else {
                     val messages = list.mapNotNull { map ->
                         try {
@@ -56,13 +108,19 @@ class ChatHistoryRepository(
                     if (messages.isEmpty()) onEmpty() else onMessages(messages)
                 }
             },
-            onFailure = { onEmpty() }
+            onFailure = {
+                // Offline or Firestore error — serve from local cache
+                val local = readLocalMessages()
+                if (!local.isNullOrEmpty()) onMessages(local) else onEmpty()
+            }
         )
     }
 
     fun saveMessage(message: Message, tokens: Int? = null, inputTokens: Int? = null, outputTokens: Int? = null) {
         val role = if (message.isUser) "user" else "model"
         if (message.id.isBlank()) return
+        // Always write to local offline file first — works even without connectivity
+        appendLocalLine(role, message.content, message.id, message.timestamp)
         FirestoreManager.saveMessage(
             userId       = userId,
             subject      = subject,

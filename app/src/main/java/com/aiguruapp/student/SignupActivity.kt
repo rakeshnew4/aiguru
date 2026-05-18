@@ -20,6 +20,7 @@ class SignupActivity : BaseActivity() {
     private lateinit var progressBar: BoxSpinnerView
     private lateinit var btnStudent: MaterialButton
     private lateinit var btnGeneral: MaterialButton
+    private lateinit var cbConsent: android.widget.CheckBox
 
     private var isStudentMode = true  // default to Student
 
@@ -52,6 +53,20 @@ class SignupActivity : BaseActivity() {
         progressBar     = findViewById(R.id.progressBar)
         btnStudent      = findViewById(R.id.btnStudent)
         btnGeneral      = findViewById(R.id.btnGeneral)
+        cbConsent       = findViewById(R.id.cbConsent)
+
+        cbConsent.setOnCheckedChangeListener { _, _ -> /* enable/disable could go here */ }
+        // Make "Privacy Policy" text clickable
+        val privacySpan = android.text.SpannableString("I agree to the Privacy Policy")
+        val clickSpan = object : android.text.style.ClickableSpan() {
+            override fun onClick(v: android.view.View) {
+                startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse("https://vkpremium.art/privacy")))
+            }
+        }
+        privacySpan.setSpan(clickSpan, 15, 29, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        cbConsent.text = privacySpan
+        cbConsent.movementMethod = android.text.method.LinkMovementMethod.getInstance()
 
         val gradeAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, grades)
         gradeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
@@ -114,6 +129,11 @@ class SignupActivity : BaseActivity() {
     private fun handleSignup() {
         val name = nameEditText.text.toString().trim()
 
+        if (!cbConsent.isChecked) {
+            Toast.makeText(this, "Please accept the Privacy Policy to continue", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         if (name.isEmpty()) {
             Toast.makeText(this, "Please enter your name", Toast.LENGTH_SHORT).show()
             return
@@ -151,6 +171,12 @@ class SignupActivity : BaseActivity() {
 
         // Persist to Firestore (fire-and-forget — don't block the user)
         val meta = SessionManager.buildUserMetadata(this)
+        // Store consent timestamp alongside user metadata
+        val consentTs = System.currentTimeMillis()
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            .collection("students_stats").document(meta.userId)
+            .update(mapOf("consent_given" to true, "consent_date" to consentTs))
+            .addOnFailureListener { /* non-critical */ }
         FirestoreManager.saveUserMetadata(meta, onSuccess = {
             FirestoreManager.cleanupMangledFields(meta.userId)
         })

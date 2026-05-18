@@ -5,6 +5,80 @@
 
 ---
 
+## 2026-05-19 (session) — Progress strip + on-demand quiz + teacher quiz task flow
+
+**Asked:** Show progress stats on home screen; quiz on student demand only; teacher-student quiz flow.
+
+**Changes:**
+- `activity_home.xml` — added `progressStatsStrip` LinearLayout (3 chips: streak, BB lessons, quiz %) between hero header and BB CTA; hidden by default (shown after stats load). Added `btnTakeQuiz` MaterialButton (outlined) below secondary action row.
+- `HomeActivity.kt:loadSmartHomeContent()` — calls `fetchStudentStats()` to get quiz accuracy; shows/populates `progressStatsStrip` (streak, totalBbSessions, quiz%); wires `btnTakeQuiz` → `showQuizTopicDialog()`
+- `HomeActivity.kt` — added `showQuizTopicDialog()`: AlertDialog with EditText for topic → parses "Subject Chapter" → launches `QuizSetupActivity` with `subjectName`, `chapterId`, `chapterTitle` pre-filled
+- `HomeActivity.kt:loadAssignmentBanner()` — reads `task_type` field from task; if `"quiz"` → banner shows "📝 Quiz: title" and taps to `QuizSetupActivity` with subject/topic pre-filled + `assigned_task_id`; else → original BB flow ("📋 Lesson: title" → BlackboardActivity)
+- `server/app/api/tasks.py:CreateTaskRequest` — added `task_type: str = "blackboard"` field; saved to `school_tasks` doc so student app can route correctly
+
+**Notes:** `bg_quick_action_card` drawable reused for stat chip backgrounds. QuizSetupActivity already handles `subjectName/chapterId/chapterTitle` extras — no changes needed there.
+
+---
+
+## 2026-05-19 — Build fix: bg_quick_action_card + Student Notes/Quiz from messages
+
+**Asked:**
+1. Build error: `bg_quick_action_card` drawable not found (activity_home.xml lines 247, 272, 296)
+2. Replace prompt-based notes generation with message-selection flow like TeacherChatReviewActivity
+
+**Files created:**
+- `app/src/main/res/drawable/bg_quick_action_card.xml` — rounded rect, indigo tint (#1A3D5AFE stroke #2A3D5AFE), 12dp radius
+- `app/src/main/java/com/aiguruapp/student/StudentChatSelectionActivity.kt` — student selects chat messages → save notes (ChapterNotesRepository) or generate quiz (QuizApiClient)
+- `app/src/main/res/layout/activity_student_chat_selection.xml` — layout for above
+
+**Files modified:**
+- `activity_chat.xml` — added `selectForNotesButton` ("✂️ Select Messages → Notes / Quiz") to quickActionsPanel
+- `FullChatFragment.kt` — wired `selectForNotesButton` → `StudentChatSelectionActivity.launch()`
+- `ChapterActivity.kt` — removed `showGenerateOptions()`, `generateChapterNotes()`, `generateExerciseNotes()`, `showPageWiseNotesPicker()`, `generateNotesForPage()`; `showNotesOptions()` now calls `StudentChatSelectionActivity.launch()`; `generateNotesBtn` click → `showNotesOptions()`
+- `activity_chapter.xml` — `generateNotesBtn` text changed from "✨ Generate Notes" → "✂️ Select from Chat"
+- `AndroidManifest.xml` — registered `.StudentChatSelectionActivity`
+
+**Flow:** Chat "+" → "✂️ Select Messages" → checkbox-select AI/student messages → "📝 Notes (N)" saves `ChapterNote` OR "🎯 Quiz (N)" calls QuizApiClient with context → `QuizActivity`
+
+---
+
+**Asked:** "always it has to save offline also, the sessions and chat"
+
+**Changes:**
+- `BlackboardGenerator.kt:sessionCacheFile()` — changed `cacheDir` → `filesDir/bb_sessions/`; removed 7-day TTL from `readSessionCache()` (sessions never expire)
+- `BlackboardActivity.kt:appendLocalWatchHistory()` — changed `cacheDir` → `filesDir` for `bb_watch_history_<uid>.json`
+- `BbSavedSessionsActivity.kt:cacheFile()` — changed `cacheDir` → `filesDir` (watches history + saved sessions now in persistent storage)
+- `ChatHistoryRepository.kt` — added `context: Context?` param; added `appendLocalLine()` / `readLocalMessages()` helpers writing to `filesDir/offline_chat/<uid>__<subject>__<chapter>.jsonl`; `saveMessage()` now writes local JSONL first (works offline); `loadHistory()` falls back to local JSONL on Firestore failure/offline
+- `FullChatFragment.kt:387` — passes `requireContext()` to ChatHistoryRepository constructor
+- `activity_home.xml` — added `cardOfflineBanner` (green card, "You're offline — saved lessons & chats are available") above cardTaskBanner, hidden by default
+- `HomeActivity.kt` — added `isNetworkAvailable()` + `updateOfflineBanner()`; called in `onResume()`; banner click opens `BbSavedSessionsActivity(EXTRA_ALL_HISTORY=true)`
+
+**T2-D Class Activity Snapshot:**
+- `school_portal.py` — added `_build_grade_breakdown()` helper; `get_dashboard()` returns `grade_breakdown` list
+- `server/app/static/school-portal/index.html` — added Class Activity Snapshot table above student list; `renderGradeSnapshot()` JS populates it
+
+---
+
+## 2026-05-19 — Admin page visibility control + referral highlight
+
+**Asked:** (1) Control which pages show from Firestore admin config, hide plans page initially. (2) Highlight referrals more prominently.
+
+**Changes:**
+- `AdminConfig.kt` — added `@field:PropertyName("pages_enabled") val pagesEnabled: Map<String, Boolean>` at end of data class
+- `AdminConfigRepository.kt` — added `fun isPageEnabled(pageKey: String): Boolean = cachedConfig.pagesEnabled[pageKey] ?: true`
+- `AccessGate.kt:canAccess()` — added `if (!AdminConfigRepository.isPageEnabled(feature.pageKey)) return false` at top
+- `HomeActivity.kt:setupDrawer()` — added `AccessGate.applyVisibility(drawerItemPlans, Feature.SUBSCRIPTION_PLANS)` to existing visibility block (~line 2172)
+- `HomeActivity.kt:planBadgeText click` — wrapped in `if (canAccess(SUBSCRIPTION_PLANS))` guard; badge is non-clickable when plans disabled
+- `activity_home.xml:drawerItemShareEarn` — redesigned with warm amber bg, bold "🎁 Invite Friends & Earn" + "Both get bonus questions!", orange "SHARE" badge pill
+- `drawable/bg_referral_highlight.xml` — new: amber rounded card bg with ripple for referral drawer item
+- `drawable/bg_referral_badge.xml` — new: orange pill bg for "SHARE" badge
+
+**How to use:**
+- In Firestore `admin_config/global`, set `pages_enabled: { "subscription_plans": false }` to hide the Plans page.
+- Omit a key (or set to true) to show that page. Any `Feature.pageKey` can be disabled this way.
+
+---
+
 ## 2026-05-18 (session 24) — Fix school isActive flag not filtering
 
 **Asked:** Inactive schools still appear in dropdown.
@@ -103,6 +177,52 @@
 
 ---
 
+## 2026-05-18 (session 25 cont-2) — Validate Claude outputs + fixes
+
+**Asked:** Validate Claude's work, fix issues, rate again.
+**Validated:**
+- `school-dpa.html` ✅ — complete 10-section DPA, DPDP Act 2023 compliant, signature blocks, print CSS
+- `privacy.html` ✅ — already existed and is solid
+- `school-portal/index.html` ✅ — login, dashboard, student table, branding tab all correct; `apiFetch` correctly attaches Bearer token; CSV download wired
+
+**Issues found & fixed:**
+- `main.py` — added 3 missing routes: `/school-dpa`, `/curriculum-map`, `/responsible-use` (FileResponse stubs; HTML files created when Claude finishes)
+- `school-portal/index.html` — grade/section were text-search only with no dedicated dropdowns; added `<select id="grade-filter">` + `<select id="section-filter">`; `filterTable()` now applies grade+section filters; `_populateFilters()` auto-populates options from loaded student data; called from `loadDashboard()` after `renderTable()`
+
+**Still pending (Claude not done yet):**
+- `static/curriculum-map.html` — route added, file missing
+- `static/responsible-use.html` — route added, file missing
+- **Branding note:** `school-dpa.html` + `school-portal/index.html` say "Afterclass AI" — may need to rename to "AIGuru" once confirmed
+
+---
+
+## 2026-05-18 (session 25 cont) — SCHOOL_CAMPAIGN_PLAN.md gap additions
+
+**Asked:** Are parent notifications, curriculum mapping, anti-cheat policy, and grade/section analytics included in the plan? (iOS skipped by user.)
+**Changed:** `SCHOOL_CAMPAIGN_PLAN.md` —
+- T1-A: added note about grade/section filter dropdowns in school portal (already parameterised in API)
+- T2-C (NEW): Parent Notification/Visibility — `parent_phone` field in ProfileActivity + `users_table`; weekly SMS/WhatsApp loop in `weekly_school_report.py` via MSG91/Twilio; opt-out toggle; `parent_notifications_enabled` Firestore field
+- T2-D: renamed from T2-C (was Class Leaderboard)
+- T3-A (NEW): Curriculum Mapping — Claude-generated `static/curriculum-map.html` at `/curriculum-map` public route; NCERT 8-10 all subjects table
+- T3-C (NEW): Anti-cheat/Responsible Use Policy — in-app disclosure in `FullChatFragment`; `disable_direct_answers` server flag; `static/responsible-use.html` (Claude); Claude prompts 5 + 6 added
+- T3-D: renamed from T3-B (was Offline Lesson Download)
+- Execution schedule updated: Week 3 + Week 4 tasks expanded
+- Key file map: added T2-C, T3-A, T3-C, T3-D rows
+
+---
+
+## 2026-05-18 (session 25) — School campaign T1-C + T2-B implementation
+
+**Asked:** Continue implementing school campaign features (resumed from session 13 summary).
+**Changed:**
+- `AndroidManifest.xml` — Added `SchoolWelcomeActivity` entry (was missing from prior session)
+- `activity_signup.xml` — Added `CheckBox` `cbConsent` with "I agree to the Privacy Policy" text before submit button
+- `SignupActivity.kt` — Added `cbConsent` lateinit; sets clickable "Privacy Policy" span linking to `https://vkpremium.art/privacy`; `handleSignup()` returns early if not checked with Toast; on success writes `consent_given=true, consent_date=timestamp` to `students_stats/{uid}` via Firestore directly
+- `activity_home.xml` — Added `MaterialCardView` `cardTaskBanner` (amber #FFF3CD, gone by default) with `tvTaskBannerTitle` TextView, injected above BB hero card
+- `HomeActivity.kt` — Added `loadAssignmentBanner()` call in `onResume()`; function queries `FirestoreManager.loadTasksForSchool()` for real-school users, shows banner with task title, click launches `BlackboardActivity` with `EXTRA_MESSAGE=topic`, `EXTRA_SUBJECT`, `assigned_task_id` extra
+
+---
+
 ## 2026-05-18 (session 15) — Push to 9/10
 
 **Asked:** Rate home screen and push to 9.
@@ -156,8 +276,15 @@
 
 **Asked:** School campaign strategy — rate app for school adoption, principal questions, specialties/gaps, business model.
 **Changed:** No code changes. Strategic analysis only.
-**Files read:** `CLAUDE.md`, `meta/rules.md`, `seed_schools.py` (school branding, 4-letter join code, plans), `seed_roles_and_features.py` (student_school/teacher roles, feature gates), `ADMIN_DASHBOARD_GUIDE.md` (school/user/plan collections), `models/School.kt` (SchoolBranding, SchoolPlan, School data classes), `meta/android_index.md` (SchoolTheme, AccessGate, PlanEnforcer, validators), `meta/frontend_index.md` (admin modules: schools.js, teachers, referrals, analytics).
+**Files read:** `CLAUDE.md`, `meta/rules.md`, `seed_schools.py`, `seed_roles_and_features.py`, `ADMIN_DASHBOARD_GUIDE.md`, `models/School.kt`, `meta/android_index.md`, `meta/frontend_index.md`, `server/app/api/admin.py` (schools CRUD lines 390–416, school_id in tasks line 41), `server/app/api/tasks.py` (school_id field).
 **Key findings:** School infra exists (branding, join code, teacher dashboard, tasks, school plans). Critical gaps: no class analytics, no principal portal, no iOS, no offline, no DPDP doc, no pilot data. Rating: 6/10 school adoption, 7.5/10 student UX.
+
+## 2026-05-18 (session 13)
+
+**Asked:** Create full school campaign implementation plan with flows, work split 60% Copilot / 40% Claude.
+**Changed:** Created `SCHOOL_CAMPAIGN_PLAN.md` (root). No code changes.
+**Files read:** `meta/android_index.md` (FirestoreManager: loadTasksForSchool, saveTask, teacher bb_cache; BlackboardActivity: showCompletionCard ~2769; FullChatFragment: proceedWithMessageSendAfterQuotaCheck ~1366), `meta/server_index.md` (tasks.py school_id, admin.py school CRUD), `meta/frontend_index.md` (school admin sections).
+**Key plan:** T1-A class progress API + TeacherProgressActivity (Copilot), T1-B school portal HTML (Claude), T1-C privacy/consent (Copilot+Claude), T2-A SchoolWelcomeActivity (Copilot), T2-B assignment feature (Copilot), T3-A weekly email script+template (Copilot+Claude). 4 Claude prompts written in plan doc.
 
 ---
 

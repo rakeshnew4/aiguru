@@ -384,7 +384,7 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
             }
         )
 
-        historyRepo = ChatHistoryRepository(userId, subjectName, chapterName)
+        historyRepo = ChatHistoryRepository(userId, subjectName, chapterName, requireContext())
         notesRepo = NotesRepository(requireContext(), userId, subjectName, chapterName)
         chapterNotesRepo = com.aiguruapp.student.notes.ChapterNotesRepository(
             requireContext(), userId, subjectName, chapterName)
@@ -701,10 +701,15 @@ class FullChatFragment : Fragment(), VoiceRecognitionCallback {
         view.findViewById<MaterialButton>(R.id.clearChatButton).setOnClickListener {
             showClearChatConfirmation()
         }
+
+        view.findViewById<MaterialButton>(R.id.selectForNotesButton).setOnClickListener {
+            closeQuickActions()
+            StudentChatSelectionActivity.launch(requireContext(), subjectName, chapterName, userId)
+        }
     }
 
     private fun setupQuickActions(view: View) {
-        // Quick actions panel now only contains: Camera, Live, Ask Doubt, Clear
+        // Quick actions panel now only contains: Camera, Live, Ask Doubt, Clear, Select
         // All handled in setupButtons() and clearChatButton listener below
     }
 

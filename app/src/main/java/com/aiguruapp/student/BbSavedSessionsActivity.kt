@@ -96,7 +96,7 @@ class BbSavedSessionsActivity : BaseActivity() {
 
     // ── Local cache helpers ───────────────────────────────────────────────────
 
-    private fun cacheFile(): File = File(cacheDir,
+    private fun cacheFile(): File = File(filesDir,
         if (isAllHistory) "bb_watch_history_${userId}.json" else "bb_sessions_${userId}.json")
 
     @Suppress("UNCHECKED_CAST")

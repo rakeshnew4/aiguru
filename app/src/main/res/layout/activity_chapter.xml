@@ -230,7 +230,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="✨ Generate Notes"
+                    android:text="✂️ Select from Chat"
                     android:textAllCaps="false"
                     app:backgroundTint="#3D1A6E"
                     app:cornerRadius="20dp" />

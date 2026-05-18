@@ -44,6 +44,8 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import android.graphics.drawable.GradientDrawable
 import android.util.Log
 import android.content.ContentValues
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.provider.MediaStore
 import android.content.pm.PackageManager
@@ -222,12 +224,18 @@ class HomeActivity : BaseActivity() {
             HomeTourManager(this).startTour()
         }
 
-        // Plan badge still navigates to subscription
-        findViewById<TextView?>(R.id.planBadgeText)?.setOnClickListener {
-            startActivity(
-                Intent(this, SubscriptionActivity::class.java)
-                    .putExtra("schoolId", SessionManager.getSchoolId(this))
-            )
+        // Plan badge still navigates to subscription (only if plans page is enabled by admin)
+        findViewById<TextView?>(R.id.planBadgeText)?.apply {
+            if (AccessGate.canAccess(this@HomeActivity, Feature.SUBSCRIPTION_PLANS)) {
+                setOnClickListener {
+                    startActivity(
+                        Intent(this@HomeActivity, SubscriptionActivity::class.java)
+                            .putExtra("schoolId", SessionManager.getSchoolId(this@HomeActivity))
+                    )
+                }
+            } else {
+                isClickable = false
+            }
         }
 
         setupDrawer()
@@ -254,6 +262,8 @@ class HomeActivity : BaseActivity() {
         super.onResume()
         setupStudentInfo()
         loadQuotaStrip()
+        loadAssignmentBanner()
+        updateOfflineBanner()
         // If user returned from Play Store for a mandatory update, re-check.
         homePendingForceUpdate?.let { fu ->
             if (BuildConfig.VERSION_CODE < fu.config.minVersionCode) {
@@ -283,6 +293,84 @@ class HomeActivity : BaseActivity() {
     override fun onPause() {
         super.onPause()
         AppUpdateBus.clearConsumer()
+    }
+
+    private fun isNetworkAvailable(): Boolean {
+        val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
+    private fun updateOfflineBanner() {
+        val banner = findViewById<com.google.android.material.card.MaterialCardView?>(R.id.cardOfflineBanner)
+            ?: return
+        if (isNetworkAvailable()) {
+            banner.visibility = android.view.View.GONE
+        } else {
+            banner.visibility = android.view.View.VISIBLE
+            banner.setOnClickListener {
+                startActivity(android.content.Intent(this, BbSavedSessionsActivity::class.java)
+                    .putExtra(BbSavedSessionsActivity.EXTRA_ALL_HISTORY, true))
+            }
+            findViewById<android.widget.TextView?>(R.id.tvOfflineBannerCta)
+                ?.setOnClickListener {
+                    startActivity(android.content.Intent(this, BbSavedSessionsActivity::class.java)
+                        .putExtra(BbSavedSessionsActivity.EXTRA_ALL_HISTORY, true))
+                }
+        }
+    }
+
+    @SuppressLint("ResourceType")
+    private fun loadAssignmentBanner() {
+        val schoolId = SessionManager.getSchoolId(this)
+        val isRealSchool = schoolId.isNotBlank()
+            && schoolId != "google" && schoolId != "email" && schoolId != "guest"
+        val banner = findViewById<com.google.android.material.card.MaterialCardView?>(R.id.cardTaskBanner)
+            ?: return
+        if (!isRealSchool) { banner.visibility = android.view.View.GONE; return }
+        val grade = SessionManager.getGrade(this)
+        val uid = SessionManager.getFirestoreUserId(this)
+        FirestoreManager.loadTasksForSchool(
+            schoolId = schoolId,
+            grade = grade,
+            onSuccess = { tasks ->
+                if (tasks.isEmpty()) { banner.visibility = android.view.View.GONE; return@loadTasksForSchool }
+                val task = tasks.first()
+                val taskId = task["id"] as? String ?: ""
+                val title = task["title"] as? String ?: "Assigned Task"
+                val topic = task["topic"] as? String ?: task["title"] as? String ?: ""
+                val subject = task["subject"] as? String ?: "General"
+                val taskType = task["task_type"] as? String ?: "blackboard"
+                val tvTitle = banner.findViewById<android.widget.TextView>(R.id.tvTaskBannerTitle)
+                val isQuiz = taskType == "quiz"
+                tvTitle?.text = if (isQuiz) "📝 Quiz: $title" else "📋 Lesson: $title"
+                banner.visibility = android.view.View.VISIBLE
+                banner.setOnClickListener {
+                    if (isQuiz) {
+                        // Teacher-assigned quiz → open QuizSetupActivity with pre-filled subject/topic
+                        startActivity(android.content.Intent(this, QuizSetupActivity::class.java).apply {
+                            putExtra("subjectName", subject)
+                            putExtra("chapterId", topic.ifBlank { subject })
+                            putExtra("chapterTitle", topic.ifBlank { title })
+                            putExtra("assigned_task_id", taskId)
+                        })
+                    } else {
+                        // Teacher-assigned BB lesson → BlackboardActivity
+                        val lang = SessionManager.getPreferredLang(this)
+                        startActivity(android.content.Intent(this, BlackboardActivity::class.java).apply {
+                            putExtra(BlackboardActivity.EXTRA_MESSAGE, topic.ifBlank { title })
+                            putExtra(BlackboardActivity.EXTRA_SUBJECT, subject)
+                            putExtra(BlackboardActivity.EXTRA_CHAPTER, subject)
+                            putExtra(BlackboardActivity.EXTRA_USER_ID, uid)
+                            putExtra(BlackboardActivity.EXTRA_LANGUAGE_TAG, lang)
+                            putExtra("assigned_task_id", taskId)
+                        })
+                    }
+                }
+            },
+            onFailure = { banner.visibility = android.view.View.GONE }
+        )
     }
 
     @SuppressLint("ResourceType")
@@ -943,6 +1031,30 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
         val uid = SessionManager.getFirestoreUserId(this)
         if (uid.isBlank() || uid == "guest_user") return
 
+        // Wire the on-demand quiz button — asks for topic then launches QuizSetupActivity
+        findViewById<com.google.android.material.button.MaterialButton?>(R.id.btnTakeQuiz)
+            ?.setOnClickListener { showQuizTopicDialog() }
+
+        // Load full stats (includes quiz accuracy) then populate the progress strip
+        StudentStatsManager.fetchStudentStats(uid,
+            onSuccess = { stats ->
+                if (stats == null) return@fetchStudentStats
+                val quizPct = if (stats.totalQuizzesAnswered > 0)
+                    (stats.totalQuizzesCorrect * 100 / stats.totalQuizzesAnswered)
+                else -1
+                runOnUiThread {
+                    val strip = findViewById<android.view.View?>(R.id.progressStatsStrip)
+                    strip?.visibility = android.view.View.VISIBLE
+                    findViewById<android.widget.TextView?>(R.id.statStreakValue)?.text =
+                        if (stats.streakDays > 0) "${stats.streakDays}d" else "0"
+                    findViewById<android.widget.TextView?>(R.id.statBbValue)?.text =
+                        "${stats.totalBbSessions}"
+                    findViewById<android.widget.TextView?>(R.id.statQuizValue)?.text =
+                        if (quizPct >= 0) "$quizPct%" else "—"
+                }
+            }
+        )
+
         StudentStatsManager.fetchUsageSummary(uid) { totalMessages, totalBbSessions, streakDays ->
             runOnUiThread {
                 // Show streak badge in hero header
@@ -1371,6 +1483,43 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
     }
 
     /** Shows a polished bottom sheet to collect topic + duration, then launches BB mode. */
+    /** On-demand quiz: ask student for a subject/topic then open QuizSetupActivity. */
+    private fun showQuizTopicDialog() {
+        val dp = resources.displayMetrics.density
+        val input = android.widget.EditText(this).apply {
+            hint = "e.g. Maths Trigonometry, Science Force…"
+            textSize = 15f
+            setSingleLine(true)
+            setPadding((12*dp).toInt(), (12*dp).toInt(), (12*dp).toInt(), (12*dp).toInt())
+        }
+        val container = android.widget.FrameLayout(this).apply {
+            setPadding((20*dp).toInt(), (8*dp).toInt(), (20*dp).toInt(), 0)
+            addView(input)
+        }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("📝 Quiz on what?")
+            .setMessage("Enter a subject or topic you want to be tested on.")
+            .setView(container)
+            .setPositiveButton("Generate Quiz") { _, _ ->
+                val topic = input.text.toString().trim()
+                if (topic.isBlank()) {
+                    android.widget.Toast.makeText(this, "Please enter a topic", android.widget.Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                // Split "Maths Trigonometry" → subject=Maths, chapterTitle=Trigonometry
+                val parts = topic.split(" ", limit = 2)
+                val subject = parts[0].replaceFirstChar { it.uppercase() }
+                val chapter = if (parts.size > 1) parts[1] else topic
+                startActivity(android.content.Intent(this, QuizSetupActivity::class.java).apply {
+                    putExtra("subjectName", subject)
+                    putExtra("chapterId", chapter.lowercase().replace(" ", "_"))
+                    putExtra("chapterTitle", chapter)
+                })
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     private fun showBbTopicDialog(topicHint: String = "") {
         // Guests must sign in before using Blackboard mode
         if (SessionManager.isGuestMode(this)) {
@@ -2026,6 +2175,7 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
         AccessGate.applyVisibility(this, findViewById(R.id.drawerItemJoinSchool),Feature.JOIN_SCHOOL)
         AccessGate.applyVisibility(this, findViewById(R.id.drawerItemProfile),   Feature.USER_PROFILE)
         AccessGate.applyVisibility(this, findViewById(R.id.drawerItemProgress),  Feature.PROGRESS_DASHBOARD)
+        AccessGate.applyVisibility(this, findViewById(R.id.drawerItemPlans),     Feature.SUBSCRIPTION_PLANS)
 
         // Nav item clicks — close drawer then navigate
         fun navigate(block: () -> Unit) {

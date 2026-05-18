@@ -37,6 +37,7 @@ from app.api.credits import router as credits_router
 from app.api.tasks import router as tasks_router
 from app.api.referrals import router as referrals_router
 from app.api.security import router as security_router
+from app.api.school_portal import router as school_portal_router
 from app.core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -91,6 +92,7 @@ app.include_router(credits_router)
 app.include_router(tasks_router)
 app.include_router(referrals_router)
 app.include_router(security_router)
+app.include_router(school_portal_router)
 
 # ── Static files & Admin portal ───────────────────────────────────────────────
 _static_dir = os.path.join(os.path.dirname(__file__), "static")
@@ -112,6 +114,22 @@ async def delete_account_page():
 @app.get("/privacy", include_in_schema=False)
 async def privacy_policy():
     return FileResponse(os.path.join(os.path.dirname(__file__), "static", "privacy.html"))
+
+@app.get("/school-dpa", include_in_schema=False)
+async def school_dpa():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "static", "school-dpa.html"))
+
+@app.get("/curriculum-map", include_in_schema=False)
+async def curriculum_map():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "static", "curriculum-map.html"))
+
+@app.get("/responsible-use", include_in_schema=False)
+async def responsible_use():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "static", "responsible-use.html"))
+
+@app.get("/school-portal", include_in_schema=False)
+async def school_portal_page():
+    return FileResponse(os.path.join(os.path.dirname(__file__), "static", "school-portal", "index.html"))
 
 @app.get("/health")
 async def health():

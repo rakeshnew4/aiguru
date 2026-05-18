@@ -1393,7 +1393,7 @@ class BlackboardActivity : AppCompatActivity() {
     /**
      * Prepend an entry to the local watch-history JSON file so that
      * BbSavedSessionsActivity shows it immediately without a Firestore round-trip.
-     * The file is: cacheDir/bb_watch_history_<userId>.json
+     * The file is: filesDir/bb_watch_history_<userId>.json
      * Format: JSON array of objects, newest first.
      */
     private fun appendLocalWatchHistory(
@@ -1402,7 +1402,7 @@ class BlackboardActivity : AppCompatActivity() {
         stepCount: Int, stepsJson: String, convId: String, msgId: String
     ) {
         try {
-            val file = java.io.File(cacheDir, "bb_watch_history_${userId}.json")
+            val file = java.io.File(filesDir, "bb_watch_history_${userId}.json")
             val existing = if (file.exists()) {
                 try { org.json.JSONArray(file.readText()) } catch (_: Exception) { org.json.JSONArray() }
             } else org.json.JSONArray()

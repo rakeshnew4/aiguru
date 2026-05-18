@@ -40,6 +40,14 @@ object AdminConfigRepository {
     /** Returns all known plans keyed by planId. Populated by [AppStartRepository] too. */
     val plans: Map<String, SubscriptionPlan> get() = cachedPlans
 
+    /**
+     * Returns whether the given page is enabled in the admin config.
+     * If the key is missing from [AdminConfig.pagesEnabled], defaults to true (visible).
+     * Set `pages_enabled.{pageKey} = false` in Firestore admin_config/global to hide a page.
+     */
+    fun isPageEnabled(pageKey: String): Boolean =
+        cachedConfig.pagesEnabled[pageKey] ?: true
+
     // ── Public API ────────────────────────────────────────────────────────────
 
     /**

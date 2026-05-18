@@ -96,5 +96,17 @@ data class AdminConfig(
      * Defaults to the shared guest account UID.
      */
     @field:PropertyName("guest_id")
-    val guestId: String = "BujsVJE2cMX6wU7Jg3acMUlRChm1"
+    val guestId: String = "BujsVJE2cMX6wU7Jg3acMUlRChm1",
+
+    /**
+     * Per-page visibility toggle.
+     * Key = pageKey matching AccessGate.Feature.pageKey (e.g. "subscription_plans").
+     * Value = false means the page is hidden for ALL users (admin override).
+     * Missing key → page is visible (defaults to true).
+     *
+     * Example Firestore field:
+     *   pages_enabled: { "subscription_plans": false, "quiz": true }
+     */
+    @field:PropertyName("pages_enabled")
+    val pagesEnabled: Map<String, Boolean> = emptyMap()
 )

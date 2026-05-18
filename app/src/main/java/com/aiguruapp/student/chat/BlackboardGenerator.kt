@@ -882,7 +882,7 @@ $svgNote$lastFrameNote$langInstruction"""
      * Must be called from a background thread.
      */
     private fun sessionCacheFile(context: android.content.Context, sessionId: String): java.io.File {
-        val dir = java.io.File(context.cacheDir, "bb_sessions")
+        val dir = java.io.File(context.filesDir, "bb_sessions")
         dir.mkdirs()
         return java.io.File(dir, "$sessionId.json")
     }
@@ -890,8 +890,6 @@ $svgNote$lastFrameNote$langInstruction"""
     private fun readSessionCache(context: android.content.Context, sessionId: String): String? {
         val file = sessionCacheFile(context, sessionId)
         if (!file.exists()) return null
-        val ageDays = (System.currentTimeMillis() - file.lastModified()) / 86_400_000L
-        if (ageDays > 7) { file.delete(); return null }
         return try { file.readText() } catch (e: Exception) { null }
     }
 

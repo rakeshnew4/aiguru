@@ -325,6 +325,23 @@
 
                 </LinearLayout>
 
+                <!-- Select Messages → Notes & Quiz -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/selectForNotesButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:minHeight="0dp"
+                    android:text="✂️ Select Messages → Notes / Quiz"
+                    android:textSize="11sp"
+                    android:textColor="#5C35B5"
+                    android:textAllCaps="false"
+                    app:backgroundTint="#EEE8FF"
+                    app:strokeColor="#C5B3FF"
+                    app:strokeWidth="1dp"
+                    app:cornerRadius="18dp"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginBottom="2dp" />
+
                 <!-- Hidden: bottomDescribeButton (shown when image picked) -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/bottomDescribeButton"
