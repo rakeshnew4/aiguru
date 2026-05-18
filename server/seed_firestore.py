@@ -133,6 +133,31 @@ CHAPTERS = [
 # ── schools/ ──────────────────────────────────────────────────────────────────
 SCHOOLS = [
     {
+        # Default school — used when no school is assigned.
+        # App shows "Afterclass AI" branding for these users.
+        "id": "afterclass_ai",
+        "name": "Afterclass AI",
+        "shortName": "Afterclass AI",
+        "city": "",
+        "state": "",
+        "code": "AFTERCLASS",
+        "contactEmail": "support@afterclassai.com",
+        "branding": {
+            "primaryColor": "#1565C0",
+            "primaryDarkColor": "#0D47A1",
+            "accentColor": "#4527A0",
+            "backgroundColor": "#EEF2FF",
+            "headerTextColor": "#FFFFFF",
+            "headerSubtextColor": "#FFFFFFBB",
+            "bodyTextPrimaryColor": "#1A1A2E",
+            "logoText": "AC",
+            "logoEmoji": "🎓",
+            "logoUrl": "",
+        },
+        "plans": [],
+        "testStudentIds": [],
+    },
+    {
         "id": "SCH001",
         "name": "Delhi Public School",
         "shortName": "DPS",

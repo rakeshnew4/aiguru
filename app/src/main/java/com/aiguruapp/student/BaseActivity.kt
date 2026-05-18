@@ -1,11 +1,16 @@
 package com.aiguruapp.student
 
+import android.app.AlertDialog
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.aiguruapp.student.BuildConfig
 import com.aiguruapp.student.calculator.FloatingCalculatorView
 import com.aiguruapp.student.puzzle.FloatingPuzzleView
 import com.aiguruapp.student.utils.SchoolTheme
@@ -19,10 +24,9 @@ import com.aiguruapp.student.utils.SchoolTheme
  */
 open class BaseActivity : AppCompatActivity() {
 
-    /** Floating calculator bubble — shared across the whole Activity lifetime. */
     private var floatingCalc: FloatingCalculatorView? = null
-    /** Floating puzzle bubble — earned break game, gated by BB sessions. */
     private var floatingPuzzle: FloatingPuzzleView? = null
+    private var securityDialog: AlertDialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -70,11 +74,84 @@ open class BaseActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Re-apply in case SchoolTheme was loaded by a parent activity
         SchoolTheme.applyStatusBar(window)
+        detectSecurityThreat()?.let { (title, message, openSettings) ->
+            showSecurityBlock(title, message, openSettings)
+        }
     }
 
-    /** Opens the floating calculator panel (called from toolbar buttons in subclasses). */
+    override fun onDestroy() {
+        securityDialog?.dismiss()
+        securityDialog = null
+        super.onDestroy()
+    }
+
+    // Returns Triple(title, message, showOpenSettingsButton) or null if safe
+    private fun detectSecurityThreat(): Triple<String, String, Boolean>? {
+        if (BuildConfig.DEBUG) return null
+        val cr = contentResolver
+        val adb = Settings.Global.getInt(cr, Settings.Global.ADB_ENABLED, 0)
+        val dev = Settings.Global.getInt(cr, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0)
+        if (adb != 0 || dev != 0) return Triple(
+            "USB Debugging Detected",
+            "USB Debugging or Developer Options is enabled.\n\nPlease disable it to continue using Afterclass AI.",
+            true
+        )
+        if (isRooted()) return Triple(
+            "Rooted Device Detected",
+            "Afterclass AI cannot run on a rooted device for security reasons.\n\nPlease use an unrooted device.",
+            false
+        )
+        if (isEmulator()) return Triple(
+            "Emulator Detected",
+            "Afterclass AI cannot run on an emulator.\n\nPlease use a real Android device.",
+            false
+        )
+        return null
+    }
+
+    private fun isRooted(): Boolean {
+        val suPaths = arrayOf(
+            "/system/bin/su", "/system/xbin/su", "/sbin/su",
+            "/su/bin/su", "/su/xbin/su", "/data/local/su"
+        )
+        if (suPaths.any { java.io.File(it).exists() }) return true
+        val rootApps = arrayOf(
+            "com.topjohnwu.magisk", "com.noshufou.android.su",
+            "com.koushikdutta.superuser", "eu.chainfire.supersu"
+        )
+        return rootApps.any { pkg ->
+            runCatching { packageManager.getPackageInfo(pkg, 0); true }.getOrDefault(false)
+        }
+    }
+
+    private fun isEmulator(): Boolean {
+        return Build.FINGERPRINT.startsWith("generic")
+            || Build.FINGERPRINT.startsWith("unknown")
+            || Build.MODEL.contains("Emulator", ignoreCase = true)
+            || Build.MODEL.contains("Android SDK", ignoreCase = true)
+            || Build.MANUFACTURER.contains("Genymotion", ignoreCase = true)
+            || Build.BRAND.startsWith("generic")
+            || Build.HARDWARE.contains("goldfish")
+            || Build.HARDWARE.contains("ranchu")
+            || Build.PRODUCT.contains("sdk")
+    }
+
+    private fun showSecurityBlock(title: String, message: String, showOpenSettings: Boolean) {
+        if (securityDialog?.isShowing == true) return
+        val builder = AlertDialog.Builder(this)
+            .setTitle("⚠️ $title")
+            .setMessage(message)
+            .setCancelable(false)
+            .setNegativeButton("Close App") { _, _ -> finishAffinity() }
+        if (showOpenSettings) {
+            builder.setPositiveButton("Open Settings") { _, _ ->
+                startActivity(Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS))
+            }
+        }
+        securityDialog = builder.show()
+    }
+
     fun showCalculator() {
         floatingCalc?.openPanel()
     }

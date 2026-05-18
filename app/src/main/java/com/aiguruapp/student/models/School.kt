@@ -35,7 +35,8 @@ data class School(
     val contactEmail: String,
     val branding: SchoolBranding,
     val plans: List<SchoolPlan>,
-    val testStudentIds: List<String>
+    val testStudentIds: List<String>,
+    val isActive: Boolean = true
 ) {
     val displayName: String get() = "$name, $city"
 

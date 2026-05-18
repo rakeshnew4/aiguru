@@ -15,6 +15,7 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.view.GravityCompat
+import androidx.core.view.WindowCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import com.bumptech.glide.Glide
 import androidx.activity.OnBackPressedCallback
@@ -100,6 +101,12 @@ class HomeActivity : BaseActivity() {
     // Daily challenge cycling state
     private var dailyPendingQuestions: List<com.aiguruapp.student.daily.DailyQuestion> = emptyList()
     private var dailyChallengeIndex = 0
+    private var challengeCardCollapsed = false
+    private var challengeCardFullHeight = 0
+    private var _collapseCard: android.view.ViewGroup? = null
+    private val _collapseRunnable = Runnable {
+        _collapseCard?.let { if (it.isAttachedToWindow) collapseChallengeCard(it) }
+    }
 
     private val homeCameraLauncher =
         registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
@@ -141,6 +148,8 @@ class HomeActivity : BaseActivity() {
         }
 
         setContentView(R.layout.activity_home)
+        window.statusBarColor = android.graphics.Color.WHITE
+        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = true
 
         homeVoiceManager = VoiceManager(this)
         homeMediaManager = MediaManager(this)
@@ -194,6 +203,7 @@ class HomeActivity : BaseActivity() {
             startQuickChatPulseAnimation(btn)
         }
         setupLangChip()
+        maybeShowLangOnboarding()
 
         drawerLayout = findViewById(R.id.homeDrawerLayout)
 
@@ -202,9 +212,9 @@ class HomeActivity : BaseActivity() {
             drawerLayout.openDrawer(GravityCompat.START)
         }
 
-        // Avatar (top-right) shows a quick logout confirmation — everything else is in the drawer
+        // Avatar (top-right) navigates to user profile
         findViewById<View?>(R.id.profileButton)?.setOnClickListener {
-            confirmLogout()
+            startActivity(Intent(this, UserProfileActivity::class.java))
         }
 
         // ? Help / guide button — launches interactive feature tour
@@ -535,9 +545,9 @@ class HomeActivity : BaseActivity() {
             val label = when {
                 creditsMode  -> "⭐ using credits!"
                 bbLeft == 0  -> "Free lessons completed 🚀"
-                bbLeft == 1  -> "1 more free lesson left today! 🎓"
-                bbLeft <= 3  -> "$bbLeft free lessons — learn more! 🎨"
-                else         -> "$bbLeft free lessons  - learn more! 🎓"
+                bbLeft == 1  -> "1 more free 🎓"
+                bbLeft <= 3  -> "$bbLeft free lessons  🎨"
+                else         -> "$bbLeft free lessons 🎓"
             }
             val color = when {
                 creditsMode  -> "#FFB300"
@@ -566,28 +576,69 @@ class HomeActivity : BaseActivity() {
 
     private fun applySchoolBranding() {
         val schoolId = SessionManager.getSchoolId(this)
-        val school = ConfigManager.getSchool(this, schoolId)
+        val isRealSchool = schoolId.isNotBlank()
+            && schoolId != "google" && schoolId != "email" && schoolId != "guest"
 
-        // Load school colors into the centralized SchoolTheme singleton
+        // For non-school users, fall back to the "afterclass_ai" document in Firestore
+        val effectiveId = if (isRealSchool) schoolId else "afterclass_ai"
+        val school = ConfigManager.getSchool(this, effectiveId)
+
+        // Load colors — uses afterclass_ai branding from Firestore for non-school users
         SchoolTheme.load(school?.branding)
         SchoolTheme.applyStatusBar(window)
 
-        // Header background (LinearLayout — set color directly)
-        SchoolTheme.setBackground(findViewById(R.id.homeHeader))
+        val hasBranding = school?.branding?.primaryColor?.isNotBlank() == true
+        val homeHeader  = findViewById<View?>(R.id.homeHeader)
+        val navBar      = findViewById<View?>(R.id.homeNavBar)
+        val white       = android.graphics.Color.WHITE
 
-        // Quick-action chips (only tint addSubjectButton; generalChatButton uses animation)
-        SchoolTheme.tint(findViewById(R.id.addSubjectButton))
+        if (hasBranding) {
+            // School branded — hero and nav bar both get the school's primary color (flat)
+            SchoolTheme.setBackground(homeHeader)
+            navBar?.setBackgroundColor(SchoolTheme.primaryColor)
 
-        // Quick-chat button text color stays white — don't override from school theme
-        // (its background is controlled by the ValueAnimator, so tinting here would fight it)
+            val isLight      = SchoolTheme.isColorLight(SchoolTheme.primaryColor)
+            val navIconColor = if (isLight) android.graphics.Color.parseColor("#1A1A2E") else white
+            val navSubColor  = if (isLight) android.graphics.Color.parseColor("#666B8A")
+                               else android.graphics.Color.parseColor("#FFFFFFBB")
+            val chipBg       = if (isLight) android.graphics.Color.parseColor("#00000015")
+                               else android.graphics.Color.parseColor("#FFFFFF22")
 
-        // Header text: use white if primary is dark enough, else use primaryDark
-        val headerTextColor = android.graphics.Color.WHITE
+            window.statusBarColor = SchoolTheme.primaryColor
+            WindowCompat.getInsetsController(window, window.decorView)
+                .isAppearanceLightStatusBars = isLight
+            findViewById<TextView?>(R.id.drawerToggleBtn)?.setTextColor(navIconColor)
+            findViewById<TextView?>(R.id.schoolNameSubtitle)?.setTextColor(navSubColor)
+            val langBtn = findViewById<com.google.android.material.button.MaterialButton?>(R.id.langChipButton)
+            langBtn?.setTextColor(navIconColor)
+            langBtn?.backgroundTintList = android.content.res.ColorStateList.valueOf(chipBg)
+        } else {
+            // No school — restore Afterclass AI gradient on hero, cobalt blue on nav bar
+            homeHeader?.setBackgroundResource(R.drawable.bg_hero_band)
+            val brandBlue     = android.graphics.Color.parseColor("#1565C0")
+            val whiteSubtle   = android.graphics.Color.parseColor("#FFFFFFBB")
+            val chipBgDefault = android.graphics.Color.parseColor("#FFFFFF22")
+            navBar?.setBackgroundColor(brandBlue)
+            window.statusBarColor = brandBlue
+            WindowCompat.getInsetsController(window, window.decorView)
+                .isAppearanceLightStatusBars = false
+            findViewById<TextView?>(R.id.drawerToggleBtn)?.setTextColor(white)
+            findViewById<TextView?>(R.id.schoolNameSubtitle)?.setTextColor(whiteSubtle)
+            val langBtn = findViewById<com.google.android.material.button.MaterialButton?>(R.id.langChipButton)
+            langBtn?.setTextColor(white)
+            langBtn?.backgroundTintList = android.content.res.ColorStateList.valueOf(chipBgDefault)
+        }
+
+        // Header text always white (hero is always dark — school or Afterclass AI gradient)
+        val headerTextColor = white
         findViewById<TextView?>(R.id.greetingText)?.setTextColor(headerTextColor)
         findViewById<TextView?>(R.id.userNameText)?.setTextColor(headerTextColor)
         findViewById<TextView?>(R.id.schoolNameSubtitle)?.setTextColor(
             android.graphics.Color.parseColor("#FFFFFFCC"))
         findViewById<TextView?>(R.id.planBadgeText)?.setTextColor(headerTextColor)
+
+        // Quick-action chips (only tint addSubjectButton; generalChatButton uses animation)
+        SchoolTheme.tint(findViewById(R.id.addSubjectButton))
 
         // School logo — load from URL if available, otherwise hide
         val logoUrl = school?.branding?.logoUrl ?: ""
@@ -611,8 +662,27 @@ class HomeActivity : BaseActivity() {
         val planName = SessionManager.getPlanName(this)
 
         findViewById<TextView?>(R.id.userNameText)?.text = studentName
-        // Show school name as subtitle if view exists
-        findViewById<TextView?>(R.id.schoolNameSubtitle)?.text = schoolName
+        findViewById<TextView?>(R.id.profileButton)?.apply {
+            text = studentName.firstOrNull()?.uppercaseChar()?.toString() ?: "P"
+            visibility = View.VISIBLE
+        }
+        // School name — real school users show their school, others read from afterclass_ai doc
+        val schoolId = SessionManager.getSchoolId(this)
+        val isRealSchool = schoolId.isNotBlank()
+            && schoolId != "google" && schoolId != "email" && schoolId != "guest"
+        val displaySchool = if (isRealSchool) {
+            schoolName
+        } else {
+            val cached = ConfigManager.getSchool(this, "afterclass_ai")
+            if (cached != null) {
+                cached.name
+            } else {
+                // Not in schools cache — fetch directly from Firestore and update UI when ready
+                fetchAfterclassAiBranding()
+                "Afterclass AI"   // placeholder until async fetch completes
+            }
+        }
+        findViewById<TextView?>(R.id.schoolNameSubtitle)?.text = displaySchool
         // Always show plan badge — new users see "Free" so they can navigate to subscribe
         val displayPlan = if (planName.isNotBlank()) "📋 $planName" else "📋 Free"
         findViewById<TextView?>(R.id.planBadgeText)?.apply {
@@ -623,6 +693,45 @@ class HomeActivity : BaseActivity() {
         if (::drawerLayout.isInitialized) updateDrawerHeader()
     }
 
+    /** Fetches schools/afterclass_ai directly from Firestore server (bypasses stale cache)
+     *  and updates the nav bar name + colors on the UI thread. */
+    private fun fetchAfterclassAiBranding() {
+        val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+        db.collection("schools").document("afterclass_ai")
+            .get(com.google.firebase.firestore.Source.SERVER)
+            .addOnSuccessListener { doc ->
+                if (!doc.exists()) return@addOnSuccessListener
+                val data    = doc.data ?: return@addOnSuccessListener
+                val name    = data["name"] as? String ?: return@addOnSuccessListener
+                val b       = data["branding"] as? Map<*, *> ?: return@addOnSuccessListener
+                val primary = b["primaryColor"] as? String ?: return@addOnSuccessListener
+                val accent  = b["accentColor"]  as? String
+                runOnUiThread {
+                    // Nav bar name
+                    findViewById<TextView?>(R.id.schoolNameSubtitle)?.text = name
+                    // Nav bar + status bar color
+                    val color   = runCatching { android.graphics.Color.parseColor(primary) }.getOrNull() ?: return@runOnUiThread
+                    val isLight = SchoolTheme.isColorLight(color)
+                    val textColor = if (isLight) android.graphics.Color.parseColor("#1A1A2E") else android.graphics.Color.WHITE
+                    findViewById<View?>(R.id.homeNavBar)?.setBackgroundColor(color)
+                    window.statusBarColor = color
+                    WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = isLight
+                    findViewById<TextView?>(R.id.drawerToggleBtn)?.setTextColor(textColor)
+                    // Hero band — gradient if accent available, flat color otherwise
+                    val homeHeader = findViewById<View?>(R.id.homeHeader)
+                    val accentColor = accent?.let { runCatching { android.graphics.Color.parseColor(it) }.getOrNull() }
+                    if (accentColor != null) {
+                        homeHeader?.background = android.graphics.drawable.GradientDrawable(
+                            android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+                            intArrayOf(color, accentColor)
+                        )
+                    } else {
+                        homeHeader?.setBackgroundColor(color)
+                    }
+                }
+            }
+    }
+
     private fun setupGreeting() {
         val config = ConfigManager.getAppConfig(this)
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
@@ -631,7 +740,10 @@ class HomeActivity : BaseActivity() {
             hour < 17 -> config.greetingMessages["afternoon"] ?: "Good afternoon! 👋"
             else -> config.greetingMessages["evening"] ?: "Good evening! 🌙"
         }
-        findViewById<TextView>(R.id.greetingText).text = greeting
+        findViewById<TextView>(R.id.greetingText).apply {
+            text = greeting
+            visibility = View.VISIBLE
+        }
     }
 
     // ── Language chip ─────────────────────────────────────────────────────────
@@ -737,6 +849,32 @@ class HomeActivity : BaseActivity() {
                 Toast.makeText(this, "Language set to ${langLabels[which]}", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun maybeShowLangOnboarding() {
+        // Only show on first launch — once a language is saved, skip forever
+        if (SessionManager.getPreferredLang(this).isNotBlank()) return
+        val chip = findViewById<MaterialButton?>(R.id.langChipButton)
+        var selectedIndex = 0  // default: English
+        android.app.AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+            .setTitle("🌐 Choose Your Teaching Language")
+            .setMessage("In which language would you like your AI tutor to teach?")
+            .setCancelable(false)
+            .setSingleChoiceItems(langLabels, 0) { _, which ->
+                selectedIndex = which
+            }
+            .setPositiveButton("Start Learning ✅") { _, _ ->
+                SessionManager.savePreferredLang(this, langCodes[selectedIndex])
+                chip?.let { refreshLangChip(it) }
+                Toast.makeText(this,
+                    "Great! Teaching in ${langLabels[selectedIndex]}",
+                    Toast.LENGTH_SHORT).show()
+            }
+            .setNeutralButton("Skip (English)") { _, _ ->
+                SessionManager.savePreferredLang(this, "en-US")
+                chip?.let { refreshLangChip(it) }
+            }
             .show()
     }
 
@@ -941,6 +1079,12 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
         val pending = dailyPendingQuestions
         if (index >= pending.size) return
         val q = pending[index]
+        // Cancel any pending auto-collapse and reset to full size
+        _collapseCard?.removeCallbacks(_collapseRunnable)
+        _collapseCard = card
+        challengeCardCollapsed = false
+        card.layoutParams.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        card.requestLayout()
         card.visibility = View.VISIBLE
         card.findViewById<TextView?>(R.id.challengeHookText)?.text = q.hook
         card.findViewById<TextView?>(R.id.challengeQuestionText)?.text = q.question
@@ -963,17 +1107,54 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
             nextBtn?.visibility = View.GONE
         }
         card.setOnClickListener {
-            val uid = SessionManager.getFirestoreUserId(this@HomeActivity)
-            val intent = Intent(this@HomeActivity, BlackboardActivity::class.java).apply {
-                putExtra(BlackboardActivity.EXTRA_MESSAGE, q.question)
-                putExtra(BlackboardActivity.EXTRA_SUBJECT, q.subject)
-                if (uid.isNotBlank() && uid != "guest_user") {
-                    putExtra(BlackboardActivity.EXTRA_USER_ID, uid)
+            if (challengeCardCollapsed) {
+                expandChallengeCard(card)
+            } else {
+                val uid = SessionManager.getFirestoreUserId(this@HomeActivity)
+                val intent = Intent(this@HomeActivity, BlackboardActivity::class.java).apply {
+                    putExtra(BlackboardActivity.EXTRA_MESSAGE, q.question)
+                    putExtra(BlackboardActivity.EXTRA_SUBJECT, q.subject)
+                    if (uid.isNotBlank() && uid != "guest_user") {
+                        putExtra(BlackboardActivity.EXTRA_USER_ID, uid)
+                    }
+                    putExtra("daily_question_id", q.id)
                 }
-                putExtra("daily_question_id", q.id)
+                startActivity(intent)
             }
-            startActivity(intent)
         }
+        // Auto-collapse after 2 seconds to save screen space
+        card.postDelayed(_collapseRunnable, 2000L)
+    }
+
+    private fun collapseChallengeCard(card: android.view.ViewGroup) {
+        if (challengeCardCollapsed || card.height <= 0) return
+        challengeCardFullHeight = card.height
+        val collapsedPx = (56 * resources.displayMetrics.density).toInt()
+        android.animation.ValueAnimator.ofInt(challengeCardFullHeight, collapsedPx).apply {
+            duration = 350
+            interpolator = android.view.animation.DecelerateInterpolator()
+            addUpdateListener { card.layoutParams.height = it.animatedValue as Int; card.requestLayout() }
+            start()
+        }
+        challengeCardCollapsed = true
+    }
+
+    private fun expandChallengeCard(card: android.view.ViewGroup) {
+        if (!challengeCardCollapsed) return
+        val collapsedPx = (56 * resources.displayMetrics.density).toInt()
+        android.animation.ValueAnimator.ofInt(collapsedPx, challengeCardFullHeight).apply {
+            duration = 350
+            interpolator = android.view.animation.DecelerateInterpolator()
+            addUpdateListener { card.layoutParams.height = it.animatedValue as Int; card.requestLayout() }
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(a: android.animation.Animator) {
+                    card.layoutParams.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                    card.requestLayout()
+                }
+            })
+            start()
+        }
+        challengeCardCollapsed = false
     }
 
     /** Renders personalised suggestion cards in the horizontal "For You" strip. */
@@ -1930,6 +2111,9 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
         findViewById<TextView?>(R.id.drawerName)?.text = name
         findViewById<TextView?>(R.id.drawerSchool)?.text = school
         findViewById<TextView?>(R.id.drawerPlanBadge)?.text = "📋 $plan"
+        // Replace emoji avatar with user's initial
+        val initial = name.firstOrNull()?.uppercaseChar()?.toString() ?: "S"
+        findViewById<TextView?>(R.id.drawerAvatar)?.text = initial
     }
 
     // ── Offers banner (Firestore-backed) ───────────────────────────────────────

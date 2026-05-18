@@ -115,7 +115,7 @@ object SchoolTheme {
     }
 
     /** Returns true when [color] is light enough to need dark (black) text/icons. */
-    private fun isColorLight(color: Int): Boolean {
+    fun isColorLight(color: Int): Boolean {
         // W3C relative luminance formula
         val r = android.graphics.Color.red(color) / 255.0
         val g = android.graphics.Color.green(color) / 255.0

@@ -1,4 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- All server traffic uses HTTPS via vkpremium.art -->
+
+    <!-- Block all cleartext (HTTP) traffic in release builds -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <!-- Only trust system CAs — no user-installed certs in release -->
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Debug: also trust user-installed certs so Charles/Proxyman can inspect -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+
 </network-security-config>
