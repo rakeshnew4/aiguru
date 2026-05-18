@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Whiteboard rectangle (left side) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M1,2 L14,2 L14,18 L1,18 Z" />
+
+    <!-- Bar chart inside board: bar 1 (short) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M3,16 L3,12 L5,12 L5,16 Z" />
+
+    <!-- Bar chart inside board: bar 2 (medium) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M6,16 L6,8.5 L8,8.5 L8,16 Z" />
+
+    <!-- Bar chart inside board: bar 3 (tall) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M9,16 L9,5 L11,5 L11,16 Z" />
+
+    <!-- Person head: center (19.5, 5.5), radius 2.5 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M17,5.5 A2.5,2.5 0 1,0 22,5.5 A2.5,2.5 0 1,0 17,5.5 Z" />
+
+    <!-- Person body (vertical line down) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M19.5,8 L19.5,16" />
+
+    <!-- Pointing arm toward board -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M19.5,11 L14,13.5" />
+
+    <!-- Legs -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M19.5,16 L17,22 M19.5,16 L22,22" />
+
+</vector>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>School Data Processing Agreement — Afterclass AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Inter', sans-serif; color: #1A1A2E; background: #fff; max-width: 760px; margin: 40px auto; padding: 32px 40px; font-size: 15px; line-height: 1.75; }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .subtitle { color: #666B8A; font-size: 14px; margin-bottom: 32px; }
+    h2 { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #1A1A2E; margin-top: 28px; margin-bottom: 8px; border-top: 1px solid #E0E4F0; padding-top: 20px; }
+    p  { margin-bottom: 12px; color: #333; }
+    ul { margin-left: 20px; margin-bottom: 12px; color: #333; }
+    li { margin-bottom: 6px; }
+    .parties-box {
+      background: #F5F7FA; border: 1px solid #E0E4F0; border-radius: 10px;
+      padding: 20px 24px; margin: 24px 0;
+    }
+    .parties-box strong { display: block; margin-bottom: 4px; font-size: 14px; }
+    .parties-box p { margin: 0; font-size: 13px; color: #666B8A; }
+    .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 48px; }
+    .sig-block { border-top: 1px solid #1A1A2E; padding-top: 10px; }
+    .sig-label { font-size: 12px; color: #666B8A; margin-top: 4px; }
+    .badge { display: inline-block; background: #EEF2FF; color: #1A1A2E; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 12px; border: 1px solid #C7D2FE; }
+    @media print { body { margin: 0; padding: 24px; } }
+  </style>
+</head>
+<body>
+
+<h1>School Data Processing Agreement</h1>
+<div class="subtitle">Effective upon both parties signing &nbsp;·&nbsp; Governed by India's DPDP Act 2023</div>
+
+<div class="parties-box">
+  <strong>Data Processor</strong>
+  <p>Afterclass AI (operated by [Company Name], registered in India)<br>
+  Email: legal@afterclassai.com</p>
+  <br>
+  <strong>Data Fiduciary / Institution</strong>
+  <p>__________________________________________&nbsp; (School Name)<br>
+  __________________________________________&nbsp; (Address)<br>
+  __________________________________________&nbsp; (Authorised Representative)</p>
+</div>
+
+<p>This Data Processing Agreement (<strong>"DPA"</strong>) governs how Afterclass AI processes personal data of students on behalf of the School in connection with the Afterclass AI educational platform (<strong>"Service"</strong>). Both parties agree to the following terms.</p>
+
+<h2>1. Purpose of Processing</h2>
+<p>Afterclass AI processes student data solely to:</p>
+<ul>
+  <li>Deliver personalised AI-powered lessons and chat sessions to each student.</li>
+  <li>Track learning progress (topics explored, quiz scores, session counts) and surface class-level reports to the School's authorised teachers and administrators.</li>
+  <li>Enforce daily usage limits and subscription entitlements.</li>
+  <li>Send optional weekly progress report emails to the School.</li>
+</ul>
+<p>Afterclass AI will not process student data for any other purpose without the School's prior written consent.</p>
+
+<h2>2. Categories of Data Processed</h2>
+<ul>
+  <li><strong>Identity data:</strong> Student name, class/grade, section (entered during onboarding).</li>
+  <li><strong>Account data:</strong> Email address, Firebase UID (from Google/email sign-in).</li>
+  <li><strong>Usage activity:</strong> Topics asked, lesson completion records, quiz results, session timestamps, daily session counts.</li>
+  <li><strong>Device data:</strong> App version, Android version, device model (for crash reporting only).</li>
+</ul>
+<p><span class="badge">Not collected</span> &nbsp; Biometric data, financial information, location data, photos (unless the student voluntarily uploads an image for a question).</p>
+
+<h2>3. Data Retention</h2>
+<ul>
+  <li><strong>Active account:</strong> Data is retained for the duration of the student's active account.</li>
+  <li><strong>Account deletion:</strong> All personally identifiable data is permanently purged within <strong>30 days</strong> of account deletion.</li>
+  <li><strong>Contract termination:</strong> Upon written notice of school contract termination, all student data associated with the school is deleted within <strong>30 days</strong>.</li>
+  <li>Aggregated, de-identified analytics may be retained for service improvement.</li>
+</ul>
+
+<h2>4. Sub-Processors</h2>
+<p>Afterclass AI uses the following sub-processors, each bound by appropriate data protection agreements:</p>
+<ul>
+  <li><strong>Firebase / Google Cloud</strong> — authentication, database (Firestore), crash analytics. Complies with GDPR and ISO 27001. Servers located in Asia (Mumbai region).</li>
+  <li><strong>LiteLLM / AI routing layer</strong> — routes student questions to AI models (Google Gemini, OpenAI). Student messages are processed transiently and are not stored by the AI provider beyond the request lifecycle.</li>
+  <li><strong>Google Cloud Text-to-Speech</strong> — converts lesson text to audio. Text is not retained by Google post-synthesis.</li>
+  <li><strong>Razorpay</strong> — payment processing for school subscriptions. No student personal data is shared with Razorpay.</li>
+</ul>
+<p>Afterclass AI will notify the School of any material change to sub-processors with at least 14 days' notice.</p>
+
+<h2>5. Security Measures</h2>
+<ul>
+  <li>All data in transit is encrypted using TLS 1.2 or higher.</li>
+  <li>Data at rest is protected by Firebase's encryption and Google Cloud infrastructure.</li>
+  <li>API access is gated by Firebase Authentication tokens; no unauthenticated access is permitted.</li>
+  <li>Firestore security rules restrict each student to their own data; teachers can only access data within their registered school.</li>
+  <li>Afterclass AI staff access to production data requires role-based authorisation and is logged.</li>
+</ul>
+
+<h2>6. School Obligations</h2>
+<p>The School agrees to:</p>
+<ul>
+  <li>Obtain valid parental or guardian consent for all students under 18 before enabling their access to the Service, in accordance with the DPDP Act 2023.</li>
+  <li>Promptly notify Afterclass AI if any student withdraws consent or requests data deletion.</li>
+  <li>Ensure the School's admin PIN and login credentials are kept confidential.</li>
+  <li>Not share access to the School Dashboard with unauthorised personnel.</li>
+  <li>Use the Service only for legitimate educational purposes.</li>
+</ul>
+
+<h2>7. Afterclass AI Obligations</h2>
+<p>Afterclass AI agrees to:</p>
+<ul>
+  <li>Never sell, rent, or share student personal data with advertisers or third parties for commercial purposes.</li>
+  <li>Not use student data to train AI models beyond the individual session context.</li>
+  <li>Provide a data export (CSV format) of all school student data within 7 business days of a written request.</li>
+  <li>Notify the School within 72 hours of becoming aware of a personal data breach that affects school students.</li>
+  <li>Cooperate with the School's reasonable audits and data protection enquiries.</li>
+</ul>
+
+<h2>8. Student & Parent Rights</h2>
+<p>Under the DPDP Act 2023, students and their parents/guardians have the right to:</p>
+<ul>
+  <li><strong>Access</strong> — view what data is held via the in-app profile screen.</li>
+  <li><strong>Correction</strong> — update name, grade, or school details via Settings.</li>
+  <li><strong>Deletion</strong> — permanently delete their account and all data via the in-app "Delete Account" option or by emailing <a href="mailto:privacy@afterclassai.com">privacy@afterclassai.com</a>.</li>
+  <li><strong>Grievance redressal</strong> — complaints may be directed to our Data Protection Officer at <a href="mailto:dpo@afterclassai.com">dpo@afterclassai.com</a>. We will respond within 30 days.</li>
+</ul>
+
+<h2>9. Governing Law</h2>
+<p>This DPA is governed by the laws of India, including the Digital Personal Data Protection Act 2023 and the Information Technology Act 2000. Any disputes shall be subject to the exclusive jurisdiction of courts in [City], India.</p>
+
+<h2>10. Duration & Termination</h2>
+<p>This DPA is effective from the date of signing and remains in force for the duration of the school's subscription to the Service. Either party may terminate this DPA with 30 days' written notice. Upon termination, all student data will be deleted per Section 3.</p>
+
+<!-- SIGNATURES -->
+<div class="sig-grid">
+  <div class="sig-block">
+    <div style="margin-bottom:48px">&nbsp;</div>
+    <div style="font-weight:600">Afterclass AI</div>
+    <div class="sig-label">Authorised Signatory · Date: ___________</div>
+  </div>
+  <div class="sig-block">
+    <div style="margin-bottom:48px">&nbsp;</div>
+    <div style="font-weight:600">______________________________</div>
+    <div class="sig-label">School Representative · Designation: ___________</div>
+    <div class="sig-label">Date: ___________</div>
+  </div>
+</div>
+
+<p style="margin-top:40px;font-size:12px;color:#999;text-align:center;">
+  Afterclass AI &nbsp;·&nbsp; Version 1.0 &nbsp;·&nbsp; May 2026 &nbsp;·&nbsp;
+  <a href="mailto:legal@afterclassai.com" style="color:#999">legal@afterclassai.com</a>
+</p>
+
+</body>
+</html>

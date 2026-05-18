@@ -37,6 +37,7 @@ class CreateTaskRequest(BaseModel):
     description: str
     subject: str
     topic: str = ""
+    task_type: str = "blackboard"  # "blackboard" | "quiz"
     due_date_ms: int = 0
     school_id: str
     target_grade: str = ""   # empty = all grades
@@ -67,6 +68,7 @@ async def assign_task(
     task_id = str(uuid.uuid4())[:12]
     now = _now_ms()
     doc = {
+        "task_type":    req.task_type,
         "taskId": task_id,
         "title": req.title,
         "description": req.description,

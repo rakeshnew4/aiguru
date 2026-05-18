@@ -15,6 +15,7 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.view.GravityCompat
+import androidx.core.view.WindowCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import com.bumptech.glide.Glide
 import androidx.activity.OnBackPressedCallback
@@ -43,6 +44,8 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import android.graphics.drawable.GradientDrawable
 import android.util.Log
 import android.content.ContentValues
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.provider.MediaStore
 import android.content.pm.PackageManager
@@ -100,6 +103,12 @@ class HomeActivity : BaseActivity() {
     // Daily challenge cycling state
     private var dailyPendingQuestions: List<com.aiguruapp.student.daily.DailyQuestion> = emptyList()
     private var dailyChallengeIndex = 0
+    private var challengeCardCollapsed = false
+    private var challengeCardFullHeight = 0
+    private var _collapseCard: android.view.ViewGroup? = null
+    private val _collapseRunnable = Runnable {
+        _collapseCard?.let { if (it.isAttachedToWindow) collapseChallengeCard(it) }
+    }
 
     private val homeCameraLauncher =
         registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
@@ -141,6 +150,8 @@ class HomeActivity : BaseActivity() {
         }
 
         setContentView(R.layout.activity_home)
+        window.statusBarColor = android.graphics.Color.WHITE
+        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = true
 
         homeVoiceManager = VoiceManager(this)
         homeMediaManager = MediaManager(this)
@@ -194,6 +205,7 @@ class HomeActivity : BaseActivity() {
             startQuickChatPulseAnimation(btn)
         }
         setupLangChip()
+        maybeShowLangOnboarding()
 
         drawerLayout = findViewById(R.id.homeDrawerLayout)
 
@@ -202,9 +214,9 @@ class HomeActivity : BaseActivity() {
             drawerLayout.openDrawer(GravityCompat.START)
         }
 
-        // Avatar (top-right) shows a quick logout confirmation — everything else is in the drawer
+        // Avatar (top-right) navigates to user profile
         findViewById<View?>(R.id.profileButton)?.setOnClickListener {
-            confirmLogout()
+            startActivity(Intent(this, UserProfileActivity::class.java))
         }
 
         // ? Help / guide button — launches interactive feature tour
@@ -212,12 +224,18 @@ class HomeActivity : BaseActivity() {
             HomeTourManager(this).startTour()
         }
 
-        // Plan badge still navigates to subscription
-        findViewById<TextView?>(R.id.planBadgeText)?.setOnClickListener {
-            startActivity(
-                Intent(this, SubscriptionActivity::class.java)
-                    .putExtra("schoolId", SessionManager.getSchoolId(this))
-            )
+        // Plan badge still navigates to subscription (only if plans page is enabled by admin)
+        findViewById<TextView?>(R.id.planBadgeText)?.apply {
+            if (AccessGate.canAccess(this@HomeActivity, Feature.SUBSCRIPTION_PLANS)) {
+                setOnClickListener {
+                    startActivity(
+                        Intent(this@HomeActivity, SubscriptionActivity::class.java)
+                            .putExtra("schoolId", SessionManager.getSchoolId(this@HomeActivity))
+                    )
+                }
+            } else {
+                isClickable = false
+            }
         }
 
         setupDrawer()
@@ -244,6 +262,8 @@ class HomeActivity : BaseActivity() {
         super.onResume()
         setupStudentInfo()
         loadQuotaStrip()
+        loadAssignmentBanner()
+        updateOfflineBanner()
         // If user returned from Play Store for a mandatory update, re-check.
         homePendingForceUpdate?.let { fu ->
             if (BuildConfig.VERSION_CODE < fu.config.minVersionCode) {
@@ -257,11 +277,100 @@ class HomeActivity : BaseActivity() {
         AppUpdateBus.consume { result -> handleHomeUpdateResult(result) }
         // Show feedback sheet after first / periodic BB session.
         FeedbackManager.showIfNeeded(this)
+        // After the very first BB session, auto-open the drawer once to guide
+        // the user to Share & Earn, Friends, etc. (only shown one time ever).
+        val prefs = getSharedPreferences("bb_prefs", MODE_PRIVATE)
+        val bbDoneEver = prefs.getInt("bb_sessions_alltime", 0) > 0
+        val drawerHintShown = prefs.getBoolean("drawer_hint_shown", false)
+        if (bbDoneEver && !drawerHintShown && ::drawerLayout.isInitialized) {
+            prefs.edit().putBoolean("drawer_hint_shown", true).apply()
+            drawerLayout.postDelayed({
+                drawerLayout.openDrawer(androidx.core.view.GravityCompat.START)
+            }, 800L)
+        }
     }
 
     override fun onPause() {
         super.onPause()
         AppUpdateBus.clearConsumer()
+    }
+
+    private fun isNetworkAvailable(): Boolean {
+        val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
+    private fun updateOfflineBanner() {
+        val banner = findViewById<com.google.android.material.card.MaterialCardView?>(R.id.cardOfflineBanner)
+            ?: return
+        if (isNetworkAvailable()) {
+            banner.visibility = android.view.View.GONE
+        } else {
+            banner.visibility = android.view.View.VISIBLE
+            banner.setOnClickListener {
+                startActivity(android.content.Intent(this, BbSavedSessionsActivity::class.java)
+                    .putExtra(BbSavedSessionsActivity.EXTRA_ALL_HISTORY, true))
+            }
+            findViewById<android.widget.TextView?>(R.id.tvOfflineBannerCta)
+                ?.setOnClickListener {
+                    startActivity(android.content.Intent(this, BbSavedSessionsActivity::class.java)
+                        .putExtra(BbSavedSessionsActivity.EXTRA_ALL_HISTORY, true))
+                }
+        }
+    }
+
+    @SuppressLint("ResourceType")
+    private fun loadAssignmentBanner() {
+        val schoolId = SessionManager.getSchoolId(this)
+        val isRealSchool = schoolId.isNotBlank()
+            && schoolId != "google" && schoolId != "email" && schoolId != "guest"
+        val banner = findViewById<com.google.android.material.card.MaterialCardView?>(R.id.cardTaskBanner)
+            ?: return
+        if (!isRealSchool) { banner.visibility = android.view.View.GONE; return }
+        val grade = SessionManager.getGrade(this)
+        val uid = SessionManager.getFirestoreUserId(this)
+        FirestoreManager.loadTasksForSchool(
+            schoolId = schoolId,
+            grade = grade,
+            onSuccess = { tasks ->
+                if (tasks.isEmpty()) { banner.visibility = android.view.View.GONE; return@loadTasksForSchool }
+                val task = tasks.first()
+                val taskId = task["id"] as? String ?: ""
+                val title = task["title"] as? String ?: "Assigned Task"
+                val topic = task["topic"] as? String ?: task["title"] as? String ?: ""
+                val subject = task["subject"] as? String ?: "General"
+                val taskType = task["task_type"] as? String ?: "blackboard"
+                val tvTitle = banner.findViewById<android.widget.TextView>(R.id.tvTaskBannerTitle)
+                val isQuiz = taskType == "quiz"
+                tvTitle?.text = if (isQuiz) "📝 Quiz: $title" else "📋 Lesson: $title"
+                banner.visibility = android.view.View.VISIBLE
+                banner.setOnClickListener {
+                    if (isQuiz) {
+                        // Teacher-assigned quiz → open QuizSetupActivity with pre-filled subject/topic
+                        startActivity(android.content.Intent(this, QuizSetupActivity::class.java).apply {
+                            putExtra("subjectName", subject)
+                            putExtra("chapterId", topic.ifBlank { subject })
+                            putExtra("chapterTitle", topic.ifBlank { title })
+                            putExtra("assigned_task_id", taskId)
+                        })
+                    } else {
+                        // Teacher-assigned BB lesson → BlackboardActivity
+                        val lang = SessionManager.getPreferredLang(this)
+                        startActivity(android.content.Intent(this, BlackboardActivity::class.java).apply {
+                            putExtra(BlackboardActivity.EXTRA_MESSAGE, topic.ifBlank { title })
+                            putExtra(BlackboardActivity.EXTRA_SUBJECT, subject)
+                            putExtra(BlackboardActivity.EXTRA_CHAPTER, subject)
+                            putExtra(BlackboardActivity.EXTRA_USER_ID, uid)
+                            putExtra(BlackboardActivity.EXTRA_LANGUAGE_TAG, lang)
+                            putExtra("assigned_task_id", taskId)
+                        })
+                    }
+                }
+            },
+            onFailure = { banner.visibility = android.view.View.GONE }
+        )
     }
 
     @SuppressLint("ResourceType")
@@ -524,9 +633,9 @@ class HomeActivity : BaseActivity() {
             val label = when {
                 creditsMode  -> "⭐ using credits!"
                 bbLeft == 0  -> "Free lessons completed 🚀"
-                bbLeft == 1  -> "1 more free lesson left today! 🎓"
-                bbLeft <= 3  -> "$bbLeft free lessons — learn more! 🎨"
-                else         -> "$bbLeft free lessons  - learn more! 🎓"
+                bbLeft == 1  -> "1 more free 🎓"
+                bbLeft <= 3  -> "$bbLeft free lessons  🎨"
+                else         -> "$bbLeft free lessons 🎓"
             }
             val color = when {
                 creditsMode  -> "#FFB300"
@@ -555,28 +664,69 @@ class HomeActivity : BaseActivity() {
 
     private fun applySchoolBranding() {
         val schoolId = SessionManager.getSchoolId(this)
-        val school = ConfigManager.getSchool(this, schoolId)
+        val isRealSchool = schoolId.isNotBlank()
+            && schoolId != "google" && schoolId != "email" && schoolId != "guest"
 
-        // Load school colors into the centralized SchoolTheme singleton
+        // For non-school users, fall back to the "afterclass_ai" document in Firestore
+        val effectiveId = if (isRealSchool) schoolId else "afterclass_ai"
+        val school = ConfigManager.getSchool(this, effectiveId)
+
+        // Load colors — uses afterclass_ai branding from Firestore for non-school users
         SchoolTheme.load(school?.branding)
         SchoolTheme.applyStatusBar(window)
 
-        // Header background (LinearLayout — set color directly)
-        SchoolTheme.setBackground(findViewById(R.id.homeHeader))
+        val hasBranding = school?.branding?.primaryColor?.isNotBlank() == true
+        val homeHeader  = findViewById<View?>(R.id.homeHeader)
+        val navBar      = findViewById<View?>(R.id.homeNavBar)
+        val white       = android.graphics.Color.WHITE
 
-        // Quick-action chips (only tint addSubjectButton; generalChatButton uses animation)
-        SchoolTheme.tint(findViewById(R.id.addSubjectButton))
+        if (hasBranding) {
+            // School branded — hero and nav bar both get the school's primary color (flat)
+            SchoolTheme.setBackground(homeHeader)
+            navBar?.setBackgroundColor(SchoolTheme.primaryColor)
 
-        // Quick-chat button text color stays white — don't override from school theme
-        // (its background is controlled by the ValueAnimator, so tinting here would fight it)
+            val isLight      = SchoolTheme.isColorLight(SchoolTheme.primaryColor)
+            val navIconColor = if (isLight) android.graphics.Color.parseColor("#1A1A2E") else white
+            val navSubColor  = if (isLight) android.graphics.Color.parseColor("#666B8A")
+                               else android.graphics.Color.parseColor("#FFFFFFBB")
+            val chipBg       = if (isLight) android.graphics.Color.parseColor("#00000015")
+                               else android.graphics.Color.parseColor("#FFFFFF22")
 
-        // Header text: use white if primary is dark enough, else use primaryDark
-        val headerTextColor = android.graphics.Color.WHITE
+            window.statusBarColor = SchoolTheme.primaryColor
+            WindowCompat.getInsetsController(window, window.decorView)
+                .isAppearanceLightStatusBars = isLight
+            findViewById<TextView?>(R.id.drawerToggleBtn)?.setTextColor(navIconColor)
+            findViewById<TextView?>(R.id.schoolNameSubtitle)?.setTextColor(navSubColor)
+            val langBtn = findViewById<com.google.android.material.button.MaterialButton?>(R.id.langChipButton)
+            langBtn?.setTextColor(navIconColor)
+            langBtn?.backgroundTintList = android.content.res.ColorStateList.valueOf(chipBg)
+        } else {
+            // No school — restore Afterclass AI gradient on hero, cobalt blue on nav bar
+            homeHeader?.setBackgroundResource(R.drawable.bg_hero_band)
+            val brandBlue     = android.graphics.Color.parseColor("#1565C0")
+            val whiteSubtle   = android.graphics.Color.parseColor("#FFFFFFBB")
+            val chipBgDefault = android.graphics.Color.parseColor("#FFFFFF22")
+            navBar?.setBackgroundColor(brandBlue)
+            window.statusBarColor = brandBlue
+            WindowCompat.getInsetsController(window, window.decorView)
+                .isAppearanceLightStatusBars = false
+            findViewById<TextView?>(R.id.drawerToggleBtn)?.setTextColor(white)
+            findViewById<TextView?>(R.id.schoolNameSubtitle)?.setTextColor(whiteSubtle)
+            val langBtn = findViewById<com.google.android.material.button.MaterialButton?>(R.id.langChipButton)
+            langBtn?.setTextColor(white)
+            langBtn?.backgroundTintList = android.content.res.ColorStateList.valueOf(chipBgDefault)
+        }
+
+        // Header text always white (hero is always dark — school or Afterclass AI gradient)
+        val headerTextColor = white
         findViewById<TextView?>(R.id.greetingText)?.setTextColor(headerTextColor)
         findViewById<TextView?>(R.id.userNameText)?.setTextColor(headerTextColor)
         findViewById<TextView?>(R.id.schoolNameSubtitle)?.setTextColor(
             android.graphics.Color.parseColor("#FFFFFFCC"))
         findViewById<TextView?>(R.id.planBadgeText)?.setTextColor(headerTextColor)
+
+        // Quick-action chips (only tint addSubjectButton; generalChatButton uses animation)
+        SchoolTheme.tint(findViewById(R.id.addSubjectButton))
 
         // School logo — load from URL if available, otherwise hide
         val logoUrl = school?.branding?.logoUrl ?: ""
@@ -600,8 +750,27 @@ class HomeActivity : BaseActivity() {
         val planName = SessionManager.getPlanName(this)
 
         findViewById<TextView?>(R.id.userNameText)?.text = studentName
-        // Show school name as subtitle if view exists
-        findViewById<TextView?>(R.id.schoolNameSubtitle)?.text = schoolName
+        findViewById<TextView?>(R.id.profileButton)?.apply {
+            text = studentName.firstOrNull()?.uppercaseChar()?.toString() ?: "P"
+            visibility = View.VISIBLE
+        }
+        // School name — real school users show their school, others read from afterclass_ai doc
+        val schoolId = SessionManager.getSchoolId(this)
+        val isRealSchool = schoolId.isNotBlank()
+            && schoolId != "google" && schoolId != "email" && schoolId != "guest"
+        val displaySchool = if (isRealSchool) {
+            schoolName
+        } else {
+            val cached = ConfigManager.getSchool(this, "afterclass_ai")
+            if (cached != null) {
+                cached.name
+            } else {
+                // Not in schools cache — fetch directly from Firestore and update UI when ready
+                fetchAfterclassAiBranding()
+                "Afterclass AI"   // placeholder until async fetch completes
+            }
+        }
+        findViewById<TextView?>(R.id.schoolNameSubtitle)?.text = displaySchool
         // Always show plan badge — new users see "Free" so they can navigate to subscribe
         val displayPlan = if (planName.isNotBlank()) "📋 $planName" else "📋 Free"
         findViewById<TextView?>(R.id.planBadgeText)?.apply {
@@ -612,6 +781,45 @@ class HomeActivity : BaseActivity() {
         if (::drawerLayout.isInitialized) updateDrawerHeader()
     }
 
+    /** Fetches schools/afterclass_ai directly from Firestore server (bypasses stale cache)
+     *  and updates the nav bar name + colors on the UI thread. */
+    private fun fetchAfterclassAiBranding() {
+        val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+        db.collection("schools").document("afterclass_ai")
+            .get(com.google.firebase.firestore.Source.SERVER)
+            .addOnSuccessListener { doc ->
+                if (!doc.exists()) return@addOnSuccessListener
+                val data    = doc.data ?: return@addOnSuccessListener
+                val name    = data["name"] as? String ?: return@addOnSuccessListener
+                val b       = data["branding"] as? Map<*, *> ?: return@addOnSuccessListener
+                val primary = b["primaryColor"] as? String ?: return@addOnSuccessListener
+                val accent  = b["accentColor"]  as? String
+                runOnUiThread {
+                    // Nav bar name
+                    findViewById<TextView?>(R.id.schoolNameSubtitle)?.text = name
+                    // Nav bar + status bar color
+                    val color   = runCatching { android.graphics.Color.parseColor(primary) }.getOrNull() ?: return@runOnUiThread
+                    val isLight = SchoolTheme.isColorLight(color)
+                    val textColor = if (isLight) android.graphics.Color.parseColor("#1A1A2E") else android.graphics.Color.WHITE
+                    findViewById<View?>(R.id.homeNavBar)?.setBackgroundColor(color)
+                    window.statusBarColor = color
+                    WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = isLight
+                    findViewById<TextView?>(R.id.drawerToggleBtn)?.setTextColor(textColor)
+                    // Hero band — gradient if accent available, flat color otherwise
+                    val homeHeader = findViewById<View?>(R.id.homeHeader)
+                    val accentColor = accent?.let { runCatching { android.graphics.Color.parseColor(it) }.getOrNull() }
+                    if (accentColor != null) {
+                        homeHeader?.background = android.graphics.drawable.GradientDrawable(
+                            android.graphics.drawable.GradientDrawable.Orientation.TL_BR,
+                            intArrayOf(color, accentColor)
+                        )
+                    } else {
+                        homeHeader?.setBackgroundColor(color)
+                    }
+                }
+            }
+    }
+
     private fun setupGreeting() {
         val config = ConfigManager.getAppConfig(this)
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
@@ -620,7 +828,10 @@ class HomeActivity : BaseActivity() {
             hour < 17 -> config.greetingMessages["afternoon"] ?: "Good afternoon! 👋"
             else -> config.greetingMessages["evening"] ?: "Good evening! 🌙"
         }
-        findViewById<TextView>(R.id.greetingText).text = greeting
+        findViewById<TextView>(R.id.greetingText).apply {
+            text = greeting
+            visibility = View.VISIBLE
+        }
     }
 
     // ── Language chip ─────────────────────────────────────────────────────────
@@ -729,6 +940,32 @@ class HomeActivity : BaseActivity() {
             .show()
     }
 
+    private fun maybeShowLangOnboarding() {
+        // Only show on first launch — once a language is saved, skip forever
+        if (SessionManager.getPreferredLang(this).isNotBlank()) return
+        val chip = findViewById<MaterialButton?>(R.id.langChipButton)
+        var selectedIndex = 0  // default: English
+        android.app.AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+            .setTitle("🌐 Choose Your Teaching Language")
+            .setMessage("In which language would you like your AI tutor to teach?")
+            .setCancelable(false)
+            .setSingleChoiceItems(langLabels, 0) { _, which ->
+                selectedIndex = which
+            }
+            .setPositiveButton("Start Learning ✅") { _, _ ->
+                SessionManager.savePreferredLang(this, langCodes[selectedIndex])
+                chip?.let { refreshLangChip(it) }
+                Toast.makeText(this,
+                    "Great! Teaching in ${langLabels[selectedIndex]}",
+                    Toast.LENGTH_SHORT).show()
+            }
+            .setNeutralButton("Skip (English)") { _, _ ->
+                SessionManager.savePreferredLang(this, "en-US")
+                chip?.let { refreshLangChip(it) }
+            }
+            .show()
+    }
+
     private fun showAppGuide() {
         val guide = """
 🎓  Blackboard Mode
@@ -793,6 +1030,30 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
     private fun loadSmartHomeContent() {
         val uid = SessionManager.getFirestoreUserId(this)
         if (uid.isBlank() || uid == "guest_user") return
+
+        // Wire the on-demand quiz button — asks for topic then launches QuizSetupActivity
+        findViewById<com.google.android.material.button.MaterialButton?>(R.id.btnTakeQuiz)
+            ?.setOnClickListener { showQuizTopicDialog() }
+
+        // Load full stats (includes quiz accuracy) then populate the progress strip
+        StudentStatsManager.fetchStudentStats(uid,
+            onSuccess = { stats ->
+                if (stats == null) return@fetchStudentStats
+                val quizPct = if (stats.totalQuizzesAnswered > 0)
+                    (stats.totalQuizzesCorrect * 100 / stats.totalQuizzesAnswered)
+                else -1
+                runOnUiThread {
+                    val strip = findViewById<android.view.View?>(R.id.progressStatsStrip)
+                    strip?.visibility = android.view.View.VISIBLE
+                    findViewById<android.widget.TextView?>(R.id.statStreakValue)?.text =
+                        if (stats.streakDays > 0) "${stats.streakDays}d" else "0"
+                    findViewById<android.widget.TextView?>(R.id.statBbValue)?.text =
+                        "${stats.totalBbSessions}"
+                    findViewById<android.widget.TextView?>(R.id.statQuizValue)?.text =
+                        if (quizPct >= 0) "$quizPct%" else "—"
+                }
+            }
+        )
 
         StudentStatsManager.fetchUsageSummary(uid) { totalMessages, totalBbSessions, streakDays ->
             runOnUiThread {
@@ -930,6 +1191,12 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
         val pending = dailyPendingQuestions
         if (index >= pending.size) return
         val q = pending[index]
+        // Cancel any pending auto-collapse and reset to full size
+        _collapseCard?.removeCallbacks(_collapseRunnable)
+        _collapseCard = card
+        challengeCardCollapsed = false
+        card.layoutParams.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        card.requestLayout()
         card.visibility = View.VISIBLE
         card.findViewById<TextView?>(R.id.challengeHookText)?.text = q.hook
         card.findViewById<TextView?>(R.id.challengeQuestionText)?.text = q.question
@@ -952,17 +1219,54 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
             nextBtn?.visibility = View.GONE
         }
         card.setOnClickListener {
-            val uid = SessionManager.getFirestoreUserId(this@HomeActivity)
-            val intent = Intent(this@HomeActivity, BlackboardActivity::class.java).apply {
-                putExtra(BlackboardActivity.EXTRA_MESSAGE, q.question)
-                putExtra(BlackboardActivity.EXTRA_SUBJECT, q.subject)
-                if (uid.isNotBlank() && uid != "guest_user") {
-                    putExtra(BlackboardActivity.EXTRA_USER_ID, uid)
+            if (challengeCardCollapsed) {
+                expandChallengeCard(card)
+            } else {
+                val uid = SessionManager.getFirestoreUserId(this@HomeActivity)
+                val intent = Intent(this@HomeActivity, BlackboardActivity::class.java).apply {
+                    putExtra(BlackboardActivity.EXTRA_MESSAGE, q.question)
+                    putExtra(BlackboardActivity.EXTRA_SUBJECT, q.subject)
+                    if (uid.isNotBlank() && uid != "guest_user") {
+                        putExtra(BlackboardActivity.EXTRA_USER_ID, uid)
+                    }
+                    putExtra("daily_question_id", q.id)
                 }
-                putExtra("daily_question_id", q.id)
+                startActivity(intent)
             }
-            startActivity(intent)
         }
+        // Auto-collapse after 2 seconds to save screen space
+        card.postDelayed(_collapseRunnable, 2000L)
+    }
+
+    private fun collapseChallengeCard(card: android.view.ViewGroup) {
+        if (challengeCardCollapsed || card.height <= 0) return
+        challengeCardFullHeight = card.height
+        val collapsedPx = (56 * resources.displayMetrics.density).toInt()
+        android.animation.ValueAnimator.ofInt(challengeCardFullHeight, collapsedPx).apply {
+            duration = 350
+            interpolator = android.view.animation.DecelerateInterpolator()
+            addUpdateListener { card.layoutParams.height = it.animatedValue as Int; card.requestLayout() }
+            start()
+        }
+        challengeCardCollapsed = true
+    }
+
+    private fun expandChallengeCard(card: android.view.ViewGroup) {
+        if (!challengeCardCollapsed) return
+        val collapsedPx = (56 * resources.displayMetrics.density).toInt()
+        android.animation.ValueAnimator.ofInt(collapsedPx, challengeCardFullHeight).apply {
+            duration = 350
+            interpolator = android.view.animation.DecelerateInterpolator()
+            addUpdateListener { card.layoutParams.height = it.animatedValue as Int; card.requestLayout() }
+            addListener(object : android.animation.AnimatorListenerAdapter() {
+                override fun onAnimationEnd(a: android.animation.Animator) {
+                    card.layoutParams.height = android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+                    card.requestLayout()
+                }
+            })
+            start()
+        }
+        challengeCardCollapsed = false
     }
 
     /** Renders personalised suggestion cards in the horizontal "For You" strip. */
@@ -1179,6 +1483,43 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
     }
 
     /** Shows a polished bottom sheet to collect topic + duration, then launches BB mode. */
+    /** On-demand quiz: ask student for a subject/topic then open QuizSetupActivity. */
+    private fun showQuizTopicDialog() {
+        val dp = resources.displayMetrics.density
+        val input = android.widget.EditText(this).apply {
+            hint = "e.g. Maths Trigonometry, Science Force…"
+            textSize = 15f
+            setSingleLine(true)
+            setPadding((12*dp).toInt(), (12*dp).toInt(), (12*dp).toInt(), (12*dp).toInt())
+        }
+        val container = android.widget.FrameLayout(this).apply {
+            setPadding((20*dp).toInt(), (8*dp).toInt(), (20*dp).toInt(), 0)
+            addView(input)
+        }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("📝 Quiz on what?")
+            .setMessage("Enter a subject or topic you want to be tested on.")
+            .setView(container)
+            .setPositiveButton("Generate Quiz") { _, _ ->
+                val topic = input.text.toString().trim()
+                if (topic.isBlank()) {
+                    android.widget.Toast.makeText(this, "Please enter a topic", android.widget.Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                // Split "Maths Trigonometry" → subject=Maths, chapterTitle=Trigonometry
+                val parts = topic.split(" ", limit = 2)
+                val subject = parts[0].replaceFirstChar { it.uppercase() }
+                val chapter = if (parts.size > 1) parts[1] else topic
+                startActivity(android.content.Intent(this, QuizSetupActivity::class.java).apply {
+                    putExtra("subjectName", subject)
+                    putExtra("chapterId", chapter.lowercase().replace(" ", "_"))
+                    putExtra("chapterTitle", chapter)
+                })
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     private fun showBbTopicDialog(topicHint: String = "") {
         // Guests must sign in before using Blackboard mode
         if (SessionManager.isGuestMode(this)) {
@@ -1834,6 +2175,7 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
         AccessGate.applyVisibility(this, findViewById(R.id.drawerItemJoinSchool),Feature.JOIN_SCHOOL)
         AccessGate.applyVisibility(this, findViewById(R.id.drawerItemProfile),   Feature.USER_PROFILE)
         AccessGate.applyVisibility(this, findViewById(R.id.drawerItemProgress),  Feature.PROGRESS_DASHBOARD)
+        AccessGate.applyVisibility(this, findViewById(R.id.drawerItemPlans),     Feature.SUBSCRIPTION_PLANS)
 
         // Nav item clicks — close drawer then navigate
         fun navigate(block: () -> Unit) {
@@ -1864,6 +2206,18 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
         }
         findViewById<LinearLayout>(R.id.drawerItemFriends).setOnClickListener {
             navigate { startActivity(Intent(this, FriendsActivity::class.java)) }
+        }
+        findViewById<LinearLayout>(R.id.drawerItemShareEarn).setOnClickListener {
+            navigate {
+                val code = com.aiguruapp.student.config.ReferralManager.codeForUser(userId)
+                val msg = "Join me on AiGuru 🎓 — AI-powered tutor that makes every topic click!\n" +
+                    "Use my referral code $code and we both get bonus questions!\n" +
+                    "Download: https://play.google.com/store/apps/details?id=com.aiguruapp.student"
+                startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, msg)
+                }, "Share AiGuru"))
+            }
         }
         findViewById<LinearLayout>(R.id.drawerItemTeacher).setOnClickListener {
             navigate { startActivity(Intent(this, TeacherDashboardActivity::class.java)) }
@@ -1907,6 +2261,9 @@ Open the ☰ drawer → Progress to see your learning streaks, BB sessions and q
         findViewById<TextView?>(R.id.drawerName)?.text = name
         findViewById<TextView?>(R.id.drawerSchool)?.text = school
         findViewById<TextView?>(R.id.drawerPlanBadge)?.text = "📋 $plan"
+        // Replace emoji avatar with user's initial
+        val initial = name.firstOrNull()?.uppercaseChar()?.toString() ?: "S"
+        findViewById<TextView?>(R.id.drawerAvatar)?.text = initial
     }
 
     // ── Offers banner (Firestore-backed) ───────────────────────────────────────

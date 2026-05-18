@@ -133,6 +133,31 @@ CHAPTERS = [
 # ── schools/ ──────────────────────────────────────────────────────────────────
 SCHOOLS = [
     {
+        # Default school — used when no school is assigned.
+        # App shows "Afterclass AI" branding for these users.
+        "id": "afterclass_ai",
+        "name": "Afterclass AI",
+        "shortName": "Afterclass AI",
+        "city": "",
+        "state": "",
+        "code": "AFTERCLASS",
+        "contactEmail": "support@afterclassai.com",
+        "branding": {
+            "primaryColor": "#1565C0",
+            "primaryDarkColor": "#0D47A1",
+            "accentColor": "#4527A0",
+            "backgroundColor": "#EEF2FF",
+            "headerTextColor": "#FFFFFF",
+            "headerSubtextColor": "#FFFFFFBB",
+            "bodyTextPrimaryColor": "#1A1A2E",
+            "logoText": "AC",
+            "logoEmoji": "🎓",
+            "logoUrl": "",
+        },
+        "plans": [],
+        "testStudentIds": [],
+    },
+    {
         "id": "SCH001",
         "name": "Delhi Public School",
         "shortName": "DPS",
@@ -429,6 +454,63 @@ PLANS = [
     },
 ]
 
+# ── puzzles/ ─────────────────────────────────────────────────────────────────
+# Floating puzzle game images. Add new docs here (or directly in Firestore) to
+# give students more puzzles without an APK update.
+# image_url: any publicly accessible image (Wikimedia Commons recommended).
+# grid_size: 3 = 3×3 (easy), 4 = 4×4 (hard).
+PUZZLES = [
+    {
+        "id": "puzzle_cell",
+        "title": "Animal Cell",
+        "subject": "biology",
+        "grid_size": 3,
+        "active": True,
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Animal_cell_structure_en.svg/640px-Animal_cell_structure_en.svg.png",
+    },
+    {
+        "id": "puzzle_solar",
+        "title": "Solar System",
+        "subject": "science",
+        "grid_size": 3,
+        "active": True,
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Planets2013.svg/640px-Planets2013.svg.png",
+    },
+    {
+        "id": "puzzle_periodic",
+        "title": "Periodic Table",
+        "subject": "chemistry",
+        "grid_size": 4,
+        "active": True,
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Simple_Periodic_Table_Chart-en.svg/640px-Simple_Periodic_Table_Chart-en.svg.png",
+    },
+    {
+        "id": "puzzle_india_map",
+        "title": "Map of India",
+        "subject": "geography",
+        "grid_size": 3,
+        "active": True,
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/India_states_and_union_territories_map.svg/480px-India_states_and_union_territories_map.svg.png",
+    },
+    {
+        "id": "puzzle_photosynthesis",
+        "title": "Photosynthesis",
+        "subject": "biology",
+        "grid_size": 3,
+        "active": True,
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/45/Photosynthesis_en.svg/640px-Photosynthesis_en.svg.png",
+    },
+    {
+        "id": "puzzle_digestive",
+        "title": "Digestive System",
+        "subject": "biology",
+        "grid_size": 3,
+        "active": True,
+        "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Digestive_system_diagram_en.svg/480px-Digestive_system_diagram_en.svg.png",
+    },
+]
+
+
 # ── credit_topups/ ───────────────────────────────────────────────────────────
 # Fetched by /credits/topup-packs endpoint and displayed in SubscriptionActivity.
 CREDIT_TOPUPS = [
@@ -505,7 +587,7 @@ APP_UPDATE_CONFIG = {
     "latest_version_code": 3,
     "latest_version_name": "1.1.0",
     "update_url": "https://play.google.com/store/apps/details?id=com.example.aiguru",
-    "update_message": "A new version of AI Guru is available with improvements and fixes.",
+    "update_message": "A new version of Afterclass AI is available with improvements and fixes.",
     "release_notes": "• Build stability fixes\n• Subscription plans added\n• New chapter content",
     "is_maintenance": False,
     "maintenance_message": "We're working on improvements. Please check back soon.",
@@ -519,7 +601,7 @@ NOW_ISO = datetime.now(timezone.utc).isoformat()
 NOTIFICATIONS = [
     {
         "id": "notif_welcome",
-        "title": "Welcome to AI Guru! 👋",
+        "title": "Welcome to Afterclass AI! 👋",
         "body": "Start exploring subjects and ask your AI tutor anything.",
         "type": "info",          # info | promo | update | alert
         "target": "all",         # all | plan:student_pro | uid:xyz
@@ -592,6 +674,20 @@ ADMIN_CONFIG_GLOBAL = {
     "tts_elevenlabs_api_key": "",     # ElevenLabs secret key
     "tts_openai_api_key": "",         # OpenAI sk-...
     "tts_server_url": "",             # Self-hosted TTS server URL (leave blank to reuse server_url)
+
+    # ── Page visibility (admin toggle per page) ────────────────────────────────
+    # Set any page key to False to hide it from ALL users instantly.
+    # Keys match AccessGate.Feature.pageKey in the Android app.
+    # Missing key = visible (safe default).
+    "pages_enabled": {
+        "subscription_plans": False,   # hide Plans & Payments until monetisation is ready
+        "quiz": True,
+        "blackboard": True,
+        "library": True,
+        "progress_dashboard": True,
+        "flashcards": True,
+        "ai_voice": True,
+    },
 }
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -651,6 +747,9 @@ if __name__ == "__main__":
 
     print("\n── admin_config/global ───────────────────────────────")
     seed_single("admin_config", "global", ADMIN_CONFIG_GLOBAL)
+
+    print("\n── puzzles/ ──────────────────────────────────────────")
+    seed_collection("puzzles", PUZZLES)
 
     print("\n✅  Done — all collections seeded successfully.")
 

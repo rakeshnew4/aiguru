@@ -41,7 +41,18 @@ class VoiceManager(private val context: Context) {
 
     fun startListening(callback: VoiceRecognitionCallback, language: String = "en-US") {
         this.callback = callback
+        Log.d(TAG, "startListening called: language=$language recognizerInit=${::speechRecognizer.isInitialized}")
         try {
+            // Always recreate the speechRecognizer. This avoids ERROR_RECOGNIZER_BUSY when
+            // the previous wake-word recognizer was destroyed from within its own onResults
+            // callback (the system may not have fully released the mic yet).
+            if (::speechRecognizer.isInitialized) {
+                try { speechRecognizer.destroy() } catch (_: Exception) {}
+            }
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
+            speechRecognizer.setRecognitionListener(RecognitionListenerImpl())
+            Log.d(TAG, "startListening: fresh speechRecognizer created")
+
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, language)
@@ -53,9 +64,10 @@ class VoiceManager(private val context: Context) {
                 putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 2000L)
             }
             speechRecognizer.startListening(intent)
-            callback.onListeningStarted()
+            Log.d(TAG, "startListening: speechRecognizer.startListening() called OK")
+            // onListeningStarted() is now fired in onReadyForSpeech (when mic is actually open)
         } catch (e: Exception) {
-            Log.e(TAG, "Error starting listening", e)
+            Log.e(TAG, "startListening FAILED", e)
             callback.onError("Unable to start voice recognition")
         }
     }
@@ -118,8 +130,17 @@ class VoiceManager(private val context: Context) {
         language: String = "en-US"
     ) {
         stopWakeWordLoop()
-        if (!SpeechRecognizer.isRecognitionAvailable(context)) {
+        val avail = SpeechRecognizer.isRecognitionAvailable(context)
+        val permOk = android.content.pm.PackageManager.PERMISSION_GRANTED ==
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.RECORD_AUDIO)
+        Log.d(TAG, "startWakeWordLoop: words=$wakeWords lang=$language recogAvail=$avail permGranted=$permOk")
+        if (!avail) {
             Log.w(TAG, "Wake word loop: SpeechRecognizer not available")
+            return
+        }
+        if (!permOk) {
+            Log.w(TAG, "Wake word loop: RECORD_AUDIO permission not granted — skipping")
             return
         }
         wakeWordActive = true
@@ -128,6 +149,7 @@ class VoiceManager(private val context: Context) {
 
     /** Stops the wake word loop and releases its recognizer. Safe to call anytime. */
     fun stopWakeWordLoop() {
+        Log.d(TAG, "stopWakeWordLoop called (wakeWordActive=$wakeWordActive)")
         wakeWordActive = false
         wakeWordHandler.removeCallbacksAndMessages(null)
         try { wakeWordRecognizer?.stopListening() } catch (_: Exception) {}
@@ -144,6 +166,7 @@ class VoiceManager(private val context: Context) {
         if (!wakeWordActive) return
         wakeWordHandler.postDelayed({
             if (!wakeWordActive) return@postDelayed
+            Log.d(TAG, "_runWakeWordCycle: starting new recognizer cycle (delay was ${delayMs}ms)")
             try {
                 wakeWordRecognizer?.destroy()
                 wakeWordRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
@@ -160,10 +183,12 @@ class VoiceManager(private val context: Context) {
                         if (!wakeWordActive) return
                         val text = b?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                             ?.firstOrNull()?.lowercase()?.trim() ?: ""
+                        Log.d(TAG, "WakeWord onResults: heard='$text'")
                         val matched = wakeWords.firstOrNull { word ->
                             text.contains(word.lowercase())
                         }
                         if (matched != null) {
+                            Log.d(TAG, "WakeWord MATCHED: '$matched' — calling onDetected")
                             wakeWordActive = false
                             onDetected(matched)
                         } else {
@@ -176,11 +201,14 @@ class VoiceManager(private val context: Context) {
                         val delay = when (error) {
                             SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> 1500L
                             SpeechRecognizer.ERROR_AUDIO           -> 800L
-                            SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> {
-                                wakeWordActive = false; return
-                            }
+                            // INSUFFICIENT_PERMISSIONS is a transient false-positive on some OEMs
+                            // (fires when mic is briefly occupied by TTS releasing audio).
+                            // Retry after 2 s instead of stopping permanently — if permission is
+                            // truly missing the loop will never succeed and will keep retrying at low cost.
+                            SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> 2000L
                             else -> 300L
                         }
+                        Log.w(TAG, "WakeWord onError: code=$error delay=${delay}ms")
                         _runWakeWordCycle(wakeWords, onDetected, language, delay)
                     }
                 })
@@ -212,13 +240,14 @@ class VoiceManager(private val context: Context) {
 
     private inner class RecognitionListenerImpl : RecognitionListener {
         override fun onReadyForSpeech(params: Bundle?) {
-            Log.d(TAG, "Ready for speech")
+            Log.d(TAG, "RecognitionListenerImpl.onReadyForSpeech — mic OPEN")
+            callback?.onListeningStarted()
         }
 
         override fun onEvent(eventType: Int, params: Bundle?) {}
 
         override fun onBeginningOfSpeech() {
-            Log.d(TAG, "Beginning of speech")
+            Log.d(TAG, "RecognitionListenerImpl.onBeginningOfSpeech — speech detected")
             callback?.onBeginningOfSpeech()
         }
 
@@ -229,7 +258,7 @@ class VoiceManager(private val context: Context) {
         override fun onBufferReceived(buffer: ByteArray?) {}
 
         override fun onEndOfSpeech() {
-            Log.d(TAG, "End of speech")
+            Log.d(TAG, "RecognitionListenerImpl.onEndOfSpeech — waiting for results")
         }
 
         override fun onError(error: Int) {
@@ -243,9 +272,9 @@ class VoiceManager(private val context: Context) {
                 SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "Recognizer busy"
                 SpeechRecognizer.ERROR_SERVER -> "Server error"
                 SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "Speech timeout"
-                else -> "Unknown error"
+                else -> "Unknown error ($error)"
             }
-            Log.e(TAG, "Recognition error: $errorMessage")
+            Log.e(TAG, "RecognitionListenerImpl.onError: code=$error msg=$errorMessage")
             callback?.onError(errorMessage)
         }
 

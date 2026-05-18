@@ -28,14 +28,14 @@
             android:layout_height="96dp"
             android:src="@mipmap/ic_launcher_round"
             android:layout_gravity="center"
-            android:contentDescription="AI Guru logo" />
+            android:contentDescription="AfterClass AI logo" />
 
         <!-- App name -->
         <TextView
             android:id="@+id/splashAppName"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="AI Guru"
+            android:text="AfterClass AI"
             android:textColor="#FFFFFF"
             android:textSize="36sp"
             android:textStyle="bold"

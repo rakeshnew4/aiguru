@@ -35,6 +35,7 @@
     </queries>
 
     <application
+        android:name=".AiGuruApp"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="AfterClass AI"
@@ -77,6 +78,7 @@
             android:label="NCERT Textbook" />
         <activity android:name=".SignupActivity" android:exported="false" />
         <activity android:name=".SchoolJoinActivity" android:exported="false" />
+        <activity android:name=".SchoolWelcomeActivity" android:exported="false" />
         <activity android:name=".UserProfileActivity" android:exported="false" />
         <!-- exported + singleTop required for Razorpay UPI redirect (PhonePe etc.)
              to return control to this activity after payment completes. -->
@@ -130,6 +132,8 @@
         <activity android:name=".BbSavedSessionsActivity" android:exported="false"/>
         <activity android:name=".FriendsActivity" android:exported="false"/>
         <activity android:name=".TeacherChatReviewActivity" android:exported="false"
+            android:windowSoftInputMode="adjustResize"/>
+        <activity android:name=".StudentChatSelectionActivity" android:exported="false"
             android:windowSoftInputMode="adjustResize"/>
         <activity android:name=".TeacherSavedContentActivity" android:exported="false"/>
         <activity android:name=".TeacherTasksActivity" android:exported="false"

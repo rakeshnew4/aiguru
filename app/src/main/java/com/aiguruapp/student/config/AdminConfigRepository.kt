@@ -31,12 +31,22 @@ object AdminConfigRepository {
     @Volatile private var cachedPlans:  Map<String, SubscriptionPlan> = emptyMap()
     @Volatile private var lastFetchMs:  Long = 0L
     @Volatile private var isFetching:   Boolean = false
+    // Callbacks queued while a fetch is already in flight
+    private val pendingCallbacks = mutableListOf<(AdminConfig) -> Unit>()
 
     /** Returns the currently cached AdminConfig (may be the default if not yet loaded). */
     val config: AdminConfig get() = cachedConfig
 
     /** Returns all known plans keyed by planId. Populated by [AppStartRepository] too. */
     val plans: Map<String, SubscriptionPlan> get() = cachedPlans
+
+    /**
+     * Returns whether the given page is enabled in the admin config.
+     * If the key is missing from [AdminConfig.pagesEnabled], defaults to true (visible).
+     * Set `pages_enabled.{pageKey} = false` in Firestore admin_config/global to hide a page.
+     */
+    fun isPageEnabled(pageKey: String): Boolean =
+        cachedConfig.pagesEnabled[pageKey] ?: true
 
     // ── Public API ────────────────────────────────────────────────────────────
 
@@ -53,11 +63,21 @@ object AdminConfigRepository {
      */
     fun fetchIfStale(onReady: ((AdminConfig) -> Unit)?) {
         val age = System.currentTimeMillis() - lastFetchMs
-        if (age < cachedConfig.cacheMaxAgeMs || isFetching) {
+
+        // Cache is fresh — return immediately
+        if (age < cachedConfig.cacheMaxAgeMs) {
             onReady?.invoke(cachedConfig)
             return
         }
+
+        // Fetch already in flight — queue callback so it fires when the request lands
+        if (isFetching) {
+            if (onReady != null) pendingCallbacks.add(onReady)
+            return
+        }
+
         isFetching = true
+        if (onReady != null) pendingCallbacks.add(onReady)
 
         // Fetch global config
         db.collection(COLLECTION).document(GLOBAL_DOC)
@@ -76,17 +96,22 @@ object AdminConfigRepository {
                 }
                 lastFetchMs = System.currentTimeMillis()
                 isFetching  = false
-                onReady?.invoke(cachedConfig)
-                // Also fetch plans
+                drainCallbacks()
                 fetchPlans()
             }
             .addOnFailureListener { e ->
                 Log.w(TAG, "AdminConfig fetch failed, using cached: ${e.message}")
                 isFetching  = false
-                lastFetchMs = System.currentTimeMillis() // back-off — don't retry immediately
-                onReady?.invoke(cachedConfig)
-                fetchPlans() // still load plans even if admin config read fails
+                lastFetchMs = System.currentTimeMillis()
+                drainCallbacks()
+                fetchPlans()
             }
+    }
+
+    private fun drainCallbacks() {
+        val toFire = pendingCallbacks.toList()
+        pendingCallbacks.clear()
+        toFire.forEach { it(cachedConfig) }
     }
 
     /**

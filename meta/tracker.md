@@ -5,6 +5,405 @@
 
 ---
 
+## 2026-05-19 (session) — Progress strip + on-demand quiz + teacher quiz task flow
+
+**Asked:** Show progress stats on home screen; quiz on student demand only; teacher-student quiz flow.
+
+**Changes:**
+- `activity_home.xml` — added `progressStatsStrip` LinearLayout (3 chips: streak, BB lessons, quiz %) between hero header and BB CTA; hidden by default (shown after stats load). Added `btnTakeQuiz` MaterialButton (outlined) below secondary action row.
+- `HomeActivity.kt:loadSmartHomeContent()` — calls `fetchStudentStats()` to get quiz accuracy; shows/populates `progressStatsStrip` (streak, totalBbSessions, quiz%); wires `btnTakeQuiz` → `showQuizTopicDialog()`
+- `HomeActivity.kt` — added `showQuizTopicDialog()`: AlertDialog with EditText for topic → parses "Subject Chapter" → launches `QuizSetupActivity` with `subjectName`, `chapterId`, `chapterTitle` pre-filled
+- `HomeActivity.kt:loadAssignmentBanner()` — reads `task_type` field from task; if `"quiz"` → banner shows "📝 Quiz: title" and taps to `QuizSetupActivity` with subject/topic pre-filled + `assigned_task_id`; else → original BB flow ("📋 Lesson: title" → BlackboardActivity)
+- `server/app/api/tasks.py:CreateTaskRequest` — added `task_type: str = "blackboard"` field; saved to `school_tasks` doc so student app can route correctly
+
+**Notes:** `bg_quick_action_card` drawable reused for stat chip backgrounds. QuizSetupActivity already handles `subjectName/chapterId/chapterTitle` extras — no changes needed there.
+
+---
+
+## 2026-05-19 — Build fix: bg_quick_action_card + Student Notes/Quiz from messages
+
+**Asked:**
+1. Build error: `bg_quick_action_card` drawable not found (activity_home.xml lines 247, 272, 296)
+2. Replace prompt-based notes generation with message-selection flow like TeacherChatReviewActivity
+
+**Files created:**
+- `app/src/main/res/drawable/bg_quick_action_card.xml` — rounded rect, indigo tint (#1A3D5AFE stroke #2A3D5AFE), 12dp radius
+- `app/src/main/java/com/aiguruapp/student/StudentChatSelectionActivity.kt` — student selects chat messages → save notes (ChapterNotesRepository) or generate quiz (QuizApiClient)
+- `app/src/main/res/layout/activity_student_chat_selection.xml` — layout for above
+
+**Files modified:**
+- `activity_chat.xml` — added `selectForNotesButton` ("✂️ Select Messages → Notes / Quiz") to quickActionsPanel
+- `FullChatFragment.kt` — wired `selectForNotesButton` → `StudentChatSelectionActivity.launch()`
+- `ChapterActivity.kt` — removed `showGenerateOptions()`, `generateChapterNotes()`, `generateExerciseNotes()`, `showPageWiseNotesPicker()`, `generateNotesForPage()`; `showNotesOptions()` now calls `StudentChatSelectionActivity.launch()`; `generateNotesBtn` click → `showNotesOptions()`
+- `activity_chapter.xml` — `generateNotesBtn` text changed from "✨ Generate Notes" → "✂️ Select from Chat"
+- `AndroidManifest.xml` — registered `.StudentChatSelectionActivity`
+
+**Flow:** Chat "+" → "✂️ Select Messages" → checkbox-select AI/student messages → "📝 Notes (N)" saves `ChapterNote` OR "🎯 Quiz (N)" calls QuizApiClient with context → `QuizActivity`
+
+---
+
+**Asked:** "always it has to save offline also, the sessions and chat"
+
+**Changes:**
+- `BlackboardGenerator.kt:sessionCacheFile()` — changed `cacheDir` → `filesDir/bb_sessions/`; removed 7-day TTL from `readSessionCache()` (sessions never expire)
+- `BlackboardActivity.kt:appendLocalWatchHistory()` — changed `cacheDir` → `filesDir` for `bb_watch_history_<uid>.json`
+- `BbSavedSessionsActivity.kt:cacheFile()` — changed `cacheDir` → `filesDir` (watches history + saved sessions now in persistent storage)
+- `ChatHistoryRepository.kt` — added `context: Context?` param; added `appendLocalLine()` / `readLocalMessages()` helpers writing to `filesDir/offline_chat/<uid>__<subject>__<chapter>.jsonl`; `saveMessage()` now writes local JSONL first (works offline); `loadHistory()` falls back to local JSONL on Firestore failure/offline
+- `FullChatFragment.kt:387` — passes `requireContext()` to ChatHistoryRepository constructor
+- `activity_home.xml` — added `cardOfflineBanner` (green card, "You're offline — saved lessons & chats are available") above cardTaskBanner, hidden by default
+- `HomeActivity.kt` — added `isNetworkAvailable()` + `updateOfflineBanner()`; called in `onResume()`; banner click opens `BbSavedSessionsActivity(EXTRA_ALL_HISTORY=true)`
+
+**T2-D Class Activity Snapshot:**
+- `school_portal.py` — added `_build_grade_breakdown()` helper; `get_dashboard()` returns `grade_breakdown` list
+- `server/app/static/school-portal/index.html` — added Class Activity Snapshot table above student list; `renderGradeSnapshot()` JS populates it
+
+---
+
+## 2026-05-19 — Admin page visibility control + referral highlight
+
+**Asked:** (1) Control which pages show from Firestore admin config, hide plans page initially. (2) Highlight referrals more prominently.
+
+**Changes:**
+- `AdminConfig.kt` — added `@field:PropertyName("pages_enabled") val pagesEnabled: Map<String, Boolean>` at end of data class
+- `AdminConfigRepository.kt` — added `fun isPageEnabled(pageKey: String): Boolean = cachedConfig.pagesEnabled[pageKey] ?: true`
+- `AccessGate.kt:canAccess()` — added `if (!AdminConfigRepository.isPageEnabled(feature.pageKey)) return false` at top
+- `HomeActivity.kt:setupDrawer()` — added `AccessGate.applyVisibility(drawerItemPlans, Feature.SUBSCRIPTION_PLANS)` to existing visibility block (~line 2172)
+- `HomeActivity.kt:planBadgeText click` — wrapped in `if (canAccess(SUBSCRIPTION_PLANS))` guard; badge is non-clickable when plans disabled
+- `activity_home.xml:drawerItemShareEarn` — redesigned with warm amber bg, bold "🎁 Invite Friends & Earn" + "Both get bonus questions!", orange "SHARE" badge pill
+- `drawable/bg_referral_highlight.xml` — new: amber rounded card bg with ripple for referral drawer item
+- `drawable/bg_referral_badge.xml` — new: orange pill bg for "SHARE" badge
+
+**How to use:**
+- In Firestore `admin_config/global`, set `pages_enabled: { "subscription_plans": false }` to hide the Plans page.
+- Omit a key (or set to true) to show that page. Any `Feature.pageKey` can be disabled this way.
+
+---
+
+## 2026-05-18 (session 24) — Fix school isActive flag not filtering
+
+**Asked:** Inactive schools still appear in dropdown.
+**Root cause:** `School` model had no `isActive` field; `fetchSchools()` fetched all docs with no filtering.
+**Changed:**
+- `models/School.kt` — added `val isActive: Boolean = true` (default true = backward compatible with existing docs that have no flag)
+- `AppStartRepository.kt:fetchSchools()` — reads `data["isActive"] ?: data["is_active"] ?: true` and does `if (!active) return@mapNotNull null` to skip inactive schools at parse time; checks both field name variants
+
+---
+
+## 2026-05-18 (session 23) — Read Afterclass AI from Firestore, not hardcoded
+
+**Asked:** Afterclass AI name/colors should come from Firestore, not be hardcoded.
+**Changed:** `HomeActivity.kt` —
+- `applySchoolBranding()`: introduced `effectiveId = if (isRealSchool) schoolId else "afterclass_ai"`; `ConfigManager.getSchool(this, effectiveId)` so non-school users load the `schools/afterclass_ai` Firestore doc; `hasBranding` now depends only on whether the loaded school has a primaryColor (not isRealSchool gate)
+- `setupStudentInfo()`: `displaySchool` for non-school users now reads `ConfigManager.getSchool(this, "afterclass_ai")?.name ?: "Afterclass AI"` instead of hardcoded string
+**Prerequisite:** `seed_firestore.py` must be run to push the `afterclass_ai` school doc to Firestore
+
+---
+
+## 2026-05-18 (session 22) — Seed Afterclass AI school + fix hero gradient
+
+**Asked:** Is Afterclass AI seeded in Firestore? Is hero card color from Firestore working?
+**Root cause:** (1) No "afterclass_ai" school doc in seed_firestore.py. (2) `SchoolTheme.setBackground(homeHeader)` always ran unconditionally, overwriting `bg_hero_band` gradient with flat `#1A1A2E` for no-school users.
+**Changed:**
+- `seed_firestore.py` — added "afterclass_ai" school entry at top of SCHOOLS list with full branding: primaryColor=#1565C0, accentColor=#4527A0, backgroundColor=#EEF2FF
+- `HomeActivity.kt:applySchoolBranding()` — restructured to check `hasBranding` first; `SchoolTheme.setBackground(homeHeader)` now only runs when hasBranding; else branch restores `homeHeader.setBackgroundResource(R.drawable.bg_hero_band)` so gradient is preserved for Afterclass AI users
+
+---
+
+## 2026-05-18 (session 21) — First-time language selection onboarding
+
+**Asked:** Show language picker when user enters home screen for the first time.
+**Changed:** `HomeActivity.kt` only —
+- Added `maybeShowLangOnboarding()` call after `setupLangChip()` in onCreate
+- Added `maybeShowLangOnboarding()`: checks `SessionManager.getPreferredLang().isBlank()` — if blank (first time), shows a non-dismissable AlertDialog with `setSingleChoiceItems` (all 8 languages), "Start Learning ✅" button saves selection, "Skip (English)" defaults to en-US. Both buttons call `refreshLangChip()`. Never shown again once any language is saved.
+
+---
+
+## 2026-05-18 (session 20) — Full security hardening
+
+**Asked:** Root+emulator detection, ProGuard, log stripping, Network Security Config, Play Integrity API.
+**ProGuard R8 + log stripping** — already fully enabled in build.gradle.kts + proguard-rules.pro. No changes needed.
+**Changed:**
+- `BaseActivity.kt` — refactored single `isDevOptionsEnabled()` into `detectSecurityThreat()` returning Triple(title,msg,showSettings); added `isRooted()` (su binary paths + root app packages); added `isEmulator()` (Build fingerprint/model/manufacturer/hardware checks); `showSecurityBlock()` now generic, only shows "Open Settings" for dev-options threat
+- `network_security_config.xml` — `base-config cleartextTrafficPermitted=false` + system CAs only in release; `debug-overrides` adds user CAs so devs can proxy traffic
+- `build.gradle.kts` — added `com.google.android.play:integrity:1.4.0`
+- `SplashActivity.kt` — added `runPlayIntegrityCheck()` (fire-and-forget, skips in DEBUG); generates SecureRandom nonce, requests token from IntegrityManagerFactory, POSTs to `/security/verify_integrity` on success
+- `server/app/api/security.py` (NEW) — POST `/security/verify_integrity`; decodes token via Google Play Integrity REST API; logs verdict (basic/device/strong integrity); non-blocking (passes through on API key missing or network error)
+- `server/app/main.py` — imported + registered security_router
+**One-time setup needed:** set `PLAY_INTEGRITY_API_KEY` env var on server (Google Cloud API key with Play Integrity API enabled)
+
+---
+
+## 2026-05-18 (session 19) — USB debugging security gate
+
+**Asked:** Block app when USB debugging or Developer Options is on.
+**Changed:** `BaseActivity.kt` only —
+- Added imports: AlertDialog, Intent, Settings, BuildConfig
+- Added `securityDialog: AlertDialog?` member var
+- `onResume()`: calls `isDevOptionsEnabled()` → `showDevOptionsBlock()` if true
+- `onDestroy()`: dismisses dialog cleanly
+- `isDevOptionsEnabled()`: returns false in DEBUG builds; reads `ADB_ENABLED` + `DEVELOPMENT_SETTINGS_ENABLED` from `Settings.Global`; blocks if either is 1
+- `showDevOptionsBlock()`: non-dismissable AlertDialog, "Open Settings" → Developer Options screen, "Close App" → `finishAffinity()`
+
+---
+
+## 2026-05-18 (session 18) — Fix admin_config not loading from Firestore
+
+**Asked:** Admin config (serverUrl, razorpay etc.) not being picked up from Firestore.
+**Root cause (2 bugs):**
+1. `AppStartRepository.fetchAll()`: `AdminConfigRepository.fetchIfStale()` was fire-and-forget (not in pending=5 counter). App navigated forward before `admin_config/global` fetch completed → activities read hardcoded default `"https://vkpremium.art"`.
+2. `AdminConfigRepository.fetchIfStale()`: when `isFetching=true`, new callers with callbacks got defaults immediately (callback dropped) instead of being queued.
+**Fixed:**
+- `AppStartRepository.kt:59` — `pending = 5 → 6`; line 75 — `fetchIfStale()` → `fetchIfStale { done() }` (AdminConfig now part of boot barrier)
+- `AdminConfigRepository.kt` — added `pendingCallbacks` list; split early-return: cache-fresh returns immediately, isFetching queues callback; added `drainCallbacks()` called from both success+failure handlers so all queued callers get the real value
+
+---
+
+## 2026-05-18 (session 17) — Default to Afterclass AI when no school
+
+**Asked:** Show "Afterclass AI" + its colors when no school is assigned.
+**Changed:**
+- `HomeActivity.kt:setupStudentInfo()` — `schoolNameSubtitle` falls back to "Afterclass AI" when schoolName is blank or "Guest"
+- `HomeActivity.kt:applySchoolBranding() else branch` — no-branding path now sets nav bar + status bar to `#1565C0` (Afterclass AI cobalt blue), white icons (isAppearanceLightStatusBars=false), white text/chip colors; replaces old plain-white fallback
+
+---
+
+## 2026-05-18 (session 16) — Nav bar color from Firestore
+
+**Asked:** Nav bar color from Firestore school branding.
+**Changed:**
+- `activity_home.xml:19` — added `android:id="@+id/homeNavBar"` to nav bar LinearLayout
+- `SchoolTheme.kt` — `isColorLight()` changed from private → public (needed by HomeActivity)
+- `HomeActivity.kt:applySchoolBranding()` — when `hasBranding`: sets `homeNavBar` background to `SchoolTheme.primaryColor`, auto-picks white/dark icon colors via `isColorLight()`, updates status bar color + light/dark icons, updates drawerToggleBtn / schoolNameSubtitle / langChipButton colors. When no branding: restores white nav + light status bar.
+
+---
+
+## 2026-05-18 (session 25 cont-2) — Validate Claude outputs + fixes
+
+**Asked:** Validate Claude's work, fix issues, rate again.
+**Validated:**
+- `school-dpa.html` ✅ — complete 10-section DPA, DPDP Act 2023 compliant, signature blocks, print CSS
+- `privacy.html` ✅ — already existed and is solid
+- `school-portal/index.html` ✅ — login, dashboard, student table, branding tab all correct; `apiFetch` correctly attaches Bearer token; CSV download wired
+
+**Issues found & fixed:**
+- `main.py` — added 3 missing routes: `/school-dpa`, `/curriculum-map`, `/responsible-use` (FileResponse stubs; HTML files created when Claude finishes)
+- `school-portal/index.html` — grade/section were text-search only with no dedicated dropdowns; added `<select id="grade-filter">` + `<select id="section-filter">`; `filterTable()` now applies grade+section filters; `_populateFilters()` auto-populates options from loaded student data; called from `loadDashboard()` after `renderTable()`
+
+**Still pending (Claude not done yet):**
+- `static/curriculum-map.html` — route added, file missing
+- `static/responsible-use.html` — route added, file missing
+- **Branding note:** `school-dpa.html` + `school-portal/index.html` say "Afterclass AI" — may need to rename to "AIGuru" once confirmed
+
+---
+
+## 2026-05-18 (session 25 cont) — SCHOOL_CAMPAIGN_PLAN.md gap additions
+
+**Asked:** Are parent notifications, curriculum mapping, anti-cheat policy, and grade/section analytics included in the plan? (iOS skipped by user.)
+**Changed:** `SCHOOL_CAMPAIGN_PLAN.md` —
+- T1-A: added note about grade/section filter dropdowns in school portal (already parameterised in API)
+- T2-C (NEW): Parent Notification/Visibility — `parent_phone` field in ProfileActivity + `users_table`; weekly SMS/WhatsApp loop in `weekly_school_report.py` via MSG91/Twilio; opt-out toggle; `parent_notifications_enabled` Firestore field
+- T2-D: renamed from T2-C (was Class Leaderboard)
+- T3-A (NEW): Curriculum Mapping — Claude-generated `static/curriculum-map.html` at `/curriculum-map` public route; NCERT 8-10 all subjects table
+- T3-C (NEW): Anti-cheat/Responsible Use Policy — in-app disclosure in `FullChatFragment`; `disable_direct_answers` server flag; `static/responsible-use.html` (Claude); Claude prompts 5 + 6 added
+- T3-D: renamed from T3-B (was Offline Lesson Download)
+- Execution schedule updated: Week 3 + Week 4 tasks expanded
+- Key file map: added T2-C, T3-A, T3-C, T3-D rows
+
+---
+
+## 2026-05-18 (session 25) — School campaign T1-C + T2-B implementation
+
+**Asked:** Continue implementing school campaign features (resumed from session 13 summary).
+**Changed:**
+- `AndroidManifest.xml` — Added `SchoolWelcomeActivity` entry (was missing from prior session)
+- `activity_signup.xml` — Added `CheckBox` `cbConsent` with "I agree to the Privacy Policy" text before submit button
+- `SignupActivity.kt` — Added `cbConsent` lateinit; sets clickable "Privacy Policy" span linking to `https://vkpremium.art/privacy`; `handleSignup()` returns early if not checked with Toast; on success writes `consent_given=true, consent_date=timestamp` to `students_stats/{uid}` via Firestore directly
+- `activity_home.xml` — Added `MaterialCardView` `cardTaskBanner` (amber #FFF3CD, gone by default) with `tvTaskBannerTitle` TextView, injected above BB hero card
+- `HomeActivity.kt` — Added `loadAssignmentBanner()` call in `onResume()`; function queries `FirestoreManager.loadTasksForSchool()` for real-school users, shows banner with task title, click launches `BlackboardActivity` with `EXTRA_MESSAGE=topic`, `EXTRA_SUBJECT`, `assigned_task_id` extra
+
+---
+
+## 2026-05-18 (session 15) — Push to 9/10
+
+**Asked:** Rate home screen and push to 9.
+**Analysis:** greetingText was already #FFFFFFBB (correct). Two issues: Revision card same gradient as BB card; Ask AI card flat vs gradient.
+**Changed:**
+- `bg_sessions_gradient.xml` (NEW) — teal gradient #00897B→#00796B→#004D40, 135°, 16dp corners
+- `bg_ask_ai_gradient.xml` (NEW) — cobalt gradient #1E88E5→#1565C0, 135°, 16dp corners
+- `activity_home.xml` — Revision card: bg+cardBg → bg_sessions_gradient (teal, distinguishes from BB blue-purple)
+- `activity_home.xml` — Ask AI card: flat #1565C0 → bg_ask_ai_gradient (light-to-deep blue, adds depth)
+**Card color family now:** BB=steel-blue/navy/purple | Ask AI=light→deep blue | Revision=teal-green | Daily Challenge=deep navy
+
+---
+
+## 2026-05-18 (session 14)
+
+**Asked:** Revert BB card text to white (dark bg card). Move BB quota row back inside the dark BB card.
+**Changed:**
+- `activity_home.xml:292/299/309` — BB text reverted to `#FFFFFF`, `#FFFFFFBB`, `#FFFFFFAA`
+- `activity_home.xml:334-381` — `homeQuotaBbRow` moved from `homeQuotaContainer` (white page bg) back inside BB card inner LinearLayout; colors reset for dark bg: label `#FFFFFFCC`, value `#AAFFCC`, progress bg `#33FFFFFF`
+- `homeQuotaContainer` now only holds `homeQuotaVoiceRow` (voice quota strip)
+- `homeQuotaBbRow` still found by `findViewByID` from anywhere so Kotlin needs no changes
+
+---
+
+## 2026-05-18 (session 13)
+
+**Asked:** Collapse daily challenge card after 2s; re-expand on tap. Fix BB card text invisible on white.
+**Changed:** HomeActivity.kt — added collapse/expand member vars + _collapseRunnable; showDailyChallengeAt() resets height, posts 2s collapse, click checks collapsed state; added collapseChallengeCard() (ValueAnimator 56dp/350ms) and expandChallengeCard() (reverse+WRAP_CONTENT). activity_home.xml:292/299/309 — BB card text #FFFFFF→colorTextPrimary, subtitle→colorTextSecondary, arrow→colorSecondary.
+
+---
+
+## 2026-05-18 (session 11) — Switch to white/light theme
+
+**Asked:** Change from dark to white theme.
+**Changed:** colors.xml — colorBackground→#F5F7FA, colorSurface→#FFFFFF, colorSurface2→#F0F4FF, colorTextPrimary→#1A1A2E, colorTextSecondary→#666B8A, colorDivider→#E0E4F0, colorPrimaryLight→#EBEBF0; HomeActivity.kt:144 — statusBarColor #0D0D1F→#1A1A2E. Hero gradient, amber streak badge, gradient cards all kept.
+
+---
+
+## 2026-05-18 (session 10) — Hero gradient + rating boost
+
+**Asked:** Implement fixes to bring home screen rating to 8+.
+**Changed:**
+- `bg_hero_band.xml` (NEW) — diagonal gradient `#1565C0→#4527A0`; applied to homeHeader
+- `bg_streak_badge.xml` (NEW) — amber `#D97706` pill; applied to streakBadgeText
+- `colors.xml` — colorBackground `#0D0D1F→#0F1729`; colorPrimaryLight `#EBEBF0→#1E2D52`
+- `activity_home.xml` — homeHeader bg→gradient, paddingBottom 16→20dp; streakBadge→amber; chatCard `#1A2E6E→#1565C0`
+
+---
+
+## 2026-05-18 (session 12)
+
+**Asked:** School campaign strategy — rate app for school adoption, principal questions, specialties/gaps, business model.
+**Changed:** No code changes. Strategic analysis only.
+**Files read:** `CLAUDE.md`, `meta/rules.md`, `seed_schools.py`, `seed_roles_and_features.py`, `ADMIN_DASHBOARD_GUIDE.md`, `models/School.kt`, `meta/android_index.md`, `meta/frontend_index.md`, `server/app/api/admin.py` (schools CRUD lines 390–416, school_id in tasks line 41), `server/app/api/tasks.py` (school_id field).
+**Key findings:** School infra exists (branding, join code, teacher dashboard, tasks, school plans). Critical gaps: no class analytics, no principal portal, no iOS, no offline, no DPDP doc, no pilot data. Rating: 6/10 school adoption, 7.5/10 student UX.
+
+## 2026-05-18 (session 13)
+
+**Asked:** Create full school campaign implementation plan with flows, work split 60% Copilot / 40% Claude.
+**Changed:** Created `SCHOOL_CAMPAIGN_PLAN.md` (root). No code changes.
+**Files read:** `meta/android_index.md` (FirestoreManager: loadTasksForSchool, saveTask, teacher bb_cache; BlackboardActivity: showCompletionCard ~2769; FullChatFragment: proceedWithMessageSendAfterQuotaCheck ~1366), `meta/server_index.md` (tasks.py school_id, admin.py school CRUD), `meta/frontend_index.md` (school admin sections).
+**Key plan:** T1-A class progress API + TeacherProgressActivity (Copilot), T1-B school portal HTML (Claude), T1-C privacy/consent (Copilot+Claude), T2-A SchoolWelcomeActivity (Copilot), T2-B assignment feature (Copilot), T3-A weekly email script+template (Copilot+Claude). 4 Claude prompts written in plan doc.
+
+---
+
+## 2026-05-18 (session 11)
+
+**Asked:** Quota strip text invisible (white text on white background after theme switch).
+**Changed:** `activity_home.xml` — `homeQuotaContainer` colors:
+- "🎓 Blackboard" label: `#FFFFFFCC` → `@color/colorTextSecondary`
+- `homeQuotaBbLeftText`: `#AAFFCC` → `@color/colorSuccess`
+- Progress bar: `progressBackgroundTint #33FFFFFF` → `@color/colorDivider`; progressTint → `#1E9B6B`
+- "🎙 AI Voice" label: `#FFFFFFCC` → `@color/colorTextSecondary`
+- `homeQuotaVoiceLeftText`: `#FFD54F` → `@color/colorWarning`
+
+---
+
+## 2026-05-18 (session 10)
+
+**Asked:** Go with white theme in all — remove dark navy from top nav bar and status bar.
+**Changed:**
+- `activity_home.xml:24` — top nav bar background: `#1A1A2E` → `#FFFFFF`
+- `activity_home.xml` — drawerToggleBtn textColor: `#FFFFFF` → `@color/colorPrimary`
+- `activity_home.xml` — schoolNameSubtitle textColor: `#FFFFFFBB` → `@color/colorTextSecondary`
+- `activity_home.xml` — langChipButton: textColor `#FFFFFF` → `@color/colorPrimary`, backgroundTint `#2A2A4A` → `#EEF2FF`, strokeColor `#44FFFFFF` → `@color/colorDivider`
+- `activity_home.xml` — helpGuideBtn textColor: `#FFFFFF` → `@color/colorOnPrimary`
+- `HomeActivity.kt:144` — statusBarColor `#1A1A2E` → `Color.WHITE` + `isAppearanceLightStatusBars = true`
+- `HomeActivity.kt:17` — added `import androidx.core.view.WindowCompat`
+
+---
+
+## 2026-05-18 (session 9)
+
+**Asked:** Finish remaining plan items; dark theme making everything dark (visibility fix).
+**Root cause:** colorSurface (#161628) vs colorBackground (#0D0D1F) had only ~1.07:1 contrast ratio — cards were mathematically invisible against the background. colorDivider (#2A2A45) also too close to background for visible card strokes.
+**Changed:**
+- `activity_home.xml:317-319` — Phase 4.2: `bbInnerTopicsScroll` negative padding -8dp → 0dp
+- `colors.xml:24` — colorSurface: #161628 → #1E1E3A (cards now visible against background)
+- `colors.xml:25` — colorSurface2: #1E1E35 → #272748 (elevated surfaces slightly lighter)
+- `colors.xml:31` — colorDivider: #2A2A45 → #38386A (card strokes now visible)
+
+---
+
+## 2026-05-18 (session 8)
+
+**Asked:** Read CLAUDE.md and rules.md (orientation/context read).
+**Changed:** No code changes.
+**Files read:** `CLAUDE.md` (full), `meta/rules.md` (full), `meta/tracker.md` (tail).
+
+---
+
+## 2026-05-18 (session 7)
+
+**Asked:** Phase 1 quick wins + Phase 2 colors from HOME_SCREEN_REDESIGN_PLAN.md.
+**Phase 1:** streakBadge visible; greetingText made real (wrap_content, 13sp); quickActionChatBtn+TasksBtn height 60→72dp; subtitle "Favourites"→"History"; profileButton 0dp→36dp; setupGreeting() sets visibility VISIBLE; setupStudentInfo() sets profile initial+visibility; profileButton click → UserProfileActivity.
+**Phase 2:** colors.xml: colorBackground #F5F7FA→#0D0D1F, colorSurface #FFFFFF→#161628, colorSurface2→#1E1E35, colorTextPrimary→#EEEEF5, colorTextSecondary→#8888AA, colorDivider→#2A2A45; item_subject_card.xml cardBg #FFFFFF→@color/colorSurface; subjectsRecyclerView bg #FFFFFF→@color/colorBackground; quickActionChatBtn bg #1565C0→#1A2E6E; HomeActivity status bar #0D0D1F.
+**Files changed:** activity_home.xml (multiple lines), HomeActivity.kt (~144,206,613,634), colors.xml (23-34), item_subject_card.xml (15)
+
+---
+
+## 2026-05-17 (session 3)
+
+**Asked:** Logs showed `WakeWord onError: INSUFFICIENT_PERMISSIONS — stopping loop` — wake word dying permanently.
+**Root cause:** `ERROR_INSUFFICIENT_PERMISSIONS` (code 9) is a transient false-positive on some OEMs — fires when mic is briefly occupied by TTS audio releasing at the moment the wake word recognizer tries to open. The old handler called `wakeWordActive = false; return` which permanently killed the loop. Also, no RECORD_AUDIO permission guard existed in `startWakeWordLoop`.
+**Changed:**
+- `VoiceManager.kt` — `startWakeWordLoop()`: added `ContextCompat.checkSelfPermission(RECORD_AUDIO)` guard; logs `permGranted=` flag
+- `VoiceManager.kt` — wake word `onError`: replaced `INSUFFICIENT_PERMISSIONS → stop permanently` with `INSUFFICIENT_PERMISSIONS → retry after 2000ms` (same as any transient error). Loop now survives the false-positive and recovers on next cycle.
+
+---
+
+## 2026-05-17 (session 2)
+
+**Asked:** Voice still not working in BB session, add logs to trace what is/isn't happening.
+**Changed:**
+- `BlackboardActivity.kt` — added `BB_VOICE` logs in: `onResume`, `startBbWakeWordLoop` (all guards logged), `stopBbWakeWordLoop`, `_onBbWakeWordDetected`, `startBbVoice` (permission check result), `startBbVoiceInput` (recogAvail + every step), primary mic callback `onResults/onPartialResults/onError/onListeningStarted/onListeningFinished`
+- `VoiceManager.kt` — added `VoiceManager` logs in: `startListening` (recognizer init state + startListening call result), `stopWakeWordLoop`, `startWakeWordLoop` (recogAvail), `_runWakeWordCycle` (each new cycle), `WakeWord onResults` (heard text + match), `WakeWord onError` (code + delay), `RecognitionListenerImpl.onReadyForSpeech/onBeginningOfSpeech/onEndOfSpeech` + `onError` (error code now in unknown branch)
+
+**Filter in Logcat:** `BB_VOICE|VoiceManager`
+
+---
+
+---
+
+## 2026-05-17 (session 4)
+
+**Asked:** After wake word detected: lesson should visually pause, show clear "Listening…" state, show "Asking AI…" while waiting for LLM, resume lesson after answer (or auto-resume on silence).
+**Changed:**
+- `BlackboardActivity.kt` — `_onBbWakeWordDetected()`:
+  - Added `typeAnimator?.cancel()` + `seekBarAnimator?.cancel()` → lesson text/animation freezes instantly
+  - Replaced toast "🎙 Ask your question…" with `_showWakeListenCard()` — a dark-blue persistent top banner with white text
+  - Added `gotResult` flag to guard against duplicate `onResults`+`onListeningFinished` race
+  - Partial results now update banner text live via `_updateWakeListenCard()`
+  - `onError()` removes banner and calls `_dismissDoubtAndResume()`
+  - `onListeningFinished()` — added 1200ms grace-period fallback: if `!gotResult`, removes banner and calls `_dismissDoubtAndResume()`
+- `BlackboardActivity.kt` — `_showWakeListenCard()` / `_updateWakeListenCard()` / `_removeWakeListenCard()` — new helpers: dark banner pinned to top of screen, stored as `bbWakeListenCard`.
+- `BlackboardActivity.kt` — `_solveDoubt()`: removed "Thinking…" toast; banner already shows "⏳ Asking AI…"; on coroutine completion calls `_removeWakeListenCard()` before `_showDoubtCard()`
+- `BlackboardActivity.kt` — `_dismissDoubtAndResume()`: added `_removeWakeListenCard()` + `aiTtsEngine.stop()` + `tts.stop()` before `speakFrame()` so lesson always resumes cleanly
+
+**Files read:** `BlackboardActivity.kt:5280–5420`, `BlackboardActivity.kt:3064–3090`
+
+
+**Root causes found:**
+1. When user taps mic button, wake word loop was still running — its `wakeWordRecognizer` held the mic, so primary `speechRecognizer` got `ERROR_RECOGNIZER_BUSY` or couldn't open audio
+2. `onListeningStarted()` was called immediately after `speechRecognizer.startListening()` (before mic was actually open), so no reliable "mic is ready" event was available for the beep
+3. Manual mic tap callback's `onListeningStarted()` was empty — no sound
+4. `onResults()` in manual mic flow just filled the text box; did NOT call `sendBbChat()` — auto-send was NOT implemented
+5. Same wakeWordRecognizer leak in `_onBbWakeWordDetected()` — `stopWakeWordLoop()` not called before `startListening()`
+
+**Changed:**
+- `app/src/main/java/com/aiguruapp/student/utils/VoiceManager.kt` — removed premature `callback.onListeningStarted()` call from `startListening()`; added `callback?.onListeningStarted()` inside `RecognitionListenerImpl.onReadyForSpeech()` so it fires when mic is actually open
+- `BlackboardActivity.kt:~4228` `startBbVoiceInput()` — added `stopBbWakeWordLoop()` + `aiTtsEngine.stop()` + `tts.stop()` at top; added beep in `onListeningStarted()` using `ToneGenerator(STREAM_MUSIC, 70) TONE_PROP_BEEP 120ms`; changed `onResults()` to clear input and call `sendBbChat(text)` directly (auto-send)
+- `BlackboardActivity.kt:~5180` `_onBbWakeWordDetected()` — added `bbVoiceManager.stopWakeWordLoop()` before `startListening()` to destroy wakeWordRecognizer first; added same beep in `onListeningStarted()`
+
+**Files read:**
+- `VoiceManager.kt:1–280` — full file; `startListening()`, `RecognitionListenerImpl`, `startWakeWordLoop()/_runWakeWordCycle()`, `InterruptListenerImpl`; VoiceRecognitionCallback interface (onListeningStarted, onReadyForSpeech)
+- `BlackboardActivity.kt:388–450` — voice setup, `sendBbQuestion` lambda, mic button click handler
+- `BlackboardActivity.kt:4210–4310` — `startBbVoice()`, `startBbVoiceInput()`, callback, `resetBbVoiceButton()`
+- `BlackboardActivity.kt:5164–5215` — `startBbWakeWordLoop()`, `stopBbWakeWordLoop()`, `_onBbWakeWordDetected()`
+
+---
+
 ## 2026-05-01
 
 **Asked:** Copy content of `users/LpdfEUxoArdZw7QzTQOr9rCIDrB3` to `admin_config/user_defaults` with key `default_data`; apply defaults to each new user on registration.
@@ -2487,3 +2886,23 @@ To use new endpoints in frontend:
 
 2026-05-16 | Admin portal expansion: (1) Fixed JS crash — created missing schools.js; (2) New JS modules: bbsamples.js, litellm.js, serverconfig.js; (3) admin.py: /env-status endpoint added; (4) index.html: nav items + section divs + script tags; (5) app.js: bbsamples+litellm+serverconfig added to SECTION_MAP; (6) styles.css: env-grid, tts-chain, warn-box CSS classes added | files: static/admin/js/schools.js(NEW), bbsamples.js(NEW), litellm.js(NEW), serverconfig.js(NEW), api/admin.py, admin/index.html, admin/js/app.js, admin/css/styles.css
 2026-05-16 | Bug fixes + UI polish: (1) credits.js: fixed endpoint /credit-topups → /credit-topups_new (all 4 CRUD); (2) schools.js: API.delete → API.del (delete was broken); (3) bbsamples.js: API.delete → API.del; (4) styles.css: added --c-bg-2 var, form-grid, checkbox-label, data-table, actions classes; improved thead, card-header, login-card, buttons, nav-item active state | files: js/credits.js, js/schools.js, js/bbsamples.js, css/styles.css
+
+---
+
+## 2026-05-17 — Floating sliding puzzle game
+
+**Asked:** Add a high-quality sliding puzzle game, floating like the calculator, images from Firestore `puzzles/` collection, unlocked after 2 BB sessions today, max 15 min/day play time.
+
+**Changed:**
+- `app/src/main/java/com/aiguruapp/student/puzzle/PuzzleGate.kt` (NEW) — singleton gate: reads `bb_sessions_today` from Firestore on bubble tap; tracks daily play ms in SharedPreferences with date reset
+- `app/src/main/java/com/aiguruapp/student/puzzle/PuzzleBoardView.kt` (NEW) — Canvas custom View: slices bitmap into N×N tiles, scrambles via 300 random valid moves (always solvable), ValueAnimator 130ms slide animation, win detection
+- `app/src/main/java/com/aiguruapp/student/puzzle/FloatingPuzzleView.kt` (NEW) — floating overlay FrameLayout (same pattern as FloatingCalculatorView): draggable 🧩 bubble, expandable panel with puzzle board + countdown timer + move counter + shuffle; loads random image from Firestore `puzzles/` via Glide; fallback colorful placeholder if Firestore/image fails
+- `app/src/main/java/com/aiguruapp/student/BaseActivity.kt` — added `floatingPuzzle: FloatingPuzzleView?` field + `addContentView()` call in `onPostCreate()` alongside existing `floatingCalc`
+- `server/seed_firestore.py` — added `PUZZLES` list (6 starter images: cell, solar system, periodic table, India map, photosynthesis, digestive system) + seed call in `__main__`
+
+**Files read:**
+- `calculator/FloatingCalculatorView.kt` L1-500: drag pattern, panel positioning, bubble touch logic
+- `BaseActivity.kt` L1-68: addContentView pattern
+- `models/UserMetadata.kt` L95-102: bbSessionsToday field
+- `config/PlanEnforcer.kt`: bbSessionsToday usage
+- `HomeActivity.kt` L282: bb_sessions_today Firestore read

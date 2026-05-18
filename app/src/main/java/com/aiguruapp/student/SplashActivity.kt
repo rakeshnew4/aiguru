@@ -13,11 +13,14 @@ import androidx.appcompat.app.AlertDialog
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import com.aiguruapp.student.BuildConfig
+import com.aiguruapp.student.config.AdminConfigRepository
 import com.aiguruapp.student.config.AppStartRepository
 import com.aiguruapp.student.models.AppUpdateConfig
 import com.aiguruapp.student.utils.AppUpdateBus
 import com.aiguruapp.student.utils.AppUpdateManager
 import com.aiguruapp.student.utils.AppUpdateManager.UpdateResult
+import com.google.android.play.core.integrity.IntegrityManagerFactory
+import com.google.android.play.core.integrity.IntegrityTokenRequest
 
 /**
  * Entry-point activity (replaces HomeActivity as LAUNCHER).
@@ -85,6 +88,9 @@ class SplashActivity : AppCompatActivity() {
                     "offers=${AppStartRepository.offers.size}, " +
                     "notifications=${AppStartRepository.notifications.size}")
         }
+
+        // Play Integrity check — fire-and-forget, never blocks the user
+        runPlayIntegrityCheck()
 
         // Minimum brand-exposure timer.
         // When it fires we either handle an already-available result or proceed
@@ -263,5 +269,43 @@ class SplashActivity : AppCompatActivity() {
             "\n\nWhat's new:\n${config.releaseNotes}"
         else
             ""
+    }
+
+    // ── Play Integrity ─────────────────────────────────────────────────────────
+
+    private fun runPlayIntegrityCheck() {
+        if (BuildConfig.DEBUG) return
+        try {
+            val manager = IntegrityManagerFactory.create(applicationContext)
+            val nonce = java.util.Base64.getEncoder()
+                .encodeToString(java.security.SecureRandom().generateSeed(32))
+            manager.requestIntegrityToken(
+                IntegrityTokenRequest.builder().setNonce(nonce).build()
+            ).addOnSuccessListener { response ->
+                sendIntegrityToken(response.token(), nonce)
+            }.addOnFailureListener { e ->
+                Log.w(TAG, "Play Integrity request failed: ${e.message}")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Play Integrity unavailable: ${e.message}")
+        }
+    }
+
+    private fun sendIntegrityToken(token: String, nonce: String) {
+        val serverUrl = AdminConfigRepository.effectiveServerUrl()
+        Thread {
+            runCatching {
+                val url = java.net.URL("$serverUrl/security/verify_integrity")
+                val conn = url.openConnection() as java.net.HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.setRequestProperty("Content-Type", "application/json")
+                conn.doOutput = true
+                val body = """{"token":"$token","nonce":"$nonce"}"""
+                conn.outputStream.use { it.write(body.toByteArray()) }
+                val code = conn.responseCode
+                Log.d(TAG, "Integrity verdict: HTTP $code")
+                conn.disconnect()
+            }.onFailure { e -> Log.w(TAG, "Integrity send failed: ${e.message}") }
+        }.start()
     }
 }

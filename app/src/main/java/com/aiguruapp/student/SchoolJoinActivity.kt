@@ -241,8 +241,15 @@ class SchoolJoinActivity : BaseActivity() {
         }
         val meta = SessionManager.buildUserMetadata(this)
         FirestoreManager.saveUserMetadata(meta)
-        Toast.makeText(this, "✅ Joined ${school.name}!", Toast.LENGTH_SHORT).show()
-        goHome()
+        // Launch branded welcome screen before HomeActivity (first join only)
+        SchoolWelcomeActivity.launch(
+            activity     = this,
+            school       = school,
+            studentName  = SessionManager.getStudentName(this),
+            grade        = SessionManager.getGrade(this),
+            section      = etSection.text.toString().trim(),
+            freePlanName = freePlan?.name ?: ""
+        )
     }
 
     private fun onParentJoinSuccess(school: School) {

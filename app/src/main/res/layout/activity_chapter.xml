@@ -230,7 +230,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="✨ Generate Notes"
+                    android:text="✂️ Select from Chat"
                     android:textAllCaps="false"
                     app:backgroundTint="#3D1A6E"
                     app:cornerRadius="20dp" />
@@ -334,6 +334,17 @@
                 android:background="@color/colorBackground"
                 android:visibility="gone">
 
+                <ImageView
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    android:src="@drawable/logo"
+                    android:scaleType="centerCrop"
+                    android:background="@drawable/bg_logo_rounded"
+                    android:clipToOutline="true"
+                    android:outlineProvider="background"
+                    android:contentDescription="Afterclass AI"
+                    android:layout_marginBottom="20dp" />
+
                 <com.aiguruapp.student.widget.BoxSpinnerView
                     android:id="@+id/downloadSpinner"
                     android:layout_width="64dp"
@@ -371,8 +382,8 @@
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/startQuizButton"
-                android:layout_width="0dp"
-                android:layout_height="0dp"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
                 android:layout_marginStart="12dp"
                 android:layout_marginEnd="12dp"
                 android:layout_marginTop="10dp"

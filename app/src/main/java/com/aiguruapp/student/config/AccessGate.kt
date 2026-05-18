@@ -157,6 +157,8 @@ object AccessGate {
 
     /** Returns true if the current user may access [feature]. */
     fun canAccess(context: Context, feature: Feature): Boolean {
+        // Admin can disable any page globally via admin_config/global pages_enabled map
+        if (!AdminConfigRepository.isPageEnabled(feature.pageKey)) return false
         val role   = currentRole(context)
         val planId = SessionManager.getPlanId(context)
         val limits = AdminConfigRepository.resolveEffectiveLimits(planId)

@@ -117,22 +117,26 @@ class BbAiTtsEngine(
             onUsedAi(true)
             playFile(cachedPath, langTag, text, callback)
         } else {
-            // Cache miss — start preload if not already in-flight, then wait up to 8s before
-            // deciding to fall back. This is the fix for "200 OK but still Android TTS":
-            // the preload WAS completing, just too late because we fell back immediately.
+            // Cache miss — start preload if not already in-flight, then wait up to 3s before
+            // deciding to fall back. 3s matches the step-title animation window so Google TTS
+            // is usually ready by the time the first frame needs to speak.
             Log.d(TAG, "✗ AI audio MISS: key=$key engine=$ttsEngine — waiting for preload…")
             preload(text, ttsEngine)
             scope.launch {
-                val path = waitForKey(key, timeoutMs = 8_000L)
-                if (path != null) {
-                    Log.d(TAG, "✓ Preload ready in time — playing AI audio: key=$key")
-                    onUsedAi(true)
-                    playFile(path, langTag, text, callback)
-                } else {
-                    Log.w(TAG, "✗ Preload timed out (8s) — fallback to Android TTS: key=$key")
-                    onUsedAi(false)
-                    androidTts.setLocale(java.util.Locale.forLanguageTag(langTag))
-                    androidTts.speak(text, callback)
+                val path = waitForKey(key, timeoutMs = 5_000L)
+                // Dispatch to main thread: MediaPlayer setup and android TTS must run on the
+                // main thread to avoid audio-focus / threading issues on some devices.
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (path != null) {
+                        Log.d(TAG, "✓ Preload ready in time — playing AI audio: key=$key")
+                        onUsedAi(true)
+                        playFile(path, langTag, text, callback)
+                    } else {
+                        Log.w(TAG, "✗ Preload timed out (8s) — fallback to Android TTS: key=$key")
+                        onUsedAi(false)
+                        androidTts.setLocale(java.util.Locale.forLanguageTag(langTag))
+                        androidTts.speak(text, callback)
+                    }
                 }
             }
         }

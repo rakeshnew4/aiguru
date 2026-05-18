@@ -22,7 +22,7 @@
     <!-- ── Backgrounds ─────────────────────────────────────────────── -->
     <color name="colorBackground">#F5F7FA</color>
     <color name="colorSurface">#FFFFFF</color>
-    <color name="colorSurface2">#F9FAFB</color>
+    <color name="colorSurface2">#F0F4FF</color>
 
     <!-- ── Text ────────────────────────────────────────────────────── -->
     <color name="colorTextPrimary">#1A1A2E</color>

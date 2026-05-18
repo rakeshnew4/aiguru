@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Back person head: center (8.5, 7), radius 3 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M5.5,7 A3,3 0 1,0 11.5,7 A3,3 0 1,0 5.5,7 Z" />
+
+    <!-- Back person shoulders (partial, cut at right) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M1,21 C1,17.5 4,15.5 8.5,15.5" />
+
+    <!-- Front person head: center (16, 5.5), radius 3.5 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M12.5,5.5 A3.5,3.5 0 1,0 19.5,5.5 A3.5,3.5 0 1,0 12.5,5.5 Z" />
+
+    <!-- Front person shoulders (full arc) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M9,21 C9,17 12.5,14.5 16,14.5 C19.5,14.5 23,17 23,21" />
+
+</vector>

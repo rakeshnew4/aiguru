@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Full-screen school-branded welcome shown once after a student joins a school -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/welcomeRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="32dp"
+    android:background="@color/colorPrimary">
+
+    <!-- School logo / initial avatar -->
+    <FrameLayout
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:layout_marginBottom="24dp">
+
+        <ImageView
+            android:id="@+id/welcomeSchoolLogo"
+            android:layout_width="96dp"
+            android:layout_height="96dp"
+            android:scaleType="centerCrop"
+            android:visibility="gone"
+            android:contentDescription="School logo" />
+
+        <!-- Fallback: school initial letter -->
+        <TextView
+            android:id="@+id/welcomeSchoolInitial"
+            android:layout_width="96dp"
+            android:layout_height="96dp"
+            android:gravity="center"
+            android:textSize="40sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/bg_avatar_circle_white"
+            android:text="S" />
+    </FrameLayout>
+
+    <!-- School name -->
+    <TextView
+        android:id="@+id/welcomeSchoolName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Your School"
+        android:textSize="13sp"
+        android:letterSpacing="0.12"
+        android:textAllCaps="true"
+        android:textColor="#CCFFFFFF"
+        android:layout_marginBottom="8dp" />
+
+    <!-- Main greeting -->
+    <TextView
+        android:id="@+id/welcomeGreeting"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Welcome!"
+        android:textSize="30sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        android:gravity="center"
+        android:layout_marginBottom="6dp" />
+
+    <!-- Student name -->
+    <TextView
+        android:id="@+id/welcomeStudentName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="16sp"
+        android:textColor="#CCFFFFFF"
+        android:gravity="center"
+        android:layout_marginBottom="28dp" />
+
+    <!-- Grade + Section pill row -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginBottom="40dp">
+
+        <TextView
+            android:id="@+id/welcomeGradePill"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:textSize="13sp"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/bg_chip_white_outline"
+            android:visibility="gone" />
+
+        <View
+            android:id="@+id/welcomePillDivider"
+            android:layout_width="10dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/welcomeSectionPill"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:textSize="13sp"
+            android:textColor="#FFFFFF"
+            android:background="@drawable/bg_chip_white_outline"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- Benefits list -->
+    <LinearLayout
+        android:id="@+id/welcomeBenefitsList"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="40dp"
+        android:background="@drawable/bg_card_translucent"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/welcomeBenefit1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textColor="#EEFFFFFF"
+            android:drawablePadding="10dp"
+            android:gravity="center_vertical"
+            android:text="✅  Unlimited AI Blackboard lessons" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textColor="#EEFFFFFF"
+            android:drawablePadding="10dp"
+            android:gravity="center_vertical"
+            android:layout_marginTop="8dp"
+            android:text="✅  Teacher-assigned lessons &amp; tasks" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textColor="#EEFFFFFF"
+            android:drawablePadding="10dp"
+            android:gravity="center_vertical"
+            android:layout_marginTop="8dp"
+            android:text="✅  Voice-powered AI tutor" />
+    </LinearLayout>
+
+    <!-- CTA button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/welcomeStartBtn"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="Let's Start →"
+        android:textSize="16sp"
+        android:textColor="@color/colorPrimary"
+        android:backgroundTint="#FFFFFF"
+        app:cornerRadius="12dp"
+        app:elevation="0dp"
+        xmlns:app="http://schemas.android.com/apk/res-auto" />
+
+</LinearLayout>

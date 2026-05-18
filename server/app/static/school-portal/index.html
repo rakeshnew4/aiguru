@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Afterclass AI — School Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy:    #1A1A2E;
+      --green:   #1E9B6B;
+      --green-l: #E6FAF4;
+      --surface: #FFFFFF;
+      --bg:      #F5F7FA;
+      --text:    #1A1A2E;
+      --sub:     #666B8A;
+      --div:     #E0E4F0;
+      --red:     #E05050;
+      --amber:   #F59E0B;
+      --radius:  10px;
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+    a { color: var(--green); text-decoration: none; }
+    button { font-family: inherit; cursor: pointer; }
+
+    /* ── NAV ── */
+    .nav {
+      background: var(--navy); color: #fff; padding: 0 24px;
+      display: flex; align-items: center; height: 52px; gap: 16px;
+    }
+    .nav-brand { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+    .nav-school { font-size: 13px; color: #ffffffaa; }
+    .nav-spacer { flex: 1; }
+    .nav-btn {
+      background: transparent; border: 1px solid #ffffff44; color: #fff;
+      padding: 4px 14px; border-radius: 6px; font-size: 13px; cursor: pointer;
+    }
+    .nav-btn:hover { background: #ffffff22; }
+
+    /* ── TABS ── */
+    .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--div); background: var(--surface); padding: 0 24px; }
+    .tab-btn {
+      background: none; border: none; padding: 12px 18px; font-size: 13px; font-weight: 500;
+      color: var(--sub); border-bottom: 2px solid transparent; cursor: pointer; margin-bottom: -1px;
+    }
+    .tab-btn.active { color: var(--navy); border-bottom-color: var(--navy); }
+
+    /* ── CONTENT ── */
+    .content { padding: 24px; max-width: 1100px; margin: 0 auto; }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--surface); border: 1px solid var(--div);
+      border-radius: var(--radius); padding: 20px;
+    }
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--div); border-radius: var(--radius); padding: 20px; }
+    .stat-label { font-size: 12px; color: var(--sub); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 28px; font-weight: 700; color: var(--text); margin-top: 6px; }
+    .stat-sub   { font-size: 12px; color: var(--sub); margin-top: 4px; }
+
+    /* ── CHART ── */
+    .chart-section { margin-bottom: 24px; }
+    .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+    .bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 80px; }
+    .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .bar { width: 100%; background: var(--navy); border-radius: 4px 4px 0 0; min-height: 4px; transition: height 0.3s; }
+    .bar-label { font-size: 11px; color: var(--sub); }
+
+    /* ── TABLE ── */
+    .table-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .search-input {
+      flex: 1; max-width: 280px; border: 1px solid var(--div); border-radius: 7px;
+      padding: 7px 12px; font-size: 13px; font-family: inherit; outline: none;
+    }
+    .search-input:focus { border-color: var(--navy); }
+    .btn-csv {
+      background: var(--navy); color: #fff; border: none;
+      padding: 7px 16px; border-radius: 7px; font-size: 13px; font-weight: 500;
+    }
+    .btn-csv:hover { background: #2a2a4a; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left; font-size: 12px; font-weight: 600; color: var(--sub);
+      padding: 10px 12px; border-bottom: 1px solid var(--div);
+      cursor: pointer; user-select: none; white-space: nowrap;
+    }
+    th:hover { color: var(--navy); }
+    td { padding: 11px 12px; border-bottom: 1px solid var(--div); font-size: 13px; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--bg); }
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+    .dot-green  { background: var(--green); }
+    .dot-amber  { background: var(--amber); }
+    .dot-red    { background: var(--red); }
+    .avatar {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--navy); color: #fff; font-size: 12px; font-weight: 700;
+    }
+    .name-cell { display: flex; align-items: center; gap: 10px; }
+
+    /* ── BRANDING ── */
+    .form-row { margin-bottom: 16px; }
+    .form-label { font-size: 12px; font-weight: 600; color: var(--sub); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.4px; }
+    .form-input {
+      width: 100%; border: 1px solid var(--div); border-radius: 7px;
+      padding: 9px 12px; font-size: 14px; font-family: inherit; outline: none;
+    }
+    .form-input:focus { border-color: var(--navy); }
+    .color-row { display: flex; align-items: center; gap: 12px; }
+    .color-preview { width: 36px; height: 36px; border-radius: 7px; border: 1px solid var(--div); }
+    .logo-preview { max-width: 80px; max-height: 80px; border-radius: 8px; border: 1px solid var(--div); display: none; }
+    .btn-save {
+      background: var(--green); color: #fff; border: none;
+      padding: 9px 22px; border-radius: 7px; font-size: 14px; font-weight: 600;
+    }
+    .btn-save:hover { background: #178a5f; }
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: var(--navy); color: #fff; padding: 10px 20px; border-radius: 8px;
+      font-size: 13px; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+
+    /* ── LOGIN ── */
+    #login-screen {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: var(--bg);
+    }
+    .login-card {
+      background: var(--surface); border: 1px solid var(--div); border-radius: 14px;
+      padding: 40px 36px; max-width: 380px; width: 100%;
+    }
+    .login-logo { text-align: center; margin-bottom: 28px; }
+    .login-logo h1 { font-size: 20px; font-weight: 700; color: var(--navy); margin-top: 8px; }
+    .login-logo p  { font-size: 13px; color: var(--sub); margin-top: 4px; }
+    .login-icon { font-size: 32px; }
+    .btn-login {
+      width: 100%; background: var(--navy); color: #fff; border: none;
+      padding: 12px; border-radius: 8px; font-size: 15px; font-weight: 600; margin-top: 8px;
+    }
+    .btn-login:hover { background: #2a2a4a; }
+    .error-msg { color: var(--red); font-size: 13px; text-align: center; margin-top: 10px; display: none; }
+    .hidden { display: none !important; }
+
+    @media (max-width: 768px) {
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+      table { font-size: 12px; }
+      th, td { padding: 8px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════ LOGIN ════════════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-icon">🏫</div>
+      <h1>Afterclass AI</h1>
+      <p>School Dashboard — Sign in to continue</p>
+    </div>
+    <div class="form-row">
+      <label class="form-label">School ID</label>
+      <input id="login-school-id" class="form-input" type="text" placeholder="e.g. SCH001" autocomplete="off" />
+    </div>
+    <div class="form-row">
+      <label class="form-label">Admin PIN</label>
+      <input id="login-pin" class="form-input" type="password" placeholder="6-digit PIN" maxlength="6" inputmode="numeric" />
+    </div>
+    <button class="btn-login" id="login-btn" onclick="doLogin()">View Dashboard</button>
+    <div class="error-msg" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ════════════════════ APP ════════════════════ -->
+<div id="app-screen" class="hidden">
+
+  <nav class="nav">
+    <span class="login-icon" style="font-size:18px">🏫</span>
+    <span class="nav-brand">Afterclass AI</span>
+    <span class="nav-school" id="nav-school-name">School Portal</span>
+    <span class="nav-spacer"></span>
+    <button class="nav-btn" onclick="doLogout()">Sign Out</button>
+  </nav>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('dashboard', this)">Dashboard</button>
+    <button class="tab-btn" onclick="showTab('students', this)">Students</button>
+    <button class="tab-btn" onclick="showTab('branding', this)">Branding</button>
+  </div>
+
+  <!-- ── DASHBOARD TAB ── -->
+  <div id="tab-dashboard" class="content">
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Students</div>
+        <div class="stat-value" id="stat-total">—</div>
+        <div class="stat-sub">enrolled</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Active This Week</div>
+        <div class="stat-value" id="stat-active-week">—</div>
+        <div class="stat-sub">last 7 days</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg BB Sessions</div>
+        <div class="stat-value" id="stat-avg-bb">—</div>
+        <div class="stat-sub">per student</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Top Subject</div>
+        <div class="stat-value" id="stat-top-subject" style="font-size:18px">—</div>
+        <div class="stat-sub">most explored</div>
+      </div>
+    </div>
+
+    <div class="card chart-section">
+      <div class="chart-title">Daily Active Students — Last 7 Days</div>
+      <div class="bar-chart" id="bar-chart"></div>
+    </div>
+
+    <div class="card">
+      <div class="chart-title" style="margin-bottom:12px">Subject Coverage</div>
+      <div id="subject-coverage"></div>
+    </div>
+  </div>
+
+  <!-- ── STUDENTS TAB ── -->
+  <div id="tab-students" class="content hidden">
+
+    <!-- Class Activity Snapshot (grade-level aggregates, no individual rankings) -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="chart-title" style="margin-bottom:12px">Class Activity Snapshot</div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="background:var(--surface2,#f5f5f5)">
+            <th style="text-align:left;padding:8px 12px;font-weight:600">Grade</th>
+            <th style="text-align:right;padding:8px 12px;font-weight:600">Enrolled</th>
+            <th style="text-align:right;padding:8px 12px;font-weight:600">Active This Week</th>
+            <th style="text-align:right;padding:8px 12px;font-weight:600">Avg BB Sessions</th>
+          </tr>
+        </thead>
+        <tbody id="grade-snapshot-body">
+          <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:12px">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="table-header">
+        <input class="search-input" id="search-input" type="text" placeholder="Search by name…" oninput="filterTable()" />
+        <select id="grade-filter" onchange="filterTable()" style="margin-left:8px;padding:6px 10px;border:1px solid var(--div);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);">
+          <option value="">All Grades</option>
+        </select>
+        <select id="section-filter" onchange="filterTable()" style="margin-left:6px;padding:6px 10px;border:1px solid var(--div);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text);">
+          <option value="">All Sections</option>
+        </select>
+        <span class="nav-spacer"></span>
+        <button class="btn-csv" onclick="downloadCSV()">⬇ Download CSV</button>
+      </div>
+      <table id="student-table">
+        <thead>
+          <tr>
+            <th onclick="sortTable(0)">Name ↕</th>
+            <th onclick="sortTable(1)">Grade ↕</th>
+            <th onclick="sortTable(2)">Section</th>
+            <th onclick="sortTable(3)">BB Sessions ↕</th>
+            <th onclick="sortTable(4)">Chat ↕</th>
+            <th onclick="sortTable(5)">Quiz % ↕</th>
+            <th onclick="sortTable(6)">Last Active ↕</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="student-tbody"></tbody>
+      </table>
+      <div id="empty-state" class="hidden" style="text-align:center;padding:40px;color:var(--sub)">No students found.</div>
+    </div>
+  </div>
+
+  <!-- ── BRANDING TAB ── -->
+  <div id="tab-branding" class="content hidden">
+    <div class="card" style="max-width:520px">
+      <h3 style="font-size:15px;font-weight:700;margin-bottom:20px">School Branding</h3>
+      <div class="form-row">
+        <label class="form-label">School Name</label>
+        <input id="brand-name" class="form-input" type="text" placeholder="Full school name" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">Primary Color</label>
+        <div class="color-row">
+          <input id="brand-color-picker" type="color" value="#1A1A2E" style="width:36px;height:36px;border:none;cursor:pointer;border-radius:6px;" oninput="document.getElementById('brand-color-hex').value=this.value;document.querySelector('.color-preview').style.background=this.value" />
+          <input id="brand-color-hex" class="form-input" type="text" placeholder="#1A1A2E" style="flex:1" oninput="syncColorPicker(this.value)" />
+          <div class="color-preview" style="background:#1A1A2E"></div>
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Logo URL</label>
+        <input id="brand-logo-url" class="form-input" type="url" placeholder="https://..." oninput="previewLogo(this.value)" />
+        <img id="logo-preview" class="logo-preview" style="margin-top:10px" alt="Logo preview" />
+      </div>
+      <button class="btn-save" onclick="saveBranding()">Save Changes</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const API = '/school-portal';
+  const TOKEN_KEY = 'school_portal_token';
+  let _students = [];
+  let _sortCol = -1, _sortAsc = true;
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
+
+  function getToken() { return sessionStorage.getItem(TOKEN_KEY); }
+
+  async function apiFetch(path, opts = {}) {
+    const token = getToken();
+    const res = await fetch(API + path, {
+      ...opts,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...(opts.headers || {})
+      }
+    });
+    if (res.status === 401) { doLogout(); throw new Error('Unauthorized'); }
+    return res;
+  }
+
+  async function doLogin() {
+    const schoolId = document.getElementById('login-school-id').value.trim();
+    const pin      = document.getElementById('login-pin').value.trim();
+    const errEl    = document.getElementById('login-error');
+    errEl.style.display = 'none';
+    if (!schoolId || !pin) { errEl.textContent = 'Please enter School ID and PIN.'; errEl.style.display = 'block'; return; }
+    document.getElementById('login-btn').textContent = 'Signing in…';
+    try {
+      const res = await fetch(API + '/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ school_id: schoolId, admin_pin: pin })
+      });
+      const data = await res.json();
+      if (!res.ok) { errEl.textContent = data.detail || 'Invalid credentials.'; errEl.style.display = 'block'; return; }
+      sessionStorage.setItem(TOKEN_KEY, data.token);
+      showApp();
+    } catch (e) {
+      errEl.textContent = 'Connection error. Try again.'; errEl.style.display = 'block';
+    } finally {
+      document.getElementById('login-btn').textContent = 'View Dashboard';
+    }
+  }
+
+  function doLogout() {
+    sessionStorage.removeItem(TOKEN_KEY);
+    document.getElementById('app-screen').classList.add('hidden');
+    document.getElementById('login-screen').classList.remove('hidden');
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+
+  async function showApp() {
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app-screen').classList.remove('hidden');
+    await loadDashboard();
+  }
+
+  window.onload = () => {
+    if (getToken()) showApp();
+  };
+
+  // Enter key on login
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !document.getElementById('login-screen').classList.contains('hidden')) doLogin();
+  });
+
+  // ── Dashboard data ────────────────────────────────────────────────────────
+
+  async function loadDashboard() {
+    try {
+      const res  = await apiFetch('/dashboard');
+      const data = await res.json();
+      document.getElementById('nav-school-name').textContent = data.school_name || '';
+      document.getElementById('stat-total').textContent       = data.total_enrolled ?? '—';
+      document.getElementById('stat-active-week').textContent = data.active_last_7d ?? '—';
+      const avgBb = data.students?.length
+        ? (data.students.reduce((s, x) => s + (x.bb_sessions || 0), 0) / data.students.length).toFixed(1)
+        : '—';
+      document.getElementById('stat-avg-bb').textContent = avgBb;
+      // Top subject
+      const cov = data.subject_coverage || {};
+      const topSub = Object.entries(cov).sort((a,b) => b[1]-a[1])[0];
+      document.getElementById('stat-top-subject').textContent = topSub ? topSub[0] : '—';
+      // Bar chart — use daily_active array if available, else mock from students
+      renderBarChart(data.daily_active || []);
+      // Subject coverage
+      renderSubjectCoverage(cov);
+      // Store students for table
+      _students = data.students || [];
+      renderTable(_students);
+      _populateFilters();
+      // Class Activity Snapshot — grade-level breakdown
+      renderGradeSnapshot(data.grade_breakdown || []);
+      // Pre-fill branding tab
+      if (data.branding) {
+        document.getElementById('brand-name').value = data.school_name || '';
+        const c = data.branding.primary_color || '#1A1A2E';
+        document.getElementById('brand-color-picker').value = c;
+        document.getElementById('brand-color-hex').value    = c;
+        document.querySelector('.color-preview').style.background = c;
+        document.getElementById('brand-logo-url').value = data.branding.logo_url || '';
+        if (data.branding.logo_url) previewLogo(data.branding.logo_url);
+      }
+    } catch (e) { console.error('Dashboard load error', e); }
+  }
+
+  // ── Bar chart ─────────────────────────────────────────────────────────────
+
+  function renderBarChart(daily) {
+    const container = document.getElementById('bar-chart');
+    container.innerHTML = '';
+    if (!daily.length) {
+      // Generate last 7 day labels with zero data
+      const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+      daily = days.map(d => ({ day: d, count: 0 }));
+    }
+    const max = Math.max(...daily.map(d => d.count), 1);
+    daily.forEach(({ day, count }) => {
+      const pct = Math.round((count / max) * 100);
+      const col = document.createElement('div');
+      col.className = 'bar-col';
+      col.innerHTML = `
+        <div style="font-size:11px;color:var(--sub)">${count}</div>
+        <div class="bar" style="height:${Math.max(pct, 3)}%"></div>
+        <div class="bar-label">${day}</div>`;
+      container.appendChild(col);
+    });
+  }
+
+  // ── Subject coverage ──────────────────────────────────────────────────────
+
+  function renderSubjectCoverage(cov) {
+    const el = document.getElementById('subject-coverage');
+    el.innerHTML = '';
+    const entries = Object.entries(cov).sort((a,b) => b[1]-a[1]).slice(0,8);
+    const max = Math.max(...entries.map(e => e[1]), 1);
+    entries.forEach(([subj, count]) => {
+      const pct = Math.round((count / max) * 100);
+      el.innerHTML += `
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <div style="width:110px;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${subj}</div>
+          <div style="flex:1;background:var(--div);border-radius:4px;height:8px">
+            <div style="width:${pct}%;background:var(--navy);height:8px;border-radius:4px"></div>
+          </div>
+          <div style="width:28px;font-size:12px;color:var(--sub);text-align:right">${count}</div>
+        </div>`;
+    });
+    if (!entries.length) el.innerHTML = '<p style="color:var(--sub);font-size:13px">No subject data yet.</p>';
+  }
+
+  // ── Student table ─────────────────────────────────────────────────────────
+
+  function daysAgo(isoStr) {
+    if (!isoStr) return 999;
+    return Math.floor((Date.now() - new Date(isoStr)) / 86400000);
+  }
+  function fmtDaysAgo(d) {
+    if (d === 999) return '—';
+    if (d === 0) return 'Today';
+    if (d === 1) return '1d ago';
+    return `${d}d ago`;
+  }
+  function statusDot(d) {
+    if (d <= 3) return '<span class="dot dot-green" title="Active"></span>';
+    if (d <= 7) return '<span class="dot dot-amber" title="Inactive 3-7d"></span>';
+    return '<span class="dot dot-red" title="Inactive >7d"></span>';
+  }
+
+  function renderTable(rows) {
+    const tbody = document.getElementById('student-tbody');
+    const empty = document.getElementById('empty-state');
+    if (!rows.length) { tbody.innerHTML = ''; empty.classList.remove('hidden'); return; }
+    empty.classList.add('hidden');
+    tbody.innerHTML = rows.map(s => {
+      const d   = daysAgo(s.last_active);
+      const acc = s.quiz_accuracy_pct != null ? s.quiz_accuracy_pct + '%' : '—';
+      const init = (s.name || '?')[0].toUpperCase();
+      return `<tr>
+        <td><div class="name-cell"><span class="avatar">${init}</span>${s.name || '—'}</div></td>
+        <td>${s.grade || '—'}</td>
+        <td>${s.section || '—'}</td>
+        <td>${s.bb_sessions ?? 0}</td>
+        <td>${s.chat_sessions ?? 0}</td>
+        <td>${acc}</td>
+        <td>${fmtDaysAgo(d)}</td>
+        <td>${statusDot(d)}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function filterTable() {
+    const q  = document.getElementById('search-input').value.toLowerCase();
+    const gf = document.getElementById('grade-filter').value;
+    const sf = document.getElementById('section-filter').value;
+    const filtered = _students.filter(s =>
+      (!gf || (s.grade || '') === gf) &&
+      (!sf || (s.section || '') === sf) &&
+      ((s.name || '').toLowerCase().includes(q) ||
+       (s.grade || '').toLowerCase().includes(q) ||
+       (s.section || '').toLowerCase().includes(q))
+    );
+    renderTable(filtered);
+  }
+
+  function _populateFilters() {
+    const grades   = [...new Set(_students.map(s => s.grade).filter(Boolean))].sort();
+    const sections = [...new Set(_students.map(s => s.section).filter(Boolean))].sort();
+    const gSel = document.getElementById('grade-filter');
+    const sSel = document.getElementById('section-filter');
+    gSel.innerHTML = '<option value="">All Grades</option>' + grades.map(g => `<option value="${g}">${g}</option>`).join('');
+    sSel.innerHTML = '<option value="">All Sections</option>' + sections.map(s => `<option value="${s}">${s}</option>`).join('');
+  }
+
+  function sortTable(col) {
+    if (_sortCol === col) _sortAsc = !_sortAsc; else { _sortCol = col; _sortAsc = true; }
+    const keys = ['name','grade','section','bb_sessions','chat_sessions','quiz_accuracy_pct','last_active'];
+    const key  = keys[col];
+    const sorted = [..._students].sort((a, b) => {
+      let av = a[key] ?? '', bv = b[key] ?? '';
+      if (typeof av === 'number') return _sortAsc ? av - bv : bv - av;
+      return _sortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+    });
+    renderTable(sorted);
+  }
+
+  function renderGradeSnapshot(breakdown) {
+    const el = document.getElementById('grade-snapshot-body');
+    if (!el) return;
+    if (!breakdown || !breakdown.length) {
+      el.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted)">No data</td></tr>';
+      return;
+    }
+    el.innerHTML = breakdown.map(g => `
+      <tr>
+        <td>${g.grade}</td>
+        <td>${g.enrolled}</td>
+        <td>${g.active_7d} <span style="color:var(--muted);font-size:11px">(${g.enrolled ? Math.round(g.active_7d/g.enrolled*100) : 0}%)</span></td>
+        <td>${g.avg_bb}</td>
+      </tr>`).join('');
+  }
+
+  async function downloadCSV() {
+    const res = await apiFetch('/students/export.csv');
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a'); a.href = url; a.download = 'students.csv'; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ── Branding ──────────────────────────────────────────────────────────────
+
+  function syncColorPicker(hex) {
+    if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+      document.getElementById('brand-color-picker').value = hex;
+      document.querySelector('.color-preview').style.background = hex;
+    }
+  }
+  function previewLogo(url) {
+    const img = document.getElementById('logo-preview');
+    if (url) { img.src = url; img.style.display = 'block'; } else { img.style.display = 'none'; }
+  }
+
+  async function saveBranding() {
+    const body = {
+      school_name:   document.getElementById('brand-name').value.trim(),
+      primary_color: document.getElementById('brand-color-hex').value.trim(),
+      logo_url:      document.getElementById('brand-logo-url').value.trim()
+    };
+    try {
+      await apiFetch('/school/branding', { method: 'PUT', body: JSON.stringify(body) });
+      showToast('Branding saved!');
+    } catch (e) { showToast('Save failed — try again.'); }
+  }
+
+  // ── Tabs ──────────────────────────────────────────────────────────────────
+
+  function showTab(name, btn) {
+    ['dashboard','students','branding'].forEach(t => {
+      document.getElementById('tab-' + t).classList.toggle('hidden', t !== name);
+    });
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+</script>
+</body>
+</html>

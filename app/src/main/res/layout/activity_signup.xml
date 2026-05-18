@@ -165,6 +165,15 @@
                     android:padding="10dp"
                     android:layout_marginBottom="24dp" />
 
+                <CheckBox
+                    android:id="@+id/cbConsent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:text="I agree to the Privacy Policy"
+                    android:textColor="@color/colorTextSecondary"
+                    android:textSize="13sp" />
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnSubmit"
                     android:layout_width="match_parent"

@@ -56,7 +56,7 @@ object AppStartRepository {
             return
         }
 
-        var pending = 5  // number of parallel fetches
+        var pending = 6  // 5 bootstrap collections + AdminConfig
 
         fun done() {
             if (--pending == 0) {
@@ -70,9 +70,7 @@ object AppStartRepository {
         fetchNotifications { done() }
         fetchUpdateConfig  { done() }
         fetchSchools       { done() }
-
-        // Also kick AdminConfig refresh (non-blocking, no callback needed here)
-        AdminConfigRepository.fetchIfStale()
+        AdminConfigRepository.fetchIfStale { done() }  // must complete before app proceeds
     }
 
     /** Force re-fetch on next [fetchAll] call (e.g. after settings change). */
@@ -153,6 +151,11 @@ object AppStartRepository {
                 try {
                     schools = snapshot.documents.mapNotNull { doc ->
                         val data = doc.data ?: return@mapNotNull null
+                        // Skip inactive schools — check all common field name variants
+                        val active = data["isActive"] as? Boolean
+                            ?: data["is_active"] as? Boolean
+                            ?: true
+                        if (!active) return@mapNotNull null
                         val b = data["branding"] as? Map<String, Any> ?: emptyMap()
                         val plansRaw = data["plans"] as? List<Map<String, Any>> ?: emptyList()
                         val testIds = (data["testStudentIds"] as? List<*>)
@@ -165,6 +168,7 @@ object AppStartRepository {
                             state         = data["state"] as? String ?: "",
                             code          = data["code"] as? String ?: "",
                             contactEmail  = data["contactEmail"] as? String ?: "",
+                            isActive      = true,
                             branding      = SchoolBranding(
                                 primaryColor         = b["primaryColor"] as? String ?: "#1565C0",
                                 primaryDarkColor     = b["primaryDarkColor"] as? String ?: "#003c8f",
