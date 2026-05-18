@@ -1,54 +1,41 @@
-=== BB_ENRICHMENT | 2026-05-16 14:18:21 | session=none ===
+=== BB_ENRICHMENT | 2026-05-17 18:38:12 | session=none ===
 
 === SYSTEM ===
 You are a diagram data generator for an educational app. Output ONLY a valid JSON object — no text, no markdown, no explanation.
 
 === PROMPT ===
-Topic: "The Quadratic Formula"
-Teaching content: "The part under the square root is called the discriminant. It tells you how many answers you will get."
-Diagram type: fraction_bar
+Topic: "The Reflection Process"
+Teaching content: "See how the light enters, hits the back wall, and reflects right back out? That bounce is the glow we see."
+Diagram type: anatomy
 Color keys: primary (chalk white), label (yellow), secondary (sky blue), highlight (red), teal, orange, green, pink, purple, gold, coral, mint
-Schema: {"fractions":[{"num":1,"den":2},{"num":3,"den":4}],"title":"Fractions"}
-Hint: 2-4 fractions. Each {num, den} where 0 < num ≤ den (proper fractions for comparison).
+Schema: {"center":"Central Structure","center_shape":"circle","parts":["Part1","Part2","Part3","Part4","Part5"]}
+Hint: center: the main structure name. parts: 3-7 component labels, clockwise from top. center_shape: circle (biology cells), rect (mechanical parts).
 Existing data (improve/complete this): {}
 
 Generate the BEST data JSON for this diagram. Fill ALL keys. Be accurate to the topic. Reply with ONLY the JSON object.
 
 === RESPONSE ===
 {
-  "title": "The Quadratic Formula",
-  "formula": "x = (-b ± √b² - 4ac) / 2a",
-  "discriminant_highlight": "b² - 4ac",
-  "explanation": "The expression under the radical, b² - 4ac, is the discriminant.",
-  "cases": [
-    {
-      "condition": "b² - 4ac > 0",
-      "meaning": "Two distinct real solutions",
-      "color": "green"
-    },
-    {
-      "condition": "b² - 4ac = 0",
-      "meaning": "One real solution",
-      "color": "orange"
-    },
-    {
-      "condition": "b² - 4ac < 0",
-      "meaning": "Two complex solutions",
-      "color": "red"
-    }
+  "center": "The Eye",
+  "center_shape": "circle",
+  "parts": [
+    "Incoming Light",
+    "Pupil",
+    "Retina (Back Wall)",
+    "Reflected Light",
+    "Visual Perception"
   ],
-  "color_keys": {
-    "primary": "chalk white",
-    "label": "yellow",
-    "secondary": "sky blue",
-    "highlight": "red",
-    "teal": "teal",
-    "orange": "orange",
-    "green": "green",
-    "pink": "pink",
-    "purple": "purple",
-    "gold": "gold",
-    "coral": "coral",
-    "mint": "mint"
-  }
+  "colors": {
+    "center": "chalk white",
+    "parts": {
+      "Incoming Light": "sky blue",
+      "Pupil": "teal",
+      "Retina (Back Wall)": "orange",
+      "Reflected Light": "red",
+      "Visual Perception": "gold"
+    },
+    "labels": "yellow",
+    "background": "mint"
+  },
+  "description": "A diagram illustrating the path of light entering the eye, striking the retina, and reflecting back to create visual perception."
 }

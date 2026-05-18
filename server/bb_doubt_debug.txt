@@ -1,0 +1,13 @@
+Prompt:
+A student (grade 7) is studying ''. Current lesson step: ''. Recent lesson content: "Imagine carrying a flashlight inside your own body, just by being yourself!". Student's doubt: "What is flashlight"
+
+Reply in English. Answer in 2-3 clear sentences. Then give a short re-engagement phrase (≤10 words) to connect back to the lesson.
+Return ONLY valid JSON: {{"answer":"...","answer_speech":"...","follow_up":"..."}}
+"answer" may use markdown. "answer_speech" must be plain text with no markdown or symbols. "follow_up" is 1 short sentence.
+
+LLM response:
+{
+  "answer": "A **flashlight** is a small, portable electric light that you hold in your hand to see in the dark. It uses a battery to shine a beam of light, helping you find your way when it's hard to see.",
+  "answer_speech": "A flashlight is a small, portable electric light that you hold in your hand to see in the dark. It uses a battery to shine a beam of light, helping you find your way when it is hard to see.",
+  "follow_up": "Ready to see how your inner light shines?"
+}

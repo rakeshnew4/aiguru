@@ -126,8 +126,11 @@ async def solve_doubt(
         '"follow_up" is 1 short sentence.'
     )
 
+
     try:
         result = generate_response(prompt=prompt, tier="faster", call_name="bb_doubt", uid=auth.uid)
+        with open("bb_doubt_debug.txt", "w") as f:
+            f.write(f"Prompt:\n{prompt}\n\nLLM response:\n{result.get('text', '')}\n")
         text   = result.get("text", "")
         tokens = result.get("tokens", {})
         if tokens:

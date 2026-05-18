@@ -1,4 +1,4 @@
-=== DAILY_QUESTION_GEN | 2026-05-16 18:43:17 | session=none ===
+=== DAILY_QUESTION_GEN | 2026-05-18 07:39:02 | session=none ===
 
 === PROMPT ===
 Generate exactly 3 engaging daily learning questions for a student.
@@ -26,7 +26,25 @@ hook: one-line real-world curiosity fact related to the question (under 12 words
 
 === RESPONSE ===
 [
-  {"question": "Why do shadows change length throughout the day?", "subject": "Science", "topic": "Light and Shadows", "difficulty": 1, "hook": "Shadows were the world's first clocks."},
-  {"question": "How would our world change if we used base-12 instead of base-10?", "subject": "Math", "topic": "Number Systems", "difficulty": 2, "hook": "Ancient Sumerians counted using finger joints, not fingers."},
-  {"question": "What if the printing press had never been invented?", "subject": "History", "topic": "The Renaissance", "difficulty": 3, "hook": "Books were once handwritten and cost as much as houses."}
+  {
+    "question": "Why do shadows change length throughout the day?",
+    "subject": "Science",
+    "topic": "Light and Shadows",
+    "difficulty": 1,
+    "hook": "Shadows are longest during sunrise and sunset."
+  },
+  {
+    "question": "How would our world change if we used base-12 instead of base-10?",
+    "subject": "Math",
+    "topic": "Number Systems",
+    "difficulty": 2,
+    "hook": "Base-12 is often considered more divisible than base-10."
+  },
+  {
+    "question": "What would happen to modern society if the printing press was never invented?",
+    "subject": "History",
+    "topic": "The Printing Press",
+    "difficulty": 3,
+    "hook": "Gutenberg's invention sparked the spread of the Renaissance."
+  }
 ]

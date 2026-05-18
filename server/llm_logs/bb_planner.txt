@@ -1,18 +1,18 @@
-=== BB_PLANNER | 2026-05-16 14:50:11 | session=uAcwrGZm_51a0ca47 ===
+=== BB_PLANNER | 2026-05-18 15:07:21 | session=N0N8TgOc_ef93c669 ===
 
 === PROMPT ===
 You are a lesson analyst for a personal visual AI tutor responding to a student's SPECIFIC question.
 Analyze exactly what the student is asking and return a focused lesson plan.
 Output ONLY valid JSON — nothing else.
 
-Student question (answer THIS specifically): "Topic: How would our daily lives change if petroleum suddenly disappeared tomorrow?
-Lesson title: The Day the Oil Stopped
+Student question (answer THIS specifically): "Topic: Explain Electromagnetic Induction and Faraday's Law
+Lesson title: Electromagnetic Induction aur Faraday's Law
 Category: science
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
 Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
-Steps to "
+Steps to gener"
 Chapter context (excerpt): ""
 Recent conversation (last 3 turns):
   (No prior conversation — this is the student's first question)
@@ -47,64 +47,22 @@ Rules:
 
 === RESPONSE ===
 {
-  "topic_type": "geography_environment",
+  "topic_type": "science_physics",
   "scope": "medium",
   "key_concepts": [
-    "petroleum dependency",
-    "fossil fuel products",
-    "supply chain disruption"
+    "Magnetic Flux",
+    "Electromagnetic Induction",
+    "Faraday's Law of Induction"
   ],
   "steps_count": 5,
   "image_search_terms": [
-    "oil refinery industry",
-    "plastic products daily life",
-    "gasoline station pump"
+    "Faraday law induction experiment magnet coil",
+    "magnetic flux through a loop",
+    "electromagnetic induction demonstration"
   ],
-  "question_focus": "The student wants to understand the immediate impact and reliance on petroleum products in everyday life if the supply were to vanish.",
+  "question_focus": "The student wants to understand the fundamental principles of electromagnetic induction and how Faraday's Law explains the relationship between changing magnetic fields and induced electric current.",
   "question_type": "conceptual",
   "prior_knowledge": "",
-  "hook_question": "Did you know almost everything you touch, from your toothbrush to your sneakers, might be made from oil?",
-  "continuation_topic": "Alternatives to Fossil Fuels",
-  "steps": [
-    {
-      "step_title": "The Invisible Ingredient",
-      "frames": [
-        "Imagine waking up and finding out all the oil in the world is gone.",
-        "It's not just about cars stopping; it's about the materials in your room.",
-        "Oil is a key ingredient in plastics, synthetic fabrics, and even some foods."
-      ]
-    },
-    {
-      "step_title": "Transportation Grinds to a Halt",
-      "frames": [
-        "Most cars, trucks, and airplanes run on gasoline or jet fuel.",
-        "Without oil, delivery trucks can't bring food or supplies to stores.",
-        "Public transit like buses would stop, making travel difficult."
-      ]
-    },
-    {
-      "step_title": "The Grocery Store Emptying Out",
-      "frames": [
-        "Modern farming uses oil-powered tractors and oil-based fertilizers.",
-        "Food packaging is often made of plastic, which comes from oil.",
-        "Without these, food production and delivery would slow down drastically."
-      ]
-    },
-    {
-      "step_title": "The Plastic Problem",
-      "frames": [
-        "Look around your desk: pens, computer parts, and toys often contain plastic.",
-        "Plastic is a petroleum product, meaning it's literally made from oil.",
-        "If oil disappeared, manufacturing these everyday items would become impossible."
-      ]
-    },
-    {
-      "step_title": "Power and Heating",
-      "frames": [
-        "Many power plants burn oil or natural gas to create electricity.",
-        "Homes that use oil furnaces would lose their heat source.",
-        "The world would face a sudden, massive energy crisis."
-      ]
-    }
-  ]
+  "hook_question": "Have you ever wondered how a simple magnet moving near a wire can light up a bulb without any batteries?",
+  "continuation_topic": "Lenz's Law and Energy Conservation"
 }

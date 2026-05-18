@@ -1,81 +1,38 @@
-=== CHAT_MAIN | 2026-05-16 15:35:48 | session=uAcwrGZm_65cd64e6 ===
+=== CHAT_MAIN | 2026-05-18 15:07:17 | session=N0N8TgOc_a11ec85a ===
 
 === SYSTEM ===
-You are an expert, engaging AI tutor for school students (Class 1-12) in an educational app.
-You teach like a smart, patient friend — direct, clear, and genuinely interesting.
-
-MANDATORY OUTPUT FORMAT:
-Return ONLY valid JSON — no markdown code fences, no extra text:
-{"user_question":"<short restatement>","answer":"<full answer>","user_attachment_transcription":"<ALL text from image if any>","extra_details_or_summary":"<optional bonus info>","suggest_blackboard":<true|false>}
-
-MATH FORMATTING (CRITICAL):
-• ALL math uses $$...$$ — inline: $$x=5$$ or $$a^2+b^2=c^2$$
-• NEVER plain text math. NEVER code blocks for math.
-• LaTeX inside $$...$$: $$\frac{dy}{dx}$$, $$\sqrt{x}$$, $$\pi r^2$$
-
-ANSWER QUALITY:
-• Use context FIRST, knowledge second — never contradict the textbook context.
-• Bold (**term**) every key concept on first use.
-• Include ONE concrete worked example or real-world application.
-• For complex topics: hook (surprising / punchy opening) → explanation → example → tip.
-• For calculations: show every step clearly. NEVER skip steps. Box the final answer.
-• For definitions: precise 1-2 sentence definition + 1 concrete example.
-• For follow-ups: build directly on the previous explanation — never restart from basics.
-
-SUGGEST_BLACKBOARD RULE:
-• Set suggest_blackboard=true when the topic genuinely benefits from a step-by-step visual lesson:
-  multi-step processes (photosynthesis, digestion), complex derivations, structural diagrams (cell, atom)
-• Set suggest_blackboard=false for: greetings, simple definitions, single-step calculations,
-  conversational follow-ups, practice problem requests.
-
-IMAGE TRANSCRIPTION (when image attached):
-• Transcribe EVERY visible word, number, formula, heading, and label — word-for-word.
-• Describe all diagrams, figures, arrows with their labels.
-• Put ALL of this in user_attachment_transcription (it becomes context for future questions).
-
-OUTPUT STRICTNESS:
-• Return EXACTLY one JSON object — no text before, no text after, no ```json wrapper.
-• All five JSON fields must be present; use '' for unused string fields, false for suggest_blackboard.
-• answer field: **bold** key terms, $$...$$ for ALL math — never plain text math.
-
-
+You are a lesson planner. Return ONLY a JSON object (no markdown, no fences) with these fields:
+  "lesson_title": short engaging title,
+  "steps": array of step titles (match the requested count),
+  "use_svg": true if the topic needs diagrams (math/science/charts), else false,
+  "category": one of "math","science","history","language","general",
+  "hook_question": one short real-world curiosity question to open the lesson (e.g. "Ever wondered why the sky is blue?"),
+  "continuation_topic": the single most logical next topic to learn after this one (3-6 words, e.g. "Condensation and Cloud Formation")
+Example: {"lesson_title":"Photosynthesis","steps":["What is it?","Light reactions"],"use_svg":true,"category":"science","hook_question":"Ever wondered how plants make their own food?","continuation_topic":"Respiration and Energy Release"}
 
 === PROMPT ===
-Student class level: Class 5
+Topic: Explain Electromagnetic Induction and Faraday's Law
+Requested number of steps: 5
 
-CONTEXT (chapter notes):
-(No context provided)
-
-CONVERSATION HISTORY:
-user: Hi
-assistant: Hello! It is great to see you again. I am ready and waiting to help you with your schoolwork—what are you studying today?
-
-The student is initiating a conversation; maintaining a friendly and open tone is key.
-user: How are you?
-assistant: I'm doing fantastic, thank you for asking! I'm always happy when I get to help you learn something new. What subject or topic are you working on today?
-
-Friendly greeting response.
-user: Hey
-assistant: Hey there! It's great to see you again. I'm all set and ready to help you with whatever you're working on—what's on your mind today?
-
-The student is initiating a casual conversation; maintaining a friendly and open tone is key.
-user: Hey bro
-assistant: Hey! It's awesome to see you again. I'm ready to help you tackle whatever subject you're working on—what's on your mind today?
-
-Friendly, open-ended response to initiate the tutoring session.
-user: Hi
-assistant: Hi there! It is great to see you again. I am all ready to help you with whatever you are working on today—what subject or topic should we dive into?
-
-STUDENT QUESTION: Hello
-
-ANSWER GUIDANCE: Respond warmly in 1-2 sentences and invite a question.
-
+SPEECH LANGUAGE — Hinglish (Devanagari script + English mix):
+• Write ALL Hindi words in Devanagari Unicode script — NEVER in Roman/Latin letters. BAD: 'dekho', 'matlab'. GOOD: 'देखो', 'मतलब'.
+• Use Devanagari for: verbs, explanations, connectors (मतलब, देखो, क्योंकि, तो, याद रखो).
+• Keep English (Roman) for: technical terms, formulas, proper nouns (Force, Photosynthesis, Cell, Atom, Energy).
+• NEVER transliterate English words into Devanagari — 'Force' not 'फ़ोर्स'.
+• Example — BAD: 'dekho, Force matlab mass times acceleration.' GOOD: 'देखो, Force मतलब mass times acceleration, यानी F equals m times a.'
 
 === RESPONSE ===
 {
-"user_question": "Hello",
-"answer": "Hello! It is wonderful to see you. I am all ready and excited to help you with your studies—what subject or topic are you working on today?",
-"user_attachment_transcription": "",
-"extra_details_or_summary": "",
-"suggest_blackboard": false
+"lesson_title": "Electromagnetic Induction aur Faraday's Law",
+"steps": [
+"Magnetic Flux ka concept samjho: Magnetic field lines jo surface se pass hoti hain, unhe flux kehte hain.",
+"Faraday's Law ka introduction: Jab magnetic flux change hota hai, to EMF induce hota hai.",
+"Lenz's Law ki kahani: Induced current hamesha us cause ko oppose karta hai jo use generate karta hai.",
+"Formula derivation: E equals minus d phi by dt, jahan negative sign direction dikhata hai.",
+"Real-world application: Generators aur Transformers kaise kaam karte hain, ye dekho."
+],
+"use_svg": true,
+"category": "science",
+"hook_question": "Kya aapne kabhi socha hai ki bina battery ke light bulb kaise jal sakta hai?",
+"continuation_topic": "Self and Mutual Inductance"
 }

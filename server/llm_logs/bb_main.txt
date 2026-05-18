@@ -1,4 +1,4 @@
-=== BB_MAIN | 2026-05-16 14:50:22 | session=uAcwrGZm_51a0ca47 ===
+=== BB_MAIN | 2026-05-18 15:07:32 | session=N0N8TgOc_ef93c669 ===
 
 === SYSTEM ===
 You are GURU — a warm, funny, wildly effective AI teacher inside a visual blackboard app.
@@ -97,118 +97,137 @@ RULES:
 === PROMPT ===
 
 ---LESSON BRIEF (follow these instructions exactly)---
-Student's EXACT question: Topic: How would our daily lives change if petroleum suddenly disappeared tomorrow?
-Lesson title: The Day the Oil Stopped
+Student's EXACT question: Topic: Explain Electromagnetic Induction and Faraday's Law
+Lesson title: Electromagnetic Induction aur Faraday's Law
 Category: science
 
 This is the FIRST chunk of the lesson — begin with an engaging introduction to the topic.
 
 Generate EXACTLY 5 steps with APPROXIMATELY 3 frames each.
 Steps to generate in this batch:
-- The Immediate Transportation Crisis
-- Supply Chain and Food Security Collapse
-- The Plastics and Material Shortage
-- Energy Grid and Heating Impacts
-- Transitioning to Sustainable Alternatives
+- Magnetic Flux ka concept samjho: Magnetic field lines jo surface se pass hoti hain, unhe flux kehte hain.
+- Faraday's Law ka introduction: Jab magnetic flux change hota hai, to EMF induce hota hai.
+- Lenz's Law ki kahani: Induced current hamesha us cause ko oppose karta hai jo use generate karta hai.
+- Formula derivation: E equals minus d phi by dt, jahan negative sign direction dikhata hai.
+- Real-world application: Generators aur Transformers kaise kaam karte hain, ye dekho.
 
+This topic benefits from SVG diagrams — use at least one diagram frame per step.
 The very last frame of the last step MUST be a summary frame recapping the entire lesson.
-What the student specifically wants: The student wants to understand the immediate impact and reliance on petroleum products in everyday life if the supply were to vanish.
+
+SPEECH LANGUAGE — Hinglish (Devanagari script + English mix):
+• Write ALL Hindi words in Devanagari Unicode script — NEVER in Roman/Latin letters. BAD: 'dekho', 'matlab'. GOOD: 'देखो', 'मतलब'.
+• Use Devanagari for: verbs, explanations, connectors (मतलब, देखो, क्योंकि, तो, याद रखो).
+• Keep English (Roman) for: technical terms, formulas, proper nouns (Force, Photosynthesis, Cell, Atom, Energy).
+• NEVER transliterate English words into Devanagari — 'Force' not 'फ़ोर्स'.
+• Example — BAD: 'dekho, Force matlab mass times acceleration.' GOOD: 'देखो, Force मतलब mass times acceleration, यानी F equals m times a.'
+What the student specifically wants: The student wants to understand the fundamental principles of electromagnetic induction and how Faraday's Law explains the relationship between changing magnetic fields and induced electric current.
 Question type: conceptual
 Student level: Class 5
 GRADE SPEECH STYLE: Technical words WITH plain-English gloss. Relatable humor (games, snacks). ≤35 words/frame.
-Topic type: geography_environment | Scope: medium
-Key concepts to cover (ALL of these): petroleum dependency, fossil fuel products, supply chain disruption
+Topic type: science_physics | Scope: medium
+Key concepts to cover (ALL of these): Magnetic Flux, Electromagnetic Induction, Faraday's Law of Induction
 Generate EXACTLY 5 steps — no more, no less.
 STYLE: This is a personal AI tutor response — NOT a classroom lesson.
   • Answer the student's specific question directly.
   • First speech frame MUST directly state the answer/formula/definition.
   • NEVER start speech with greetings or 'Today we will learn'.
 
-SUBJECT GUIDANCE (Geography / Environment):
-• For water cycle, carbon cycle, rock cycle, nutrient cycles: use diagram_type=custom so the LLM draws a real process diagram, NOT diagram_type=cycle.
-• Use PATH 2 (diagram_type=custom) for cross-section diagrams (mountain, valley).
-• Concept frames: location/name → characteristic → human impact or real example.
+SUBJECT GUIDANCE (Science — Physics):
+• Use waveform_signal for waves/sound/light; coordinate_plane for motion graphs.
+• Use PATH 2 (diagram_type=custom) for force diagrams, ray optics, circuit layouts.
+• Concept frames: state law/formula → physical meaning → real-world application.
+• Include units in every formula (e.g. m/s², Newton, Joule).
 • End with a summary frame.
 
 ---END LESSON BRIEF---
 
-OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" fields in the language for tag "en-US" (hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.). Board "text" field stays in English (formulas/keywords only).
+
+SPEECH LANGUAGE — Hinglish (Devanagari script + English mix):
+• Write ALL Hindi words in Devanagari Unicode script — NEVER in Roman/Latin letters.
+  BAD: 'dekho', 'matlab', 'kyunki'. GOOD: 'देखो', 'मतलब', 'क्योंकि'.
+• Use Devanagari for: verbs, explanations, reasoning, connectors (मतलब, देखो, क्योंकि, तो, याद रखो).
+• Keep English (Roman script) for: subject nouns, technical terms, formulas, proper nouns, unit names.
+  Examples: Force, Photosynthesis, Newton's Law, Cell, Mitosis, Atom, Energy, Velocity.
+• NEVER transliterate English words into Devanagari — 'Force' not 'फ़ोर्स'.
+• NEVER write Hindi words in Roman letters — 'देखो' not 'dekho'.
+• Example — BAD: 'dekho, Force matlab mass times acceleration.'
+            GOOD: 'देखो, Force मतलब mass times acceleration, यानी F equals m times a.'
+OUTPUT LANGUAGE: Set ALL step "lang" fields to "hi-IN". Write ALL "speech" fields in the language for tag "hi-IN" (hi-IN → Hindi, te-IN → Telugu, ta-IN → Tamil, bn-IN → Bengali, en-US → English, etc.). Board "text" field stays in English (formulas/keywords only).
 
 === RESPONSE ===
 {
   "steps": [
     {
-      "title": "The Immediate Transportation Crisis",
-      "lang": "en-US",
-      "image_description": "busy city highway with cars and trucks",
-      "image_show_confidencescore": 0.9,
+      "title": "Magnetic Flux ka concept",
+      "lang": "hi-IN",
+      "image_description": "magnetic flux lines through a loop diagram",
+      "image_show_confidencescore": 0.85,
       "frames": [
         {
           "frame_type": "hook",
-          "text": "The **Day the Oil Stopped**",
-          "speech": "Imagine waking up, and every single car, bus, and plane on Earth just stops working.",
+          "text": "What is **Magnetic Flux**?",
+          "speech": "कभी सोचा है, magnet के पास एक wire का loop रखने पर क्या होता है?",
           "tts_engine": "android",
+          "voice_role": "teacher",
+          "duration_ms": 3000
+        },
+        {
+          "frame_type": "concept",
+          "text": "Magnetic Flux: Field lines passing through area",
+          "speech": "Magnetic Flux का मतलब है, वो total magnetic field lines जो एक specific surface से pass हो रही हैं।",
+          "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3500
         },
         {
-          "frame_type": "concept",
-          "text": "Petroleum and **Fossil Fuels**",
-          "speech": "Petroleum, or oil, is a fossil fuel—that is, ancient plants turned into liquid energy—that powers almost all our engines.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 4500
-        },
-        {
           "frame_type": "memory",
-          "text": "Oil is the **World's Blood**",
-          "speech": "Think of oil like the world's blood; without it, the heart of our travel stops beating.",
+          "text": "Analogy: Catching rain in a bucket",
+          "speech": "इसे ऐसे समझो, जैसे बारिश में एक bucket पकड़ना। जितनी ज्यादा बारिश की drops अंदर जाएंगी, उतना ज्यादा flux होगा!",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3000
+          "duration_ms": 3500
         }
       ]
     },
     {
-      "title": "Supply Chain and Food Security",
-      "lang": "en-US",
-      "image_description": "supply chain logistics diagram",
-      "image_show_confidencescore": 0.8,
+      "title": "Faraday's Law ka introduction",
+      "lang": "hi-IN",
+      "image_description": "Faraday's law induction experiment diagram",
+      "image_show_confidencescore": 0.9,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "The **Supply Chain** Collapse",
-          "speech": "Without trucks, food cannot get from farms to stores. This is a supply chain—the path things take to reach you—breaking down.",
+          "text": "Changing flux induces EMF",
+          "speech": "Faraday's Law कहता है कि अगर आप magnetic flux को बदलेंगे, तो wire में EMF induce होगा।",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 4500
+          "duration_ms": 3500
         },
         {
           "frame_type": "diagram",
-          "text": "Farm to **Market Path**",
-          "speech": "Look at the screen. Normally, trucks carry food from farms to your grocery store, but without fuel, that line is cut.",
+          "text": "Magnet moving near coil",
+          "speech": "देखो, जब हम magnet को coil के पास लाते या दूर ले जाते हैं, तो flux बदलता है और bulb जल उठता है।",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 3500,
+          "duration_ms": 4000,
           "diagram_type": "custom",
           "diagram_data": {
-            "nodes": ["Farm", "Truck", "Store"],
-            "connections": ["Farm to Truck", "Truck to Store"]
-          },
-          "visual_description": "A simple diagram showing a farm connected to a truck, then a broken line leading to a grocery store."
+            "type": "coil_magnet_motion",
+            "description": "A bar magnet moving towards a stationary copper coil, showing magnetic field lines passing through it."
+          }
         },
         {
           "frame_type": "question",
-          "text": "What happens to your **snacks**?",
-          "speech": "If trucks stopped moving tomorrow, what would happen to the snacks in your pantry?",
+          "text": "What if magnet stops?",
+          "speech": "अच्छा, एक सवाल! क्या होगा अगर हम magnet को coil के पास लाकर एकदम रोक दें?",
           "tts_engine": "android",
           "voice_role": "teacher",
           "duration_ms": 3000
         },
         {
           "frame_type": "reveal",
-          "text": "Empty **Shelves**",
-          "speech": "Actually, they would vanish! Without gas, stores would run out of fresh food in just a few days.",
+          "text": "No change = No current",
+          "speech": "Actually, current zero हो जाएगा! क्योंकि flux में कोई change नहीं हो रहा, तो induction भी रुक जाएगा।",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3500
@@ -216,111 +235,121 @@ OUTPUT LANGUAGE: Set ALL step "lang" fields to "en-US". Write ALL "speech" field
       ]
     },
     {
-      "title": "The Plastics and Material Shortage",
-      "lang": "en-US",
-      "image_description": "plastic products pile",
-      "image_show_confidencescore": 0.85,
-      "frames": [
-        {
-          "frame_type": "concept",
-          "text": "Plastic is **Oil**",
-          "speech": "Did you know plastic is made from oil? It is a synthetic polymer—a man-made material—that is basically oil in solid form.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 4000
-        },
-        {
-          "frame_type": "joke",
-          "text": "Melting **Toys**",
-          "speech": "Imagine your favorite plastic action figure or gaming controller just deciding to quit and disappear!",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 3500
-        },
-        {
-          "frame_type": "apply",
-          "text": "Check your **Room**",
-          "speech": "Look around your room right now. Almost every plastic toy, bottle, and case would be gone if the oil stopped.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 4000
-        }
-      ]
-    },
-    {
-      "title": "Energy Grid and Heating Impacts",
-      "lang": "en-US",
-      "image_description": "power plant generating electricity",
+      "title": "Lenz's Law ki kahani",
+      "lang": "hi-IN",
+      "image_description": "Lenz's law direction of induced current",
       "image_show_confidencescore": 0.8,
       "frames": [
         {
           "frame_type": "concept",
-          "text": "Power **Plants**",
-          "speech": "Many power plants burn fossil fuels to make electricity. Without oil, our lights, computers, and video games might flicker off.",
-          "tts_engine": "gemini",
-          "voice_role": "teacher",
-          "duration_ms": 4000
-        },
-        {
-          "frame_type": "apply",
-          "text": "No **Gaming**",
-          "speech": "This means no charging your tablet, no heater in the winter, and definitely no late-night gaming sessions.",
+          "text": "Lenz's Law: Opposing the cause",
+          "speech": "Lenz's Law कहता है कि induced current हमेशा उस cause को oppose करेगा, जिसने उसे पैदा किया है।",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3500
+        },
+        {
+          "frame_type": "diagram",
+          "text": "Induced magnetic field opposes motion",
+          "speech": "यहाँ देखो, coil एक ऐसा magnetic field बनाती है जो magnet के motion को रोकने की कोशिश करता है।",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500,
+          "diagram_type": "custom",
+          "diagram_data": {
+            "type": "lenz_law_vector",
+            "description": "Coil showing opposing magnetic field vectors against incoming magnet."
+          }
+        },
+        {
+          "frame_type": "joke",
+          "text": "Stubborn friend analogy",
+          "speech": "ये बिल्कुल उस जिद्दी दोस्त जैसा है, जो हमेशा तुम्हारी बात का उल्टा ही बोलेगा!",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 2500
         }
       ]
     },
     {
-      "title": "Transitioning to Sustainable Alternatives",
-      "lang": "en-US",
-      "image_description": "solar panels and wind turbines",
-      "image_show_confidencescore": 0.9,
+      "title": "Formula derivation",
+      "lang": "hi-IN",
+      "image_description": "Faraday's law mathematical formula graph",
+      "image_show_confidencescore": 0.75,
       "frames": [
         {
-          "frame_type": "apply",
-          "text": "Renewable **Energy**",
-          "speech": "This is why we are switching to renewable energy—power from sun, wind, and water—that never runs out.",
+          "frame_type": "concept",
+          "text": "Formula: E = -dΦ/dt",
+          "speech": "Formula है, E equals negative d Phi divided by dt, जहाँ Phi magnetic flux है।",
           "tts_engine": "gemini",
           "voice_role": "teacher",
-          "duration_ms": 4000
+          "duration_ms": 3500
         },
         {
-          "frame_type": "curiosity",
-          "text": "Can we live **without** it?",
-          "speech": "But is it actually possible to build a whole world without using a single drop of oil?",
+          "frame_type": "diagram",
+          "text": "Slope of Flux vs Time graph",
+          "speech": "यह graph देखो, d Phi by dt का मतलब है flux के बदलने की speed यानी slope।",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3000,
+          "diagram_type": "custom",
+          "diagram_data": {
+            "type": "slope_graph",
+            "description": "Graph of Magnetic Flux on Y-axis vs Time on X-axis, highlighting the slope."
+          }
+        },
+        {
+          "frame_type": "concept",
+          "text": "Negative sign meaning",
+          "speech": "वो negative sign बस यह बताता है कि current, Lenz's Law के हिसाब से दिशा बदल रहा है।",
           "tts_engine": "gemini",
           "voice_role": "teacher",
           "duration_ms": 3000
+        }
+      ]
+    },
+    {
+      "title": "Real-world application",
+      "lang": "hi-IN",
+      "image_description": "Electric generator and transformer illustration",
+      "image_show_confidencescore": 0.85,
+      "frames": [
+        {
+          "frame_type": "apply",
+          "text": "Generators and Transformers",
+          "speech": "हमारे घर की बिजली Generators और Transformers से आती है, जो इसी principle पर चलते हैं।",
+          "tts_engine": "gemini",
+          "voice_role": "teacher",
+          "duration_ms": 3500
         },
         {
           "frame_type": "summary",
-          "text": "The Big **Picture**",
-          "speech": "We rely on oil for cars, food, and plastic, but it is limited. The future is clean energy, so we can keep playing games without hurting the planet.",
+          "text": "Summary: Changing flux = Electricity",
+          "speech": "तो, magnetic flux का बदलना ही electricity पैदा करता है। यही है Electromagnetic Induction का असली जादू!",
           "tts_engine": "google",
           "voice_role": "assistant",
-          "duration_ms": 5000
+          "duration_ms": 3000
         }
       ],
       "followup_questions": [
         {
-          "question": "What is one thing you use daily made of plastic?",
-          "speech": "What is one thing you use daily that is probably made of plastic?"
+          "question": "What if flux is constant?",
+          "speech": "अगर magnetic flux constant रहे, तो क्या current induce होगा? सोचो!"
         },
         {
-          "question": "Why is renewable energy better than oil?",
-          "speech": "Why is energy from the sun and wind better than using oil?"
+          "question": "Why is the sign negative?",
+          "speech": "Formula में negative sign आखिर Lenz's Law के बारे में क्या बताता है?"
         },
         {
-          "question": "How would your town change without cars?",
-          "speech": "How do you think your town would change if cars disappeared tomorrow?"
+          "question": "Name one daily device.",
+          "speech": "क्या आप अपने आस-पास कोई ऐसी चीज़ बता सकते हैं जो इसी law पर काम करती है?"
         }
       ],
-      "session_theme": "Impact of petroleum on modern life",
-      "video_search_query": "how is plastic made from oil for kids",
+      "session_theme": "Electromagnetic Induction and Faraday's Law",
+      "video_search_query": "Faraday's law of induction explanation for kids",
       "preferred_channels": [
-        "Khan Academy India",
-        "Physics Wallah"
+        "Physics Wallah",
+        "Khan Academy India"
       ]
     }
   ]

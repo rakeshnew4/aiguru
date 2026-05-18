@@ -1,18 +1,12 @@
-=== INTENT_CLASSIFIER | 2026-05-15 18:41:00 | session=WvGiuMbl_b4c1c865 ===
+=== INTENT_CLASSIFIER | 2026-05-17 15:50:16 | session=N0N8TgOc_daa95a5d ===
 
 === PROMPT ===
 You are a lightning-fast intent classifier for a school tutoring app.
 Classify the student input into exactly one intent. Output ONLY valid JSON -- nothing else.
 
-Student question: "For the exercises in "Business analysis":
-• List the types of exercises/problems in this chapter
-• Provide step-by-step problem-solving strategies
-• Show worked examples for typical questions
-• Highlight common mistakes to avoid
-
-Use ## Exercise Notes as the heading."
+Student question: "What is bio lumimcine"
 Has image attached: false
-Last assistant message (first 120 chars): " Imagine you are running a lemonade stand. You want to make the best lemonade ever, earn the most money, and keep your c"
+Last assistant message (first 120 chars): ""
 
 JSON output (one object, no extra text):
 {"intent": "<one of: greet|image_explain|calculate|definition|followup|explain|practice|other>", "complexity": "<one of: low|medium|high>"}
@@ -33,4 +27,4 @@ Complexity rules:
 - high   -> multi-concept question, multi-step derivation, compare and contrast
 
 === RESPONSE ===
-{"intent": "practice", "complexity": "high"}
+{"intent": "definition", "complexity": "low"}
